@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export type ContestCardData = {
   title: string;
   organization: string;
@@ -5,9 +7,12 @@ export type ContestCardData = {
   date: string;
   schedule?: string;
   isOpen?: boolean;
+  href?: string;
 };
 
-type ContestCardProps = ContestCardData;
+type ContestCardProps = ContestCardData & {
+  className?: string;
+};
 
 export default function ContestCard({
   title,
@@ -16,9 +21,18 @@ export default function ContestCard({
   schedule,
   date,
   isOpen = false,
+  href,
+  className,
 }: ContestCardProps) {
-  return (
-    <li className="rounded border border-slate-200 bg-white px-6 py-5">
+  const cardClassName = [
+    'rounded border border-slate-200 bg-white px-6 py-5 transition hover:border-zoj-blue hover:shadow-sm',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const cardContent = (
+    <>
       <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1">
         <span
           className={
@@ -45,6 +59,18 @@ export default function ContestCard({
           {date}
         </span>
       </div>
+    </>
+  );
+
+  return (
+    <li className={cardClassName}>
+      {href ? (
+        <Link className="block h-full" to={href}>
+          {cardContent}
+        </Link>
+      ) : (
+        cardContent
+      )}
     </li>
   );
 }
