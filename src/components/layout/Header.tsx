@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { SvgIcon } from '@/assets/icons/Icons';
+import { SvgIcon } from '@/utils/Icons';
 import { navigationRoutes } from '@/routes/routeConfig';
 
 export default function Header() {
