@@ -96,3 +96,18 @@ Vite 환경 변수는 `VITE_` prefix를 사용합니다.
 ## 현재 상태
 
 현재 앱은 초기 빈 상태입니다. `src/App.tsx`는 화면을 렌더링하지 않습니다.
+
+###### 색상 참고
+
+| 이름 | HEX | RGB |
+| --- | --- | --- |
+| Blue / Light | `#f2efff` | `rgb(242, 239, 255)` |
+| Blue / Light hover | `#ebe7ff` | `rgb(235, 231, 255)` |
+| Blue / Light active | `#d6ceff` | `rgb(214, 206, 255)` |
+| Blue / Normal | `#7b61ff` | `rgb(123, 97, 255)` |
+| Blue / Normal hover | `#6f57e6` | `rgb(111, 87, 230)` |
+| Blue / Normal active | `#624ecc` | `rgb(98, 78, 204)` |
+| Blue / Dark | `#5c49bf` | `rgb(92, 73, 191)` |
+| Blue / Dark hover | `#4a3a99` | `rgb(74, 58, 153)` |
+| Blue / Dark active | `#372c73` | `rgb(55, 44, 115)` |
+| Blue / Darker | `#2b2259` | `rgb(43, 34, 89)` |
