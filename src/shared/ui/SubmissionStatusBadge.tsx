@@ -1,0 +1,59 @@
+import {
+  isSubmissionPending,
+  submissionProgressPercent,
+  submissionProgressText,
+  submissionStatusLabel,
+  submissionStatusTone,
+} from '@/domains/submissionScoreboard/status';
+import type { SubmissionProgressState } from '@/domains/submissionScoreboard/types';
+
+type SubmissionStatusBadgeProps = {
+  submission?: SubmissionProgressState | null;
+  compact?: boolean;
+};
+
+const toneClasses: Record<string, string> = {
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+  danger: 'border-red-200 bg-red-50 text-red-700',
+  neutral: 'border-slate-200 bg-slate-50 text-slate-600',
+};
+
+const progressClasses: Record<string, string> = {
+  success: 'bg-emerald-500',
+  pending: 'bg-amber-500',
+  danger: 'bg-red-500',
+  neutral: 'bg-slate-400',
+};
+
+export default function SubmissionStatusBadge({ submission, compact = false }: SubmissionStatusBadgeProps) {
+  const status = submission?.status;
+  const tone = submissionStatusTone(status);
+  const pending = isSubmissionPending(status);
+  const progressText = submissionProgressText(submission);
+  const progressPercent = submissionProgressPercent(submission) ?? 0;
+
+  return (
+    <span className={compact ? 'inline-flex items-center gap-2' : 'inline-flex min-w-40 items-center gap-3'}>
+      <span
+        className={[
+          'inline-flex h-7 items-center rounded-full border px-3 text-xs font-bold whitespace-nowrap',
+          toneClasses[tone],
+        ].join(' ')}
+      >
+        {submissionStatusLabel(status)}
+      </span>
+      {pending && progressText && !compact && (
+        <span className="grid min-w-24 gap-1">
+          <span className="text-xs font-medium text-slate-500">{progressText}</span>
+          <span className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+            <span
+              className={['block h-full rounded-full', progressClasses[tone]].join(' ')}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}

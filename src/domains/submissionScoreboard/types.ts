@@ -1,0 +1,80 @@
+import type { Division } from '@/domains/contestAdministration/types';
+
+export type JudgeLanguage = 'c99' | 'cpp17' | 'python313' | 'java8';
+
+export type Submission = {
+  submission_id: string;
+  problem_id: string;
+  division_id?: string;
+  language: JudgeLanguage | string;
+  status: string;
+  awarded_score: number | null;
+  submitted_at: string;
+  source_code?: string;
+  compile_message?: string | null;
+  judge_message?: string | null;
+  failed_testcase_order?: number | null;
+  progress_current?: number | null;
+  progress_total?: number | null;
+  participant_team_id?: string;
+  team_member_id?: string;
+  team_name?: string | null;
+  member_name?: string | null;
+  member_email?: string | null;
+};
+
+export type SubmissionProgressState = Pick<
+  Submission,
+  'status' | 'progress_current' | 'progress_total'
+>;
+
+export type SubmissionCreateRequest = {
+  language: JudgeLanguage;
+  source_code: string;
+};
+
+export type ScoreboardProblemScore = {
+  problem_id?: string;
+  problem_code: string;
+  score: number;
+  max_score: number;
+  attempts: number;
+  wrong_attempts: number;
+  solved: boolean;
+  best_submission_id?: string;
+  best_submitted_at?: string;
+  best_status: string | null;
+};
+
+export type ScoreboardRow = {
+  rank: number;
+  team_id?: string;
+  team_name: string;
+  division: string | null;
+  division_id?: string;
+  solved: number;
+  score: number;
+  submission_count: number;
+  last_improved_at: string | null;
+  problem_scores: ScoreboardProblemScore[];
+};
+
+export type ScoreboardResponse = {
+  division: Division;
+  frozen: boolean;
+  rows: ScoreboardRow[];
+};
+
+export type OperatorScoreboardResponse = {
+  frozen_public_view: boolean;
+  operator_live_view: boolean;
+  rows: (ScoreboardRow & { visible_to_team?: boolean })[];
+};
+
+export type JudgeDetail = {
+  caseFiles: string;
+  inputText: string;
+  expectedText: string;
+  actualText: string;
+};
+
