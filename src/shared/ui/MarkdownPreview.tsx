@@ -1,0 +1,59 @@
+import ReactMarkdown from 'react-markdown';
+import rehypeKatex from 'rehype-katex';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import 'katex/dist/katex.min.css';
+
+import { resolveAssetSource } from '@/domains/problemManagement/document';
+import type { ProblemAsset } from '@/domains/problemManagement/types';
+
+type MarkdownPreviewProps = {
+  statement: string;
+  assets?: ProblemAsset[];
+};
+
+function normalizeMathDelimiters(markdown: string) {
+  return markdown
+    .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g)
+    .map((part) => {
+      if (part.startsWith('```') || part.startsWith('~~~')) return part;
+
+      return part
+        .replace(/\\\[([\s\S]*?)\\\]/g, (_, math: string) => `$$\n${math.trim()}\n$$`)
+        .replace(/\\\(([\s\S]*?)\\\)/g, (_, math: string) => `$${math}$`);
+    })
+    .join('');
+}
+
+export default function MarkdownPreview({ statement, assets = [] }: MarkdownPreviewProps) {
+  const normalizedStatement = normalizeMathDelimiters(statement);
+
+  return (
+    <div className="prose prose-slate max-w-none text-slate-800">
+      <ReactMarkdown
+        components={{
+          img: ({ src = '', alt = '' }) => (
+            <img
+              alt={alt}
+              className="max-h-96 rounded-md border border-slate-200 object-contain"
+              src={resolveAssetSource(src, assets)}
+            />
+          ),
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-4 text-sm text-slate-50">
+              {children}
+            </pre>
+          ),
+          code: ({ children }) => (
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.92em] text-slate-900">{children}</code>
+          ),
+        }}
+        rehypePlugins={[rehypeKatex, rehypeSanitize]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+      >
+        {normalizedStatement}
+      </ReactMarkdown>
+    </div>
+  );
+}

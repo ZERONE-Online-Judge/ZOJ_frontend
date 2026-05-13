@@ -1,0 +1,78 @@
+import { useEffect, useState } from 'react';
+
+export function useCooldown(cooldownUntil: number) {
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  useEffect(() => {
+    const update = () => {
+      setRemainingSeconds(Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000)));
+    };
+    const firstTick = window.setTimeout(update, 0);
+    const timer = window.setInterval(update, 1000);
+
+    return () => {
+      window.clearTimeout(firstTick);
+      window.clearInterval(timer);
+    };
+  }, [cooldownUntil]);
+
+  return remainingSeconds;
+}
+
+export function useClockTick() {
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    const update = () => setNow(Date.now());
+    const firstTick = window.setTimeout(update, 0);
+    const timer = window.setInterval(update, 1000);
+
+    return () => {
+      window.clearTimeout(firstTick);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return now;
+}
+
+export function useAutoRefresh(
+  refresh: (() => Promise<void>) | (() => void),
+  enabled = true,
+  intervalMs = 15_000,
+) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    let pending = false;
+
+    async function runRefresh() {
+      if (pending) return;
+      pending = true;
+      try {
+        await refresh();
+      } finally {
+        pending = false;
+      }
+    }
+
+    const timer = window.setInterval(() => {
+      void runRefresh();
+    }, intervalMs);
+    const onFocus = () => {
+      void runRefresh();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void runRefresh();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [refresh, enabled, intervalMs]);
+}
