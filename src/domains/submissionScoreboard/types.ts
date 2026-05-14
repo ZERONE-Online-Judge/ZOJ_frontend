@@ -5,11 +5,21 @@ export type JudgeLanguage = 'c99' | 'cpp17' | 'python313' | 'java8';
 export type Submission = {
   submission_id: string;
   problem_id: string;
+  problem_code?: string;
+  problem_title?: string;
   division_id?: string;
   language: JudgeLanguage | string;
   status: string;
   awarded_score: number | null;
   submitted_at: string;
+  memory_kb?: number | null;
+  memory_usage_kb?: number | null;
+  max_memory_kb?: number | null;
+  time_ms?: number | null;
+  execution_time_ms?: number | null;
+  runtime_ms?: number | null;
+  code_length_bytes?: number | null;
+  source_code_length?: number | null;
   source_code?: string;
   compile_message?: string | null;
   judge_message?: string | null;
@@ -21,6 +31,18 @@ export type Submission = {
   team_name?: string | null;
   member_name?: string | null;
   member_email?: string | null;
+  problem?: {
+    problem_id: string;
+    problem_code: string;
+    title: string;
+  } | null;
+  team?: {
+    team_name: string;
+  } | null;
+  member?: {
+    name: string;
+    email?: string;
+  } | null;
 };
 
 export type SubmissionProgressState = Pick<
@@ -53,7 +75,8 @@ export type ScoreboardRow = {
   division: string | null;
   division_id?: string;
   solved: number;
-  score: number;
+  score?: number;
+  penalty?: number | null;
   submission_count: number;
   last_improved_at: string | null;
   problem_scores: ScoreboardProblemScore[];
@@ -77,4 +100,3 @@ export type JudgeDetail = {
   expectedText: string;
   actualText: string;
 };
-

@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://127.0.0.1:8012',
+      '/api': 'https://judge.zerone01.kr',
     },
   },
   plugins: [react(), tailwindcss()],
