@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import PageLayout from '@/components/common/PageLayout';
 import { loginGuideSections } from '@/data/loginGuideContent';
+import { loginPageText } from '@/data/uiText';
 import {
   requestGeneralOtp,
   verifyGeneralOtp,
@@ -20,7 +21,7 @@ import PageNotice from '@/shared/ui/PageNotice';
 const OTP_VALID_SECONDS = 5 * 60;
 
 const loginSchema = z.object({
-  email: z.email('올바른 이메일을 입력해 주세요.'),
+  email: z.email(loginPageText.emailValidation),
   otpCode: z.string().optional(),
 });
 
@@ -43,10 +44,10 @@ function formatLoginError(error: unknown) {
     error.status === 401 &&
     error.code === 'invalid_credentials'
   ) {
-    return '로그인 실패: 이메일 또는 인증번호가 맞지 않거나 인증번호가 만료되었습니다. 새 인증번호를 받아 다시 시도해 주세요.';
+    return loginPageText.invalidCredentials;
   }
 
-  return formatApiError(error, '로그인 실패');
+  return formatApiError(error, loginPageText.loginFailed);
 }
 
 export default function LoginPage() {
@@ -105,14 +106,14 @@ export default function LoginPage() {
     setOtpExpiresAt(0);
     setCooldownUntil(0);
     resetField('otpCode');
-    setMessage('이메일이 변경되었습니다. 새 인증번호를 받아 주세요.');
+    setMessage(loginPageText.emailChanged);
     setMessageStatus('idle');
   }
 
   async function requestOtp() {
     const requestedEmail = email.trim();
 
-    setMessage('인증번호를 발송하고 있습니다.');
+    setMessage(loginPageText.otpRequesting);
     setMessageStatus('loading');
 
     try {
@@ -126,9 +127,7 @@ export default function LoginPage() {
       setRequestedOtpEmail(requestedEmail);
       setCooldownUntil(requestedAt + cooldown * 1000);
       setOtpExpiresAt(requestedAt + OTP_VALID_SECONDS * 1000);
-      setMessage(
-        '인증번호가 이메일로 발송되었습니다. 인증번호 유효시간은 5분입니다.',
-      );
+      setMessage(loginPageText.otpSent);
       setMessageStatus('ready');
     } catch (error) {
       const retryAfter = readRetryAfterSeconds(error);
@@ -137,7 +136,7 @@ export default function LoginPage() {
         setCooldownUntil(currentTimestamp() + retryAfter * 1000);
       }
 
-      setMessage(formatApiError(error, '인증번호 발송 실패'));
+      setMessage(formatApiError(error, loginPageText.otpRequestFailed));
       setMessageStatus('error');
     }
   }
@@ -149,18 +148,18 @@ export default function LoginPage() {
     }
 
     if (!values.otpCode?.trim()) {
-      setMessage('인증번호를 입력해 주세요.');
+      setMessage(loginPageText.otpRequired);
       setMessageStatus('error');
       return;
     }
 
     if (otpExpiresSeconds <= 0) {
-      setMessage('인증번호가 만료되었습니다. 다시 발송해 주세요.');
+      setMessage(loginPageText.otpExpired);
       setMessageStatus('error');
       return;
     }
 
-    setMessage('로그인 중입니다.');
+    setMessage(loginPageText.loginSubmitting);
     setMessageStatus('loading');
 
     try {
@@ -171,7 +170,7 @@ export default function LoginPage() {
       );
 
       setGeneralSession(session);
-      setMessage('로그인되었습니다.');
+      setMessage(loginPageText.loginReady);
       setMessageStatus('ready');
       setOtpRequested(false);
       setRequestedOtpEmail('');
@@ -190,10 +189,10 @@ export default function LoginPage() {
 
   return (
     <PageLayout
-      description="이메일 인증번호로 계정에 안전하게 로그인합니다."
-      eyebrow="Login"
-      title="로그인"
-      width="6xl"
+      description={loginPageText.description}
+      eyebrow={loginPageText.eyebrow}
+      title={loginPageText.title}
+      width="7xl"
     >
       {shouldShowContestLoginModal && (
         <div
@@ -219,11 +218,10 @@ export default function LoginPage() {
                   id="contest-login-required-title"
                   className="text-xl font-black text-slate-950"
                 >
-                  로그인이 필요합니다
+                  {loginPageText.contestRequiredTitle}
                 </h2>
                 <p className="text-sm leading-6 text-slate-600">
-                  대회에 참가하거나 대회별 문제, 제출, 스코어보드를 확인하려면
-                  먼저 로그인해야 합니다.
+                  {loginPageText.contestRequiredDescription}
                 </p>
               </div>
             </div>
@@ -233,7 +231,7 @@ export default function LoginPage() {
                 onClick={() => setSearchParams({}, { replace: true })}
                 type="button"
               >
-                확인
+                {loginPageText.modalConfirm}
               </button>
             </div>
           </div>
@@ -246,12 +244,14 @@ export default function LoginPage() {
           onSubmit={handleSubmit(submitLogin)}
         >
           <label className="grid gap-2">
-            <span className="text-sm font-bold text-slate-800">이메일</span>
+            <span className="text-sm font-bold text-slate-800">
+              {loginPageText.emailLabel}
+            </span>
             <input
               autoComplete="email"
               className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
               disabled={isSubmitting}
-              placeholder="등록된 이메일"
+              placeholder={loginPageText.emailPlaceholder}
               type="email"
               {...emailField}
               onChange={(event) => {
@@ -287,20 +287,20 @@ export default function LoginPage() {
               <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h10A2.5 2.5 0 0 1 17.5 5v10a2.5 2.5 0 0 1-2.5 2.5H5A2.5 2.5 0 0 1 2.5 15V5Zm2.2-.5 5.3 4.25L15.3 4.5H4.7Zm10.8 2.1-5.03 4.03a.75.75 0 0 1-.94 0L4.5 6.6V15c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V6.6Z" />
             </svg>
             {cooldownSeconds > 0
-              ? `재전송 ${cooldownSeconds}초`
-              : '인증번호 받기'}
+              ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
+              : loginPageText.otpRequestButton}
           </button>
 
           {otpRequested && (
             <>
               <label className="grid gap-2">
                 <span className="text-sm font-bold text-slate-800">
-                  인증번호
+                  {loginPageText.otpLabel}
                 </span>
                 <input
                   autoComplete="one-time-code"
                   className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="인증번호"
+                  placeholder={loginPageText.otpPlaceholder}
                   {...otpCodeField}
                   ref={(element) => {
                     otpCodeField.ref(element);
@@ -321,20 +321,20 @@ export default function LoginPage() {
                 >
                   <path d="M10 1.5 17 4v5.25c0 4.12-2.96 7.94-7 9.25-4.04-1.31-7-5.13-7-9.25V4l7-2.5Zm3.53 6.97a.75.75 0 0 0-1.06-1.06L9 10.88 7.53 9.41a.75.75 0 0 0-1.06 1.06l2 2c.3.3.77.3 1.06 0l4-4Z" />
                 </svg>
-                로그인
+                {loginPageText.loginButton}
               </button>
               <p className="text-sm font-medium text-slate-500">
-                인증번호 유효시간:{' '}
+                {loginPageText.otpExpiryLabel}:{' '}
                 {otpExpiresSeconds > 0
                   ? formatSeconds(otpExpiresSeconds)
-                  : '만료'}
+                  : loginPageText.otpExpiredLabel}
               </p>
             </>
           )}
 
           <PageNotice message={message} status={messageStatus} />
           <p className="text-center text-xs font-medium text-slate-400">
-            인증번호 메일이 보이지 않으면 스팸함도 함께 확인해 주세요.
+            {loginPageText.spamHelp}
           </p>
         </form>
 

@@ -26,7 +26,10 @@ const progressClasses: Record<string, string> = {
   neutral: 'bg-slate-400',
 };
 
-export default function SubmissionStatusBadge({ submission, compact = false }: SubmissionStatusBadgeProps) {
+export default function SubmissionStatusBadge({
+  submission,
+  compact = false,
+}: SubmissionStatusBadgeProps) {
   const status = submission?.status;
   const tone = submissionStatusTone(status);
   const pending = isSubmissionPending(status);
@@ -34,10 +37,16 @@ export default function SubmissionStatusBadge({ submission, compact = false }: S
   const progressPercent = submissionProgressPercent(submission) ?? 0;
 
   return (
-    <span className={compact ? 'inline-flex items-center gap-2' : 'inline-flex min-w-40 items-center gap-3'}>
+    <span
+      className={
+        compact
+          ? 'inline-flex items-center gap-2'
+          : 'inline-flex min-w-0 flex-wrap items-center gap-3'
+      }
+    >
       <span
         className={[
-          'inline-flex h-7 items-center rounded-full border px-3 text-xs font-bold whitespace-nowrap',
+          'inline-flex min-h-7 items-center rounded-full border px-3 py-1 text-xs font-bold break-keep',
           toneClasses[tone],
         ].join(' ')}
       >
@@ -45,10 +54,18 @@ export default function SubmissionStatusBadge({ submission, compact = false }: S
       </span>
       {pending && progressText && !compact && (
         <span className="grid min-w-24 gap-1">
-          <span className="text-xs font-medium text-slate-500">{progressText}</span>
-          <span className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+          <span className="text-xs font-medium text-slate-500">
+            {progressText}
+          </span>
+          <span
+            className="h-1.5 overflow-hidden rounded-full bg-slate-100"
+            aria-hidden="true"
+          >
             <span
-              className={['block h-full rounded-full', progressClasses[tone]].join(' ')}
+              className={[
+                'block h-full rounded-full',
+                progressClasses[tone],
+              ].join(' ')}
               style={{ width: `${progressPercent}%` }}
             />
           </span>

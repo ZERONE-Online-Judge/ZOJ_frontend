@@ -1,11 +1,18 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import PageLayout from '@/components/common/PageLayout';
+import { accessText, operatorNavText } from '@/data/uiText';
+import {
+  hasContestPermission,
+  type ContestPermissionCode,
+} from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
 type OperatorAccessGateProps = {
   children: (session: StaffSession) => ReactNode;
+  contestId?: string;
+  permission?: ContestPermissionCode;
 };
 
 type OperatorTabsProps = {
@@ -36,32 +43,90 @@ const toneClassNames = {
 } as const;
 
 const operatorTabs = [
-  { label: '운영 홈', path: '', icon: DashboardIcon, end: true },
-  { label: '설정', path: 'settings', icon: SettingsIcon },
-  { label: '공지', path: 'notices', icon: NoticeIcon },
-  { label: '참가팀', path: 'participants', icon: TeamIcon },
-  { label: '문제', path: 'problems', icon: ProblemIcon },
-  { label: '제출', path: 'submissions', icon: JudgeIcon },
-  { label: '스코어보드', path: 'scoreboard', icon: ScoreboardIcon },
+  {
+    label: operatorNavText.home,
+    path: '',
+    icon: DashboardIcon,
+    end: true,
+    permission: 'contest.view',
+  },
+  {
+    label: operatorNavText.settings,
+    path: 'settings',
+    icon: SettingsIcon,
+    permission: 'contest.view',
+  },
+  {
+    label: operatorNavText.notices,
+    path: 'notices',
+    icon: NoticeIcon,
+    permission: 'contest.notice.view',
+  },
+  {
+    label: operatorNavText.participants,
+    path: 'participants',
+    icon: TeamIcon,
+    permission: 'contest.participant.view',
+  },
+  {
+    label: operatorNavText.problems,
+    path: 'problems',
+    icon: ProblemIcon,
+    permission: 'contest.problem.view',
+  },
+  {
+    label: operatorNavText.submissions,
+    path: 'submissions',
+    icon: JudgeIcon,
+    permission: 'contest.submission.view',
+  },
+  {
+    label: operatorNavText.scoreboard,
+    path: 'scoreboard',
+    icon: ScoreboardIcon,
+    permission: 'contest.scoreboard.view',
+  },
 ] as const;
 
-export function OperatorAccessGate({ children }: OperatorAccessGateProps) {
-  const staffSession = useSessionStore(
-    (state) => state.generalSession?.operatorSession,
-  );
+export function OperatorAccessGate({
+  children,
+  contestId,
+  permission,
+}: OperatorAccessGateProps) {
+  const generalSession = useSessionStore((state) => state.generalSession);
+  const staffSession = generalSession?.operatorSession;
 
   if (!staffSession) {
     return (
       <PageLayout
-        description="대회 운영 기능은 운영자 권한이 있는 계정으로 로그인해야 사용할 수 있습니다."
-        title="운영자 로그인 필요"
+        description={accessText.operatorLoginDescription}
+        title={accessText.operatorLoginTitle}
       >
         <Link
           className="w-fit rounded border border-indigo-200 bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700"
           to="/login"
         >
-          로그인 페이지로 이동
+          {accessText.loginPageLink}
         </Link>
+      </PageLayout>
+    );
+  }
+
+  if (
+    contestId &&
+    !hasContestPermission(generalSession, contestId, permission)
+  ) {
+    return (
+      <PageLayout
+        description={accessText.operatorNoPermissionDescription}
+        title={accessText.operatorNoPermissionTitle}
+      >
+        <div className="grid gap-3 rounded border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+          <p>{accessText.operatorNoPermissionMessage}</p>
+          <Link className="w-fit underline underline-offset-4" to="/operator">
+            {accessText.operatorReturnLink}
+          </Link>
+        </div>
       </PageLayout>
     );
   }
@@ -70,34 +135,44 @@ export function OperatorAccessGate({ children }: OperatorAccessGateProps) {
 }
 
 export function OperatorTabs({ contestId }: OperatorTabsProps) {
+  const generalSession = useSessionStore((state) => state.generalSession);
+
   if (!contestId) return null;
   const basePath = `/operator/contests/${contestId}`;
 
   return (
     <nav aria-label="운영자 메뉴" className="flex flex-wrap gap-2">
-      {operatorTabs.map((tab) => {
-        const Icon = tab.icon;
-        const to = tab.path ? `${basePath}/${tab.path}` : basePath;
+      {operatorTabs
+        .filter((tab) =>
+          hasContestPermission(
+            generalSession,
+            contestId,
+            tab.permission as ContestPermissionCode,
+          ),
+        )
+        .map((tab) => {
+          const Icon = tab.icon;
+          const to = tab.path ? `${basePath}/${tab.path}` : basePath;
 
-        return (
-          <NavLink
-            className={({ isActive }) =>
-              [
-                'inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
-                isActive
-                  ? 'border-indigo-900 bg-indigo-950 text-white shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
-              ].join(' ')
-            }
-            end={'end' in tab ? tab.end : undefined}
-            key={tab.label}
-            to={to}
-          >
-            <Icon />
-            {tab.label}
-          </NavLink>
-        );
-      })}
+          return (
+            <NavLink
+              className={({ isActive }) =>
+                [
+                  'inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
+                  isActive
+                    ? 'border-indigo-900 bg-indigo-950 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
+                ].join(' ')
+              }
+              end={'end' in tab ? tab.end : undefined}
+              key={tab.label}
+              to={to}
+            >
+              <Icon />
+              {tab.label}
+            </NavLink>
+          );
+        })}
     </nav>
   );
 }

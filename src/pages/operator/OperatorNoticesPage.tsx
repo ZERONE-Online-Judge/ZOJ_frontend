@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { sharedUiText } from '@/data/uiText';
 import {
   NoticeIcon,
   OperatorAccessGate,
@@ -43,7 +44,7 @@ export default function OperatorNoticesPage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate>
+    <OperatorAccessGate contestId={contestId} permission="contest.notice.view">
       {(session) =>
         contestId ? (
           <OperatorNoticesContent
@@ -51,8 +52,8 @@ export default function OperatorNoticesPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title="대회 선택 필요">
-            운영할 대회를 먼저 선택하세요.
+          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+            {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
       }

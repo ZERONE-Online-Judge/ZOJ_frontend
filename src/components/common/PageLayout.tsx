@@ -27,9 +27,9 @@ const widthClasses: Record<PageWidth, string> = {
 };
 
 const headingClasses: Record<PageHeadingVariant, string> = {
-  page: 'text-3xl font-black tracking-normal text-slate-950',
-  contest: 'text-4xl font-black tracking-normal text-slate-950',
-  section: 'text-2xl font-black text-slate-950',
+  page: 'break-keep text-3xl font-black tracking-normal text-slate-950',
+  contest: 'break-keep text-4xl font-black tracking-normal text-slate-950',
+  section: 'break-keep text-2xl font-black text-slate-950',
 };
 
 const descriptionClasses: Record<PageHeadingVariant, string> = {
@@ -73,12 +73,12 @@ export default function PageLayout({
   description,
   eyebrow,
   title,
-  width = '5xl',
+  width = '7xl',
 }: PageLayoutProps) {
   return (
     <section
       className={[
-        'mx-auto grid w-full gap-8 px-6 py-14 font-sans lg:px-8',
+        'mx-auto grid w-full min-w-0 gap-8 px-6 py-14 font-sans lg:px-8',
         widthClasses[width],
       ].join(' ')}
     >

@@ -3,6 +3,7 @@ import ContestListSection from '@/components/main/ContestListSection';
 import HeroSection from '@/components/main/HeroSection';
 import NoticeSection from '@/components/main/NoticeSection';
 import { mainPageContent } from '@/data/testContent';
+import { mainPageText } from '@/data/uiText';
 import { getPublicContests } from '@/domains/contestAdministration/api';
 import { sortContestsByStartAt } from '@/domains/contestAdministration/logic';
 import { toContestCardData } from '@/domains/contestAdministration/presentation';
@@ -23,7 +24,9 @@ export default function MainPage() {
   });
   const noticeItems =
     noticesQuery.data?.slice(0, 5).map((notice) => ({
-      label: notice.emergency ? '긴급' : '공지',
+      label: notice.emergency
+        ? mainPageText.emergencyNoticeLabel
+        : mainPageText.noticeLabel,
       title: notice.title,
       date: formatDateTime(notice.published_at),
       href: '/notices',
@@ -35,15 +38,15 @@ export default function MainPage() {
   return (
     <>
       <HeroSection {...hero} />
-      <div className="mx-6 my-28 flex flex-col gap-28 lg:mx-36 xl:mx-52">
+      <div className="mx-auto my-28 flex w-full max-w-7xl flex-col gap-28 px-6 lg:px-8">
         <NoticeSection
           notices={noticeItems}
-          title="공지사항"
+          title={mainPageText.noticeSectionTitle}
           titleHref="/notices"
         />
         <ContestListSection
           contests={contestItems}
-          title="대회 목록"
+          title={mainPageText.contestSectionTitle}
           titleHref="/contests"
         />
       </div>

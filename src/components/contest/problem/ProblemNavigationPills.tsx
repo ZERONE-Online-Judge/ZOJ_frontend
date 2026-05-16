@@ -1,10 +1,5 @@
 import { Link } from 'react-router-dom';
-
-const problemTabs = [
-  { key: 'combined', label: '문제 + 제출', path: '' },
-  { key: 'problem', label: '문제', path: 'statement' },
-  { key: 'submit', label: '제출', path: 'submit' },
-] as const;
+import { problemDetailNavText, sharedUiText } from '@/data/uiText';
 
 type ProblemNavigationPillsProps = {
   contestId: string;
@@ -18,9 +13,9 @@ export default function ProblemNavigationPills({
   active,
 }: ProblemNavigationPillsProps) {
   return (
-    <nav aria-label="문제 상세 메뉴">
+    <nav aria-label={sharedUiText.problemDetailMenuAriaLabel}>
       <ul className="flex flex-wrap items-center gap-3">
-        {problemTabs.map((tab) => {
+        {problemDetailNavText.map((tab) => {
           const to = tab.path
             ? `/contests/${contestId}/problems/${problemId}/${tab.path}`
             : `/contests/${contestId}/problems/${problemId}`;

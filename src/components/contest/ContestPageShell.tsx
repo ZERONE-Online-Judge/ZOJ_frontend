@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { getPublicContest } from '@/domains/contestAdministration/api';
@@ -14,6 +20,7 @@ import {
   getContestNotices,
   getContestQuestions,
 } from '@/domains/serviceCommunication/api';
+import { sharedUiText } from '@/data/uiText';
 import {
   getDivisionScoreboard,
   getScoreboard,
@@ -49,6 +56,92 @@ function readDismissedEmergencyNotice(key: string | null) {
   } catch {
     return false;
   }
+}
+
+function EmergencyNoticeBanner({
+  notice,
+  onDismiss,
+}: {
+  notice: string;
+  onDismiss: () => void;
+}) {
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [shouldMarquee, setShouldMarquee] = useState(false);
+
+  useLayoutEffect(() => {
+    const textElement = textRef.current;
+    const viewportElement = viewportRef.current;
+    if (!textElement || !viewportElement) return;
+
+    function updateOverflow() {
+      if (!textElement || !viewportElement) return;
+
+      setShouldMarquee(textElement.scrollWidth > viewportElement.clientWidth);
+    }
+
+    updateOverflow();
+
+    const resizeObserver = new ResizeObserver(updateOverflow);
+    resizeObserver.observe(textElement);
+    resizeObserver.observe(viewportElement);
+
+    return () => resizeObserver.disconnect();
+  }, [notice]);
+
+  return (
+    <section
+      aria-label={sharedUiText.emergencyNoticeAriaLabel}
+      className="flex items-center gap-3 bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
+    >
+      <svg
+        aria-hidden="true"
+        className="size-5 shrink-0"
+        fill="none"
+        viewBox="0 0 20 20"
+      >
+        <path
+          d="M3.75 11.5h2.5l5.25 3.25V5.25L6.25 8.5h-2.5v3ZM14 8l2.25-2.25M14.25 12.25 16.5 14.5M14.75 10.25h2.75"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+      <div className="min-w-0 flex-1 overflow-hidden" ref={viewportRef}>
+        {shouldMarquee ? (
+          <div className="animate-emergency-marquee flex w-max gap-10 whitespace-nowrap">
+            <span ref={textRef}>{notice}</span>
+            <span aria-hidden="true">{notice}</span>
+          </div>
+        ) : (
+          <span className="block truncate" ref={textRef}>
+            {notice}
+          </span>
+        )}
+      </div>
+      <button
+        aria-label={sharedUiText.emergencyNoticeClose}
+        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-red-500 transition hover:bg-red-100 hover:text-red-700"
+        onClick={onDismiss}
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          className="size-4"
+          fill="none"
+          viewBox="0 0 16 16"
+        >
+          <path
+            d="m4.25 4.25 7.5 7.5M11.75 4.25l-7.5 7.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </button>
+    </section>
+  );
 }
 
 export default function ContestPageShell({ children }: ContestPageShellProps) {
@@ -208,31 +301,12 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       {detail && contest ? (
         <>
           {contest.emergency_notice && !isEmergencyNoticeDismissed ? (
-            <section className="flex items-start justify-between gap-4 rounded-md border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-800">
-              <p className="leading-6">{contest.emergency_notice}</p>
-              <button
-                aria-label="긴급공지 닫기"
-                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded border border-red-200 bg-white/70 text-red-700 transition hover:bg-white hover:text-red-900"
-                onClick={() =>
-                  dismissEmergencyNotice(contest.emergency_notice!)
-                }
-                type="button"
-              >
-                <svg
-                  aria-hidden="true"
-                  className="size-4"
-                  fill="none"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    d="m4.25 4.25 7.5 7.5M11.75 4.25l-7.5 7.5"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeWidth="1.8"
-                  />
-                </svg>
-              </button>
-            </section>
+            <EmergencyNoticeBanner
+              notice={contest.emergency_notice}
+              onDismiss={() =>
+                dismissEmergencyNotice(contest.emergency_notice!)
+              }
+            />
           ) : null}
 
           {children(detail)}

@@ -2,6 +2,7 @@ import { type FormEvent, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { sharedUiText } from '@/data/uiText';
 import {
   OperatorAccessGate,
   OperatorPanel,
@@ -11,12 +12,14 @@ import {
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import {
   buildProblemPackageRecipe,
+  createVerifiedTestcaseSetFromZip,
   createOperatorProblem,
   getOperatorProblems,
   getProblemAssets,
   getProblemPackageStatus,
   getProblemTestcaseSets,
   updateOperatorProblem,
+  uploadProblemAsset,
 } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
 import {
@@ -50,11 +53,32 @@ const emptyProblemForm: ProblemForm = {
   title: '',
 };
 
+function positiveInteger(value: string, label: string) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return `${label}은 1 이상의 정수로 입력해야 합니다.`;
+  }
+  return '';
+}
+
+function validateProblemForm(form: ProblemForm) {
+  if (!form.divisionId || !form.problemCode.trim() || !form.title.trim()) {
+    return '유형, 문제 번호, 제목은 반드시 입력해야 합니다.';
+  }
+
+  return (
+    positiveInteger(form.timeLimitMs, '시간 제한') ||
+    positiveInteger(form.memoryLimitMb, '메모리 제한') ||
+    positiveInteger(form.maxScore, '배점') ||
+    (form.displayOrder ? positiveInteger(form.displayOrder, '정렬 순서') : '')
+  );
+}
+
 export default function OperatorProblemsPage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate>
+    <OperatorAccessGate contestId={contestId} permission="contest.problem.view">
       {(session) =>
         contestId ? (
           <OperatorProblemsContent
@@ -62,8 +86,8 @@ export default function OperatorProblemsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title="대회 선택 필요">
-            운영할 대회를 먼저 선택하세요.
+          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+            {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
       }
@@ -202,6 +226,57 @@ function OperatorProblemsContent({
     },
   });
 
+  const uploadAssetMutation = useMutation({
+    mutationFn: (file: File) =>
+      uploadProblemAsset(contestId, effectiveSelectedProblemId, token, file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-assets',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
+  const uploadTestcaseZipMutation = useMutation({
+    mutationFn: (file: File) =>
+      createVerifiedTestcaseSetFromZip(
+        contestId,
+        effectiveSelectedProblemId,
+        token,
+        file,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-testcase-sets',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
   function editProblem(problem: Problem) {
     setSelectedProblemId(problem.problem_id);
     setForm({
@@ -219,8 +294,9 @@ function OperatorProblemsContent({
 
   function submitProblem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.divisionId || !form.problemCode.trim() || !form.title.trim()) {
-      setFormError('유형, 문제 번호, 제목은 반드시 입력해야 합니다.');
+    const validationMessage = validateProblemForm(form);
+    if (validationMessage) {
+      setFormError(validationMessage);
       return;
     }
     saveProblemMutation.mutate();
@@ -471,6 +547,52 @@ function OperatorProblemsContent({
                   {set.testcases?.length ?? 0} cases
                 </p>
               ))}
+            </div>
+            <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+              <p className="text-sm font-black text-indigo-800">
+                리소스 / 테스트케이스 업로드
+              </p>
+              <label className="grid gap-2 text-xs font-black text-slate-600">
+                본문 이미지 리소스
+                <input
+                  accept="image/png,image/jpeg,image/webp"
+                  className="block w-full text-xs font-bold text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-indigo-950 file:px-3 file:py-2 file:text-xs file:font-black file:text-white"
+                  disabled={
+                    !effectiveSelectedProblemId || uploadAssetMutation.isPending
+                  }
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) uploadAssetMutation.mutate(file);
+                    event.currentTarget.value = '';
+                  }}
+                  type="file"
+                />
+              </label>
+              <label className="grid gap-2 text-xs font-black text-slate-600">
+                테스트케이스 ZIP
+                <input
+                  accept=".zip,application/zip"
+                  className="block w-full text-xs font-bold text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-cyan-700 file:px-3 file:py-2 file:text-xs file:font-black file:text-white"
+                  disabled={
+                    !effectiveSelectedProblemId ||
+                    uploadTestcaseZipMutation.isPending
+                  }
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) uploadTestcaseZipMutation.mutate(file);
+                    event.currentTarget.value = '';
+                  }}
+                  type="file"
+                />
+              </label>
+              {uploadAssetMutation.error || uploadTestcaseZipMutation.error ? (
+                <ErrorBox
+                  error={
+                    uploadAssetMutation.error || uploadTestcaseZipMutation.error
+                  }
+                  fallback="파일 업로드에 실패했습니다"
+                />
+              ) : null}
             </div>
             <form
               className="grid gap-3"

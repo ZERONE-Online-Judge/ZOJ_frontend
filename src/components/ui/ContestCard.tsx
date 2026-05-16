@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
 export type ContestCardData = {
@@ -31,7 +32,9 @@ export default function ContestCard({
   const loginHref = contestId
     ? `/login?reason=contest&contestId=${encodeURIComponent(contestId)}`
     : undefined;
-  const contestHref = contestId ? `/contests/${encodeURIComponent(contestId)}` : undefined;
+  const contestHref = contestId
+    ? `/contests/${encodeURIComponent(contestId)}`
+    : undefined;
   const cardHref = href ?? (generalSession ? contestHref : loginHref);
   const cardClassName = [
     'rounded border border-slate-200 bg-white px-8 py-7 transition hover:border-zoj-blue hover:shadow-sm',
@@ -54,20 +57,23 @@ export default function ContestCard({
         <span className="text-sm font-semibold text-slate-700">{status}</span>
       </div>
 
-      <h3 className="min-h-16 text-xl leading-8 font-semibold text-slate-950">
+      <h3 className="min-h-16 text-xl leading-8 font-semibold break-keep text-slate-950">
         {title}
       </h3>
-      <p className="mt-4 text-base font-medium text-slate-400">{organization}</p>
+      <p className="mt-4 text-base font-medium break-keep text-slate-400">
+        {organization}
+      </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {period ? (
           <span className="bg-zoj-blue/10 text-zoj-blue px-3 py-1.5 text-sm font-semibold">
-            기간: {period}
+            {contestListItemText.periodPrefix}: {period}
           </span>
         ) : null}
         {registrationDeadline ? (
           <span className="bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600">
-            모집 마감: {registrationDeadline}
+            {contestListItemText.registrationDeadlinePrefix}:{' '}
+            {registrationDeadline}
           </span>
         ) : null}
       </div>

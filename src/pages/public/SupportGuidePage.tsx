@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PageLayout, { PageHeading } from '@/components/common/PageLayout';
 import { supportSections, type SupportTabId } from '@/data/supportGuideContent';
+import { publicPageText } from '@/data/uiText';
 
 export default function SupportGuidePage() {
   const [activeTab, setActiveTab] = useState<SupportTabId>('rules');
@@ -10,14 +11,14 @@ export default function SupportGuidePage() {
 
   return (
     <PageLayout
-      description="문의, 서비스 도움말, 규정을 한 곳에서 확인합니다."
-      eyebrow="Support"
-      title="지원 안내"
+      description={publicPageText.support.description}
+      eyebrow={publicPageText.support.eyebrow}
+      title={publicPageText.support.title}
     >
       <div
         className="flex flex-wrap gap-2 border-b border-slate-200"
         role="tablist"
-        aria-label="지원 안내 탭"
+        aria-label={publicPageText.support.tabAriaLabel}
       >
         {supportSections.map((section) => {
           const active = section.id === activeTab;

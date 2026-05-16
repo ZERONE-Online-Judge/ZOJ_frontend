@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { publicPageText } from '@/data/uiText';
 import { getPublicJudgeStatus } from '@/domains/auditMonitoring/api';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -33,21 +34,27 @@ export default function JudgeStatusPage() {
 
   return (
     <PageLayout
-      description="공개 채점 서버 상태를 주기적으로 갱신해 표시합니다."
-      eyebrow="Judge Status"
-      title="채점 상태"
+      description={publicPageText.judgeStatus.description}
+      eyebrow={publicPageText.judgeStatus.eyebrow}
+      title={publicPageText.judgeStatus.title}
     >
       {statusQuery.isLoading && !status ? (
-        <PageNotice message="채점 상태를 불러오는 중입니다." status="loading" />
+        <PageNotice
+          message={publicPageText.judgeStatus.loading}
+          status="loading"
+        />
       ) : null}
       {statusQuery.isError && !status ? (
-        <PageNotice message="채점 상태를 불러오지 못했습니다." status="error" />
+        <PageNotice
+          message={publicPageText.judgeStatus.loadError}
+          status="error"
+        />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-4">
         <article className="rounded-md border border-slate-200 bg-white p-5">
           <span className="text-sm font-semibold text-slate-500">
-            활성 노드
+            {publicPageText.judgeStatus.activeNodes}
           </span>
           <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
             <AnimatedNumber value={status?.active_node_count} />
@@ -55,21 +62,23 @@ export default function JudgeStatusPage() {
         </article>
         <article className="rounded-md border border-slate-200 bg-white p-5">
           <span className="text-sm font-semibold text-slate-500">
-            실행 중 작업
+            {publicPageText.judgeStatus.runningJobs}
           </span>
           <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
             <AnimatedNumber value={status?.total_running_jobs} />
           </strong>
         </article>
         <article className="rounded-md border border-slate-200 bg-white p-5">
-          <span className="text-sm font-semibold text-slate-500">대기열</span>
+          <span className="text-sm font-semibold text-slate-500">
+            {publicPageText.judgeStatus.queueDepth}
+          </span>
           <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
             <AnimatedNumber value={status?.total_queue_depth} />
           </strong>
         </article>
         <article className="rounded-md border border-slate-200 bg-white p-5">
           <span className="text-sm font-semibold text-slate-500">
-            할당 정책
+            {publicPageText.judgeStatus.allocationPolicy}
           </span>
           <strong className="mt-3 block text-xl font-black text-slate-950">
             {policyLabel(status?.allocation_policy)}
@@ -78,9 +87,9 @@ export default function JudgeStatusPage() {
       </section>
 
       <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-        <span>5초마다 상태를 갱신합니다.</span>
+        <span>{publicPageText.judgeStatus.refreshNotice}</span>
         <time>
-          마지막 갱신:{' '}
+          {publicPageText.judgeStatus.lastUpdated}:{' '}
           {lastUpdatedAt
             ? lastUpdatedAt.toLocaleTimeString('ko-KR', { hour12: false })
             : '-'}

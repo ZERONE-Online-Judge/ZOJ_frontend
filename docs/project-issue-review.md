@@ -12,8 +12,9 @@
 
 - `npm run typecheck`: 통과
 - `npm run lint`: 통과
-- 이번 리뷰에서는 코드 수정을 하지 않았고 문서만 갱신했다.
-- Vite production build는 Windows sandbox에서 Tailwind oxide native module 권한 문제로 별도 승인 실행이 필요한 상태다. 이전 작업에서는 승인 실행으로 통과했지만, 이번 리뷰 문서 갱신 후에는 재실행하지 않았다.
+- `npm run build`: 통과. 단, 500kB 초과 chunk 경고가 남아 있어 code splitting 검토가 필요하다.
+- 이번 점검에서 운영자 권한 gate, 문제 리소스/ZIP 테스트케이스 업로드, 헤더 반응형, SVG 아이콘 입력 범위를 보완했다.
+- Vite production build는 Windows sandbox에서 Tailwind oxide native module 권한 문제로 한 번 실패했고, 승인 실행으로 재검증했다.
 
 ## 1. 전체 평가
 
@@ -30,8 +31,8 @@
 평가 요약:
 
 - 공개/대회/관리자/운영자 화면의 주요 흐름은 들어왔고 `domains`, `pages`, `components`, `shared` 분리 방향도 유지되고 있다.
-- 하지만 운영자/관리자 화면이 빠르게 붙으면서 페이지 파일이 매우 커졌고, 권한 scope별 UI 제한, refresh token 보안, 문제 패키지 고급 관리, 에러/빈 상태 표준화가 출시 전 리스크로 남아 있다.
-- `C:\GITHUB\docs\03-permissions` 기준으로 권한 없는 기능은 UI와 API 모두에서 차단해야 하나, 현재 프론트는 대체로 `operatorSession` 존재 여부만 보고 운영자 화면을 연다.
+- 하지만 운영자/관리자 화면이 빠르게 붙으면서 페이지 파일이 매우 커졌고, refresh token 보안, 문제 패키지 고급 관리, 에러/빈 상태 표준화가 출시 전 리스크로 남아 있다.
+- `C:\GITHUB\docs\03-permissions` 기준의 운영자 contest scope/permission gate는 route와 탭 수준에 1차 반영했다. 버튼/폼 action 단위의 세밀한 권한 제한은 추가 보완이 필요하다.
 
 ## 2. 가장 먼저 고쳐야 할 문제 TOP 10
 
@@ -44,12 +45,12 @@
 - 예상 수정 난이도: 높음
 - 우선순위: 높음
 
-### [High] 운영자 권한 gate가 contest scope와 permission을 확인하지 않음
+### [High] 운영자 권한 gate의 버튼/액션 단위 제한이 아직 부족함
 
 - 위치: `src/components/operator/OperatorShell.tsx`, `src/pages/operator/*`, `src/routes/routeConfig.ts`
-- 문제: `OperatorAccessGate`는 `generalSession.operatorSession` 존재 여부만 확인한다. `contest_scopes`, `operatorContests`, `permission_overrides`를 보지 않는다.
-- 왜 문제인가: 사용자가 URL을 직접 입력하면 본인 scope 밖의 `/operator/contests/:contestId/*` 화면도 렌더링을 시도한다. API가 최종 차단하더라도 UI 수준에서 권한 없는 메뉴와 작업 버튼이 노출되어 UX와 보안 경계가 흐려진다.
-- 개선 방향: `hasContestPermission(session, contestId, permission)` 유틸을 만들고 route gate, 탭, 버튼, mutation 가능 여부를 같은 기준으로 제한한다. 서비스 마스터는 우회, 대회 운영자는 해당 대회 전체 허용, 운영매니저는 permission code별 허용으로 나눈다.
+- 문제: `OperatorAccessGate`와 `OperatorTabs`는 contest scope/permission을 보기 시작했지만, 각 페이지 내부의 생성/수정/삭제 버튼과 mutation 가능 여부는 아직 대부분 같은 기준으로 세분화되지 않았다.
+- 왜 문제인가: URL 직접 진입은 1차 차단되지만, 예를 들어 `contest.problem.view`만 가진 사용자가 문제 화면 내부의 생성/수정 UI까지 보게 될 가능성이 있다. API가 최종 차단하더라도 UX와 보안 경계가 흐려진다.
+- 개선 방향: `hasContestPermission(session, contestId, permission)`을 버튼, form submit, mutation enabled 조건에도 적용한다. 서비스 마스터는 우회, 대회 운영자는 해당 대회 전체 허용, 운영매니저는 permission code별 허용으로 나눈다.
 - 예상 수정 난이도: 중간
 - 우선순위: 높음
 
@@ -62,21 +63,21 @@
 - 예상 수정 난이도: 중간
 - 우선순위: 높음
 
-### [High] Header가 관리자/운영자 버튼 추가 후 반응형/겹침 위험이 큼
+### [Medium] Header 반응형은 보완됐지만 실제 스크린샷 검증이 필요함
 
 - 위치: `src/components/layout/HeaderShell.tsx`, `src/components/layout/HeaderAuthControls.tsx`
-- 문제: 헤더 중앙 nav는 absolute center 배치이고 action 영역 기본 폭은 좁다. 로그인 후 `운영자`, `관리자`, 팀명, 로그아웃 버튼이 함께 나오면 중간 nav와 겹칠 수 있다.
+- 문제: 작은 화면에서 nav가 다음 줄로 내려가도록 보완했지만, 실제 360/768/1280px 화면 검증은 아직 수행하지 않았다.
 - 왜 문제인가: 관리자/운영자 계정일수록 가장 중요한 진입 버튼이 깨질 수 있고, 모바일/태블릿에서 헤더 전체가 overflow될 가능성이 높다.
-- 개선 방향: breakpoint별 layout을 정의한다. 데스크톱은 nav/action 폭을 명시하고, 태블릿 이하에서는 메뉴 버튼 또는 wrap 가능한 header로 전환한다. Playwright screenshot 기준으로 360/768/1280px를 확인한다.
+- 개선 방향: Playwright screenshot 기준으로 360/768/1280px를 확인하고, 필요하면 모바일 메뉴 버튼 또는 별도 접힘 메뉴로 전환한다.
 - 예상 수정 난이도: 중간
 - 우선순위: 높음
 
 ### [High] 문제 관리 UI가 외부 운영 문서의 필수 기능 대비 미완성
 
 - 위치: `src/pages/operator/OperatorProblemsPage.tsx`, `src/domains/problemManagement/api.ts`
-- 문제: 문제 CRUD, Markdown 미리보기, package recipe build는 있으나 리소스 업로드, ZIP testcase import, Polygon import, testcase 상세 편집, 문제 삭제/순서 변경 UI가 없다.
+- 문제: 문제 CRUD, Markdown 미리보기, 본문 이미지 업로드, ZIP testcase import, package recipe build는 있으나 Polygon import, testcase 상세 편집, active set 전환, 문제 삭제/순서 변경 UI가 없다.
 - 왜 문제인가: `C:\GITHUB\docs\05-operator\operator-problem-management.md`는 문제 리소스/테스트케이스/제너레이터 관리를 운영자 필수 작업으로 본다. 현재 화면으로는 실제 출제 운영을 완결하기 어렵다.
-- 개선 방향: 문제 관리 화면을 탭 단위로 분리한다. `기본 정보`, `본문/예제`, `리소스`, `테스트케이스`, `패키지 빌드`, `검증 제출`로 나누고 이미 있는 API 함수를 화면에 연결한다.
+- 개선 방향: 문제 관리 화면을 탭 단위로 분리한다. `기본 정보`, `본문/예제`, `리소스`, `테스트케이스`, `패키지 빌드`, `검증 제출`로 나누고 남은 API 함수를 화면에 연결한다.
 - 예상 수정 난이도: 높음
 - 우선순위: 높음
 
@@ -116,12 +117,12 @@
 - 예상 수정 난이도: 낮음
 - 우선순위: 중간
 
-### [Low] 프로젝트 문서와 루트 파일이 현재 상태와 어긋남
+### [Low] 프로젝트 문서는 갱신됐지만 배포 문서가 부족함
 
 - 위치: `README.md`, root의 `vite-dev.log`, `.vite-dev.out.log`, `dist`
-- 문제: README는 “현재 앱은 초기 빈 상태”라고 되어 있고, 루트에는 개발 서버 로그 파일이 남아 있다.
+- 문제: README와 docs index는 현재 기능 기준으로 갱신했지만, 배포 산출물 정책과 운영 환경 문서는 아직 짧다. 루트에는 개발 서버 로그 파일이 남아 있을 수 있다.
 - 왜 문제인가: 새 작업자가 현재 앱 상태를 잘못 이해하고, 불필요한 파일이 커밋 후보에 섞일 수 있다.
-- 개선 방향: README를 현재 기능 기준으로 갱신하고 로그 파일은 제거하거나 `.gitignore`에 명시한다. `dist`를 커밋 대상에서 제외하는 정책도 확인한다.
+- 개선 방향: 로그 파일은 제거하거나 `.gitignore`에 명시한다. `dist`를 커밋 대상에서 제외하는 정책과 운영 배포 절차를 문서화한다.
 - 예상 수정 난이도: 낮음
 - 우선순위: 낮음
 
@@ -166,8 +167,8 @@
 
 - 현재 상태: `Icons.tsx`, `iconRegistry.ts`가 있다.
 - 좋은 점: SVG raw는 현재 registry에 등록된 내부 asset만 사용한다.
-- 문제점: `SvgIcon`은 `markup` prop도 받아 `dangerouslySetInnerHTML`로 삽입한다. 현재 사용처가 안전하더라도 prop이 열려 있어 나중에 서버 문자열을 넘기면 XSS 위험이 생긴다.
-- 개선 제안: `markup` prop을 제거하거나 내부 전용으로 제한한다. 외부 입력 icon은 허용하지 않는다.
+- 문제점: `SvgIcon`의 임의 `markup` prop은 제거했다. 다만 내부 registry SVG는 여전히 `dangerouslySetInnerHTML`로 렌더링하므로 registry에 외부 문자열이 들어가지 않도록 유지해야 한다.
+- 개선 제안: 외부 입력 icon은 허용하지 않는 현재 정책을 유지한다. 아이콘이 늘어나면 React 컴포넌트 SVG 또는 안전한 asset pipeline으로 옮기는 것도 검토한다.
 
 ### styles
 
@@ -228,7 +229,7 @@
 - 토큰 저장 방식: access/refresh token이 sessionStorage에 있다. Critical이다. httpOnly cookie 전환 전에는 실제 서비스 출시 보류가 맞다.
 - refresh 처리: in-flight dedupe가 있어 중복 refresh는 어느 정도 막는다. 다만 refresh token 재사용 탐지/전역 logout 처리와는 백엔드 연동이 필요하다.
 - 인증 라우팅: page-level gate는 있으나 route-level policy가 없다. 운영자 scope 검증이 부족하다.
-- XSS 가능성: `MarkdownPreview`는 `rehype-sanitize`를 사용해 안전한 편이다. `SvgIcon`의 `markup` prop은 위험한 확장점이다.
+- XSS 가능성: `MarkdownPreview`는 `rehype-sanitize`를 사용해 안전한 편이다. `SvgIcon`의 임의 `markup` prop은 제거했고, 내부 registry SVG만 허용한다.
 - 민감 정보 노출: `console.log`는 발견되지 않았다. API 에러 메시지와 request_id는 UI에 광범위하게 노출된다.
 - env 사용: `VITE_API_BASE_URL`은 공개되어도 되는 값이지만 README/env example에 설명이 부족하다. dev proxy는 prod endpoint로 고정되어 있다.
 - API 에러 노출: 공개/참가자 화면과 운영자 화면의 표시 수준을 분리해야 한다.
@@ -262,7 +263,7 @@ src/features/operator/problems/
 ### 제안 2
 
 - 대상: 권한 gate와 route config
-- 현재 문제: `OperatorAccessGate`는 operator session만 확인하고 contest scope/permission을 보지 않는다.
+- 현재 문제: `OperatorAccessGate`는 contest scope/permission을 보기 시작했지만, 세부 버튼/액션 제한은 아직 각 페이지에 남아 있다.
 - 바꿀 구조:
 
 ```ts
@@ -308,13 +309,13 @@ useScoreboardPolling({ contest, enabledByVisibility: true });
 
 ## 8. 바로 적용 가능한 수정 목록
 
-- README의 “초기 빈 상태” 문구를 현재 기능 기준으로 갱신
+- 로그 파일과 배포 산출물 정책 정리
 - 개발 서버 로그 파일 제거 및 `.gitignore`에 `*.log`, `.vite-dev.*`, `vite-dev.*` 확인
-- `OperatorAccessGate`에 contestId와 permission 인자를 추가
+- 운영자 페이지 내부 버튼과 mutation 조건에 contest permission을 추가 적용
 - `HeaderShell` 모바일/태블릿 레이아웃 보완
 - admin/operator query key에 staff email 또는 권한 fingerprint 추가
 - 공개/참가자 화면의 API 에러 표시에서 request_id를 숨기고 운영자 화면에는 상세 접기 형태로 표시
-- `SvgIcon`의 `markup` prop 제거 또는 내부 전용 처리
+- SVG 아이콘 registry에 외부 입력이 들어가지 않도록 유지
 - `OperatorProblemsPage` 숫자/날짜/필수값 Zod validation 추가
 - `OperatorSettingsPage` 일정 관계 검증 추가
 - `useSubmissionLiveUpdates`, `useScoreboardPolling` hook 분리
@@ -326,7 +327,7 @@ useScoreboardPolling({ contest, enabledByVisibility: true });
 - 지금 상태로 실제 서비스에 올려도 되는가: 공개 테스트나 내부 QA에는 가능하지만, 실제 서비스 공개 출시에는 아직 이르다.
 - 올린다면 가장 위험한 부분은 무엇인가: refresh token이 프론트 저장소에 있고, 운영자 권한 UI가 contest scope/permission을 엄격히 보지 않는 점이다.
 - 출시 전 최소한 반드시 고쳐야 할 것은 무엇인가: refresh token httpOnly cookie 전환, 운영자/관리자 route-level permission gate, 헤더 반응형 깨짐 점검, 문제/대회 설정 validation, API 에러 노출 정책이다.
-- 이후 고도화 단계에서 고칠 것은 무엇인가: 운영자 문제 패키지 고급 관리, 공통 UI 컴포넌트화, polling 정책 hook화, admin/operator 페이지 feature 단위 분리, README와 배포 문서 정리다.
+- 이후 고도화 단계에서 고칠 것은 무엇인가: 운영자 문제 패키지 고급 관리, 공통 UI 컴포넌트화, polling 정책 hook화, admin/operator 페이지 feature 단위 분리, 배포 문서 정리다.
 
 ## 승인 후 권장 수정 계획
 

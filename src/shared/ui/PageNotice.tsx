@@ -6,7 +6,12 @@ type PageNoticeProps = {
 };
 
 function noticeTone(message: string, status?: PageNoticeStatus) {
-  if (status === 'error' || /실패|못했습니다|오류|입력|필요|불가|차단|권한이 없어|없습니다/.test(message)) {
+  if (
+    status === 'error' ||
+    /실패|못했습니다|오류|입력|필요|불가|차단|권한이 없어|없습니다/.test(
+      message,
+    )
+  ) {
     return 'error';
   }
 
@@ -17,7 +22,10 @@ function noticeTone(message: string, status?: PageNoticeStatus) {
   return 'done';
 }
 
-export default function PageNotice({ message, status = 'idle' }: PageNoticeProps) {
+export default function PageNotice({
+  message,
+  status = 'idle',
+}: PageNoticeProps) {
   if (!message) return null;
 
   const tone = noticeTone(message, status);
@@ -26,17 +34,19 @@ export default function PageNotice({ message, status = 'idle' }: PageNoticeProps
   return (
     <section
       className={[
-        'flex items-center gap-3 rounded-md border px-4 py-3 text-sm font-medium',
+        'flex min-w-0 items-start gap-3 rounded-md border px-4 py-3 text-sm font-medium',
         tone === 'error' ? 'border-red-200 bg-red-50 text-red-800' : '',
         tone === 'info' ? 'border-sky-200 bg-sky-50 text-sky-800' : '',
-        tone === 'done' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : '',
+        tone === 'done'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          : '',
       ].join(' ')}
       role={tone === 'error' ? 'alert' : 'status'}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold">
         {icon}
       </span>
-      <span>{message}</span>
+      <span className="min-w-0 break-keep">{message}</span>
     </section>
   );
 }

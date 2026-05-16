@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
 export type ContestListItemData = {
@@ -30,27 +31,38 @@ export default function ContestListItem({
   const itemHref = href ?? (generalSession ? contestHref : loginHref);
 
   const content = (
-    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-      <div className="grid gap-3">
+    <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
+      <div className="grid min-w-0 gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
-            <span className={isOpen ? 'size-2 rounded-full bg-emerald-500' : 'bg-zoj-blue size-2 rounded-full'} />
+            <span
+              className={
+                isOpen
+                  ? 'size-2 rounded-full bg-emerald-500'
+                  : 'bg-zoj-blue size-2 rounded-full'
+              }
+            />
             {status}
           </span>
-          <span className="text-sm font-semibold text-slate-500">{organization}</span>
+          <span className="min-w-0 text-sm font-semibold break-keep text-slate-500">
+            {organization}
+          </span>
         </div>
-        <h2 className="text-xl font-black leading-8 text-slate-950">{title}</h2>
+        <h2 className="text-xl leading-8 font-black break-keep text-slate-950">
+          {title}
+        </h2>
       </div>
 
       <div className="flex flex-wrap gap-2 md:justify-end">
         {period ? (
           <span className="bg-zoj-blue/10 text-zoj-blue px-3 py-1.5 text-sm font-semibold">
-            기간: {period}
+            {contestListItemText.periodPrefix}: {period}
           </span>
         ) : null}
         {registrationDeadline ? (
           <span className="bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600">
-            모집 마감: {registrationDeadline}
+            {contestListItemText.registrationDeadlinePrefix}:{' '}
+            {registrationDeadline}
           </span>
         ) : null}
       </div>
@@ -58,7 +70,7 @@ export default function ContestListItem({
   );
 
   return (
-    <li className="rounded-md border border-slate-200 bg-white px-6 py-5 transition hover:border-zoj-blue hover:shadow-sm">
+    <li className="hover:border-zoj-blue rounded-md border border-slate-200 bg-white px-6 py-5 transition hover:shadow-sm">
       {itemHref ? (
         <Link className="block" to={itemHref}>
           {content}

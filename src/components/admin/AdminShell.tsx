@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import PageLayout from '@/components/common/PageLayout';
+import { accessText, routeText } from '@/data/uiText';
+import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
@@ -24,9 +26,18 @@ type AdminPanelProps = {
 };
 
 const adminTabs = [
-  { label: '관리 홈', path: '/admin', icon: DashboardIcon, end: true },
-  { label: '대회 관리', path: '/admin/contests', icon: ContestIcon },
-  { label: '채점 관리', path: '/admin/judge', icon: JudgeIcon },
+  {
+    label: routeText.adminHome,
+    path: '/admin',
+    icon: DashboardIcon,
+    end: true,
+  },
+  {
+    label: routeText.adminContests,
+    path: '/admin/contests',
+    icon: ContestIcon,
+  },
+  { label: routeText.adminJudge, path: '/admin/judge', icon: JudgeIcon },
 ] as const;
 
 const accentClassNames = {
@@ -57,34 +68,33 @@ export function AdminIconBadge({
 }
 
 export function AdminAccessGate({ children }: AdminAccessGateProps) {
-  const staffSession = useSessionStore(
-    (state) => state.generalSession?.operatorSession,
-  );
+  const generalSession = useSessionStore((state) => state.generalSession);
+  const staffSession = generalSession?.operatorSession;
 
   if (!staffSession) {
     return (
       <PageLayout
-        description="관리자 기능은 운영자 세션이 있는 계정으로만 접근할 수 있습니다."
-        title="관리자 로그인 필요"
+        description={accessText.adminLoginDescription}
+        title={accessText.adminLoginTitle}
       >
         <Link
           className="w-fit rounded border border-violet-200 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-violet-700"
           to="/login"
         >
-          로그인 페이지로 이동
+          {accessText.loginPageLink}
         </Link>
       </PageLayout>
     );
   }
 
-  if (!staffSession.staff.is_service_master) {
+  if (!isServiceMaster(generalSession)) {
     return (
       <PageLayout
-        description="현재 계정에는 서비스 관리자 권한이 없습니다. 권한이 필요하면 서비스 마스터에게 요청하세요."
-        title="접근 권한 없음"
+        description={accessText.adminNoPermissionDescription}
+        title={accessText.adminNoPermissionTitle}
       >
         <div className="rounded border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
-          관리자 전용 기능은 서비스 마스터 계정에서만 사용할 수 있습니다.
+          {accessText.adminNoPermissionMessage}
         </div>
       </PageLayout>
     );

@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { sharedUiText } from '@/data/uiText';
 import { editorLanguageForJudgeLanguage } from '@/domains/problemManagement/document';
 
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -28,7 +29,7 @@ export default function CodeEditor({
             className="flex items-center justify-center text-sm font-semibold text-slate-400"
             style={{ height: editorHeight }}
           >
-            코드 에디터를 불러오는 중입니다.
+            {sharedUiText.codeEditorLoading}
           </div>
         }
       >

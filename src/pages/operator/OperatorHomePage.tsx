@@ -25,7 +25,7 @@ export default function OperatorHomePage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate>
+    <OperatorAccessGate contestId={contestId} permission="contest.view">
       {(session) => (
         <OperatorHomeContent
           contestId={contestId}

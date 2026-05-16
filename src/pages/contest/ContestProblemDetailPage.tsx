@@ -329,7 +329,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && view === 'submit' ? (
-        <section className="min-h-[760px] max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <section className="min-h-[760px] min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
           <ProblemSubmitPanel
             canSubmit={canSubmitActiveDraft}
             editorHeight={560}

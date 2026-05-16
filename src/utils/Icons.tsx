@@ -5,8 +5,7 @@ type SvgIconProps = Omit<
   HTMLAttributes<HTMLSpanElement>,
   'children' | 'color'
 > & {
-  name?: IconName;
-  markup?: string;
+  name: IconName;
   label?: string;
   decorative?: boolean;
   size?: number | string;
@@ -21,7 +20,6 @@ function getSizedMarkup(markup: string) {
 
 export function SvgIcon({
   name,
-  markup,
   label,
   decorative = true,
   size = 24,
@@ -30,9 +28,7 @@ export function SvgIcon({
   ...props
 }: SvgIconProps) {
   const dimension = typeof size === 'number' ? `${size}px` : size;
-  const iconMarkup = getSizedMarkup(
-    markup ?? (name ? getIconMarkup(name) : ''),
-  );
+  const iconMarkup = getSizedMarkup(getIconMarkup(name));
   const iconStyle: CSSProperties = {
     display: 'inline-flex',
     flexShrink: 0,

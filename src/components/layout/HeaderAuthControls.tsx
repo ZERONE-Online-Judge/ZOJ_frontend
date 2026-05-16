@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { headerText } from '@/data/uiText';
 import { logoutGeneral } from '@/domains/identityAccess/api';
+import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
 type HeaderAuthControlsProps = {
@@ -88,7 +90,7 @@ export default function HeaderAuthControls({
         );
       }
     } catch {
-      // 로컬 세션 정리는 계속 진행해 사용자가 로그아웃 상태로 돌아가게 한다.
+      // Keep local cleanup reliable even when server-side revoke fails.
     } finally {
       clearSessions();
       queryClient.clear();
@@ -104,7 +106,7 @@ export default function HeaderAuthControls({
         to={loginTo}
       >
         <LoginIcon />
-        <span>로그인</span>
+        <span>{headerText.login}</span>
       </Link>
     );
   }
@@ -117,16 +119,16 @@ export default function HeaderAuthControls({
           to="/operator"
         >
           <OperatorIcon />
-          <span>운영자</span>
+          <span>{headerText.operator}</span>
         </Link>
       ) : null}
-      {generalSession.operatorSession?.staff.is_service_master ? (
+      {isServiceMaster(generalSession) ? (
         <Link
           className="flex h-11 items-center gap-2 rounded border border-violet-200 bg-violet-50 px-4 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
           to="/admin"
         >
           <AdminIcon />
-          <span>관리자</span>
+          <span>{headerText.admin}</span>
         </Link>
       ) : null}
       {teamName ? (
@@ -141,7 +143,7 @@ export default function HeaderAuthControls({
         type="button"
       >
         <LogoutIcon />
-        <span>{isLoggingOut ? '로그아웃 중' : '로그아웃'}</span>
+        <span>{isLoggingOut ? headerText.loggingOut : headerText.logout}</span>
       </button>
     </>
   );

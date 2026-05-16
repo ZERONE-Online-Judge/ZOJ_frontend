@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { publicPageText } from '@/data/uiText';
 import { getPublicServiceNotices } from '@/domains/serviceCommunication/api';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
@@ -15,15 +16,15 @@ export default function NoticesPage() {
 
   return (
     <PageLayout
-      description="서비스 운영 공지를 최신 상태로 표시합니다."
-      eyebrow="Notice"
-      title="공지사항"
+      description={publicPageText.notices.description}
+      eyebrow={publicPageText.notices.eyebrow}
+      title={publicPageText.notices.title}
     >
       {noticesQuery.isLoading && (
-        <PageNotice message="공지사항을 불러오는 중입니다." status="loading" />
+        <PageNotice message={publicPageText.notices.loading} status="loading" />
       )}
       {noticesQuery.isError && (
-        <PageNotice message="공지사항을 불러오지 못했습니다." status="error" />
+        <PageNotice message={publicPageText.notices.loadError} status="error" />
       )}
 
       <ul className="divide-y divide-slate-200 border-y border-slate-200">
@@ -34,7 +35,9 @@ export default function NoticesPage() {
           >
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
-                {notice.emergency ? '긴급' : '공지'}
+                {notice.emergency
+                  ? publicPageText.notices.emergencyLabel
+                  : publicPageText.notices.label}
               </span>
               <h2 className="text-lg font-bold text-slate-950">
                 {notice.title}
@@ -58,7 +61,7 @@ export default function NoticesPage() {
       </ul>
 
       {!noticesQuery.isLoading && notices.length === 0 && (
-        <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
+        <PageNotice message={publicPageText.notices.empty} status="idle" />
       )}
     </PageLayout>
   );

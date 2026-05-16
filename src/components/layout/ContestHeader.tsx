@@ -2,22 +2,15 @@ import HeaderAuthControls from '@/components/layout/HeaderAuthControls';
 import HeaderShell, {
   type HeaderNavItem,
 } from '@/components/layout/HeaderShell';
+import { contestHeaderNavText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
 type ContestHeaderProps = {
   contestId: string;
 };
 
-const contestNavigationRoutes = [
-  { name: '개요', path: '' },
-  { name: '문제집', path: 'problems' },
-  { name: '채점 현황', path: 'submissions' },
-  { name: '스코어 보드', path: 'scoreboard' },
-  { name: '게시판', path: 'board' },
-] as const;
-
 function contestNavItems(contestId: string): HeaderNavItem[] {
-  return contestNavigationRoutes.map(({ name, path }) => ({
+  return contestHeaderNavText.map(({ name, path }) => ({
     end: !path,
     key: path || 'overview',
     label: name,
@@ -41,7 +34,7 @@ export default function ContestHeader({ contestId }: ContestHeaderProps) {
 
   return (
     <HeaderShell
-      actionClassName="min-w-80"
+      actionClassName="min-w-0 xl:min-w-80"
       actions={
         <HeaderAuthControls
           loginTo={`/login?reason=contest&contestId=${encodeURIComponent(contestId)}`}

@@ -19,25 +19,25 @@ type HeaderShellProps = {
 
 export default function HeaderShell({
   actions,
-  actionClassName = 'w-48',
+  actionClassName = 'xl:w-48',
   ariaLabel,
-  navGapClassName = 'gap-24',
+  navGapClassName = 'gap-6 xl:gap-24',
   navItems,
 }: HeaderShellProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white font-sans">
-      <div className="relative flex h-20 w-full items-center justify-between px-12">
-        <Link className="flex items-center gap-3" to="/">
+      <div className="relative flex min-h-20 w-full flex-wrap items-center justify-between gap-y-3 px-4 py-3 sm:px-6 xl:flex-nowrap xl:px-12">
+        <Link className="flex shrink-0 items-center gap-3" to="/">
           <SiteBrand />
         </Link>
 
         <nav
           aria-label={ariaLabel}
-          className="absolute left-1/2 -translate-x-1/2"
+          className="order-3 w-full overflow-x-auto xl:absolute xl:left-1/2 xl:order-none xl:w-auto xl:-translate-x-1/2"
         >
           <ul
             className={[
-              'flex items-center text-center text-lg leading-7 font-semibold tracking-normal text-slate-700',
+              'flex min-w-max items-center justify-center text-center text-sm leading-7 font-semibold tracking-normal text-slate-700 sm:text-base xl:text-lg',
               navGapClassName,
             ].join(' ')}
           >
@@ -62,7 +62,7 @@ export default function HeaderShell({
 
         <div
           className={[
-            'flex items-center justify-end gap-3',
+            'ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3',
             actionClassName,
           ].join(' ')}
         >

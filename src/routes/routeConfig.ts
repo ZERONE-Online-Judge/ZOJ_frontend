@@ -22,6 +22,7 @@ import OperatorSettingsPage from '@/pages/operator/OperatorSettingsPage';
 import OperatorSubmissionsPage from '@/pages/operator/OperatorSubmissionsPage';
 import SupportGuidePage from '@/pages/public/SupportGuidePage';
 import MainPage from '@/pages/main/MainPage';
+import { routeText } from '@/data/uiText';
 
 export type AppRoute = {
   name: string;
@@ -32,146 +33,146 @@ export type AppRoute = {
 
 export const appRoutes = [
   {
-    name: '메인',
+    name: routeText.home,
     path: '/',
     Component: MainPage,
   },
   {
-    name: '대회 목록',
+    name: routeText.contests,
     path: '/contests',
     Component: ContestsPage,
   },
   {
-    name: '표준 대회',
+    name: routeText.contestDetail,
     path: '/contests/:contestId',
     Component: ContestOverviewPage,
     showInNavigation: false,
   },
   {
-    name: '대회 문제집',
+    name: routeText.contestProblems,
     path: '/contests/:contestId/problems',
     Component: ContestProblemsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 문제',
+    name: routeText.contestProblem,
     path: '/contests/:contestId/problems/:problemId',
     Component: ContestProblemDetailPage,
     showInNavigation: false,
   },
   {
-    name: '대회 문제 보기',
+    name: routeText.contestProblemDetail,
     path: '/contests/:contestId/problems/:problemId/:problemView',
     Component: ContestProblemDetailPage,
     showInNavigation: false,
   },
   {
-    name: '대회 채점현황',
+    name: routeText.contestSubmissions,
     path: '/contests/:contestId/submissions',
     Component: ContestSubmissionsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 스코어보드',
+    name: routeText.contestScoreboard,
     path: '/contests/:contestId/scoreboard',
     Component: ContestScoreboardPage,
     showInNavigation: false,
   },
   {
-    name: '대회 게시판',
+    name: routeText.contestBoard,
     path: '/contests/:contestId/board',
     Component: ContestBoardPage,
     showInNavigation: false,
   },
   {
-    name: '공지사항',
+    name: routeText.notices,
     path: '/notices',
     Component: NoticesPage,
   },
   {
-    name: '채점 상태',
+    name: routeText.judgeStatus,
     path: '/judge-status',
     Component: JudgeStatusPage,
   },
   {
-    name: '지원 안내',
+    name: routeText.support,
     path: '/support',
     Component: SupportGuidePage,
   },
   {
-    name: '로그인',
+    name: routeText.login,
     path: '/login',
     Component: LoginPage,
     showInNavigation: false,
   },
   {
-    name: '관리자',
+    name: routeText.admin,
     path: '/admin',
     Component: AdminHomePage,
     showInNavigation: false,
   },
   {
-    name: '운영자',
+    name: routeText.operator,
     path: '/operator',
     Component: OperatorHomePage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영',
+    name: routeText.operatorContest,
     path: '/operator/contests/:contestId',
     Component: OperatorHomePage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 설정',
+    name: routeText.operatorSettings,
     path: '/operator/contests/:contestId/settings',
     Component: OperatorSettingsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 공지',
+    name: routeText.operatorNotices,
     path: '/operator/contests/:contestId/notices',
     Component: OperatorNoticesPage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 참가팀',
+    name: routeText.operatorParticipants,
     path: '/operator/contests/:contestId/participants',
     Component: OperatorParticipantsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 문제',
+    name: routeText.operatorProblems,
     path: '/operator/contests/:contestId/problems',
     Component: OperatorProblemsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 제출',
+    name: routeText.operatorSubmissions,
     path: '/operator/contests/:contestId/submissions',
     Component: OperatorSubmissionsPage,
     showInNavigation: false,
   },
   {
-    name: '대회 운영 스코어보드',
+    name: routeText.operatorScoreboard,
     path: '/operator/contests/:contestId/scoreboard',
     Component: OperatorScoreboardPage,
     showInNavigation: false,
   },
   {
-    name: '대회 관리',
+    name: routeText.adminContests,
     path: '/admin/contests',
     Component: AdminContestsPage,
     showInNavigation: false,
   },
   {
-    name: '채점 관리',
+    name: routeText.adminJudge,
     path: '/admin/judge',
     Component: AdminJudgePage,
     showInNavigation: false,
   },
   {
-    name: '찾을 수 없는 페이지',
+    name: routeText.notFound,
     path: '*',
     Component: NotFoundPage,
     showInNavigation: false,

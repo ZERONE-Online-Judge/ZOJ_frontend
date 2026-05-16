@@ -1,12 +1,5 @@
 import { NavLink } from 'react-router-dom';
-
-const scoreboardTabs = [
-  { label: '개요', path: '' },
-  { label: '문제집', path: 'problems' },
-  { label: '채점현황', path: 'submissions' },
-  { label: '스코어보드', path: 'scoreboard' },
-  { label: '게시판', path: 'board' },
-] as const;
+import { contestCompactNavText, sharedUiText } from '@/data/uiText';
 
 type ContestScoreboardTabsProps = {
   contestId: string;
@@ -16,9 +9,9 @@ export default function ContestScoreboardTabs({
   contestId,
 }: ContestScoreboardTabsProps) {
   return (
-    <nav aria-label="대회 메뉴" className="mt-8">
+    <nav aria-label={sharedUiText.contestMenuAriaLabel} className="mt-8">
       <ul className="flex flex-wrap items-center gap-3">
-        {scoreboardTabs.map((tab) => {
+        {contestCompactNavText.map((tab) => {
           const to = tab.path
             ? `/contests/${contestId}/${tab.path}`
             : `/contests/${contestId}`;

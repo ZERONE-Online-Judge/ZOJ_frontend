@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { sharedUiText } from '@/data/uiText';
 import ContestSubmissionsTable from '@/components/contest/submissions/ContestSubmissionsTable';
 import {
   JudgeIcon,
@@ -25,7 +26,10 @@ export default function OperatorSubmissionsPage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate>
+    <OperatorAccessGate
+      contestId={contestId}
+      permission="contest.submission.view"
+    >
       {(session) =>
         contestId ? (
           <OperatorSubmissionsContent
@@ -33,8 +37,8 @@ export default function OperatorSubmissionsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title="대회 선택 필요">
-            운영할 대회를 먼저 선택하세요.
+          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+            {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
       }
