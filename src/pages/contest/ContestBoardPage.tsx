@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
-import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   getContestNotices,
   getContestQuestions,
@@ -10,15 +12,14 @@ import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 
 function ContestBoardContent({ contestId }: { contestId: string }) {
-  const generalSession = useSessionStore((state) => state.generalSession);
-  const token = generalSession?.accessToken;
+  const { token } = useContestParticipantSession(contestId);
   const noticesQuery = useQuery({
-    queryKey: ['contest-notices', contestId, token],
+    queryKey: contestQueryKeys.notices(contestId, token),
     queryFn: () => getContestNotices(contestId, token),
     refetchInterval: 15_000,
   });
   const questionsQuery = useQuery({
-    queryKey: ['contest-questions', contestId, token],
+    queryKey: contestQueryKeys.questions(contestId, token),
     queryFn: () => getContestQuestions(contestId, token),
     refetchInterval: 15_000,
   });
@@ -27,14 +28,21 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
 
   return (
     <ContestPageFrame>
-      <section className="grid gap-6 lg:grid-cols-2">
+      <PageHeading
+        className="gap-4"
+        description="대회 공지와 질의응답을 한 화면에서 확인합니다."
+        title="게시판"
+        variant="contest"
+      />
+
+      <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="grid content-start gap-5">
-          <header className="grid gap-2">
-            <h2 className="text-2xl font-black text-slate-950">공지사항</h2>
-            <p className="text-sm leading-6 text-slate-600">
-              대회 운영 공지를 확인합니다.
-            </p>
-          </header>
+          <PageHeading
+            description="대회 운영 공지를 확인합니다."
+            level={2}
+            title="공지사항"
+            variant="section"
+          />
 
           {noticesQuery.isLoading && (
             <PageNotice
@@ -90,12 +98,12 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
         </div>
 
         <div className="grid content-start gap-5">
-          <header className="grid gap-2">
-            <h2 className="text-2xl font-black text-slate-950">게시판</h2>
-            <p className="text-sm leading-6 text-slate-600">
-              질문과 운영자 답변을 확인합니다.
-            </p>
-          </header>
+          <PageHeading
+            description="질문과 운영자 답변을 확인합니다."
+            level={2}
+            title="게시판"
+            variant="section"
+          />
 
           {questionsQuery.isLoading && (
             <PageNotice

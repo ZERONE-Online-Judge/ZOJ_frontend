@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
+import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
-import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   getContestProblems,
   getDivisionProblems,
@@ -13,7 +15,6 @@ import {
   getScoreboard,
 } from '@/domains/submissionScoreboard/api';
 import type { ScoreboardProblemScore } from '@/domains/submissionScoreboard/types';
-import { createParticipantSessionFromGeneralToken } from '@/domains/teamParticipation/api';
 import PageNotice from '@/shared/ui/PageNotice';
 
 const problemTabs = [
@@ -58,35 +59,24 @@ function ProblemStatusBadge({ status }: { status: ProblemStatus }) {
 }
 
 function ContestProblemsContent({ contestId }: { contestId: string }) {
-  const generalSession = useSessionStore((state) => state.generalSession);
-  const participantSession = useSessionStore(
-    (state) => state.participantSession,
-  );
-  const setParticipantSession = useSessionStore(
-    (state) => state.setParticipantSession,
-  );
-  const participantContest = generalSession?.participantContests.find(
-    (item) => item.contest.contest_id === contestId,
-  );
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+  } = useContestParticipantSession(contestId);
 
   const problemsQuery = useQuery({
-    queryKey: ['contest-problems', contestId, generalSession?.accessToken],
+    queryKey: contestQueryKeys.problems(
+      contestId,
+      generalSession?.accessToken,
+      activeParticipantSession?.contestId,
+      activeParticipantSession?.division.division_id,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
-      if (participantSession?.contestId === contestId) {
-        return getDivisionProblems(
-          contestId,
-          participantSession.division.division_id,
-          participantSession.accessToken,
-        );
-      }
-
-      if (generalSession?.accessToken && participantContest) {
-        const session = await createParticipantSessionFromGeneralToken(
-          contestId,
-          generalSession.accessToken,
-        );
-        setParticipantSession(session);
-
+      const session = await ensureParticipantSession();
+      if (session) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
@@ -100,20 +90,20 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
   });
 
   const scoreboardQuery = useQuery({
-    queryKey: [
-      'contest-scoreboard',
+    queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      participantSession?.contestId,
-      participantSession?.division.division_id,
-      participantSession?.accessToken,
-    ],
+      activeParticipantSession?.contestId,
+      activeParticipantSession?.division.division_id,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
-      if (participantSession?.contestId === contestId) {
+      const session = await ensureParticipantSession();
+      if (session) {
         return getDivisionScoreboard(
           contestId,
-          participantSession.division.division_id,
-          participantSession.accessToken,
+          session.division.division_id,
+          session.accessToken,
         );
       }
 
@@ -125,8 +115,8 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
   const problems = problemsQuery.data ?? [];
   const teamName =
     participantContest?.team.team_name ??
-    (participantSession?.contestId === contestId
-      ? participantSession.team.team_name
+    (activeParticipantSession?.contestId === contestId
+      ? activeParticipantSession.team.team_name
       : null);
   const myScoreboardRow = scoreboardQuery.data?.rows.find((row) =>
     teamName ? row.team_name === teamName : false,
@@ -140,14 +130,12 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
 
   return (
     <ContestPageFrame>
-      <header>
-        <h1 className="text-4xl font-black tracking-normal text-slate-950">
-          문제집
-        </h1>
-        <p className="mt-4 text-base font-medium text-slate-400">
-          문제별 제한, 제출 여부, 최근 결과를 빠르게 확인합니다.
-        </p>
-      </header>
+      <PageHeading
+        className="gap-4"
+        description="문제별 제한, 제출 여부, 최근 결과를 빠르게 확인합니다."
+        title="문제집"
+        variant="contest"
+      />
 
       <nav aria-label="대회 메뉴" className="mt-8">
         <ul className="flex flex-wrap items-center gap-3">

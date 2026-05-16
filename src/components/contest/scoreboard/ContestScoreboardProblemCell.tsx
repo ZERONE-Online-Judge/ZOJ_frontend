@@ -6,7 +6,9 @@ type ContestScoreboardProblemCellProps = {
 
 function scoreLabel(score?: ScoreboardProblemScore) {
   if (!score) return '';
-  if (score.solved) return `+${Math.max(score.attempts, 1)}`;
+  if (score.solved) {
+    return score.wrong_attempts > 0 ? `+${score.wrong_attempts}` : '✓';
+  }
   if (score.attempts > 0) return `-${score.attempts}`;
 
   return '';

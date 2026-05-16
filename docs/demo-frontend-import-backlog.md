@@ -1,564 +1,156 @@
-# demo-frontend 미반영 기능 정리
+# demo-frontend 반영 현황 및 잔여 백로그
 
 기준 소스: `C:\GITHUB\demo-frontend`
 
-기준 커밋: `c3dd346 chore: 운영자 화면 문제집에 팀 수 표시`
-
-작성일: 2026-05-14
-
-이 문서는 demo에는 있으나 ZOJ_frontend에는 아직 완전히 들여오지 않은 기능을 다음 작업자가 빠르게 파악하도록 남긴 백로그이다. demo는 대부분 `src/main.tsx` 한 파일에 있으므로, 아래의 "demo 위치"를 먼저 보고 ZOJ의 도메인 모듈 구조에 맞춰 분리해 가져오면 된다.
-
-## 현재 ZOJ에 이미 반영된 것
-
-| 기능 | ZOJ 상태 | 관련 파일 |
-| --- | --- | --- |
-| 공개 공지 목록 | 반영됨. `/notices`에서 `/public/service-notices` 조회 | `src/pages/public/NoticesPage.tsx`, `src/domains/serviceCommunication/api.ts` |
-| 공개 대회 목록 | 반영됨. `/contests`에서 `/public/contests` 조회 | `src/pages/public/ContestsPage.tsx`, `src/domains/contestAdministration/api.ts` |
-| 공개 채점 상태 | 반영됨. `/judge-status`에서 `/public/judge-status` polling | `src/pages/public/JudgeStatusPage.tsx`, `src/domains/auditMonitoring/api.ts` |
-| 문의/도움말/규정 통합 페이지 | 부분 반영됨. demo의 개별 `/contact`, `/help`, `/rules`를 ZOJ에서는 `/support` 탭 페이지로 통합 | `src/pages/public/SupportGuidePage.tsx`, `src/routes/routeConfig.ts` |
-| API 클라이언트 기본 구조 | 반영됨. envelope 해제, 토큰 자동 refresh, 저장 세션 우선 사용 구조 존재 | `src/shared/api/client.ts` |
-| 참가팀 bulk import parser | 반영됨 | `src/domains/teamParticipation/importParser.ts` |
-| 문제 패키지/테스트케이스 관련 API 일부 | 반영됨. 단 UI는 아직 없음 | `src/domains/problemManagement/api.ts` |
-| Markdown Preview + LaTeX | 반영됨 | `src/shared/ui/MarkdownPreview.tsx` |
-
-## 우선 가져올 후보
-
-| 우선순위 | 항목 | 이유 |
-| --- | --- | --- |
-| 높음 | 일반 로그인/운영자 세션 병합 변경 | demo 최신 흐름은 일반 OTP 세션 하나로 참가자, 운영자, 서비스 관리자 권한을 전환하는 방향이다. ZOJ의 기존 password OTP/login-method API와 충돌 가능성이 있다. |
-| 높음 | `Problem`, `Submission`, `Scoreboard` 타입 최신화 | 백엔드 응답 스키마와 UI 구현의 기반이다. 지금 타입이 오래되면 이후 페이지 구현 때 연쇄 수정이 커진다. |
-| 중간 | 문제집/문제 상세 공개 페이지 | 참가자가 대회를 실제로 이용하려면 필요하다. UI 포함 범위가 커서 타입/API 먼저 맞추는 편이 좋다. |
-| 중간 | 제출/채점현황/스코어보드 페이지 | 대회 핵심 기능이다. polling, pending 상태, division 필터와 강하게 연결된다. |
-| 낮음 | 운영자/관리자 화면 전체 | 기능 범위가 매우 크다. 권한/세션 구조를 먼저 정리한 뒤 단계적으로 가져오는 것이 좋다. |
-
-## 최신 demo 변경 중 미반영 항목
-
-### 1. 일반 로그인 흐름 단순화
-
-- demo 위치: `src/main.tsx`
-  - `GeneralLoginPage`: 약 2747라인 이후
-  - `canAttemptAutoRefresh`: 약 524라인
-  - `mapGeneralSession`: 약 1260라인
-  - 세션 선택/운영자 세션 생성: 약 1511라인 이후
-- ZOJ 관련 파일:
-  - `src/domains/identityAccess/api.ts`
-  - `src/domains/identityAccess/sessionStorage.ts`
-  - `src/shared/api/client.ts`
-- 현재 차이:
-  - demo는 `/auth/general/login-method`, `/auth/general/password/otp/request`, `/auth/general/password/otp/verify` 흐름을 UI에서 제거했다.
-  - ZOJ에는 아직 `detectGeneralLoginMethod`, `requestGeneralPasswordOtp`, `verifyGeneralPasswordOtp`가 남아 있다.
-  - demo는 일반 세션의 access/refresh token을 운영자 세션에도 병합해 쓴다.
-- 연계 기능:
-  - 참가자 로그인
-  - 운영자 페이지 접근
-  - 서비스 관리자 페이지 접근
-  - 토큰 refresh
-- 관련 UI:
-  - 로그인 폼
-  - 로그인 상태 표시
-  - 운영자/관리자 접근 gate
-- 효과:
-  - 이메일 OTP 하나로 참가자/운영자/서비스 관리자 권한 전환 가능
-  - password OTP 분기가 사라져 로그인 UX가 단순해짐
-  - 일반 계정에 포함된 운영자 권한을 별도 staff login 없이 사용할 수 있음
-- 가져올 때 주의:
-  - 백엔드가 실제로 password OTP/login-method를 폐기했는지 먼저 확인해야 한다.
-  - ZOJ는 로그인 페이지를 한 번 제거한 상태라, 페이지 구현 전 도메인 API부터 정리하는 것이 좋다.
-
-### 2. 문제 타입 최신화
-
-- demo 위치:
-  - `Problem` 타입: `src/main.tsx` 약 80라인대
-  - `ProblemSolveBadge`: 약 8080라인
-- ZOJ 관련 파일:
-  - `src/domains/problemManagement/types.ts`
-  - `src/domains/problemManagement/api.ts`
-  - `src/domains/auditMonitoring/types.ts`
-- 현재 차이:
-  - demo: `max_score?: number`
-  - ZOJ: `max_score: number`
-  - demo: `solve_status?: "accepted" | "wrong" | "unsolved"`
-  - demo 최신: `solved_team_count?: number`, `total_team_count?: number`
-- 연계 기능:
-  - 문제집
-  - 문제 상세
-  - 운영자 문제 목록
-  - 관리자 채점 상세
-- 관련 UI:
-  - 참가자 문제 해결 상태 뱃지: `정답`, `오답`, `미해결`
-  - 운영자 문제별 해결 팀 수: `해결 n/m팀`
-  - 문제 점수 표시 제거
-- 효과:
-  - 점수 기반 문제에서 해결 여부 기반 문제로 화면 표현이 바뀐다.
-  - 운영자는 문제별 난이도/진행도를 해결 팀 수로 파악할 수 있다.
-- 가져올 때 주의:
-  - `createOperatorProblem`의 `max_score` 필수 여부를 백엔드와 맞춰야 한다.
-  - 문제 생성 UI가 들어오기 전이라도 타입은 optional로 바꿔두는 편이 안전하다.
-
-### 3. 스코어보드 스키마와 표시 로직
-
-- demo 위치:
-  - `ScoreboardPage`: 약 3791라인
-  - `ResultCell`: 약 8062라인
-  - `Segmented`: 약 8028라인
-- ZOJ 관련 파일:
-  - `src/domains/submissionScoreboard/types.ts`
-  - `src/domains/submissionScoreboard/api.ts`
-  - 추후 `src/pages/.../ScoreboardPage.tsx`
-- 현재 차이:
-  - demo 최신은 `score/max_score` 대신 `solved`, `wrong_attempts`, `penalty`, `last_solved_at` 중심이다.
-  - 한 번에 정답은 `✓`, 오답 후 정답은 `+n`, 실패는 `-n`으로 표시한다.
-  - 운영자 화면에서 division 전체 선택이 가능하도록 `Segmented`에 `allLabel`이 추가됐다.
-- 연계 기능:
-  - 참가자 스코어보드
-  - 운영자 live/internal 스코어보드
-  - division 필터
-  - 채점 상태 polling
-- 관련 UI:
-  - 스코어보드 테이블
-  - division segmented control
-  - 문제별 결과 셀
-  - frozen/public/live view 안내
-- 효과:
-  - ICPC식 스코어보드 표현에 가까워진다.
-  - 운영자는 전체 유형 또는 특정 유형 스코어보드를 볼 수 있다.
-  - 한 번에 해결한 문제를 더 명확하게 구분할 수 있다.
-- 가져올 때 주의:
-  - ZOJ에는 아직 스코어보드 페이지가 없으므로 우선 타입부터 최신화하는 것이 좋다.
-  - `getOperatorScoreboard`와 `getOperatorDivisionScoreboard` 응답 타입을 demo 스키마에 맞춰야 한다.
-
-### 4. 제출/채점현황 페이지
-
-- demo 위치:
-  - `SubmissionsPage`: 약 3416라인
-  - 제출 상세 조회: 약 3585라인
-  - 재채점/상세 polling: 약 3545라인, 3612라인 이후
-- ZOJ 관련 파일:
-  - `src/domains/submissionScoreboard/types.ts`
-  - `src/domains/submissionScoreboard/status.ts`
-  - `src/domains/submissionScoreboard/api.ts`
-  - `src/shared/ui/SubmissionStatusBadge.tsx`
-- 현재 차이:
-  - demo는 `Submission.source_code_length?: number`를 사용한다.
-  - demo는 문제/언어 셀 링크, 소스 모달, 상세 제출 정보 UI를 가진다.
-  - demo 최신은 운영자 채점현황에서 division `전체` 필터를 지원한다.
-- 연계 기능:
-  - 문제 제출
-  - 제출 목록 polling
-  - 제출 상세
-  - 운영자 제출 현황
-  - 관리자 judge 상세
-- 관련 UI:
-  - 제출 테이블
-  - 상태 뱃지
-  - 진행률 바
-  - 소스 보기 모달
-  - 테스트케이스 실패 상세
-- 효과:
-  - 사용자가 제출 상태 변화를 실시간에 가깝게 확인한다.
-  - 운영자는 전체 division 제출 상태를 모니터링할 수 있다.
-  - 소스 길이를 백엔드 값으로 표시할 수 있어 대용량 소스 처리 비용을 줄인다.
-- 가져올 때 주의:
-  - UI 범위가 커서 status/type/API 먼저 반영 후 페이지를 만드는 편이 좋다.
-  - 현재 ZOJ의 기존 HEPC 제출 페이지는 제거된 상태다.
-
-### 5. 제출 상태 라벨/톤 보강
-
-- demo 위치:
-  - 상태 라벨/톤 유틸: `src/main.tsx` 상단 유틸 영역
-- ZOJ 관련 파일:
-  - `src/domains/submissionScoreboard/status.ts`
-  - `src/shared/ui/SubmissionStatusBadge.tsx`
-- 현재 차이:
-  - demo는 `presentation_error`, `output_format_error`, `system_error` 등을 더 명확히 다룬다.
-  - `judging`은 running 계열, `runtime_error`는 runtime 계열처럼 세분화된 tone을 쓴다.
-- 연계 기능:
-  - 제출 목록
-  - 제출 상세
-  - 채점현황
-  - 관리자 judge 대시보드
-- 관련 UI:
-  - verdict pill
-  - progress bar
-  - 상태별 색상
-- 효과:
-  - 채점 결과가 더 정확한 한국어 라벨로 표시된다.
-  - 진행 중/실패/시스템 오류/런타임 오류를 시각적으로 구분하기 쉽다.
-- 가져올 때 주의:
-  - 기존 `SubmissionStatusBadge`의 허용 tone과 CSS class를 같이 확장해야 한다.
-
-## 대회 참가자 화면 미반영 항목
-
-### 6. 대회 상세 홈
-
-- demo 위치:
-  - route parser: 약 702라인 이후, `/contests/:contestId`
-  - `ContestPage`: 약 2932라인
-- 연계 API:
-  - `GET /public/contests/:contestId`
-  - 세션이 있으면 참가자/운영자 권한별 접근 판단
-- 관련 UI:
-  - 대회 개요
-  - 공개 범위 안내
-  - 문제/제출/스코어보드/게시판 진입 버튼
-  - 참가자 로그인 gate
-- 효과:
-  - 공개 대회 목록에서 실제 대회 워크스페이스로 이동할 수 있다.
-- ZOJ 상태:
-  - 공개 대회 목록만 있음. 대회 상세 페이지는 없음.
-
-### 7. 문제집 페이지
-
-- demo 위치:
-  - route: `/contests/:contestId/problems`
-  - `ProblemSetPage`: 약 3000라인
-- 연계 API:
-  - `GET /contests/:contestId/problems`
-  - `GET /contests/:contestId/divisions/:divisionId/problems`
-  - 운영자일 때 `GET /operator/contests/:contestId/problems`
-- 관련 UI:
-  - 문제 목록
-  - division lock/selector
-  - 해결 상태 뱃지
-  - 운영자 해결 팀 수 뱃지
-- 효과:
-  - 참가자는 본인 division 기준 문제를 볼 수 있다.
-  - 운영자는 전체 문제와 해결 팀 수를 확인할 수 있다.
-- ZOJ 상태:
-  - domain API는 일부 있음. 페이지는 없음.
-
-### 8. 문제 상세/제출
-
-- demo 위치:
-  - route: `/contests/:contestId/problems/:problemId`
-  - `ProblemPage`: 약 3147라인
-- 연계 API:
-  - `GET /contests/:contestId/problems/:problemId`
-  - `POST /contests/:contestId/problems/:problemId/submissions`
-  - 문제 assets/package status 관련 API
-- 관련 UI:
-  - 문제 본문 Markdown
-  - LaTeX 렌더링
-  - 코드 에디터
-  - 언어 선택
-  - 제출 버튼
-  - 문제 네비게이션
-- 효과:
-  - 실제 풀이 제출 흐름이 완성된다.
-- ZOJ 상태:
-  - MarkdownPreview와 CodeEditor는 있음. 페이지 조립은 없음.
-
-### 9. 대회 게시판/질문/공지
-
-- demo 위치:
-  - route: `/contests/:contestId/board`
-  - `BoardPage`: 약 3947라인
-- 연계 API:
-  - `GET /contests/:contestId/notices`
-  - `GET /contests/:contestId/boards`
-  - `POST /contests/:contestId/boards`
-  - `POST /operator/contests/:contestId/boards/:questionId/answers`
-  - `POST /operator/contests/:contestId/notices`
-- 관련 UI:
-  - 공지/질문 탭
-  - 비공개 질문
-  - 운영자 답변
-  - 공지 작성 폼
-- 효과:
-  - 대회 중 운영자와 참가자 간 커뮤니케이션이 가능해진다.
-- ZOJ 상태:
-  - API 함수는 있음. 페이지는 없음.
-
-## 운영자 화면 미반영 항목
-
-### 10. 운영자 대시보드
-
-- demo 위치:
-  - route: `/operator`, `/operator/contests/:contestId`
-  - `OperatorPage`: 약 4296라인
-- 연계 API:
-  - `GET /operator/contests`
-  - `GET /operator/contests/:contestId/dashboard`
-- 관련 UI:
-  - 운영 대회 목록
-  - 운영 지표 카드
-  - 참가팀/문제/공지/채점현황 이동
-- 효과:
-  - 운영자가 자신의 대회 운영 상태를 한 화면에서 확인한다.
-- ZOJ 상태:
-  - API 타입/함수 일부 있음. 페이지는 없음.
-
-### 11. 대회 설정/Division/공개 범위
-
-- demo 위치:
-  - route: `/operator/contests/:contestId/settings`
-  - `OperatorSettingsPage`: 약 4484라인
-- 연계 API:
-  - `PATCH /operator/contests/:contestId/settings`
-  - `POST/PATCH /operator/contests/:contestId/divisions`
-  - 운영자 계정 조회/등록 API
-- 관련 UI:
-  - 일정 수정
-  - 공개 범위 토글
-  - freeze 설정
-  - division 관리
-  - 긴급 공지 설정
-- 효과:
-  - 대회 운영 정책을 UI에서 변경할 수 있다.
-- ZOJ 상태:
-  - types/logic 일부 있음. 페이지는 없음.
-
-### 12. 운영자 공지 관리
-
-- demo 위치:
-  - route: `/operator/contests/:contestId/notices`
-  - `OperatorNoticesPage`: 약 4899라인
-- 연계 API:
-  - `GET /operator/contests/:contestId/notices`
-  - `POST /operator/contests/:contestId/notices`
-  - `PATCH /operator/contests/:contestId/notices/:noticeId`
-  - `PATCH /operator/contests/:contestId/settings` for emergency notice
-- 관련 UI:
-  - 공지 목록
-  - 공지 작성/수정 폼
-  - 공개 범위, 상단 고정, 긴급 표시
-- 효과:
-  - 대회별 공지 운영이 가능해진다.
-- ZOJ 상태:
-  - API 함수는 있음. 페이지는 없음.
-
-### 13. 운영자 스태프 관리
-
-- demo 위치:
-  - route: `/operator/contests/:contestId/staff`
-  - `OperatorStaffPage`: 약 5092라인
-- 연계 API:
-  - `GET /operator/contests/:contestId/operators`
-  - `POST /operator/contests/:contestId/operators`
-  - `PATCH /operator/contests/:contestId/operators/:email`
-  - `DELETE /operator/contests/:contestId/operators/:email`
-- 관련 UI:
-  - 운영자 목록
-  - 권한 scope 선택
-  - 운영자 추가/수정/삭제
-- 효과:
-  - 대회 운영 권한을 분산 관리할 수 있다.
-- ZOJ 상태:
-  - 아직 페이지 없음. 세션/권한 구조 정리 후 가져오는 것이 좋다.
-
-### 14. 참가팀/팀원 관리
-
-- demo 위치:
-  - route: `/operator/contests/:contestId/participants`
-  - `OperatorParticipantsPage`: 약 5231라인
-- 연계 API:
-  - `GET /operator/contests/:contestId/participants`
-  - `POST /operator/contests/:contestId/participants`
-  - `PATCH /operator/contests/:contestId/participants/:teamId`
-  - `POST /operator/contests/:contestId/participants:bulk-create`
-  - 팀원 create/update/session revoke API
-- 관련 UI:
-  - 참가팀 목록
-  - 팀/팀원 편집 폼
-  - CSV/Excel bulk import
-  - 세션 revoke 버튼
-- 효과:
-  - 운영자가 참가팀을 직접 등록하고 세션을 관리할 수 있다.
-- ZOJ 상태:
-  - bulk import parser와 API 타입 일부 있음. 페이지는 없음.
-
-### 15. 운영자 문제/테스트케이스/패키지 관리
-
-- demo 위치:
-  - route: `/operator/contests/:contestId/problems`
-  - `OperatorProblemsPage`: 약 5655라인
-- 연계 API:
-  - 문제 CRUD
-  - 문제 assets upload/delete
-  - testcase set CRUD
-  - testcase CRUD
-  - verified testcase set 생성
-  - zip testcase import
-  - package build
-  - Polygon import
-- 관련 UI:
-  - 문제 목록/편집 폼
-  - Markdown 문제 편집
-  - assets 목록
-  - 테스트케이스 업로드/매칭
-  - package support file 상태
-  - Polygon import 폼
-- 효과:
-  - 문제 출제부터 테스트케이스 검증까지 운영자 UI에서 처리할 수 있다.
-- ZOJ 상태:
-  - API와 helper는 많이 들어와 있음. UI는 없음.
-- 가져올 때 주의:
-  - 가장 큰 기능 묶음이다. `problemManagement` 도메인 아래 API/타입을 먼저 최신화하고 페이지를 분할해야 한다.
-
-## 관리자 화면 미반영 항목
-
-### 16. 서비스 관리자 홈/대회 생성/서비스 공지 관리
-
-- demo 위치:
-  - route: `/admin`, `/admin/contests`
-  - `AdminPage`: 약 7286라인
-- 연계 API:
-  - `GET /admin/dashboard`
-  - `GET /admin/contests`
-  - `POST /admin/contests`
-  - `GET /admin/service-notices`
-  - `POST /admin/service-notices`
-- 관련 UI:
-  - 관리자 지표
-  - 대회 생성 폼
-  - 서비스 공지 작성
-- 효과:
-  - 서비스 관리자가 대회와 전역 공지를 관리할 수 있다.
-- ZOJ 상태:
-  - 공지 API 함수는 있음. 관리자 페이지 없음.
-
-### 17. 관리자 judge 대시보드/제출 상세
-
-- demo 위치:
-  - route: `/admin/judge`
-  - `AdminPage` 내부 judge 탭: 약 7381라인 이후
-- 연계 API:
-  - `GET /admin/judge/dashboard`
-  - `GET /admin/judge/submissions/:submissionId`
-  - 재채점 관련 operator/admin API
-- 관련 UI:
-  - judge node 목록
-  - queue 목록
-  - 제출 상세
-  - 실패 testcase 정보
-- 효과:
-  - 서비스 전체 채점 인프라와 제출 문제를 관리자 관점에서 진단할 수 있다.
-- ZOJ 상태:
-  - 공개 judge status 페이지만 있음. 관리자 judge UI 없음.
-
-## 공통 UI/헬퍼 미반영 항목
-
-### 18. 데모 공통 UI 컴포넌트
-
-- demo 위치:
-  - `PageHeader`: 약 7797라인
-  - `PageNotice`: 약 7807라인
-  - `Segmented`: 약 8028라인
-  - `ProblemSolveBadge`: 약 8080라인
-  - `ResultCell`: 약 8062라인
-- ZOJ 상태:
-  - `PageNotice`는 별도 컴포넌트로 있음.
-  - `Segmented`, `ProblemSolveBadge`, `ResultCell`은 아직 없음.
-- 가져올 기준:
-  - 단독 UI로 먼저 가져오기보다는 사용하는 페이지를 만들 때 함께 도입한다.
-  - `Segmented`는 division 필터가 여러 페이지에서 반복되므로 공통화 후보.
-  - `ProblemSolveBadge`는 문제집/문제 상세 구현 시 필요.
-  - `ResultCell`은 스코어보드 구현 시 필요.
-
-### 19. 서비스 상단바/라우팅 구조
-
-- demo 위치:
-  - `type Page`: 약 38라인
-  - route parser: 약 702라인
-  - `ServiceTopBar`: 약 2105라인
-- ZOJ 상태:
-  - React Router 기반의 `routeConfig.ts`로 대체 중.
-- 가져올 기준:
-  - demo의 route parser는 그대로 가져오지 않는다.
-  - URL 구조와 navigation label만 참고하고, ZOJ에서는 `src/routes/routeConfig.ts`에 페이지 단위로 추가한다.
-
-## API 엔드포인트 목록 중 ZOJ 페이지가 아직 없는 것
-
-### 참가자/대회
-
-- `POST /auth/general/otp/request`
-- `POST /auth/general/otp/verify`
-- `GET /auth/general/me`
-- `POST /auth/general/contests/:contestId/participant-session`
-- `GET /public/contests/:contestId`
-- `GET /contests/:contestId/problems`
-- `GET /contests/:contestId/divisions/:divisionId/problems`
-- `GET /contests/:contestId/problems/:problemId`
-- `POST /contests/:contestId/problems/:problemId/submissions`
-- `GET /contests/:contestId/submissions`
-- `GET /contests/:contestId/submissions/:submissionId`
-- `GET /contests/:contestId/scoreboard`
-- `GET /contests/:contestId/divisions/:divisionId/scoreboard`
-- `GET /contests/:contestId/notices`
-- `GET /contests/:contestId/boards`
-- `POST /contests/:contestId/boards`
-
-### 운영자
-
-- `GET /operator/contests`
-- `GET /operator/contests/:contestId/dashboard`
-- `PATCH /operator/contests/:contestId/settings`
-- `GET/POST/PATCH/DELETE /operator/contests/:contestId/operators`
-- `GET/POST/PATCH /operator/contests/:contestId/participants`
-- `POST /operator/contests/:contestId/participants:bulk-create`
-- `POST /operator/contests/:contestId/participants/:teamId/members`
-- `PATCH /operator/contests/:contestId/participants/:teamId/members/:memberId`
-- `POST /operator/contests/:contestId/participants/:teamId/members/:memberId/sessions:revoke`
-- `GET/POST/PATCH /operator/contests/:contestId/problems`
-- `GET/POST/DELETE /operator/contests/:contestId/problems/:problemId/assets`
-- `GET/POST/PATCH/DELETE /operator/contests/:contestId/problems/:problemId/testcase-sets`
-- `POST /operator/contests/:contestId/problems/:problemId/verified-testcase-sets`
-- `POST /operator/contests/:contestId/problems/:problemId/verified-testcase-sets:zip`
-- `POST /operator/contests/:contestId/problems/:problemId/package-builds`
-- `POST /operator/contests/:contestId/problems/import-polygon`
-- `GET /operator/contests/:contestId/scoreboard/internal`
-- `GET /operator/contests/:contestId/divisions/:divisionId/scoreboard/internal`
-- `GET/POST/PATCH /operator/contests/:contestId/notices`
-- `POST /operator/contests/:contestId/boards/:questionId/answers`
-
-### 관리자
-
-- `GET /admin/dashboard`
-- `GET /admin/contests`
-- `POST /admin/contests`
-- `GET /admin/service-notices`
-- `POST /admin/service-notices`
-- `GET /admin/judge/dashboard`
-- `GET /admin/judge/submissions/:submissionId`
-
-## 다음에 가져올 때 권장 순서
-
-1. 타입 최신화
-   - `Problem.max_score` optional
-   - `Problem.solve_status`, `solved_team_count`, `total_team_count`
-   - `Submission.source_code_length`
-   - `ScoreboardRow`, `ScoreboardProblemScore`를 demo 최신 스키마로 변경
-   - `AdminJudgeSubmissionEntry.problem.max_score` optional 또는 제거
-
-2. 세션/로그인 도메인 정리
-   - password OTP/login-method 유지 여부를 백엔드와 확인
-   - demo처럼 일반 세션 기반 운영자 권한 병합을 적용할지 결정
-   - `mapGeneralSession`, `canAttemptAutoRefresh`, `refreshStaffAccessToken` 조정
-
-3. 참가자 대회 흐름 구현
-   - 대회 상세
-   - 문제집
-   - 문제 상세/제출
-   - 제출 현황
-   - 스코어보드
-   - 게시판
-
-4. 운영자 기능 구현
-   - 운영자 대시보드
-   - 참가팀 관리
-   - 문제 관리
-   - 공지/게시판 관리
-   - 스코어보드/채점현황
-
-5. 관리자 기능 구현
-   - 서비스 관리자 홈
-   - 대회 생성
-   - 서비스 공지 관리
-   - judge 대시보드
-
-## 가져오기 판단 메모
-
-- demo는 단일 `main.tsx`에 모든 기능이 들어 있으므로 그대로 복사하지 말고 ZOJ의 현재 구조에 맞춰 `domains`, `pages`, `components`, `shared`로 분리한다.
-- UI 요소는 페이지 구현 시 같이 가져오고, API/type/status 유틸은 먼저 가져와도 부작용이 적다.
-- 현재 ZOJ는 공개 페이지 중심으로 정리된 상태다. 운영자/관리자 기능은 세션 구조가 먼저 안정되어야 한다.
-- demo 최신 변경은 백엔드 계약 변화가 섞여 있다. 특히 로그인과 문제/스코어보드 타입은 UI보다 먼저 확인해야 한다.
+기준 커밋: `c94d40c chore: 스코어보드 총 시간 표시`
+
+갱신일: 2026-05-16
+
+이 문서는 `demo-frontend`에서 가져와야 할 기능과 현재 `ZOJ_frontend`의 반영 상태를 정리한다. 예전 문서에는 이미 구현된 항목과 미구현 항목이 섞여 있었고 일부 한글이 깨져 있었으므로, 현재 프로젝트 진행 상황 기준으로 다시 정리했다.
+
+## 0. 검토 기준과 문서 상태
+
+2026-05-15 재검토 결과:
+
+- `C:\GITHUB\demo-frontend` 워킹트리는 clean 상태다.
+- 최신 커밋은 `c94d40c chore: 스코어보드 총 시간 표시`다.
+- 이 문서는 demo 변경이 ZOJ에 적용됐는지, 아직 안 가져온 것이 무엇인지 추적하는 문서다.
+- 프로젝트 품질 리뷰 이슈는 별도 문서 `docs/project-issue-review.md`에 정리한다.
+
+## 1. demo 최근 변경 반영 현황
+
+최근 커밋 기준으로 확인한 반영 상태는 아래와 같다.
+
+| 커밋                                                          | 내용                                                                                                                                   | ZOJ 반영 판단                                                                                                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `c94d40c chore: 스코어보드 총 시간 표시`                      | 스코어보드에 `총시간(min)` 컬럼을 항상 표시하고 `submission_count`를 `시도`로 분리                                                     | 반영. ZOJ도 `총시간(min)`과 `시도`를 분리 표시함                                                                                                |
+| `75d068b chore: 채점시 메모리, 런타임 계산 및 표시`           | 제출 타입에 `runtime_ms`, `memory_kb` 추가, 제출 목록에 시간/메모리 컬럼 표시                                                          | 반영. ZOJ 채점 현황 테이블에서 `runtime_ms`, `memory_kb`와 호환 필드까지 방어적으로 표시함                                                      |
+| `35c6656 공지 자동 갱신 추가. 테스트케이스 수 비공개`         | 공개 공지/대회 정보 refresh, 대회 공지 관리, 스코어보드 타입 보강, 제출 진행률 필드 추가, 운영자 문제 화면의 테스트케이스 수 노출 축소 | 공개 공지/대회/대회 공지 refresh는 일부 반영됨. 운영자 문제 화면은 아직 없으므로 테스트케이스 수 비공개 정책은 향후 운영자 UI 구현 시 반영 필요 |
+| `c3dd346 chore: 운영자 화면 문제집에 팀 수 표시`              | 운영자 문제 목록에서 해결 팀 수/전체 팀 수를 표시                                                                                      | 미반영. ZOJ에 운영자 문제 관리 화면이 아직 없음                                                                                                 |
+| `6532ffa fix: 스코어보드 전체 유형 제거`                      | 스코어보드 division 전체 선택 제거                                                                                                     | 참가자 화면 기준 영향 작음. ZOJ 참가자 스코어보드는 현재 참가 세션 division 중심이며 운영자 division UI는 아직 없음                             |
+| `9b84fea fix: 운영자 스코어보드/채점현황 유형 선택 버그 수정` | 운영자 화면의 division 선택 흐름 수정                                                                                                  | 미반영/비해당. ZOJ 운영자 스코어보드/채점현황 페이지가 아직 없음                                                                                |
+| `8187872 fix: 운영자 세션 대기 버그 수정`                     | 운영자 세션 로딩/대기 상태 보정                                                                                                        | 부분 반영. ZOJ는 session sync와 일반 세션 내부 operatorSession 구조를 갖췄고, 관리자 페이지는 `AdminAccessGate`로 권한 gate를 적용함            |
+| `50bd6d9 chore: 한 번에 정답 아이콘 변경`                     | 스코어보드에서 한 번에 맞힌 문제 표시를 아이콘/체크 형태로 변경                                                                        | 반영. 한 번에 정답은 체크, 오답 후 정답은 `+n`, 실패는 `-n`으로 표시함                                                                          |
+| `cda0096 chore: 서비스 마스터 토큰 병합`                      | service master/staff 토큰 흐름 정리                                                                                                    | 부분 반영. `is_service_master`, `operatorSession` 저장/refresh 구조와 서비스 마스터용 관리자 콘솔, 대회 관리, 채점 관리 화면이 반영됨           |
+| `3f28b37 fix: 스코어보드 한번에 해결한 문제 표시 수정`        | 스코어보드 정답 셀 표시 보정                                                                                                           | 반영. `ContestScoreboardProblemCell`의 solved 표시 규칙을 demo 최신 흐름에 맞춤                                                                 |
+
+## 2. 현재 반영 완료된 내용
+
+| 영역                     | 현재 상태                                                                                                   | 주요 파일                                                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 공통 공개 페이지         | 공지사항, 대회 목록, 채점 상태, 지원 안내 페이지가 라우트와 API 모듈, 공통 `PageLayout`으로 구성되어 있음   | `src/pages/public/*`, `src/components/common/PageLayout.tsx`, `src/domains/serviceCommunication/*`, `src/domains/auditMonitoring/*`                                              |
+| 공개/대회 공지 자동 갱신 | 공개 공지, 메인 페이지 공지, 대회 게시판 공지는 TanStack Query `refetchInterval`로 주기 갱신됨              | `src/pages/public/NoticesPage.tsx`, `src/pages/main/MainPage.tsx`, `src/pages/contest/ContestBoardPage.tsx`                                                                      |
+| 로그인 안내              | 대회 참가자가 이해하기 쉬운 유의사항과 계정 관련 안내 문구로 정리됨                                         | `src/pages/auth/LoginPage.tsx`                                                                                                                                                   |
+| 헤더 구조                | 일반 헤더와 대회 헤더의 중복 구현을 `HeaderShell`, `HeaderAuthControls`로 통합함                            | `src/components/layout/HeaderShell.tsx`, `src/components/layout/HeaderAuthControls.tsx`, `src/components/layout/Header.tsx`, `src/components/layout/ContestHeader.tsx`           |
+| 대회 전용 레이아웃       | 대회 페이지는 전용 헤더와 공통 페이지 폭을 사용하는 구조로 정리됨                                           | `src/components/contest/ContestPageShell.tsx`, `src/components/layout/ContestHeader.tsx`                                                                                         |
+| 대회 개요                | 대회명, division, 참가자/팀/남은 시간 카드 구성 반영                                                        | `src/pages/contest/ContestOverviewPage.tsx`                                                                                                                                      |
+| 문제집                   | 대회 문제 목록, 상태 배지, 제한 시간/메모리/배점 테이블 구성 반영                                           | `src/pages/contest/ContestProblemsPage.tsx`                                                                                                                                      |
+| 문제 상세/제출           | 문제+제출, 문제, 코드 제출 탭으로 분리하고 Markdown/LaTeX 렌더링과 Monaco 제출창을 적용함                   | `src/pages/contest/ContestProblemDetailPage.tsx`, `src/components/contest/problem/*`, `src/shared/ui/MarkdownPreview.tsx`, `src/shared/ui/CodeEditor.tsx`                        |
+| 채점 현황                | 제출 목록, 결과 상태 디자인, 문제 번호/언어 클릭 이동, 제출 코드 재표시, 런타임/메모리 표시 흐름을 반영함   | `src/pages/contest/ContestSubmissionsPage.tsx`, `src/components/contest/submissions/*`, `src/domains/submissionScoreboard/types.ts`                                              |
+| 스코어보드               | 대회 스코어보드 화면과 기본 테이블 UI가 구현되고, demo 최신 총시간/시도 분리와 체크 아이콘 표시가 반영됨    | `src/pages/contest/ContestScoreboardPage.tsx`, `src/components/contest/scoreboard/*`                                                                                             |
+| 게시판                   | 대회 게시판 읽기 흐름이 연결됨                                                                              | `src/pages/contest/ContestBoardPage.tsx`                                                                                                                                         |
+| 인증/세션 보완           | 세션 저장소를 `sessionStorage` 중심으로 변경하고, 탭 간 세션 동기화와 로그아웃 시 Query Cache 정리를 추가함 | `src/domains/identityAccess/*`, `src/app/providers/SessionSyncProvider.tsx`, `src/app/providers/AppProviders.tsx`                                                                |
+| 대회 참가 세션           | 대회 참가자 세션 조회 hook과 query key factory를 추가함                                                     | `src/domains/contestRuntime/*`                                                                                                                                                   |
+| 라우팅 안전장치          | 알 수 없는 경로용 404 페이지를 추가함                                                                       | `src/pages/public/NotFoundPage.tsx`, `src/routes/routeConfig.ts`                                                                                                                 |
+| 관리자 콘솔              | 서비스 마스터 전용 대시보드, 서비스 공지 발행, 대회 생성/운영자 배정, 채점 노드/큐/제출 상세 확인을 추가함  | `src/pages/admin/*`, `src/components/admin/AdminShell.tsx`, `src/domains/auditMonitoring/*`, `src/domains/contestAdministration/*`, `src/domains/serviceCommunication/*`         |
+| 운영자 콘솔              | 대회 운영자용 대시보드, 설정/유형/운영자, 공지, 참가팀, 문제, 제출, 스코어보드 화면을 추가함                | `src/pages/operator/*`, `src/components/operator/OperatorShell.tsx`, `src/domains/contestAdministration/*`, `src/domains/problemManagement/*`, `src/domains/teamParticipation/*` |
+
+## 3. demo 최신 변경 기준 추가 확인 필요
+
+### 스코어보드 총 시간 표시
+
+- demo 최신 커밋 `c94d40c`는 스코어보드에 `총시간(min)` 개념을 명시하는 변경이다.
+- ZOJ는 `총시간(min)`을 `row.penalty ?? row.score`, `시도`를 `row.submission_count`로 분리 표시하도록 반영했다.
+
+### 스코어보드 응답 타입 정합성
+
+- demo 쪽 스코어보드는 `last_solved_at`, problem별 `penalty`, `attempts` 중심 구조를 사용한다.
+- ZOJ 쪽 타입은 호환성을 위해 `score`, `max_score`, `last_improved_at` 같은 과거 필드도 유지하면서 demo의 `last_solved_at`, problem별 `solved_at`, `penalty` 필드를 추가했다.
+- 장기적으로는 실제 백엔드 응답에서 과거 필드가 사라지는지 확인한 뒤 타입을 더 좁히는 것이 좋다.
+
+### 스코어보드 결과 셀 표시
+
+- demo 최신 흐름은 제출 없음은 빈칸, 오답은 `-n`, 한 번에 정답은 체크 표시, 오답 후 정답은 `+n`에 가깝다.
+- ZOJ 현재 구현은 한 번에 정답을 체크 표시, 오답 후 정답을 `+n`, 실패를 `-n`으로 표시한다.
+- 관련 파일: `src/components/contest/scoreboard/ContestScoreboardProblemCell.tsx`
+
+### 제출 런타임/메모리 표시
+
+- demo 최신 커밋 `75d068b`는 제출 응답의 `runtime_ms`, `memory_kb`를 채점 현황에 표시한다.
+- ZOJ는 `Submission` 타입에 `runtime_ms`, `memory_kb`를 포함하고, `time_ms`, `execution_time_ms`, `memory_usage_kb`, `max_memory_kb` 같은 호환 필드도 같이 처리한다.
+- 따라서 이 항목은 참가자 채점 현황 기준으로는 반영 완료로 본다. 운영자/관리자 제출 화면이 들어올 때 같은 표시 규칙을 재사용하면 된다.
+
+### 관리자 화면 반영 현황
+
+- demo의 `AdminPage`에서 확인한 관리자 핵심 기능 중 ZOJ에 이미 API 모듈이 존재하던 부분을 현재 구조에 맞춰 페이지로 조립했다.
+- 반영된 기능은 `/admin` 서비스 마스터 대시보드, 서비스 공지 발행, `/admin/contests` 대회 생성 및 운영자 배정, `/admin/judge` 채점 노드/큐/최근 제출/소스 상세 확인이다.
+- 관리자 진입은 일반 헤더의 로그인 영역에 서비스 마스터 계정일 때만 `관리자` 버튼으로 표시한다.
+- UI는 기존 `PageLayout`, 테이블, rounded border, 굵은 폰트 흐름을 유지하되 관리자 전용 요소는 violet/amber 계열과 아이콘을 추가해 참가자 화면과 구분했다.
+- 아직 서비스 매니저별 권한 세분화 화면은 반영하지 않았다.
+
+### 운영자 화면 반영 현황
+
+- demo의 운영자 화면 중 현재 ZOJ API 모듈로 안전하게 조립 가능한 기능을 `/operator` 하위 route로 추가했다.
+- 반영된 기능은 `/operator` 운영 대회 선택 및 대시보드, `/operator/contests/:contestId/settings` 대회 설정/참가 유형/운영자 관리, `/notices` 대회 공지/긴급 문구, `/participants` 참가팀 등록/일괄 등록/세션 해제, `/problems` 문제 CRUD/Markdown+LaTeX 미리보기/패키지 상태, `/submissions` 운영자 제출 목록과 wait 보조 갱신, `/scoreboard` 운영자 live 스코어보드다.
+- 운영자 진입은 일반 헤더 로그인 영역에 `operatorSession`이 있을 때 `운영자` 버튼으로 표시한다.
+- 운영자 UI는 기존 디자인 결을 유지하되 관리자 화면과 구분되도록 indigo/cyan 계열 accent와 아이콘을 사용한다.
+- 문제 관리의 파일 업로드, ZIP 테스트케이스 import, Polygon import, 세부 테스트케이스 편집은 API는 존재하지만 이번 UI에서는 기본 패키지 상태/빌드 확인 중심으로 제한했다. 이 부분은 실제 출제 운영 흐름을 보며 별도 고도화가 필요하다.
+
+### 갱신 방식
+
+- demo에는 대회 스코어보드/제출 현황 계열에서 `wait_seconds` 기반 long polling 패턴이 있다.
+- ZOJ API 모듈에는 `waitSubmissionStatus`, `waitOperatorSubmissionStatus`, `waitAdminJudgeSubmissionStatus` 같은 wait API 함수가 이미 일부 존재한다.
+- 관리자 채점 화면은 목록 polling에 더해 pending 제출에 대해 `waitAdminJudgeSubmissionStatus`를 보조로 호출해 완료 직후 목록과 상세를 invalidate한다.
+- 참가자 화면의 목록 갱신은 아직 TanStack Query `refetchInterval` 기반 단순 polling 위주다.
+- 실시간성이 필요한 화면은 스코어보드, 채점 현황, 공개 채점 상태 정도이며, 이 셋은 서버 부하와 UX를 고려해 조건부 polling 또는 long polling으로 정리할 가치가 있다.
+
+### 공지 자동 갱신과 테스트케이스 수 비공개
+
+- demo 최신 커밋 `35c6656`의 공지 자동 갱신 성격은 ZOJ의 공개 공지/메인 공지/대회 게시판 query interval로 상당 부분 반영되어 있다.
+- 같은 커밋의 “테스트케이스 수 비공개”는 운영자 문제 관리 UI가 아직 없어서 현재 화면 영향은 없다.
+- 향후 운영자 문제 관리 화면을 만들 때 `ProblemPackageStatus.active_testcase_count`, `testcase_set_count` 같은 필드를 운영자에게 어느 수준까지 보여줄지 다시 결정해야 한다.
+
+## 4. 아직 남은 주요 백로그
+
+| 우선순위 | 항목                                                    | 이유                                                                                                                      | 추천 위치                                                                                     |
+| -------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 높음     | 참가자 제출/스코어보드 long polling 또는 조건부 polling | 채점 결과와 순위는 실시간성이 높고, 단순 고정 polling은 서버 부하가 커질 수 있음                                          | `src/pages/contest/ContestSubmissionsPage.tsx`, `src/pages/contest/ContestScoreboardPage.tsx` |
+| 높음     | refresh token의 httpOnly cookie 전환                    | 프론트 저장소 보완은 했지만, 실제 보안 완성은 백엔드 쿠키 기반 refresh 구조가 필요함                                      | `src/shared/api/client.ts`, 백엔드 인증 API                                                   |
+| 중간     | 대회 게시판 작성/수정/답변 흐름                         | 현재는 읽기 중심이며 실제 대회 운영에는 공지/질문 흐름이 필요함                                                           | `src/pages/contest/ContestBoardPage.tsx`, `src/domains/contestRuntime/api.ts`                 |
+| 중간     | 운영자 고급 문제 패키지 관리                            | 기본 문제 CRUD와 패키지 상태는 추가됐지만 파일 업로드, ZIP import, Polygon import, 테스트케이스 상세 편집은 아직 제한적임 | `src/pages/operator/OperatorProblemsPage.tsx`, `src/domains/problemManagement/*`              |
+| 중간     | 관리자 권한 세분화                                      | 현재 관리자 화면은 `is_service_master` 기준으로만 열리며, 서비스 매니저 권한별 화면 분기는 아직 없음                      | `src/components/admin/AdminShell.tsx`, 권한/스코프 타입                                       |
+| 중간     | 운영자 문제 관리의 테스트케이스 수 노출 정책            | demo는 테스트케이스 수를 덜 드러내는 방향으로 바뀌었고, ZOJ는 운영자 UI 구현 시 같은 정책 결정이 필요함                   | `src/domains/problemManagement/types.ts`, 향후 운영자 문제 관리 페이지                        |
+| 중간     | 대회 헤더 모바일 대응                                   | 중복 구현은 제거했지만, 현재 헤더는 데스크톱 폭 중심이라 작은 화면에서 추가 점검이 필요함                                 | `src/components/layout/HeaderShell.tsx`                                                       |
+| 중간     | Monaco 에디터 chunk 분리                                | 현재 빌드에서 큰 chunk가 생길 수 있으므로 lazy loading 전략을 확인해야 함                                                 | `src/shared/ui/CodeEditor.tsx`, `vite.config.ts`                                              |
+| 중간     | 공통 Table/Tab/Badge 정리                               | 대회 페이지가 늘어나면서 비슷한 UI가 반복되고 있음                                                                        | `src/components/contest/*`, `src/shared/ui/*`                                                 |
+| 낮음     | 문서/코드 포맷 일괄 정리                                | 여러 차례 빠른 변경이 누적되어 포맷 차이가 생길 수 있음                                                                   | 전체                                                                                          |
+
+## 5. 이전 리뷰의 Critical/High 처리 현황
+
+| 이슈                                   | 처리 상태 | 비고                                                                                                                                             |
+| -------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 토큰 저장소가 localStorage 중심인 문제 | 부분 해결 | 세션 저장소를 `sessionStorage` 중심으로 바꾸고 legacy localStorage 제거 로직을 추가함. refresh token 자체는 백엔드 httpOnly cookie 전환이 필요함 |
+| 로그아웃 후 캐시/세션 잔존 가능성      | 해결      | 로그아웃 시 세션 store와 Query Cache를 같이 정리함                                                                                               |
+| 인증 상태 탭 간 동기화 부족            | 해결      | `SessionSyncProvider`에서 storage 이벤트 기반 동기화를 담당함                                                                                    |
+| 존재하지 않는 경로 처리 부족           | 해결      | 404 페이지와 catch-all route 추가                                                                                                                |
+| 대회 참가 세션 조회 로직 반복          | 해결      | `useContestParticipantSession`과 query key factory 추가                                                                                          |
+| 헤더 구현 중복                         | 해결      | `HeaderShell`, `HeaderAuthControls`로 일반/대회 헤더 공통화                                                                                      |
+| 관리자 전용 기능 부재                  | 부분 해결 | 서비스 마스터용 관리자 콘솔, 대회 관리, 채점 관리 화면과 헤더 진입점을 추가함. 서비스 매니저 권한 세분화는 남아 있음                             |
+| 운영자 전용 기능 부재                  | 부분 해결 | 운영자 대시보드, 설정, 공지, 참가팀, 문제, 제출, 스코어보드 화면과 헤더 진입점을 추가함. 문제 패키지 고급 관리와 권한 세분화는 남아 있음         |
+
+## 6. 권장 작업 순서
+
+1. 대회 진행 상태 기반 polling 중단 조건을 추가한다.
+2. 단건 제출 상태는 이미 있는 wait API 함수와 더 강하게 연결한다.
+3. 게시판 작성/수정/답변 플로우를 추가한다.
+4. 운영자 문제 패키지 고급 관리 화면을 만들 때 테스트케이스 수 노출 정책을 demo 최신 흐름에 맞춰 결정한다.
+5. 남은 build chunk warning을 빌드 결과 기준으로 추가 분석한다.
+6. 공통 UI 컴포넌트 후보인 table, tab, badge를 현재 디자인에 맞춰 점진적으로 분리한다.
+7. 서비스 매니저/운영자 scope별 세부 권한 정책을 확정한 뒤 route gate와 버튼 노출 조건을 더 좁힌다.
+
+## 7. 메모
+
+- 현재 ZOJ의 대회 참가자 화면은 demo의 주요 참가자 플로우를 대부분 따라왔고, 제출 런타임/메모리 표시와 공지 자동 갱신도 참가자 화면 기준으로는 상당 부분 반영되어 있다.
+- 아직 demo 최신 흐름과 차이가 큰 부분은 참가자 목록 단위 long polling의 세부 정책, 운영자 문제 패키지 고급 관리 화면의 테스트케이스 수 노출 정책이다.
+- 실제 서비스 출시 전에는 refresh token 저장 방식, 채점 현황/스코어보드 갱신 방식, 잘못된 contest/problem id에 대한 에러 화면을 우선 확인해야 한다.
+- 이 문서는 “무조건 demo를 그대로 복사”하기 위한 문서가 아니라, ZOJ의 모듈화된 구조에 맞게 어떤 기능을 흡수할지 판단하기 위한 백로그다.
