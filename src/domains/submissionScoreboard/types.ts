@@ -58,11 +58,13 @@ export type SubmissionCreateRequest = {
 export type ScoreboardProblemScore = {
   problem_id?: string;
   problem_code: string;
-  score: number;
-  max_score: number;
+  score?: number;
+  max_score?: number;
   attempts: number;
   wrong_attempts: number;
   solved: boolean;
+  penalty?: number | null;
+  solved_at?: string | null;
   best_submission_id?: string;
   best_submitted_at?: string;
   best_status: string | null;
@@ -78,7 +80,8 @@ export type ScoreboardRow = {
   score?: number;
   penalty?: number | null;
   submission_count: number;
-  last_improved_at: string | null;
+  last_improved_at?: string | null;
+  last_solved_at?: string | null;
   problem_scores: ScoreboardProblemScore[];
 };
 

@@ -3,16 +3,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
+import PageLayout from '@/components/common/PageLayout';
 import { loginGuideSections } from '@/data/loginGuideContent';
 import {
   requestGeneralOtp,
   verifyGeneralOtp,
 } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
-import { formatApiError, readRetryAfterSeconds } from '@/shared/api/errors';
+import {
+  formatApiError,
+  isApiClientError,
+  readRetryAfterSeconds,
+} from '@/shared/api/errors';
 import PageNotice from '@/shared/ui/PageNotice';
 
-const OTP_VALID_SECONDS = 10 * 60;
+const OTP_VALID_SECONDS = 5 * 60;
 
 const loginSchema = z.object({
   email: z.email('올바른 이메일을 입력해 주세요.'),
@@ -32,12 +37,25 @@ function currentTimestamp() {
   return new Date().getTime();
 }
 
+function formatLoginError(error: unknown) {
+  if (
+    isApiClientError(error) &&
+    error.status === 401 &&
+    error.code === 'invalid_credentials'
+  ) {
+    return '로그인 실패: 이메일 또는 인증번호가 맞지 않거나 인증번호가 만료되었습니다. 새 인증번호를 받아 다시 시도해 주세요.';
+  }
+
+  return formatApiError(error, '로그인 실패');
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const setGeneralSession = useSessionStore((state) => state.setGeneralSession);
   const generalSession = useSessionStore((state) => state.generalSession);
   const [otpRequested, setOtpRequested] = useState(false);
+  const [requestedOtpEmail, setRequestedOtpEmail] = useState('');
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
   const [message, setMessage] = useState('');
@@ -81,22 +99,35 @@ export default function LoginPage() {
     otpInputRef.current?.focus();
   }, [otpRequested, setFocus]);
 
+  function resetOtpAfterEmailChange() {
+    setOtpRequested(false);
+    setRequestedOtpEmail('');
+    setOtpExpiresAt(0);
+    setCooldownUntil(0);
+    resetField('otpCode');
+    setMessage('이메일이 변경되었습니다. 새 인증번호를 받아 주세요.');
+    setMessageStatus('idle');
+  }
+
   async function requestOtp() {
+    const requestedEmail = email.trim();
+
     setMessage('인증번호를 발송하고 있습니다.');
     setMessageStatus('loading');
 
     try {
-      const response = await requestGeneralOtp(email.trim());
+      const response = await requestGeneralOtp(requestedEmail);
       const cooldown =
         response.cooldown_seconds > 0 ? response.cooldown_seconds : 10;
       const requestedAt = currentTimestamp();
 
       resetField('otpCode');
       setOtpRequested(true);
+      setRequestedOtpEmail(requestedEmail);
       setCooldownUntil(requestedAt + cooldown * 1000);
       setOtpExpiresAt(requestedAt + OTP_VALID_SECONDS * 1000);
       setMessage(
-        '인증번호가 이메일로 발송되었습니다. 인증번호 유효시간은 10분입니다.',
+        '인증번호가 이메일로 발송되었습니다. 인증번호 유효시간은 5분입니다.',
       );
       setMessageStatus('ready');
     } catch (error) {
@@ -134,7 +165,7 @@ export default function LoginPage() {
 
     try {
       const session = await verifyGeneralOtp(
-        values.email.trim(),
+        requestedOtpEmail || values.email.trim(),
         values.otpCode.trim(),
         generalSession,
       );
@@ -143,19 +174,27 @@ export default function LoginPage() {
       setMessage('로그인되었습니다.');
       setMessageStatus('ready');
       setOtpRequested(false);
+      setRequestedOtpEmail('');
       setOtpExpiresAt(0);
       resetField('otpCode');
-      navigate('/');
+      const contestId = searchParams.get('contestId');
+      navigate(contestId ? `/contests/${encodeURIComponent(contestId)}` : '/');
     } catch (error) {
-      setMessage(formatApiError(error, '로그인 실패'));
+      setMessage(formatLoginError(error));
       setMessageStatus('error');
     }
   }
 
+  const emailField = register('email');
   const otpCodeField = register('otpCode');
 
   return (
-    <section className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-14 font-sans lg:px-8">
+    <PageLayout
+      description="이메일 인증번호로 계정에 안전하게 로그인합니다."
+      eyebrow="Login"
+      title="로그인"
+      width="6xl"
+    >
       {shouldShowContestLoginModal && (
         <div
           aria-labelledby="contest-login-required-title"
@@ -214,7 +253,17 @@ export default function LoginPage() {
               disabled={isSubmitting}
               placeholder="등록된 이메일"
               type="email"
-              {...register('email')}
+              {...emailField}
+              onChange={(event) => {
+                emailField.onChange(event);
+                if (
+                  otpRequested &&
+                  requestedOtpEmail &&
+                  event.target.value.trim() !== requestedOtpEmail
+                ) {
+                  resetOtpAfterEmailChange();
+                }
+              }}
             />
           </label>
           {errors.email && (
@@ -307,6 +356,6 @@ export default function LoginPage() {
           ))}
         </aside>
       </div>
-    </section>
+    </PageLayout>
   );
 }

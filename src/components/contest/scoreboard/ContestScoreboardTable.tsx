@@ -41,11 +41,15 @@ function scoreboardProblems(rows: ScoreboardRow[], problems: Problem[]) {
   );
 }
 
-function attemptTime(row: ScoreboardRow) {
+function totalPenalty(row: ScoreboardRow) {
   const value = row.penalty ?? row.score;
   if (value === undefined || value === null) return '-';
 
-  return `${value.toLocaleString('ko-KR')}min`;
+  return value.toLocaleString('ko-KR');
+}
+
+function submissionCount(row: ScoreboardRow) {
+  return row.submission_count?.toLocaleString('ko-KR') ?? '-';
 }
 
 export default function ContestScoreboardTable({
@@ -64,12 +68,14 @@ export default function ContestScoreboardTable({
 
   return (
     <div className="overflow-x-auto border border-slate-200 bg-white">
-      <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+      <table className="w-full min-w-[1200px] border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
             <th className={`${headerCellClassName} w-24`}>순위</th>
             <th className={`${headerCellClassName} min-w-72`}>팀명</th>
             <th className={`${headerCellClassName} w-24`}>해결</th>
+            <th className={`${headerCellClassName} w-32`}>총시간(min)</th>
+            <th className={`${headerCellClassName} w-24`}>시도</th>
             {scoreboardProblemScores.map((problem) => (
               <th
                 className={problemHeaderCellClassName}
@@ -78,7 +84,6 @@ export default function ContestScoreboardTable({
                 {problem.problem_code}
               </th>
             ))}
-            <th className={`${headerCellClassName} w-32`}>시도</th>
           </tr>
         </thead>
         <tbody>
@@ -94,6 +99,8 @@ export default function ContestScoreboardTable({
               <td className={`${bodyCellClassName} font-bold`}>
                 {row.solved}개
               </td>
+              <td className={bodyCellClassName}>{totalPenalty(row)}</td>
+              <td className={bodyCellClassName}>{submissionCount(row)}</td>
               {scoreboardProblemScores.map((problem) => {
                 const score = row.problem_scores.find(
                   (item) => item.problem_code === problem.problem_code,
@@ -108,7 +115,6 @@ export default function ContestScoreboardTable({
                   </td>
                 );
               })}
-              <td className={bodyCellClassName}>{attemptTime(row)}</td>
             </tr>
           ))}
         </tbody>

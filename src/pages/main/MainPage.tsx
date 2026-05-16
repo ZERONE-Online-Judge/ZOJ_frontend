@@ -21,12 +21,13 @@ export default function MainPage() {
     queryFn: getPublicContests,
     refetchInterval: 15_000,
   });
-  const noticeItems = noticesQuery.data?.slice(0, 5).map((notice) => ({
-    label: notice.emergency ? '긴급' : '공지',
-    title: notice.title,
-    date: formatDateTime(notice.published_at),
-    href: '/notices',
-  })) ?? [];
+  const noticeItems =
+    noticesQuery.data?.slice(0, 5).map((notice) => ({
+      label: notice.emergency ? '긴급' : '공지',
+      title: notice.title,
+      date: formatDateTime(notice.published_at),
+      href: '/notices',
+    })) ?? [];
   const contestItems = sortContestsByStartAt(contestsQuery.data ?? [])
     .slice(0, 6)
     .map(toContestCardData);
@@ -35,8 +36,16 @@ export default function MainPage() {
     <>
       <HeroSection {...hero} />
       <div className="mx-6 my-28 flex flex-col gap-28 lg:mx-36 xl:mx-52">
-        <NoticeSection notices={noticeItems} title="공지사항" titleHref="/notices" />
-        <ContestListSection contests={contestItems} title="대회 목록" titleHref="/contests" />
+        <NoticeSection
+          notices={noticeItems}
+          title="공지사항"
+          titleHref="/notices"
+        />
+        <ContestListSection
+          contests={contestItems}
+          title="대회 목록"
+          titleHref="/contests"
+        />
       </div>
     </>
   );
