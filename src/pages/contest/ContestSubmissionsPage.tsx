@@ -1,27 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
+import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestSubmissionsTable from '@/components/contest/submissions/ContestSubmissionsTable';
 import ContestSubmissionsTabs from '@/components/contest/submissions/ContestSubmissionsTabs';
-import { useSessionStore } from '@/domains/identityAccess/sessionStore';
-import { getContestProblems } from '@/domains/problemManagement/api';
+import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
+import {
+  getContestProblems,
+  getDivisionProblems,
+} from '@/domains/problemManagement/api';
 import { listSubmissions } from '@/domains/submissionScoreboard/api';
-import { createParticipantSessionFromGeneralToken } from '@/domains/teamParticipation/api';
+import { isSubmissionPending } from '@/domains/submissionScoreboard/status';
+import type { Submission } from '@/domains/submissionScoreboard/types';
+import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import PageNotice from '@/shared/ui/PageNotice';
 
 function ContestSubmissionsContent({ contestId }: { contestId: string }) {
-  const generalSession = useSessionStore((state) => state.generalSession);
-  const participantSession = useSessionStore(
-    (state) => state.participantSession,
-  );
-  const setParticipantSession = useSessionStore(
-    (state) => state.setParticipantSession,
-  );
-  const participantContest = generalSession?.participantContests.find(
-    (item) => item.contest.contest_id === contestId,
-  );
-  const activeParticipantSession =
-    participantSession?.contestId === contestId ? participantSession : null;
+  const isDocumentVisible = useDocumentVisibility();
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+  } = useContestParticipantSession(contestId);
   const fallbackTeamName =
     participantContest?.team.team_name ??
     activeParticipantSession?.team.team_name;
@@ -29,50 +31,67 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
     participantContest?.member.name ?? activeParticipantSession?.member.name;
 
   const problemsQuery = useQuery({
-    queryKey: ['contest-problems', contestId, generalSession?.accessToken],
-    queryFn: () => getContestProblems(contestId, generalSession?.accessToken),
+    queryKey: contestQueryKeys.problems(
+      contestId,
+      generalSession?.accessToken,
+      activeParticipantSession?.contestId,
+      activeParticipantSession?.division.division_id,
+      activeParticipantSession?.accessToken,
+    ),
+    queryFn: async () => {
+      const session = await ensureParticipantSession();
+      if (session) {
+        return getDivisionProblems(
+          contestId,
+          session.division.division_id,
+          session.accessToken,
+        );
+      }
+
+      return getContestProblems(contestId, generalSession?.accessToken);
+    },
   });
 
   const submissionsQuery = useQuery({
-    queryKey: [
-      'contest-submissions',
+    queryKey: contestQueryKeys.submissions(
       contestId,
       generalSession?.accessToken,
-      participantSession?.contestId,
-      participantSession?.accessToken,
-    ],
+      activeParticipantSession?.contestId,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
-      if (activeParticipantSession) {
-        return listSubmissions(contestId, activeParticipantSession.accessToken);
-      }
-
-      if (generalSession?.accessToken && participantContest) {
-        const session = await createParticipantSessionFromGeneralToken(
-          contestId,
-          generalSession.accessToken,
-        );
-        setParticipantSession(session);
-
+      const session = await ensureParticipantSession();
+      if (session) {
         return listSubmissions(contestId, session.accessToken);
       }
 
       return listSubmissions(contestId, generalSession?.accessToken);
     },
-    refetchInterval: 5_000,
+    refetchInterval: (query) => {
+      if (!isDocumentVisible) return false;
+
+      const submissions = (query.state.data ?? []) as Submission[];
+      const hasPendingSubmission =
+        !query.state.data ||
+        submissions.some((submission) =>
+          isSubmissionPending(submission.status),
+        );
+
+      return hasPendingSubmission ? 3_000 : 15_000;
+    },
+    refetchIntervalInBackground: false,
   });
   const submissions = submissionsQuery.data ?? [];
   const problems = problemsQuery.data ?? [];
 
   return (
     <ContestPageFrame>
-      <header>
-        <h1 className="text-4xl font-black tracking-normal text-slate-950">
-          채점현황
-        </h1>
-        <p className="mt-4 text-base font-medium text-slate-400">
-          대회 중에는 로그인한 참가팀의 제출만 확인합니다.
-        </p>
-      </header>
+      <PageHeading
+        className="gap-4"
+        description="대회 중에는 로그인한 참가팀의 제출만 확인합니다."
+        title="채점현황"
+        variant="contest"
+      />
 
       <ContestSubmissionsTabs contestId={contestId} />
 
@@ -91,6 +110,7 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
         )}
 
         <ContestSubmissionsTable
+          contestId={contestId}
           fallbackMemberName={fallbackMemberName}
           fallbackTeamName={fallbackTeamName}
           problems={problems}

@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { getPublicContest } from '@/domains/contestAdministration/api';
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
-import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   getDivisionProblems,
   getContestProblems,
@@ -18,7 +19,6 @@ import {
   getScoreboard,
   listSubmissions,
 } from '@/domains/submissionScoreboard/api';
-import { createParticipantSessionFromGeneralToken } from '@/domains/teamParticipation/api';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ContestPageShellProps = {
@@ -53,20 +53,20 @@ function readDismissedEmergencyNotice(key: string | null) {
 
 export default function ContestPageShell({ children }: ContestPageShellProps) {
   const { contestId } = useParams();
+  const resolvedContestId = contestId ?? '';
   const queryClient = useQueryClient();
   const prefetchedKeyRef = useRef<string | null>(null);
   const [dismissedEmergencyNoticeKey, setDismissedEmergencyNoticeKey] =
     useState<string | null>(null);
-  const generalSession = useSessionStore((state) => state.generalSession);
-  const participantSession = useSessionStore(
-    (state) => state.participantSession,
-  );
-  const setParticipantSession = useSessionStore(
-    (state) => state.setParticipantSession,
-  );
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+  } = useContestParticipantSession(resolvedContestId);
   const contestQuery = useQuery({
     enabled: Boolean(contestId),
-    queryKey: ['public-contest', contestId],
+    queryKey: contestQueryKeys.publicContest(contestId),
     queryFn: () => getPublicContest(contestId!),
     refetchInterval: 15_000,
   });
@@ -90,82 +90,88 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     if (!contestId || !detail) return;
 
     const currentContestId = contestId;
-    const generalToken = generalSession?.accessToken;
-    const participantContest = generalSession?.participantContests.find(
-      (item) => item.contest.contest_id === currentContestId,
-    );
-    const prefetchKey = [
-      currentContestId,
-      generalToken ?? 'public',
-      participantContest?.division.division_id ?? 'public',
-    ].join(':');
-
-    if (prefetchedKeyRef.current === prefetchKey) return;
-    prefetchedKeyRef.current = prefetchKey;
+    let cancelled = false;
 
     async function prefetchContestPageData() {
-      let activeParticipantSession =
-        participantSession?.contestId === currentContestId
-          ? participantSession
-          : null;
+      const generalToken = generalSession?.accessToken;
+      const currentParticipantSession =
+        activeParticipantSession ?? (await ensureParticipantSession());
+      if (cancelled) return;
 
-      if (!activeParticipantSession && generalToken && participantContest) {
-        activeParticipantSession =
-          await createParticipantSessionFromGeneralToken(
-            currentContestId,
-            generalToken,
-          );
-        setParticipantSession(activeParticipantSession);
-      }
+      const divisionId = currentParticipantSession?.division.division_id;
+      const participantToken = currentParticipantSession?.accessToken;
+      const participantContestId = currentParticipantSession?.contestId;
+      const token = participantToken ?? generalToken;
+      const prefetchKey = [
+        currentContestId,
+        generalToken ?? 'public',
+        divisionId ?? participantContest?.division.division_id ?? 'public',
+        participantToken ?? 'no-participant-token',
+      ].join(':');
 
-      const token = activeParticipantSession?.accessToken ?? generalToken;
-      const divisionId = activeParticipantSession?.division.division_id;
+      if (prefetchedKeyRef.current === prefetchKey) return;
+      prefetchedKeyRef.current = prefetchKey;
 
       await Promise.allSettled([
         queryClient.prefetchQuery({
-          queryKey: ['contest-problems', currentContestId, generalToken],
+          queryKey: contestQueryKeys.problems(
+            currentContestId,
+            generalToken,
+            participantContestId,
+            divisionId,
+            participantToken,
+          ),
           queryFn: () =>
             divisionId
               ? getDivisionProblems(currentContestId, divisionId, token)
               : getContestProblems(currentContestId, token),
         }),
         queryClient.prefetchQuery({
-          queryKey: ['contest-submissions', currentContestId, generalToken],
+          queryKey: contestQueryKeys.submissions(
+            currentContestId,
+            generalToken,
+            participantContestId,
+            participantToken,
+          ),
           queryFn: () => listSubmissions(currentContestId, token),
         }),
         queryClient.prefetchQuery({
-          queryKey: [
-            'contest-scoreboard',
+          queryKey: contestQueryKeys.scoreboard(
             currentContestId,
             generalToken,
-            activeParticipantSession?.contestId,
+            participantContestId,
             divisionId,
-            activeParticipantSession?.accessToken,
-          ],
+            participantToken,
+          ),
           queryFn: () =>
             divisionId
               ? getDivisionScoreboard(currentContestId, divisionId, token)
               : getScoreboard(currentContestId, token),
         }),
         queryClient.prefetchQuery({
-          queryKey: ['contest-notices', currentContestId, generalToken],
+          queryKey: contestQueryKeys.notices(currentContestId, token),
           queryFn: () => getContestNotices(currentContestId, token),
         }),
         queryClient.prefetchQuery({
-          queryKey: ['contest-questions', currentContestId, generalToken],
+          queryKey: contestQueryKeys.questions(currentContestId, token),
           queryFn: () => getContestQuestions(currentContestId, token),
         }),
       ]);
     }
 
     void prefetchContestPageData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     contestId,
     detail,
     generalSession,
-    participantSession,
+    activeParticipantSession,
+    ensureParticipantSession,
+    participantContest,
     queryClient,
-    setParticipantSession,
   ]);
 
   if (!contestId) {

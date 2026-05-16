@@ -11,7 +11,33 @@ export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
 
 function browserStorage() {
+  return typeof window === 'undefined' ? null : window.sessionStorage;
+}
+
+function legacyBrowserStorage() {
   return typeof window === 'undefined' ? null : window.localStorage;
+}
+
+function readStoredSessionValue(key: string) {
+  const storage = browserStorage();
+  if (!storage) return null;
+
+  const current = storage.getItem(key);
+  if (current) return current;
+
+  const legacyStorage = legacyBrowserStorage();
+  const legacy = legacyStorage?.getItem(key) ?? null;
+  if (!legacy) return null;
+
+  storage.setItem(key, legacy);
+  legacyStorage?.removeItem(key);
+
+  return legacy;
+}
+
+function removeStoredSessionValue(key: string) {
+  browserStorage()?.removeItem(key);
+  legacyBrowserStorage()?.removeItem(key);
 }
 
 export function emitSessionSync() {
@@ -25,10 +51,10 @@ export function loadStoredParticipantSession(): ParticipantSession | null {
   if (!storage) return null;
 
   try {
-    const raw = storage.getItem(PARTICIPANT_SESSION_KEY);
+    const raw = readStoredSessionValue(PARTICIPANT_SESSION_KEY);
     return raw ? (JSON.parse(raw) as ParticipantSession) : null;
   } catch {
-    storage.removeItem(PARTICIPANT_SESSION_KEY);
+    removeStoredSessionValue(PARTICIPANT_SESSION_KEY);
     return null;
   }
 }
@@ -39,8 +65,9 @@ export function saveParticipantSession(session: ParticipantSession | null) {
 
   if (session) {
     storage.setItem(PARTICIPANT_SESSION_KEY, JSON.stringify(session));
+    legacyBrowserStorage()?.removeItem(PARTICIPANT_SESSION_KEY);
   } else {
-    storage.removeItem(PARTICIPANT_SESSION_KEY);
+    removeStoredSessionValue(PARTICIPANT_SESSION_KEY);
   }
 }
 
@@ -73,12 +100,12 @@ export function isValidStaffSession(session: unknown): session is StaffSession {
 
   return Boolean(
     candidate &&
-      typeof candidate.accessToken === 'string' &&
-      typeof candidate.refreshToken === 'string' &&
-      candidate.staff &&
-      typeof candidate.staff.email === 'string' &&
-      typeof candidate.staff.display_name === 'string' &&
-      typeof candidate.staff.is_service_master === 'boolean',
+    typeof candidate.accessToken === 'string' &&
+    typeof candidate.refreshToken === 'string' &&
+    candidate.staff &&
+    typeof candidate.staff.email === 'string' &&
+    typeof candidate.staff.display_name === 'string' &&
+    typeof candidate.staff.is_service_master === 'boolean',
   );
 }
 
@@ -103,16 +130,22 @@ export function loadStoredGeneralSession(): GeneralSession | null {
   if (!storage) return null;
 
   try {
-    const raw = storage.getItem(GENERAL_SESSION_KEY);
+    const raw = readStoredSessionValue(GENERAL_SESSION_KEY);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<GeneralSession>;
-    if (!parsed || typeof parsed.accessToken !== 'string' || typeof parsed.refreshToken !== 'string' || !parsed.account) {
-      storage.removeItem(GENERAL_SESSION_KEY);
+    if (
+      !parsed ||
+      typeof parsed.accessToken !== 'string' ||
+      typeof parsed.refreshToken !== 'string' ||
+      !parsed.account
+    ) {
+      removeStoredSessionValue(GENERAL_SESSION_KEY);
       return null;
     }
 
-    let operatorSession: StaffSession | null | undefined = parsed.operatorSession ?? null;
+    let operatorSession: StaffSession | null | undefined =
+      parsed.operatorSession ?? null;
     if (operatorSession && !isValidStaffSession(operatorSession)) {
       operatorSession = null;
     }
@@ -126,7 +159,7 @@ export function loadStoredGeneralSession(): GeneralSession | null {
       operatorSession,
     } as GeneralSession;
   } catch {
-    storage.removeItem(GENERAL_SESSION_KEY);
+    removeStoredSessionValue(GENERAL_SESSION_KEY);
     return null;
   }
 }
@@ -137,8 +170,8 @@ export function saveGeneralSession(session: GeneralSession | null) {
 
   if (session) {
     storage.setItem(GENERAL_SESSION_KEY, JSON.stringify(session));
+    legacyBrowserStorage()?.removeItem(GENERAL_SESSION_KEY);
   } else {
-    storage.removeItem(GENERAL_SESSION_KEY);
+    removeStoredSessionValue(GENERAL_SESSION_KEY);
   }
 }
-

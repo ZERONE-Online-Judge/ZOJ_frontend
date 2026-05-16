@@ -1,9 +1,11 @@
+import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { Problem } from '@/domains/problemManagement/types';
 import { formatRelativeTime } from '@/shared/lib/dateTime';
 import ContestSubmissionResultBadge from '@/components/contest/submissions/ContestSubmissionResultBadge';
 
 type ContestSubmissionsTableProps = {
+  contestId: string;
   fallbackMemberName?: string;
   fallbackTeamName?: string;
   problems?: Problem[];
@@ -89,7 +91,19 @@ function submissionProblemTitle(
   return `${problem.problem_code}. ${problem.title}`;
 }
 
+function submissionProblemId(
+  submission: Submission,
+  problemById: Map<string, Problem>,
+) {
+  return (
+    submission.problem?.problem_id ??
+    problemById.get(submission.problem_id)?.problem_id ??
+    submission.problem_id
+  );
+}
+
 export default function ContestSubmissionsTable({
+  contestId,
   fallbackMemberName,
   fallbackTeamName,
   problems = [],
@@ -148,10 +162,18 @@ export default function ContestSubmissionsTable({
                   className={`${cellClassName} font-bold`}
                   title={submissionProblemTitle(submission, problemById)}
                 >
-                  {submissionProblem(submission, problemById)}
+                  <Link
+                    className="hover:text-zoj-blue transition"
+                    to={`/contests/${contestId}/problems/${submissionProblemId(submission, problemById)}`}
+                  >
+                    {submissionProblem(submission, problemById)}
+                  </Link>
                 </td>
                 <td className={cellClassName}>
-                  <ContestSubmissionResultBadge status={submission.status} />
+                  <ContestSubmissionResultBadge
+                    judgeMessage={submission.judge_message}
+                    status={submission.status}
+                  />
                 </td>
                 <td className={cellClassName}>
                   {formatMemory(submissionMemory(submission))}
@@ -159,7 +181,14 @@ export default function ContestSubmissionsTable({
                 <td className={cellClassName}>
                   {formatTimeMs(submissionTime(submission))}
                 </td>
-                <td className={cellClassName}>{submission.language}</td>
+                <td className={cellClassName}>
+                  <Link
+                    className="hover:text-zoj-blue font-bold transition"
+                    to={`/contests/${contestId}/problems/${submissionProblemId(submission, problemById)}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
+                  >
+                    {submission.language}
+                  </Link>
+                </td>
                 <td className={cellClassName}>
                   {formatCodeLength(submission)}
                 </td>

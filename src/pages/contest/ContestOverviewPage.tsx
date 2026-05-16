@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import type { Contest } from '@/domains/contestAdministration/types';
@@ -147,14 +148,12 @@ export default function ContestOverviewPage() {
 
         return (
           <ContestPageFrame>
-            <header>
-              <h1 className="text-4xl font-black tracking-normal text-slate-950">
-                {contest.title}
-              </h1>
-              <p className="mt-3 text-base font-medium text-slate-400">
-                {divisionName}
-              </p>
-            </header>
+            <PageHeading
+              className="gap-3"
+              description={divisionName}
+              title={contest.title}
+              variant="contest"
+            />
 
             <nav aria-label="대회 메뉴" className="mt-8">
               <ul className="flex flex-wrap items-center gap-3">
