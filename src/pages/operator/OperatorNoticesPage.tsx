@@ -40,6 +40,8 @@ const emptyNoticeForm: NoticeForm = {
   visibility: 'participants',
 };
 
+type NoticeEditorMode = 'notice' | 'emergency';
+
 export default function OperatorNoticesPage() {
   const { contestId } = useParams();
 
@@ -72,6 +74,7 @@ function OperatorNoticesContent({
   const [form, setForm] = useState(emptyNoticeForm);
   const [emergencyNotice, setEmergencyNotice] = useState('');
   const [formError, setFormError] = useState('');
+  const [editorMode, setEditorMode] = useState<NoticeEditorMode>('notice');
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId],
@@ -143,6 +146,7 @@ function OperatorNoticesContent({
       title: notice.title,
       visibility: notice.visibility,
     });
+    setEditorMode('notice');
   }
 
   return (
@@ -161,7 +165,153 @@ function OperatorNoticesContent({
         />
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+      <div className="grid gap-6">
+        <OperatorPanel
+          actions={
+            <div className="inline-flex rounded border border-slate-200 bg-slate-50 p-1">
+              <button
+                className={[
+                  'h-9 rounded px-4 text-sm font-black transition',
+                  editorMode === 'notice'
+                    ? 'bg-indigo-950 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-950',
+                ].join(' ')}
+                onClick={() => setEditorMode('notice')}
+                type="button"
+              >
+                공지 작성
+              </button>
+              <button
+                className={[
+                  'h-9 rounded px-4 text-sm font-black transition',
+                  editorMode === 'emergency'
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-950',
+                ].join(' ')}
+                onClick={() => setEditorMode('emergency')}
+                type="button"
+              >
+                긴급 문구
+              </button>
+            </div>
+          }
+          description={
+            editorMode === 'notice'
+              ? '새 공지를 작성하거나 기존 공지를 수정합니다.'
+              : '대회 페이지 헤더 아래에 짧게 노출되는 긴급 문구입니다.'
+          }
+          title={editorMode === 'notice' ? '공지 작성' : '긴급 문구'}
+        >
+          {editorMode === 'notice' ? (
+            <form className="grid gap-4" onSubmit={handleSubmit}>
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+                <TextInput
+                  label="제목"
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, title: value }))
+                  }
+                  value={form.title}
+                />
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  공개 범위
+                  <select
+                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        visibility: event.target
+                          .value as NoticeForm['visibility'],
+                      }))
+                    }
+                    value={form.visibility}
+                  >
+                    <option value="participants">참가자</option>
+                    <option value="public">공개</option>
+                  </select>
+                </label>
+              </div>
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                본문
+                <textarea
+                  className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, body: event.target.value }))
+                  }
+                  value={form.body}
+                />
+              </label>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Toggle
+                    checked={form.pinned}
+                    label="상단 고정"
+                    onChange={(checked) =>
+                      setForm((prev) => ({ ...prev, pinned: checked }))
+                    }
+                  />
+                  <Toggle
+                    checked={form.emergency}
+                    label="긴급 공지"
+                    onChange={(checked) =>
+                      setForm((prev) => ({ ...prev, emergency: checked }))
+                    }
+                  />
+                </div>
+                <button
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
+                  disabled={saveNoticeMutation.isPending}
+                  type="submit"
+                >
+                  <NoticeIcon />
+                  {form.noticeId ? '공지 수정' : '공지 등록'}
+                </button>
+              </div>
+              {formError || saveNoticeMutation.error ? (
+                <ErrorBox
+                  error={saveNoticeMutation.error}
+                  fallback={formError || '공지 저장에 실패했습니다'}
+                />
+              ) : null}
+            </form>
+          ) : (
+            <div className="grid gap-4">
+              {contest?.emergency_notice ? (
+                <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {contest.emergency_notice}
+                </p>
+              ) : null}
+              <form
+                className="grid gap-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveEmergencyMutation.mutate();
+                }}
+              >
+                <TextInput
+                  label="긴급 문구"
+                  onChange={setEmergencyNotice}
+                  value={emergencyNotice}
+                />
+                {saveEmergencyMutation.error ? (
+                  <ErrorBox
+                    error={saveEmergencyMutation.error}
+                    fallback="긴급 문구 저장에 실패했습니다"
+                  />
+                ) : null}
+                <div className="flex justify-end">
+                  <button
+                    className="h-10 rounded bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700 disabled:bg-slate-300"
+                    disabled={saveEmergencyMutation.isPending}
+                    type="submit"
+                  >
+                    긴급 문구 저장
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </OperatorPanel>
+
         <OperatorPanel
           description="참가자 화면 상단에 표시될 대회 공지입니다."
           title="공지 목록"
@@ -212,116 +362,6 @@ function OperatorNoticesContent({
             )}
           </div>
         </OperatorPanel>
-
-        <div className="grid gap-6">
-          <OperatorPanel
-            description="새 공지를 작성하거나 기존 공지를 수정합니다."
-            title="공지 작성"
-          >
-            <form className="grid gap-4" onSubmit={handleSubmit}>
-              <TextInput
-                label="제목"
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, title: value }))
-                }
-                value={form.title}
-              />
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                본문
-                <textarea
-                  className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, body: event.target.value }))
-                  }
-                  value={form.body}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                공개 범위
-                <select
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      visibility: event.target
-                        .value as NoticeForm['visibility'],
-                    }))
-                  }
-                  value={form.visibility}
-                >
-                  <option value="participants">참가자</option>
-                  <option value="public">공개</option>
-                </select>
-              </label>
-              <div className="grid gap-2">
-                <Toggle
-                  checked={form.pinned}
-                  label="상단 고정"
-                  onChange={(checked) =>
-                    setForm((prev) => ({ ...prev, pinned: checked }))
-                  }
-                />
-                <Toggle
-                  checked={form.emergency}
-                  label="긴급 공지"
-                  onChange={(checked) =>
-                    setForm((prev) => ({ ...prev, emergency: checked }))
-                  }
-                />
-              </div>
-              {formError || saveNoticeMutation.error ? (
-                <ErrorBox
-                  error={saveNoticeMutation.error}
-                  fallback={formError || '공지 저장에 실패했습니다'}
-                />
-              ) : null}
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
-                disabled={saveNoticeMutation.isPending}
-                type="submit"
-              >
-                <NoticeIcon />
-                {form.noticeId ? '공지 수정' : '공지 등록'}
-              </button>
-            </form>
-          </OperatorPanel>
-
-          <OperatorPanel
-            description="대회 페이지 헤더 아래에 짧게 노출되는 긴급 문구입니다."
-            title="긴급 문구"
-          >
-            {contest?.emergency_notice ? (
-              <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                {contest.emergency_notice}
-              </p>
-            ) : null}
-            <form
-              className="grid gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                saveEmergencyMutation.mutate();
-              }}
-            >
-              <TextInput
-                label="긴급 문구"
-                onChange={setEmergencyNotice}
-                value={emergencyNotice}
-              />
-              {saveEmergencyMutation.error ? (
-                <ErrorBox
-                  error={saveEmergencyMutation.error}
-                  fallback="긴급 문구 저장에 실패했습니다"
-                />
-              ) : null}
-              <button
-                className="h-10 rounded bg-rose-600 px-4 text-sm font-black text-white"
-                type="submit"
-              >
-                긴급 문구 저장
-              </button>
-            </form>
-          </OperatorPanel>
-        </div>
       </div>
     </PageLayout>
   );

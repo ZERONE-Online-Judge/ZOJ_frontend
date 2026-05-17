@@ -133,6 +133,18 @@ export function updateParticipantTeam(
   );
 }
 
+export function deleteParticipantTeam(
+  contestId: string,
+  participantTeamId: string,
+  token: string,
+) {
+  return apiRequest<ParticipantTeam>(
+    `/operator/contests/${contestId}/participants/${participantTeamId}`,
+    token,
+    { method: 'DELETE' },
+  );
+}
+
 export function addParticipantTeamMember(
   contestId: string,
   participantTeamId: string,

@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
@@ -28,6 +30,9 @@ export default function ContestCard({
   href,
   className,
 }: ContestCardProps) {
+  const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState(false);
+  const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
+    useState(false);
   const generalSession = useSessionStore((state) => state.generalSession);
   const loginHref = contestId
     ? `/login?reason=contest&contestId=${encodeURIComponent(contestId)}`
@@ -35,10 +40,21 @@ export default function ContestCard({
   const contestHref = contestId
     ? `/contests/${encodeURIComponent(contestId)}`
     : undefined;
-  const cardHref = href ?? (generalSession ? contestHref : loginHref);
+  const isParticipantContest = contestId
+    ? generalSession?.participantContests.some(
+        (item) => item.contest.contest_id === contestId,
+      )
+    : true;
+  const canOpenContest = !generalSession || !contestId || isParticipantContest;
+  const cardHref = canOpenContest
+    ? (href ?? (generalSession ? contestHref : loginHref))
+    : undefined;
+  const canShowUnavailableMessage = canOpenContest && !cardHref;
   const cardClassName = [
-    'rounded border border-slate-200 bg-white px-8 py-7 transition hover:border-zoj-blue hover:shadow-sm',
-    cardHref ? 'cursor-pointer' : '',
+    'rounded border border-slate-200 bg-white px-8 py-7 transition',
+    cardHref || !canOpenContest || canShowUnavailableMessage
+      ? 'hover:border-zoj-blue hover:shadow-sm'
+      : 'opacity-70',
     className,
   ]
     .filter(Boolean)
@@ -83,9 +99,41 @@ export default function ContestCard({
   return (
     <li className={cardClassName}>
       {cardHref ? (
-        <Link className="block h-full" to={cardHref}>
+        <Link className="-m-8 block h-[calc(100%+4rem)] p-8" to={cardHref}>
           {cardContent}
         </Link>
+      ) : !canOpenContest ? (
+        <>
+          <button
+            aria-haspopup="dialog"
+            className="-m-8 block h-[calc(100%+4rem)] w-[calc(100%+4rem)] cursor-pointer p-8 text-left"
+            onClick={() => setIsAccessDeniedOpen(true)}
+            type="button"
+          >
+            {cardContent}
+          </button>
+          {isAccessDeniedOpen ? (
+            <ContestAccessDeniedModal
+              onClose={() => setIsAccessDeniedOpen(false)}
+            />
+          ) : null}
+        </>
+      ) : canShowUnavailableMessage ? (
+        <button
+          className="-m-8 block h-[calc(100%+4rem)] w-[calc(100%+4rem)] p-8 text-left"
+          onClick={() => setIsUnavailableMessageVisible(true)}
+          type="button"
+        >
+          {cardContent}
+          {isUnavailableMessageVisible ? (
+            <p
+              className="mt-5 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
+              role="alert"
+            >
+              {contestListItemText.unavailableMessage}
+            </p>
+          ) : null}
+        </button>
       ) : (
         cardContent
       )}

@@ -67,7 +67,7 @@ function OperatorScoreboardContent({
       divisionId === 'all'
         ? getOperatorScoreboard(contestId, token)
         : getOperatorDivisionScoreboard(contestId, divisionId, token),
-    refetchInterval: isVisible ? 10_000 : false,
+    refetchInterval: isVisible ? 1_000 : false,
     refetchIntervalInBackground: false,
   });
 

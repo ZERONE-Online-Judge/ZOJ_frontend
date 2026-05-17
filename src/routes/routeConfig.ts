@@ -14,6 +14,7 @@ import JudgeStatusPage from '@/pages/public/JudgeStatusPage';
 import NotFoundPage from '@/pages/public/NotFoundPage';
 import NoticesPage from '@/pages/public/NoticesPage';
 import OperatorHomePage from '@/pages/operator/OperatorHomePage';
+import OperatorBoardPage from '@/pages/operator/OperatorBoardPage';
 import OperatorNoticesPage from '@/pages/operator/OperatorNoticesPage';
 import OperatorParticipantsPage from '@/pages/operator/OperatorParticipantsPage';
 import OperatorProblemsPage from '@/pages/operator/OperatorProblemsPage';
@@ -133,6 +134,12 @@ export const appRoutes = [
     name: routeText.operatorNotices,
     path: '/operator/contests/:contestId/notices',
     Component: OperatorNoticesPage,
+    showInNavigation: false,
+  },
+  {
+    name: routeText.operatorBoard,
+    path: '/operator/contests/:contestId/board',
+    Component: OperatorBoardPage,
     showInNavigation: false,
   },
   {

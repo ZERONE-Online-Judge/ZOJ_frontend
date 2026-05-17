@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 
@@ -25,10 +27,20 @@ export default function ContestListItem({
   isOpen = false,
   href,
 }: ContestListItemProps) {
+  const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState(false);
+  const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
+    useState(false);
   const generalSession = useSessionStore((state) => state.generalSession);
   const loginHref = `/login?reason=contest&contestId=${encodeURIComponent(contestId)}`;
   const contestHref = `/contests/${encodeURIComponent(contestId)}`;
-  const itemHref = href ?? (generalSession ? contestHref : loginHref);
+  const isParticipantContest = generalSession?.participantContests.some(
+    (item) => item.contest.contest_id === contestId,
+  );
+  const canOpenContest = !generalSession || isParticipantContest;
+  const itemHref = canOpenContest
+    ? (href ?? (generalSession ? contestHref : loginHref))
+    : undefined;
+  const canShowUnavailableMessage = canOpenContest && !itemHref;
 
   const content = (
     <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -70,11 +82,50 @@ export default function ContestListItem({
   );
 
   return (
-    <li className="hover:border-zoj-blue rounded-md border border-slate-200 bg-white px-6 py-5 transition hover:shadow-sm">
+    <li
+      className={[
+        'rounded-md border border-slate-200 bg-white px-6 py-5 transition',
+        itemHref || !canOpenContest || canShowUnavailableMessage
+          ? 'hover:border-zoj-blue hover:shadow-sm'
+          : 'opacity-70',
+      ].join(' ')}
+    >
       {itemHref ? (
-        <Link className="block" to={itemHref}>
+        <Link className="-mx-6 -my-5 block px-6 py-5" to={itemHref}>
           {content}
         </Link>
+      ) : !canOpenContest ? (
+        <>
+          <button
+            aria-haspopup="dialog"
+            className="-mx-6 -my-5 block w-[calc(100%+3rem)] cursor-pointer px-6 py-5 text-left"
+            onClick={() => setIsAccessDeniedOpen(true)}
+            type="button"
+          >
+            {content}
+          </button>
+          {isAccessDeniedOpen ? (
+            <ContestAccessDeniedModal
+              onClose={() => setIsAccessDeniedOpen(false)}
+            />
+          ) : null}
+        </>
+      ) : canShowUnavailableMessage ? (
+        <button
+          className="-mx-6 -my-5 block w-[calc(100%+3rem)] px-6 py-5 text-left"
+          onClick={() => setIsUnavailableMessageVisible(true)}
+          type="button"
+        >
+          {content}
+          {isUnavailableMessageVisible ? (
+            <p
+              className="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
+              role="alert"
+            >
+              {contestListItemText.unavailableMessage}
+            </p>
+          ) : null}
+        </button>
       ) : (
         content
       )}

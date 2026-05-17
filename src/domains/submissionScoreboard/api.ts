@@ -60,8 +60,41 @@ export function getScoreboard(contestId: string, token?: string) {
   return apiRequest<ScoreboardResponse>(`/contests/${contestId}/scoreboard`, token);
 }
 
+export function waitScoreboard(
+  contestId: string,
+  token: string | undefined,
+  options: { waitSeconds?: number; pollIntervalSeconds?: number } = {},
+) {
+  const search = new URLSearchParams({
+    wait_seconds: String(options.waitSeconds ?? 4),
+    poll_interval_seconds: String(options.pollIntervalSeconds ?? 0.5),
+  });
+
+  return apiRequest<ScoreboardResponse>(
+    `/contests/${contestId}/scoreboard:wait?${search}`,
+    token,
+  );
+}
+
 export function getDivisionScoreboard(contestId: string, divisionId: string, token?: string) {
   return apiRequest<ScoreboardResponse>(`/contests/${contestId}/divisions/${divisionId}/scoreboard`, token);
+}
+
+export function waitDivisionScoreboard(
+  contestId: string,
+  divisionId: string,
+  token: string | undefined,
+  options: { waitSeconds?: number; pollIntervalSeconds?: number } = {},
+) {
+  const search = new URLSearchParams({
+    wait_seconds: String(options.waitSeconds ?? 4),
+    poll_interval_seconds: String(options.pollIntervalSeconds ?? 0.5),
+  });
+
+  return apiRequest<ScoreboardResponse>(
+    `/contests/${contestId}/divisions/${divisionId}/scoreboard:wait?${search}`,
+    token,
+  );
 }
 
 export function listOperatorSubmissions(contestId: string, token: string) {

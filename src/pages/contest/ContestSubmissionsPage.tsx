@@ -4,6 +4,8 @@ import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestSubmissionsTable from '@/components/contest/submissions/ContestSubmissionsTable';
 import ContestSubmissionsTabs from '@/components/contest/submissions/ContestSubmissionsTabs';
+import { canViewContestResource } from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -16,7 +18,13 @@ import type { Submission } from '@/domains/submissionScoreboard/types';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import PageNotice from '@/shared/ui/PageNotice';
 
-function ContestSubmissionsContent({ contestId }: { contestId: string }) {
+function ContestSubmissionsContent({
+  contest,
+  contestId,
+}: {
+  contest: Contest;
+  contestId: string;
+}) {
   const isDocumentVisible = useDocumentVisibility();
   const {
     activeParticipantSession,
@@ -29,8 +37,20 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
     activeParticipantSession?.team.team_name;
   const fallbackMemberName =
     participantContest?.member.name ?? activeParticipantSession?.member.name;
+  const hasSessionAccess = Boolean(participantContest);
+  const canViewSubmissions = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.submission_public_after_end,
+  );
+  const canViewProblems = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.problem_public_after_end,
+  );
 
   const problemsQuery = useQuery({
+    enabled: canViewSubmissions && canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
@@ -53,6 +73,7 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
   });
 
   const submissionsQuery = useQuery({
+    enabled: canViewSubmissions,
     queryKey: contestQueryKeys.submissions(
       contestId,
       generalSession?.accessToken,
@@ -96,6 +117,12 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
       <ContestSubmissionsTabs contestId={contestId} />
 
       <div className="mt-9">
+        {!canViewSubmissions ? (
+          <PageNotice
+            message="대회 제출 현황을 볼 수 없습니다."
+            status="idle"
+          />
+        ) : null}
         {submissionsQuery.isLoading && (
           <PageNotice
             message="제출 현황을 불러오는 중입니다."
@@ -109,13 +136,15 @@ function ContestSubmissionsContent({ contestId }: { contestId: string }) {
           />
         )}
 
-        <ContestSubmissionsTable
-          contestId={contestId}
-          fallbackMemberName={fallbackMemberName}
-          fallbackTeamName={fallbackTeamName}
-          problems={problems}
-          submissions={submissions}
-        />
+        {canViewSubmissions ? (
+          <ContestSubmissionsTable
+            contestId={contestId}
+            fallbackMemberName={fallbackMemberName}
+            fallbackTeamName={fallbackTeamName}
+            problems={problems}
+            submissions={submissions}
+          />
+        ) : null}
 
         {!submissionsQuery.isLoading && submissions.length === 0 ? (
           <PageNotice message="표시할 제출이 없습니다." status="idle" />
@@ -129,7 +158,10 @@ export default function ContestSubmissionsPage() {
   return (
     <ContestPageShell>
       {({ contest }) => (
-        <ContestSubmissionsContent contestId={contest.contest_id} />
+        <ContestSubmissionsContent
+          contest={contest}
+          contestId={contest.contest_id}
+        />
       )}
     </ContestPageShell>
   );

@@ -636,7 +636,7 @@ function DarkButton({
 }) {
   return (
     <button
-      className="h-9 rounded-md bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+      className="h-9 rounded-md bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-slate-800 disabled:bg-slate-300"
       disabled={disabled}
       onClick={onClick}
       type={type}

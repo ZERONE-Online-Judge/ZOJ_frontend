@@ -66,10 +66,10 @@ export async function getGeneralMe(token: string, previous?: GeneralSession | nu
   return session;
 }
 
-export async function refreshGeneralSession(refreshToken: string, previous?: GeneralSession | null) {
+export async function refreshGeneralSession(refreshToken?: string, previous?: GeneralSession | null) {
   const data = await apiRequest<GeneralSessionApi>('/auth/general/refresh', undefined, {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
   });
   const session = mapGeneralSession(data, previous);
   saveGeneralSession(session);
@@ -79,7 +79,7 @@ export async function refreshGeneralSession(refreshToken: string, previous?: Gen
 export async function logoutGeneral(token: string, refreshToken?: string) {
   return apiRequest<{ revoked: boolean }>('/auth/general/logout', token, {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
   });
 }
 
@@ -111,10 +111,10 @@ export async function getStaffMe(token: string) {
   return data;
 }
 
-export async function refreshStaffSession(refreshToken: string): Promise<StaffSession> {
+export async function refreshStaffSession(refreshToken?: string): Promise<StaffSession> {
   const data = await apiRequest<StaffSessionApi>('/auth/staff/refresh', undefined, {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
   });
   return mapStaffSession(data);
 }
@@ -122,6 +122,6 @@ export async function refreshStaffSession(refreshToken: string): Promise<StaffSe
 export async function logoutStaff(token: string, refreshToken?: string) {
   return apiRequest<{ revoked: boolean }>('/auth/staff/logout', token, {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
   });
 }

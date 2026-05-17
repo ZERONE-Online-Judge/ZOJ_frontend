@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
-import type { Contest } from '@/domains/contestAdministration/types';
+import NoticeSection from '@/components/main/NoticeSection';
+import type { Contest, Division } from '@/domains/contestAdministration/types';
+import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { getContestNotices } from '@/domains/serviceCommunication/api';
+import type { ContestNotice } from '@/domains/serviceCommunication/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
-import { formatTime, timeLeft } from '@/shared/lib/dateTime';
+import { formatDateTime, formatTime, timeLeft } from '@/shared/lib/dateTime';
+import PageNotice from '@/shared/ui/PageNotice';
 
 const overviewTabs = [
   { label: '개요', path: '' },
@@ -105,7 +111,68 @@ function getRemainingTime(contest: Contest, now: number) {
   return timeLeft(contest.end_at);
 }
 
-export default function ContestOverviewPage() {
+function sortNotices(notices: ContestNotice[]) {
+  return [...notices].sort(
+    (a, b) =>
+      Number(b.emergency) - Number(a.emergency) ||
+      Number(b.pinned) - Number(a.pinned) ||
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+  );
+}
+
+function NoticePreview({
+  contestId,
+  notices,
+  isError,
+  isLoading,
+}: {
+  contestId: string;
+  notices: ContestNotice[];
+  isError: boolean;
+  isLoading: boolean;
+}) {
+  return (
+    <NoticeSection
+      compact
+      notices={notices.map((notice) => ({
+        date: formatDateTime(notice.published_at),
+        href: `/contests/${contestId}/board`,
+        label: notice.emergency ? '긴급' : notice.pinned ? '고정' : '공지',
+        title: notice.title,
+      }))}
+      title="공지사항"
+      titleHref={`/contests/${contestId}/board`}
+    >
+      {isLoading || isError || notices.length === 0 ? (
+        <div className="border-y border-slate-200">
+          {isLoading ? (
+            <PageNotice
+              message="공지사항을 불러오는 중입니다."
+              status="loading"
+            />
+          ) : null}
+          {isError ? (
+            <PageNotice
+              message="공지사항을 불러오지 못했습니다."
+              status="error"
+            />
+          ) : null}
+          {!isLoading && !isError && notices.length === 0 ? (
+            <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
+          ) : null}
+        </div>
+      ) : null}
+    </NoticeSection>
+  );
+}
+
+function ContestOverviewContent({
+  contest,
+  divisions,
+}: {
+  contest: Contest;
+  divisions: Division[];
+}) {
   const generalSession = useSessionStore((state) => state.generalSession);
   const participantSession = useSessionStore(
     (state) => state.participantSession,
@@ -118,92 +185,110 @@ export default function ContestOverviewPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const noticesQuery = useQuery({
+    queryKey: contestQueryKeys.notices(
+      contest.contest_id,
+      generalSession?.accessToken,
+    ),
+    queryFn: () =>
+      getContestNotices(contest.contest_id, generalSession?.accessToken),
+    refetchInterval: 15_000,
+  });
+  const notices = useMemo(
+    () => sortNotices(noticesQuery.data ?? []).slice(0, 3),
+    [noticesQuery.data],
+  );
+  const participantContest = generalSession?.participantContests.find(
+    (item) => item.contest.contest_id === contest.contest_id,
+  );
+  const teamName =
+    participantContest?.team.team_name ??
+    (participantSession?.contestId === contest.contest_id
+      ? participantSession.team.team_name
+      : '팀 정보 없음');
+  const memberName =
+    participantContest?.member.name ??
+    participantSession?.member.name ??
+    generalSession?.account.display_name ??
+    '로그인 필요';
+  const memberEmail =
+    participantContest?.member.email ??
+    participantSession?.member.email ??
+    generalSession?.account.email ??
+    '참가자 이메일';
+  const divisionName =
+    participantContest?.division.name ??
+    participantSession?.division.name ??
+    divisions[0]?.name ??
+    'division';
+  const remainingTime = getRemainingTime(contest, now);
+
+  return (
+    <ContestPageFrame>
+      <PageHeading
+        className="gap-3"
+        description={divisionName}
+        title={contest.title}
+        variant="contest"
+      />
+
+      <nav aria-label="대회 메뉴" className="mt-8">
+        <ul className="flex flex-wrap items-center gap-3">
+          {overviewTabs.map((tab) => {
+            const to = tab.path
+              ? `/contests/${contest.contest_id}/${tab.path}`
+              : `/contests/${contest.contest_id}`;
+
+            return (
+              <li key={tab.path || 'overview'}>
+                <NavLink
+                  className={({ isActive }) =>
+                    [
+                      'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
+                      isActive
+                        ? 'border-slate-950 bg-slate-950 text-white'
+                        : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
+                    ].join(' ')
+                  }
+                  end={!tab.path}
+                  to={to}
+                >
+                  {tab.label}
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <section className="mt-8 grid gap-8 md:grid-cols-3">
+        <OverviewCard icon="user" subtitle={memberEmail} title={memberName} />
+        <OverviewCard icon="team" subtitle={divisionName} title={teamName} />
+        <OverviewCard
+          icon="timer"
+          subtitle={`freeze ${formatTime(contest.freeze_at)}`}
+          title={remainingTime}
+        />
+      </section>
+
+      <div className="mt-8">
+        <NoticePreview
+          contestId={contest.contest_id}
+          isError={noticesQuery.isError}
+          isLoading={noticesQuery.isLoading}
+          notices={notices}
+        />
+      </div>
+    </ContestPageFrame>
+  );
+}
+
+export default function ContestOverviewPage() {
   return (
     <ContestPageShell>
-      {({ contest, divisions }) => {
-        const participantContest = generalSession?.participantContests.find(
-          (item) => item.contest.contest_id === contest.contest_id,
-        );
-        const teamName =
-          participantContest?.team.team_name ??
-          (participantSession?.contestId === contest.contest_id
-            ? participantSession.team.team_name
-            : '팀 정보 없음');
-        const memberName =
-          participantContest?.member.name ??
-          participantSession?.member.name ??
-          generalSession?.account.display_name ??
-          '로그인 필요';
-        const memberEmail =
-          participantContest?.member.email ??
-          participantSession?.member.email ??
-          generalSession?.account.email ??
-          '참가자 이메일';
-        const divisionName =
-          participantContest?.division.name ??
-          participantSession?.division.name ??
-          divisions[0]?.name ??
-          'division';
-        const remainingTime = getRemainingTime(contest, now);
-
-        return (
-          <ContestPageFrame>
-            <PageHeading
-              className="gap-3"
-              description={divisionName}
-              title={contest.title}
-              variant="contest"
-            />
-
-            <nav aria-label="대회 메뉴" className="mt-8">
-              <ul className="flex flex-wrap items-center gap-3">
-                {overviewTabs.map((tab) => {
-                  const to = tab.path
-                    ? `/contests/${contest.contest_id}/${tab.path}`
-                    : `/contests/${contest.contest_id}`;
-
-                  return (
-                    <li key={tab.path || 'overview'}>
-                      <NavLink
-                        className={({ isActive }) =>
-                          [
-                            'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
-                            isActive
-                              ? 'border-slate-950 bg-slate-950 text-white'
-                              : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-                          ].join(' ')
-                        }
-                        end={!tab.path}
-                        to={to}
-                      >
-                        {tab.label}
-                      </NavLink>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
-
-            <section className="mt-8 grid gap-8 md:grid-cols-3">
-              <OverviewCard
-                icon="user"
-                subtitle={memberEmail}
-                title={memberName}
-              />
-              <OverviewCard
-                icon="team"
-                subtitle={divisionName}
-                title={teamName}
-              />
-              <OverviewCard
-                icon="timer"
-                subtitle={`freeze ${formatTime(contest.freeze_at)}`}
-                title={remainingTime}
-              />
-            </section>
-          </ContestPageFrame>
-        );
-      }}
+      {({ contest, divisions }) => (
+        <ContestOverviewContent contest={contest} divisions={divisions} />
+      )}
     </ContestPageShell>
   );
 }

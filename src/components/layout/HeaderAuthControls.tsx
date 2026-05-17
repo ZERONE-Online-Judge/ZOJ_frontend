@@ -76,6 +76,7 @@ export default function HeaderAuthControls({
   const generalSession = useSessionStore((state) => state.generalSession);
   const clearSessions = useSessionStore((state) => state.clearSessions);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -92,6 +93,7 @@ export default function HeaderAuthControls({
     } catch {
       // Keep local cleanup reliable even when server-side revoke fails.
     } finally {
+      setIsLogoutConfirmOpen(false);
       clearSessions();
       queryClient.clear();
       setIsLoggingOut(false);
@@ -137,14 +139,61 @@ export default function HeaderAuthControls({
         </span>
       ) : null}
       <button
-        className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-400"
+        className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:text-slate-400"
         disabled={isLoggingOut}
-        onClick={handleLogout}
+        onClick={() => setIsLogoutConfirmOpen(true)}
         type="button"
       >
         <LogoutIcon />
         <span>{isLoggingOut ? headerText.loggingOut : headerText.logout}</span>
       </button>
+      {isLogoutConfirmOpen ? (
+        <div
+          aria-labelledby="logout-confirm-title"
+          aria-modal="true"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 px-4"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-4">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <LogoutIcon />
+              </span>
+              <div className="grid gap-2">
+                <h2
+                  className="text-xl font-black text-slate-950"
+                  id="logout-confirm-title"
+                >
+                  {headerText.logoutConfirmTitle}
+                </h2>
+                <p className="text-sm leading-6 font-medium text-slate-600">
+                  {headerText.logoutConfirmDescription}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+                disabled={isLoggingOut}
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                type="button"
+              >
+                {headerText.logoutCancel}
+              </button>
+              <button
+                className="h-10 rounded bg-red-600 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:bg-slate-300"
+                disabled={isLoggingOut}
+                onClick={() => void handleLogout()}
+                type="button"
+              >
+                {isLoggingOut
+                  ? headerText.loggingOut
+                  : headerText.logoutConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

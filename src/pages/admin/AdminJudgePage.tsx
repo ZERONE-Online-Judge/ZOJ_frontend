@@ -212,14 +212,27 @@ function AdminJudgeContent({ token }: { token: string }) {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
-        <div className="grid gap-6">
-          <AdminPanel
-            description="노드 heartbeat와 slot 상태를 확인합니다."
-            title="채점 노드"
-          >
+      <div className="grid gap-6">
+        <details className="group rounded border border-slate-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 transition hover:bg-slate-50">
+            <span>
+              <span className="block text-xl font-black text-slate-950">
+                채점 노드 현황
+              </span>
+              <span className="mt-1 block text-sm font-medium text-slate-500">
+                노드 heartbeat와 slot 상태를 확인합니다.
+              </span>
+            </span>
+            <span className="text-sm font-black text-violet-700 group-open:hidden">
+              펼치기
+            </span>
+            <span className="hidden text-sm font-black text-slate-500 group-open:inline">
+              접기
+            </span>
+          </summary>
+          <div className="border-t border-slate-100 p-6">
             <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
@@ -292,109 +305,98 @@ function AdminJudgeContent({ token }: { token: string }) {
                 </tbody>
               </table>
             </div>
-          </AdminPanel>
-
-          <AdminPanel
-            actions={
-              <div className="flex items-center gap-2">
-                <button
-                  className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
-                  disabled={cursorHistory.length === 0}
-                  onClick={goPreviousPage}
-                  type="button"
-                >
-                  이전
-                </button>
-                <button
-                  className="h-9 rounded border border-violet-200 bg-violet-50 px-3 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:text-slate-300"
-                  disabled={!nextCursor}
-                  onClick={goNextPage}
-                  type="button"
-                >
-                  다음
-                </button>
-              </div>
-            }
-            description="최근 제출을 선택하면 오른쪽에서 소스와 메시지를 확인할 수 있습니다."
-            title="최근 제출"
-          >
-            <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[920px] border-collapse text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-black text-slate-500">
-                  <tr>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      제출
-                    </th>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      대회
-                    </th>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      문제
-                    </th>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      팀
-                    </th>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      결과
-                    </th>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
-                      언어
-                    </th>
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      제출 시각
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(submissionsQuery.data?.data ?? []).length > 0 ? (
-                    (submissionsQuery.data?.data ?? []).map((entry) => (
-                      <SubmissionRow
-                        entry={entry}
-                        isSelected={
-                          selectedSubmissionId ===
-                          entry.submission.submission_id
-                        }
-                        key={entry.submission.submission_id}
-                        onSelect={() =>
-                          setSelectedSubmissionId(
-                            entry.submission.submission_id,
-                          )
-                        }
-                      />
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        className="px-4 py-10 text-center text-sm font-bold text-slate-500"
-                        colSpan={7}
-                      >
-                        표시할 제출이 없습니다.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </AdminPanel>
-        </div>
+          </div>
+        </details>
 
         <AdminPanel
-          description="선택한 제출의 소스 코드와 채점 메시지입니다."
-          title="제출 상세"
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                disabled={cursorHistory.length === 0}
+                onClick={goPreviousPage}
+                type="button"
+              >
+                이전
+              </button>
+              <button
+                className="h-9 rounded border border-violet-200 bg-violet-50 px-3 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:text-slate-300"
+                disabled={!nextCursor}
+                onClick={goNextPage}
+                type="button"
+              >
+                다음
+              </button>
+            </div>
+          }
+          description="제출번호를 누르면 상세 정보와 소스 코드를 모달로 확인할 수 있습니다."
+          title="최근 제출"
         >
-          {selectedSubmissionId ? (
-            <SubmissionDetail
-              entry={selectedSubmissionQuery.data}
-              error={selectedSubmissionQuery.error}
-              isLoading={selectedSubmissionQuery.isFetching}
-            />
-          ) : (
-            <p className="rounded border border-dashed border-slate-200 px-4 py-12 text-center text-sm font-bold text-slate-500">
-              최근 제출 목록에서 항목을 선택하세요.
-            </p>
-          )}
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                <tr>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    제출
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    대회
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    문제
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    팀
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    결과
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    언어
+                  </th>
+                  <th className="border-b border-slate-200 px-4 py-3">
+                    제출 시각
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(submissionsQuery.data?.data ?? []).length > 0 ? (
+                  (submissionsQuery.data?.data ?? []).map((entry) => (
+                    <SubmissionRow
+                      entry={entry}
+                      isSelected={
+                        selectedSubmissionId === entry.submission.submission_id
+                      }
+                      key={entry.submission.submission_id}
+                      onSelect={() =>
+                        setSelectedSubmissionId(entry.submission.submission_id)
+                      }
+                    />
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      className="px-4 py-10 text-center text-sm font-bold text-slate-500"
+                      colSpan={7}
+                    >
+                      표시할 제출이 없습니다.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </AdminPanel>
       </div>
+
+      {selectedSubmissionId ? (
+        <SubmissionDetailModal
+          entry={selectedSubmissionQuery.data}
+          error={selectedSubmissionQuery.error}
+          isLoading={selectedSubmissionQuery.isFetching}
+          onClose={() => setSelectedSubmissionId(null)}
+        />
+      ) : null}
     </PageLayout>
   );
 }
@@ -453,6 +455,55 @@ function SubmissionRow({
         {formatDateTime(submission.submitted_at)}
       </td>
     </tr>
+  );
+}
+
+function SubmissionDetailModal({
+  entry,
+  error,
+  isLoading,
+  onClose,
+}: {
+  entry?: AdminJudgeSubmissionEntry;
+  error: unknown;
+  isLoading: boolean;
+  onClose: () => void;
+}) {
+  const submissionId = entry?.submission.submission_id;
+
+  return (
+    <div
+      aria-labelledby="admin-submission-detail-title"
+      aria-modal="true"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 px-4 py-6"
+      role="dialog"
+    >
+      <div className="grid max-h-full w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)] rounded border border-slate-200 bg-white shadow-xl">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div className="grid gap-1">
+            <h2
+              className="text-xl font-black text-slate-950"
+              id="admin-submission-detail-title"
+            >
+              제출 상세
+            </h2>
+            <p className="text-sm font-bold text-slate-500">
+              {submissionId ?? '제출 정보를 불러오는 중입니다.'}
+            </p>
+          </div>
+          <button
+            className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+            onClick={onClose}
+            type="button"
+          >
+            닫기
+          </button>
+        </header>
+        <div className="overflow-auto px-6 py-5">
+          <SubmissionDetail entry={entry} error={error} isLoading={isLoading} />
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -7,6 +7,11 @@ import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
+  canViewContestResource,
+  participantProblemEmptyMessage,
+} from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
+import {
   getContestProblems,
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
@@ -58,15 +63,58 @@ function ProblemStatusBadge({ status }: { status: ProblemStatus }) {
   );
 }
 
-function ContestProblemsContent({ contestId }: { contestId: string }) {
+function isWaAcContest(contest: Contest) {
+  const format = [
+    contest.scoring_type,
+    contest.scoring_mode,
+    contest.format_type,
+    contest.format,
+    contest.contest_type,
+  ]
+    .find((value) => typeof value === 'string' && value.trim())
+    ?.trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  return [
+    'wa_ac',
+    'wa/ac',
+    'ac',
+    'acm',
+    'icpc',
+    'pass_fail',
+    'binary',
+    'accepted_rejected',
+  ].includes(format ?? '');
+}
+
+function ContestProblemsContent({
+  contest,
+  contestId,
+}: {
+  contest: Contest;
+  contestId: string;
+}) {
   const {
     activeParticipantSession,
     ensureParticipantSession,
     generalSession,
     participantContest,
   } = useContestParticipantSession(contestId);
+  const hasSessionAccess = Boolean(participantContest);
+  const canViewProblems = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.problem_public_after_end,
+  );
+  const canViewScoreboard = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.scoreboard_public_after_end,
+  );
 
   const problemsQuery = useQuery({
+    enabled: canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
@@ -90,6 +138,7 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
   });
 
   const scoreboardQuery = useQuery({
+    enabled: canViewProblems && canViewScoreboard,
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
@@ -127,6 +176,7 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
       score,
     ]),
   );
+  const shouldShowProblemScore = !isWaAcContest(contest);
 
   return (
     <ContestPageFrame>
@@ -167,6 +217,18 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
       </nav>
 
       <div className="mt-9">
+        {!canViewProblems ? (
+          <PageNotice
+            message={
+              participantProblemEmptyMessage(
+                contest,
+                hasSessionAccess,
+                contest.problem_public_after_end,
+              ) ?? '문제집을 볼 수 없습니다.'
+            }
+            status="idle"
+          />
+        ) : null}
         {problemsQuery.isLoading && (
           <PageNotice
             message="문제 목록을 불러오는 중입니다."
@@ -180,56 +242,67 @@ function ContestProblemsContent({ contestId }: { contestId: string }) {
           />
         )}
 
-        <div className="overflow-x-auto border border-slate-200 bg-white">
-          <table className="w-full min-w-[920px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
-                <th className="w-24 px-6 py-4">문제 번호</th>
-                <th className="px-6 py-4">제목</th>
-                <th className="w-36 px-6 py-4">정보</th>
-                <th className="w-32 px-6 py-4">제한 시간</th>
-                <th className="w-36 px-6 py-4">제한 메모리</th>
-                <th className="w-28 px-6 py-4">배점</th>
-              </tr>
-            </thead>
-            <tbody>
-              {problems.map((problem) => {
-                const score = scoreByProblemCode.get(problem.problem_code);
+        {canViewProblems ? (
+          <div className="overflow-x-auto border border-slate-200 bg-white">
+            <table
+              className={[
+                'w-full border-collapse text-left text-sm',
+                shouldShowProblemScore ? 'min-w-[920px]' : 'min-w-[800px]',
+              ].join(' ')}
+            >
+              <thead>
+                <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
+                  <th className="w-24 px-6 py-4">문제 번호</th>
+                  <th className="px-6 py-4">제목</th>
+                  <th className="w-36 px-6 py-4">정보</th>
+                  <th className="w-32 px-6 py-4">제한 시간</th>
+                  <th className="w-36 px-6 py-4">제한 메모리</th>
+                  {shouldShowProblemScore ? (
+                    <th className="w-28 px-6 py-4">배점</th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {problems.map((problem) => {
+                  const score = scoreByProblemCode.get(problem.problem_code);
 
-                return (
-                  <tr
-                    className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
-                    key={problem.problem_id}
-                  >
-                    <td className="px-6 py-4 font-bold text-slate-950">
-                      {problem.problem_code}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-slate-950">
-                      <Link
-                        className="hover:text-zoj-blue transition"
-                        to={`/contests/${contestId}/problems/${problem.problem_id}`}
-                      >
-                        {problem.title}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <ProblemStatusBadge status={problemStatus(score)} />
-                    </td>
-                    <td className="px-6 py-4 font-medium text-slate-950">
-                      {problem.time_limit_ms / 1000}초
-                    </td>
-                    <td className="px-6 py-4 font-medium text-slate-950">
-                      {problem.memory_limit_mb} MB
-                    </td>
-                    <td className="px-6 py-4 font-medium text-slate-950">
-                      {problem.max_score}점
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr
+                      className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
+                      key={problem.problem_id}
+                    >
+                      <td className="px-6 py-4 font-bold text-slate-950">
+                        {problem.problem_code}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-950">
+                        <Link
+                          className="hover:text-zoj-blue transition"
+                          to={`/contests/${contestId}/problems/${problem.problem_id}`}
+                        >
+                          {problem.title}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4">
+                        <ProblemStatusBadge status={problemStatus(score)} />
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-950">
+                        {problem.time_limit_ms / 1000}초
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-950">
+                        {problem.memory_limit_mb} MB
+                      </td>
+                      {shouldShowProblemScore ? (
+                        <td className="px-6 py-4 font-medium text-slate-950">
+                          {problem.max_score}점
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         {!problemsQuery.isLoading && problems.length === 0 ? (
           <PageNotice message="표시할 문제가 없습니다." status="idle" />
@@ -243,7 +316,10 @@ export default function ContestProblemsPage() {
   return (
     <ContestPageShell>
       {({ contest }) => (
-        <ContestProblemsContent contestId={contest.contest_id} />
+        <ContestProblemsContent
+          contest={contest}
+          contestId={contest.contest_id}
+        />
       )}
     </ContestPageShell>
   );

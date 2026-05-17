@@ -8,16 +8,33 @@ export type ContestStatus =
   | 'finalized'
   | 'archived';
 
+export type ContestFormatType =
+  | 'wa_ac'
+  | 'wa/ac'
+  | 'acm'
+  | 'icpc'
+  | 'score'
+  | 'scored'
+  | 'score_based'
+  | 'points'
+  | 'ioi'
+  | string;
+
 export type Contest = {
   contest_id: string;
   title: string;
   organization_name: string;
   overview: string;
   status: ContestStatus | string;
+  contest_type?: ContestFormatType | null;
   start_at: string;
   end_at: string;
   freeze_at: string;
+  format?: ContestFormatType | null;
+  format_type?: ContestFormatType | null;
   problem_public_after_end: boolean;
+  scoring_mode?: ContestFormatType | null;
+  scoring_type?: ContestFormatType | null;
   scoreboard_public_after_end: boolean;
   submission_public_after_end: boolean;
   emergency_notice: string | null;
@@ -81,4 +98,3 @@ export type ContestSettingsPatch = Partial<
     | 'emergency_notice'
   >
 >;
-

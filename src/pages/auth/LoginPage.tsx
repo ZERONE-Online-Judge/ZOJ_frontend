@@ -50,6 +50,31 @@ function formatLoginError(error: unknown) {
   return formatApiError(error, loginPageText.loginFailed);
 }
 
+function isUnregisteredEmailError(error: unknown) {
+  if (!isApiClientError(error)) return false;
+
+  const code = error.code.toLowerCase();
+  const message = error.message.toLowerCase();
+  const notFoundCodes = new Set([
+    'account_not_found',
+    'email_not_found',
+    'email_not_registered',
+    'general_account_not_found',
+    'not_found',
+    'user_not_found',
+  ]);
+
+  return (
+    error.status === 404 ||
+    notFoundCodes.has(code) ||
+    code.includes('not_found') ||
+    code.includes('not_registered') ||
+    message.includes('not registered') ||
+    message.includes('not found') ||
+    message.includes('no account')
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -136,7 +161,11 @@ export default function LoginPage() {
         setCooldownUntil(currentTimestamp() + retryAfter * 1000);
       }
 
-      setMessage(formatApiError(error, loginPageText.otpRequestFailed));
+      setMessage(
+        isUnregisteredEmailError(error)
+          ? loginPageText.unregisteredEmail
+          : formatApiError(error, loginPageText.otpRequestFailed),
+      );
       setMessageStatus('error');
     }
   }
@@ -273,7 +302,7 @@ export default function LoginPage() {
           )}
 
           <button
-            className="bg-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded px-5 text-base font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="bg-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded px-5 text-base font-bold text-white transition hover:bg-blue-700 disabled:bg-slate-300"
             disabled={!canRequestOtp}
             onClick={otpRequested ? requestOtp : undefined}
             type={otpRequested ? 'button' : 'submit'}
@@ -309,7 +338,7 @@ export default function LoginPage() {
                 />
               </label>
               <button
-                className="hover:border-zoj-blue hover:text-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-5 text-base font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:text-slate-400"
+                className="hover:border-zoj-blue hover:text-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-5 text-base font-bold text-slate-950 transition disabled:text-slate-400"
                 disabled={isSubmitting || otpExpiresSeconds <= 0}
                 type="submit"
               >

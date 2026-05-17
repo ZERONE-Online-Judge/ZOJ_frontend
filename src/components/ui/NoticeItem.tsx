@@ -8,25 +8,55 @@ export type NoticeItemData = {
   href?: string;
 };
 
-type NoticeItemProps = NoticeItemData;
+type NoticeItemProps = NoticeItemData & {
+  compact?: boolean;
+};
 
 export default function NoticeItem({
   title,
   date,
   label = sharedUiText.noticeLabel,
   href,
+  compact = false,
 }: NoticeItemProps) {
   const content = (
-    <div className="flex min-h-16 flex-col gap-3 px-4 py-4 transition hover:bg-amber-50 sm:flex-row sm:items-center sm:justify-between sm:gap-10 sm:px-6">
-      <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-7">
-        <span className="shrink-0 rounded-full bg-slate-950 px-4 py-1.5 text-sm font-semibold text-white">
+    <div
+      className={[
+        'flex flex-col transition hover:bg-amber-50 sm:flex-row sm:items-center sm:justify-between',
+        compact
+          ? 'min-h-11 gap-2 px-3 py-2 sm:gap-4 sm:px-4'
+          : 'min-h-16 gap-3 px-4 py-4 sm:gap-10 sm:px-6',
+      ].join(' ')}
+    >
+      <div
+        className={[
+          'flex min-w-0 flex-wrap items-center',
+          compact ? 'gap-2 sm:gap-3' : 'gap-3 sm:gap-7',
+        ].join(' ')}
+      >
+        <span
+          className={[
+            'shrink-0 rounded-full bg-slate-950 font-semibold text-white',
+            compact ? 'px-2.5 py-1 text-xs' : 'px-4 py-1.5 text-sm',
+          ].join(' ')}
+        >
           {label}
         </span>
-        <span className="min-w-0 text-lg font-semibold break-keep text-slate-950 sm:truncate">
+        <span
+          className={[
+            'min-w-0 font-semibold break-keep text-slate-950 sm:truncate',
+            compact ? 'text-sm' : 'text-lg',
+          ].join(' ')}
+        >
           {title}
         </span>
       </div>
-      <time className="shrink-0 text-sm font-medium text-slate-500 sm:text-right">
+      <time
+        className={[
+          'shrink-0 font-medium text-slate-500 sm:text-right',
+          compact ? 'text-xs' : 'text-sm',
+        ].join(' ')}
+      >
         {date}
       </time>
     </div>

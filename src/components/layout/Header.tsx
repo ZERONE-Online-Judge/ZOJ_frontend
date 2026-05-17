@@ -5,6 +5,7 @@ import { navigationRoutes } from '@/routes/routeConfig';
 export default function Header() {
   return (
     <HeaderShell
+      actionClassName="flex-nowrap xl:w-auto"
       actions={<HeaderAuthControls loginTo="/login" />}
       ariaLabel="Main navigation"
       navItems={navigationRoutes.map(({ name, path }) => ({

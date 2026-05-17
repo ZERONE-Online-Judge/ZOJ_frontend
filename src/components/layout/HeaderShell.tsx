@@ -26,18 +26,22 @@ export default function HeaderShell({
 }: HeaderShellProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white font-sans">
-      <div className="relative flex min-h-20 w-full flex-wrap items-center justify-between gap-y-3 px-4 py-3 sm:px-6 xl:flex-nowrap xl:px-12">
-        <Link className="flex shrink-0 items-center gap-3" to="/">
+      <div className="relative flex min-h-20 w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3 sm:px-6 md:flex-nowrap xl:px-12">
+        <Link
+          aria-label="Zerone Online Judge 홈"
+          className="flex shrink-0 items-center gap-3"
+          to="/"
+        >
           <SiteBrand />
         </Link>
 
         <nav
           aria-label={ariaLabel}
-          className="order-3 w-full overflow-x-auto xl:absolute xl:left-1/2 xl:order-none xl:w-auto xl:-translate-x-1/2"
+          className="order-3 w-full min-w-0 overflow-x-auto md:order-none md:w-auto md:flex-1 xl:absolute xl:left-1/2 xl:w-auto xl:flex-none xl:-translate-x-1/2"
         >
           <ul
             className={[
-              'flex min-w-max items-center justify-center text-center text-sm leading-7 font-semibold tracking-normal text-slate-700 sm:text-base xl:text-lg',
+              'flex min-w-max items-center justify-center text-center text-lg leading-7 font-semibold tracking-normal text-slate-700',
               navGapClassName,
             ].join(' ')}
           >

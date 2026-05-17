@@ -36,6 +36,7 @@ export async function apiFetchRaw(
   const isFormData = init?.body instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       ...(isFormData ? {} : { 'content-type': 'application/json' }),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -126,7 +127,7 @@ async function refreshOperatorAccessTokenViaGeneralSession(): Promise<string | n
   let generalToken = general.accessToken;
   let result = await apiFetchRaw('/auth/general/me', generalToken);
 
-  if (result.response.status === 401 && general.refreshToken) {
+  if (result.response.status === 401) {
     const refreshedGeneral = await refreshGeneralAccessToken(generalToken);
     if (!refreshedGeneral) return null;
 
@@ -151,14 +152,23 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
   if (general?.operatorSession?.accessToken !== token) return null;
 
   const operatorSession = general.operatorSession;
-  if (!operatorSession.refreshToken) return null;
 
   if (!staffRefreshInFlight) {
     staffRefreshInFlight = (async () => {
-      const { response, payload } = await apiFetchRaw('/auth/staff/refresh', undefined, {
-        method: 'POST',
-        body: JSON.stringify({ refresh_token: operatorSession.refreshToken }),
-      });
+      const { response, payload } = await apiFetchRaw(
+        '/auth/staff/refresh',
+        undefined,
+        {
+          method: 'POST',
+          ...(operatorSession.refreshToken
+            ? {
+                body: JSON.stringify({
+                  refresh_token: operatorSession.refreshToken,
+                }),
+              }
+            : {}),
+        },
+      );
       if (!response.ok) return null;
 
       const data = (payload as DataEnvelope<Partial<Parameters<typeof mapStaffSession>[0]>>).data;
@@ -184,14 +194,20 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
 
 async function refreshGeneralAccessToken(token: string): Promise<string | null> {
   const general = loadStoredGeneralSession();
-  if (!general || general.accessToken !== token || !general.refreshToken) return null;
+  if (!general || general.accessToken !== token) return null;
 
   if (!generalRefreshInFlight) {
     generalRefreshInFlight = (async () => {
-      const { response, payload } = await apiFetchRaw('/auth/general/refresh', undefined, {
-        method: 'POST',
-        body: JSON.stringify({ refresh_token: general.refreshToken }),
-      });
+      const { response, payload } = await apiFetchRaw(
+        '/auth/general/refresh',
+        undefined,
+        {
+          method: 'POST',
+          ...(general.refreshToken
+            ? { body: JSON.stringify({ refresh_token: general.refreshToken }) }
+            : {}),
+        },
+      );
       if (!response.ok) return null;
 
       const next = mapGeneralSession((payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>).data!, general);

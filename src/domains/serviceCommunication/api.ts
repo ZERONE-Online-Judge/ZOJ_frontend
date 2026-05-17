@@ -64,6 +64,13 @@ export function getContestQuestions(contestId: string, token?: string) {
   return apiRequest<ContestQuestion[]>(`/contests/${contestId}/boards`, token);
 }
 
+export function listOperatorContestQuestions(contestId: string, token: string) {
+  return apiRequest<ContestQuestion[]>(
+    `/operator/contests/${contestId}/boards`,
+    token,
+  );
+}
+
 export function createContestQuestion(
   contestId: string,
   token: string,

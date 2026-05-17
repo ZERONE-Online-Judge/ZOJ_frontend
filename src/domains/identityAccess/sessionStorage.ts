@@ -10,6 +10,8 @@ export const PARTICIPANT_SESSION_KEY = 'zoj.participantSession';
 export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
 
+let volatileGeneralSession: GeneralSession | null = null;
+
 function browserStorage() {
   return typeof window === 'undefined' ? null : window.sessionStorage;
 }
@@ -38,6 +40,22 @@ function readStoredSessionValue(key: string) {
 function removeStoredSessionValue(key: string) {
   browserStorage()?.removeItem(key);
   legacyBrowserStorage()?.removeItem(key);
+}
+
+function stripRefreshTokens(session: GeneralSession): GeneralSession {
+  const { operatorSession, ...general } = session;
+  delete general.refreshToken;
+
+  return {
+    ...general,
+    operatorSession: operatorSession
+      ? {
+          accessToken: operatorSession.accessToken,
+          defaultRedirect: operatorSession.defaultRedirect,
+          staff: operatorSession.staff,
+        }
+      : operatorSession,
+  };
 }
 
 export function emitSessionSync() {
@@ -101,7 +119,6 @@ export function isValidStaffSession(session: unknown): session is StaffSession {
   return Boolean(
     candidate &&
     typeof candidate.accessToken === 'string' &&
-    typeof candidate.refreshToken === 'string' &&
     candidate.staff &&
     typeof candidate.staff.email === 'string' &&
     typeof candidate.staff.display_name === 'string' &&
@@ -137,7 +154,6 @@ export function loadStoredGeneralSession(): GeneralSession | null {
     if (
       !parsed ||
       typeof parsed.accessToken !== 'string' ||
-      typeof parsed.refreshToken !== 'string' ||
       !parsed.account
     ) {
       removeStoredSessionValue(GENERAL_SESSION_KEY);
@@ -149,10 +165,18 @@ export function loadStoredGeneralSession(): GeneralSession | null {
     if (operatorSession && !isValidStaffSession(operatorSession)) {
       operatorSession = null;
     }
+    if (operatorSession) {
+      operatorSession = {
+        accessToken: operatorSession.accessToken,
+        defaultRedirect: operatorSession.defaultRedirect,
+        refreshToken: volatileGeneralSession?.operatorSession?.refreshToken,
+        staff: operatorSession.staff,
+      };
+    }
 
     return {
       accessToken: parsed.accessToken,
-      refreshToken: parsed.refreshToken,
+      refreshToken: volatileGeneralSession?.refreshToken,
       account: parsed.account,
       participantContests: parsed.participantContests ?? [],
       operatorContests: parsed.operatorContests ?? [],
@@ -169,9 +193,11 @@ export function saveGeneralSession(session: GeneralSession | null) {
   if (!storage) return;
 
   if (session) {
-    storage.setItem(GENERAL_SESSION_KEY, JSON.stringify(session));
+    volatileGeneralSession = session;
+    storage.setItem(GENERAL_SESSION_KEY, JSON.stringify(stripRefreshTokens(session)));
     legacyBrowserStorage()?.removeItem(GENERAL_SESSION_KEY);
   } else {
+    volatileGeneralSession = null;
     removeStoredSessionValue(GENERAL_SESSION_KEY);
   }
 }

@@ -63,6 +63,12 @@ const operatorTabs = [
     permission: 'contest.notice.view',
   },
   {
+    label: operatorNavText.board,
+    path: 'board',
+    icon: NoticeIcon,
+    permission: 'contest.board.question.view',
+  },
+  {
     label: operatorNavText.participants,
     path: 'participants',
     icon: TeamIcon,

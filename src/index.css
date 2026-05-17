@@ -20,6 +20,11 @@
       'Segoe UI',
       sans-serif;
   }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
 }
 
 @keyframes zoj-emergency-marquee {

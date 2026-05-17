@@ -4,6 +4,8 @@ import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestScoreboardTable from '@/components/contest/scoreboard/ContestScoreboardTable';
 import ContestScoreboardTabs from '@/components/contest/scoreboard/ContestScoreboardTabs';
+import { canViewContestResource } from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -13,11 +15,19 @@ import {
 import {
   getDivisionScoreboard,
   getScoreboard,
+  waitDivisionScoreboard,
+  waitScoreboard,
 } from '@/domains/submissionScoreboard/api';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import PageNotice from '@/shared/ui/PageNotice';
 
-function ContestScoreboardContent({ contestId }: { contestId: string }) {
+function ContestScoreboardContent({
+  contest,
+  contestId,
+}: {
+  contest: Contest;
+  contestId: string;
+}) {
   const isDocumentVisible = useDocumentVisibility();
   const {
     activeParticipantSession,
@@ -28,8 +38,20 @@ function ContestScoreboardContent({ contestId }: { contestId: string }) {
   const divisionName =
     participantContest?.division.name ??
     activeParticipantSession?.division.name;
+  const hasSessionAccess = Boolean(participantContest);
+  const canViewScoreboard = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.scoreboard_public_after_end,
+  );
+  const canViewProblems = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    contest.problem_public_after_end,
+  );
 
   const problemsQuery = useQuery({
+    enabled: canViewScoreboard && canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
@@ -52,6 +74,7 @@ function ContestScoreboardContent({ contestId }: { contestId: string }) {
   });
 
   const scoreboardQuery = useQuery({
+    enabled: canViewScoreboard,
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
@@ -62,16 +85,24 @@ function ContestScoreboardContent({ contestId }: { contestId: string }) {
     queryFn: async () => {
       const session = await ensureParticipantSession();
       if (session) {
-        return getDivisionScoreboard(
-          contestId,
-          session.division.division_id,
-          session.accessToken,
-        );
+        return isDocumentVisible
+          ? waitDivisionScoreboard(
+              contestId,
+              session.division.division_id,
+              session.accessToken,
+            )
+          : getDivisionScoreboard(
+              contestId,
+              session.division.division_id,
+              session.accessToken,
+            );
       }
 
-      return getScoreboard(contestId, generalSession?.accessToken);
+      return isDocumentVisible
+        ? waitScoreboard(contestId, generalSession?.accessToken)
+        : getScoreboard(contestId, generalSession?.accessToken);
     },
-    refetchInterval: isDocumentVisible ? 10_000 : false,
+    refetchInterval: isDocumentVisible ? 1_000 : false,
     refetchIntervalInBackground: false,
   });
   const rows = scoreboardQuery.data?.rows ?? [];
@@ -95,6 +126,12 @@ function ContestScoreboardContent({ contestId }: { contestId: string }) {
       <ContestScoreboardTabs contestId={contestId} />
 
       <div className="mt-9">
+        {!canViewScoreboard ? (
+          <PageNotice
+            message="스코어보드를 볼 수 없습니다."
+            status="idle"
+          />
+        ) : null}
         {scoreboardQuery.isLoading && (
           <PageNotice
             message="스코어보드를 불러오는 중입니다."
@@ -114,7 +151,9 @@ function ContestScoreboardContent({ contestId }: { contestId: string }) {
           />
         ) : null}
 
-        <ContestScoreboardTable problems={problems} rows={rows} />
+        {canViewScoreboard ? (
+          <ContestScoreboardTable problems={problems} rows={rows} />
+        ) : null}
 
         {!scoreboardQuery.isLoading && rows.length === 0 ? (
           <PageNotice message="표시할 스코어보드가 없습니다." status="idle" />
@@ -128,7 +167,10 @@ export default function ContestScoreboardPage() {
   return (
     <ContestPageShell>
       {({ contest }) => (
-        <ContestScoreboardContent contestId={contest.contest_id} />
+        <ContestScoreboardContent
+          contest={contest}
+          contestId={contest.contest_id}
+        />
       )}
     </ContestPageShell>
   );

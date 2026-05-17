@@ -7,25 +7,17 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { getPublicContest } from '@/domains/contestAdministration/api';
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
-  getDivisionProblems,
-  getContestProblems,
-} from '@/domains/problemManagement/api';
-import {
   getContestNotices,
   getContestQuestions,
 } from '@/domains/serviceCommunication/api';
 import { sharedUiText } from '@/data/uiText';
-import {
-  getDivisionScoreboard,
-  getScoreboard,
-  listSubmissions,
-} from '@/domains/submissionScoreboard/api';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ContestPageShellProps = {
@@ -92,7 +84,7 @@ function EmergencyNoticeBanner({
   return (
     <section
       aria-label={sharedUiText.emergencyNoticeAriaLabel}
-      className="flex items-center gap-3 bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
+      className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
     >
       <svg
         aria-hidden="true"
@@ -110,9 +102,13 @@ function EmergencyNoticeBanner({
       </svg>
       <div className="min-w-0 flex-1 overflow-hidden" ref={viewportRef}>
         {shouldMarquee ? (
-          <div className="animate-emergency-marquee flex w-max gap-10 whitespace-nowrap">
-            <span ref={textRef}>{notice}</span>
-            <span aria-hidden="true">{notice}</span>
+          <div className="animate-emergency-marquee flex w-max max-w-none gap-10 whitespace-nowrap">
+            <span className="shrink-0" ref={textRef}>
+              {notice}
+            </span>
+            <span aria-hidden="true" className="shrink-0">
+              {notice}
+            </span>
           </div>
         ) : (
           <span className="block truncate" ref={textRef}>
@@ -146,6 +142,7 @@ function EmergencyNoticeBanner({
 
 export default function ContestPageShell({ children }: ContestPageShellProps) {
   const { contestId } = useParams();
+  const navigate = useNavigate();
   const resolvedContestId = contestId ?? '';
   const queryClient = useQueryClient();
   const prefetchedKeyRef = useRef<string | null>(null);
@@ -178,9 +175,12 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   const isEmergencyNoticeDismissed =
     isStoredEmergencyNoticeDismissed ||
     dismissedEmergencyNoticeKey === emergencyNoticeKey;
+  const hasContestParticipantAccess =
+    !generalSession || Boolean(participantContest);
 
   useEffect(() => {
     if (!contestId || !detail) return;
+    if (!hasContestParticipantAccess) return;
 
     const currentContestId = contestId;
     let cancelled = false;
@@ -191,14 +191,11 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
         activeParticipantSession ?? (await ensureParticipantSession());
       if (cancelled) return;
 
-      const divisionId = currentParticipantSession?.division.division_id;
       const participantToken = currentParticipantSession?.accessToken;
-      const participantContestId = currentParticipantSession?.contestId;
       const token = participantToken ?? generalToken;
       const prefetchKey = [
         currentContestId,
         generalToken ?? 'public',
-        divisionId ?? participantContest?.division.division_id ?? 'public',
         participantToken ?? 'no-participant-token',
       ].join(':');
 
@@ -206,41 +203,6 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       prefetchedKeyRef.current = prefetchKey;
 
       await Promise.allSettled([
-        queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.problems(
-            currentContestId,
-            generalToken,
-            participantContestId,
-            divisionId,
-            participantToken,
-          ),
-          queryFn: () =>
-            divisionId
-              ? getDivisionProblems(currentContestId, divisionId, token)
-              : getContestProblems(currentContestId, token),
-        }),
-        queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.submissions(
-            currentContestId,
-            generalToken,
-            participantContestId,
-            participantToken,
-          ),
-          queryFn: () => listSubmissions(currentContestId, token),
-        }),
-        queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.scoreboard(
-            currentContestId,
-            generalToken,
-            participantContestId,
-            divisionId,
-            participantToken,
-          ),
-          queryFn: () =>
-            divisionId
-              ? getDivisionScoreboard(currentContestId, divisionId, token)
-              : getScoreboard(currentContestId, token),
-        }),
         queryClient.prefetchQuery({
           queryKey: contestQueryKeys.notices(currentContestId, token),
           queryFn: () => getContestNotices(currentContestId, token),
@@ -263,6 +225,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     generalSession,
     activeParticipantSession,
     ensureParticipantSession,
+    hasContestParticipantAccess,
     participantContest,
     queryClient,
   ]);
@@ -298,7 +261,13 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
         <PageNotice message="대회 정보를 불러오지 못했습니다." status="error" />
       )}
 
-      {detail && contest ? (
+      {detail && contest && !hasContestParticipantAccess ? (
+        <ContestAccessDeniedModal
+          onClose={() => navigate('/contests', { replace: true })}
+        />
+      ) : null}
+
+      {detail && contest && hasContestParticipantAccess ? (
         <>
           {contest.emergency_notice && !isEmergencyNoticeDismissed ? (
             <EmergencyNoticeBanner

@@ -19,6 +19,10 @@ import {
   updateContestSettings,
   updateOperatorDivision,
 } from '@/domains/contestAdministration/api';
+import {
+  contestStatusLabel,
+  isContestOperationLocked,
+} from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
 import type { StaffAccount } from '@/domains/identityAccess/types';
 import { formatApiError } from '@/shared/api/errors';
@@ -149,6 +153,7 @@ function OperatorSettingsContent({
       : contest
         ? settingsFormFromContest(contest)
         : null;
+  const operationLocked = contest ? isContestOperationLocked(contest) : false;
 
   function setSettingsForm(
     updater: (prev: SettingsForm | null) => SettingsForm | null,
@@ -238,6 +243,58 @@ function OperatorSettingsContent({
     updateSettingsMutation.mutate();
   }
 
+  function updateDate(name: 'start_at' | 'end_at' | 'freeze_at', date: Date) {
+    setSettingsForm((prev) =>
+      prev ? { ...prev, [name]: dateTimeLocalValue(date.toISOString()) } : prev,
+    );
+  }
+
+  function applyQuickAction(
+    action:
+      | 'start-now'
+      | 'end-10'
+      | 'end-30'
+      | 'freeze-now'
+      | 'freeze-30'
+      | 'freeze-60'
+      | 'open-after-end',
+  ) {
+    const now = new Date();
+    const addMinutes = (minutes: number) =>
+      new Date(now.getTime() + minutes * 60_000);
+
+    if (action === 'start-now') {
+      setSettingsForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              start_at: dateTimeLocalValue(now.toISOString()),
+              status: 'running',
+            }
+          : prev,
+      );
+      return;
+    }
+
+    if (action === 'end-10') updateDate('end_at', addMinutes(10));
+    if (action === 'end-30') updateDate('end_at', addMinutes(30));
+    if (action === 'freeze-now') updateDate('freeze_at', now);
+    if (action === 'freeze-30') updateDate('freeze_at', addMinutes(30));
+    if (action === 'freeze-60') updateDate('freeze_at', addMinutes(60));
+    if (action === 'open-after-end') {
+      setSettingsForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              problem_public_after_end: true,
+              scoreboard_public_after_end: true,
+              submission_public_after_end: true,
+            }
+          : prev,
+      );
+    }
+  }
+
   function handleDivisionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!divisionForm.name.trim()) return;
@@ -273,8 +330,18 @@ function OperatorSettingsContent({
         >
           {settingsForm ? (
             <form className="grid gap-4" onSubmit={handleSettingsSubmit}>
+              {operationLocked ? (
+                <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                  대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다. 종료/프리즈 시간과 긴급 공지만 조정하세요.
+                </p>
+              ) : null}
+              <QuickActions
+                currentStatus={settingsForm.status}
+                onAction={applyQuickAction}
+              />
               <div className="grid gap-4 md:grid-cols-2">
                 <TextInput
+                  disabled={operationLocked}
                   label="대회명"
                   onChange={(value) =>
                     setSettingsForm((prev) =>
@@ -284,6 +351,7 @@ function OperatorSettingsContent({
                   value={settingsForm.title}
                 />
                 <TextInput
+                  disabled={operationLocked}
                   label="주최 기관"
                   onChange={(value) =>
                     setSettingsForm((prev) =>
@@ -296,7 +364,8 @@ function OperatorSettingsContent({
               <label className="grid gap-2 text-sm font-black text-slate-700">
                 상태
                 <select
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                  disabled={operationLocked}
                   onChange={(event) =>
                     setSettingsForm((prev) =>
                       prev ? { ...prev, status: event.target.value } : prev,
@@ -314,7 +383,8 @@ function OperatorSettingsContent({
               <label className="grid gap-2 text-sm font-black text-slate-700">
                 개요
                 <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                  disabled={operationLocked}
                   onChange={(event) =>
                     setSettingsForm((prev) =>
                       prev ? { ...prev, overview: event.target.value } : prev,
@@ -401,7 +471,7 @@ function OperatorSettingsContent({
               ) : null}
 
               <button
-                className="inline-flex h-11 w-fit items-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="inline-flex h-11 w-fit items-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
                 disabled={updateSettingsMutation.isPending}
                 type="submit"
               >
@@ -576,6 +646,58 @@ function Toggle({
       />
       {label}
     </label>
+  );
+}
+
+function QuickActions({
+  currentStatus,
+  onAction,
+}: {
+  currentStatus: string;
+  onAction: (
+    action:
+      | 'start-now'
+      | 'end-10'
+      | 'end-30'
+      | 'freeze-now'
+      | 'freeze-30'
+      | 'freeze-60'
+      | 'open-after-end',
+  ) => void;
+}) {
+  const actions = [
+    ['start-now', '지금 시작'],
+    ['end-10', '종료 +10분'],
+    ['end-30', '종료 +30분'],
+    ['freeze-now', '지금 프리즈'],
+    ['freeze-30', '프리즈 +30분'],
+    ['freeze-60', '프리즈 +60분'],
+    ['open-after-end', '종료 후 공개'],
+  ] as const;
+
+  return (
+    <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="text-sm font-black text-slate-800">
+          빠른 운영 액션
+        </strong>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">
+          현재 상태: {contestStatusLabel(currentStatus)}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {actions.map(([action, label]) => (
+          <button
+            className="h-9 rounded border border-indigo-200 bg-white px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50"
+            key={action}
+            onClick={() => onAction(action)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

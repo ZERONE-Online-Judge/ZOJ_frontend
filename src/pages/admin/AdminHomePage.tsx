@@ -145,11 +145,97 @@ function AdminHomeContent({ token }: { token: string }) {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.55fr)]">
-        <AdminPanel
-          description="최근 서비스 공지를 확인합니다."
-          title="서비스 공지"
-        >
+      <AdminPanel
+        description="새 공지를 발행하면 공개 공지와 긴급 공지 영역에 반영됩니다."
+        title="공지 발행"
+      >
+        <form className="grid gap-4" onSubmit={handleSubmit}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              제목
+              <input
+                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, title: event.target.value }))
+                }
+                placeholder="예: 채점 서버 점검 안내"
+                value={form.title}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              요약
+              <input
+                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, summary: event.target.value }))
+                }
+                placeholder="목록에 짧게 표시될 설명"
+                value={form.summary}
+              />
+            </label>
+          </div>
+          <label className="grid gap-2 text-sm font-black text-slate-700">
+            본문
+            <textarea
+              className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, body: event.target.value }))
+              }
+              placeholder="공지 상세 내용을 입력하세요."
+              value={form.body}
+            />
+          </label>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+              <input
+                checked={form.emergency}
+                className="size-4 accent-violet-600"
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    emergency: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              긴급 공지로 표시
+            </label>
+            <button
+              className="h-11 rounded bg-violet-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-violet-800 disabled:bg-slate-300"
+              disabled={createNoticeMutation.isPending}
+              type="submit"
+            >
+              {createNoticeMutation.isPending ? '발행 중' : '공지 발행'}
+            </button>
+          </div>
+
+          {formError || createNoticeMutation.error ? (
+            <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+              {formError ||
+                formatApiError(
+                  createNoticeMutation.error,
+                  '공지 발행에 실패했습니다',
+                )}
+            </p>
+          ) : null}
+        </form>
+      </AdminPanel>
+
+      <details className="group rounded border border-slate-200 bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 text-xl font-black text-slate-950 transition hover:bg-slate-50">
+          서비스 공지
+          <span className="text-sm font-black text-violet-700 group-open:hidden">
+            펼치기
+          </span>
+          <span className="hidden text-sm font-black text-slate-500 group-open:inline">
+            접기
+          </span>
+        </summary>
+        <div className="grid gap-5 border-t border-slate-100 p-6">
+          <p className="text-sm font-medium text-slate-500">
+            최근 공지 목록을 확인합니다.
+          </p>
+
           {noticeError ? (
             <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
               {noticeError}
@@ -194,81 +280,8 @@ function AdminHomeContent({ token }: { token: string }) {
               </p>
             )}
           </div>
-        </AdminPanel>
-
-        <AdminPanel
-          description="새 공지를 발행하면 공개 공지와 긴급 공지 영역에 반영됩니다."
-          title="공지 발행"
-        >
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              제목
-              <input
-                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="예: 채점 서버 점검 안내"
-                value={form.title}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              요약
-              <input
-                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, summary: event.target.value }))
-                }
-                placeholder="목록에 짧게 표시될 설명"
-                value={form.summary}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              본문
-              <textarea
-                className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, body: event.target.value }))
-                }
-                placeholder="공지 상세 내용을 입력하세요."
-                value={form.body}
-              />
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
-              <input
-                checked={form.emergency}
-                className="size-4 accent-violet-600"
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    emergency: event.target.checked,
-                  }))
-                }
-                type="checkbox"
-              />
-              긴급 공지로 표시
-            </label>
-
-            {formError || createNoticeMutation.error ? (
-              <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                {formError ||
-                  formatApiError(
-                    createNoticeMutation.error,
-                    '공지 발행에 실패했습니다',
-                  )}
-              </p>
-            ) : null}
-
-            <button
-              className="h-11 rounded bg-violet-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={createNoticeMutation.isPending}
-              type="submit"
-            >
-              {createNoticeMutation.isPending ? '발행 중' : '공지 발행'}
-            </button>
-          </form>
-        </AdminPanel>
-      </div>
+        </div>
+      </details>
     </PageLayout>
   );
 }

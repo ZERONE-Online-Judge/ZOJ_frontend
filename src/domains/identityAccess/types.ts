@@ -10,14 +10,14 @@ export type StaffAccount = {
 
 export type StaffSession = {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   staff: StaffAccount;
   defaultRedirect: string;
 };
 
 export type StaffSessionApi = {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string;
   staff: StaffAccount;
   default_redirect: string;
 };
@@ -29,7 +29,7 @@ export type GeneralOperatorContest = {
 
 export type GeneralSession = {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   account: {
     email: string;
     display_name: string;

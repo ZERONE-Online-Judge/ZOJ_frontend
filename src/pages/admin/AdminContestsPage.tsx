@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -66,6 +66,7 @@ export default function AdminContestsPage() {
 
 function AdminContestsContent({ token }: { token: string }) {
   const queryClient = useQueryClient();
+  const createContestSectionRef = useRef<HTMLDivElement>(null);
   const [contestForm, setContestForm] = useState(emptyContestForm);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
   const [contestFormError, setContestFormError] = useState('');
@@ -141,6 +142,13 @@ function AdminContestsContent({ token }: { token: string }) {
     assignOperatorMutation.mutate();
   }
 
+  function scrollToCreateContest() {
+    createContestSectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
+
   return (
     <PageLayout
       description="서비스 마스터가 대회를 만들고 운영자를 배정합니다."
@@ -159,188 +167,23 @@ function AdminContestsContent({ token }: { token: string }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(420px,0.55fr)_minmax(0,1fr)]">
-        <div className="grid gap-6">
-          <AdminPanel
-            description="일정은 미정 상태로 생성하고, 이후 운영 페이지에서 상세 설정합니다."
-            title="대회 생성"
-          >
-            <form className="grid gap-4" onSubmit={handleCreateContest}>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                대회명
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                  onChange={(event) =>
-                    setContestForm((prev) => ({
-                      ...prev,
-                      title: event.target.value,
-                    }))
-                  }
-                  placeholder="예: HEPC 1"
-                  value={contestForm.title}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                주최 기관
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                  onChange={(event) =>
-                    setContestForm((prev) => ({
-                      ...prev,
-                      organizationName: event.target.value,
-                    }))
-                  }
-                  placeholder="예: COSS"
-                  value={contestForm.organizationName}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                기준 시작일
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                  onChange={(event) =>
-                    setContestForm((prev) => ({
-                      ...prev,
-                      startDate: event.target.value,
-                    }))
-                  }
-                  type="date"
-                  value={contestForm.startDate}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                초기 운영자 이메일
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                  onChange={(event) =>
-                    setContestForm((prev) => ({
-                      ...prev,
-                      operatorEmail: event.target.value,
-                    }))
-                  }
-                  placeholder="operator@example.com"
-                  type="email"
-                  value={contestForm.operatorEmail}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                개요
-                <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                  onChange={(event) =>
-                    setContestForm((prev) => ({
-                      ...prev,
-                      overview: event.target.value,
-                    }))
-                  }
-                  placeholder="대회 소개를 입력하세요."
-                  value={contestForm.overview}
-                />
-              </label>
-
-              {contestFormError || createContestMutation.error ? (
-                <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                  {contestFormError ||
-                    formatApiError(
-                      createContestMutation.error,
-                      '대회 생성에 실패했습니다',
-                    )}
-                </p>
-              ) : null}
-
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-violet-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={createContestMutation.isPending}
-                type="submit"
-              >
-                <ContestIcon />
-                {createContestMutation.isPending ? '생성 중' : '대회 생성'}
-              </button>
-            </form>
-          </AdminPanel>
-
-          <AdminPanel
-            description="이미 만들어진 대회에 운영자를 추가합니다."
-            title="운영자 배정"
-          >
-            <form className="grid gap-4" onSubmit={handleAssignOperator}>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                대회
-                <select
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                  onChange={(event) =>
-                    setOperatorForm((prev) => ({
-                      ...prev,
-                      contestId: event.target.value,
-                    }))
-                  }
-                  value={operatorForm.contestId}
-                >
-                  <option value="">대회 선택</option>
-                  {contests.map((contest) => (
-                    <option key={contest.contest_id} value={contest.contest_id}>
-                      {contest.title || contest.organization_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                운영자 이메일
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                  onChange={(event) =>
-                    setOperatorForm((prev) => ({
-                      ...prev,
-                      email: event.target.value,
-                    }))
-                  }
-                  placeholder="operator@example.com"
-                  type="email"
-                  value={operatorForm.email}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                표시 이름
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                  onChange={(event) =>
-                    setOperatorForm((prev) => ({
-                      ...prev,
-                      displayName: event.target.value,
-                    }))
-                  }
-                  placeholder="예: 대회 운영팀"
-                  value={operatorForm.displayName}
-                />
-              </label>
-
-              {operatorFormError || assignOperatorMutation.error ? (
-                <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                  {operatorFormError ||
-                    formatApiError(
-                      assignOperatorMutation.error,
-                      '운영자 배정에 실패했습니다',
-                    )}
-                </p>
-              ) : null}
-
-              <button
-                className="h-11 rounded border border-amber-200 bg-amber-50 px-5 text-sm font-black text-amber-800 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:text-slate-400"
-                disabled={assignOperatorMutation.isPending}
-                type="submit"
-              >
-                {assignOperatorMutation.isPending ? '배정 중' : '운영자 배정'}
-              </button>
-            </form>
-          </AdminPanel>
-        </div>
-
+      <div className="grid gap-6">
         <AdminPanel
+          actions={
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded bg-violet-950 px-4 text-sm font-black text-white shadow-sm transition hover:bg-violet-800"
+              onClick={scrollToCreateContest}
+              type="button"
+            >
+              <ContestIcon />
+              대회 생성
+            </button>
+          }
           description="최근 생성된 대회부터 표시됩니다."
           title="대회 목록"
         >
-          <div className="overflow-x-auto rounded border border-slate-200">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <div className="max-h-[560px] overflow-auto rounded border border-slate-200">
+            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
@@ -382,6 +225,190 @@ function AdminContestsContent({ token }: { token: string }) {
             </table>
           </div>
         </AdminPanel>
+
+        <AdminPanel
+          description="이미 만들어진 대회에 운영자를 추가합니다."
+          title="운영자 배정"
+        >
+          <form
+            className="grid gap-4 lg:grid-cols-3"
+            onSubmit={handleAssignOperator}
+          >
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              대회
+              <select
+                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                onChange={(event) =>
+                  setOperatorForm((prev) => ({
+                    ...prev,
+                    contestId: event.target.value,
+                  }))
+                }
+                value={operatorForm.contestId}
+              >
+                <option value="">대회 선택</option>
+                {contests.map((contest) => (
+                  <option key={contest.contest_id} value={contest.contest_id}>
+                    {contest.title || contest.organization_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              운영자 이메일
+              <input
+                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                onChange={(event) =>
+                  setOperatorForm((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  }))
+                }
+                placeholder="operator@example.com"
+                type="email"
+                value={operatorForm.email}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              표시 이름
+              <input
+                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                onChange={(event) =>
+                  setOperatorForm((prev) => ({
+                    ...prev,
+                    displayName: event.target.value,
+                  }))
+                }
+                placeholder="예: 대회 운영팀"
+                value={operatorForm.displayName}
+              />
+            </label>
+
+            {operatorFormError || assignOperatorMutation.error ? (
+              <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 lg:col-span-3">
+                {operatorFormError ||
+                  formatApiError(
+                    assignOperatorMutation.error,
+                    '운영자 배정에 실패했습니다',
+                  )}
+              </p>
+            ) : null}
+
+            <div className="flex justify-end lg:col-span-3">
+              <button
+                className="h-11 rounded border border-amber-200 bg-amber-50 px-5 text-sm font-black text-amber-800 shadow-sm transition hover:bg-amber-100 disabled:text-slate-400"
+                disabled={assignOperatorMutation.isPending}
+                type="submit"
+              >
+                {assignOperatorMutation.isPending ? '배정 중' : '운영자 배정'}
+              </button>
+            </div>
+          </form>
+        </AdminPanel>
+
+        <div ref={createContestSectionRef}>
+          <AdminPanel
+            description="일정은 미정 상태로 생성하고, 이후 운영 페이지에서 상세 설정합니다."
+            title="대회 생성"
+          >
+            <form className="grid gap-4" onSubmit={handleCreateContest}>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  대회명
+                  <input
+                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                    onChange={(event) =>
+                      setContestForm((prev) => ({
+                        ...prev,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="예: HEPC 1"
+                    value={contestForm.title}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  주최 기관
+                  <input
+                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                    onChange={(event) =>
+                      setContestForm((prev) => ({
+                        ...prev,
+                        organizationName: event.target.value,
+                      }))
+                    }
+                    placeholder="예: COSS"
+                    value={contestForm.organizationName}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  기준 시작일
+                  <input
+                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                    onChange={(event) =>
+                      setContestForm((prev) => ({
+                        ...prev,
+                        startDate: event.target.value,
+                      }))
+                    }
+                    type="date"
+                    value={contestForm.startDate}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  초기 운영자 이메일
+                  <input
+                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                    onChange={(event) =>
+                      setContestForm((prev) => ({
+                        ...prev,
+                        operatorEmail: event.target.value,
+                      }))
+                    }
+                    placeholder="operator@example.com"
+                    type="email"
+                    value={contestForm.operatorEmail}
+                  />
+                </label>
+              </div>
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                개요
+                <textarea
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  onChange={(event) =>
+                    setContestForm((prev) => ({
+                      ...prev,
+                      overview: event.target.value,
+                    }))
+                  }
+                  placeholder="대회 소개를 입력하세요."
+                  value={contestForm.overview}
+                />
+              </label>
+
+              {contestFormError || createContestMutation.error ? (
+                <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {contestFormError ||
+                    formatApiError(
+                      createContestMutation.error,
+                      '대회 생성에 실패했습니다',
+                    )}
+                </p>
+              ) : null}
+
+              <div className="flex justify-end">
+                <button
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded bg-violet-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-violet-800 disabled:bg-slate-300"
+                  disabled={createContestMutation.isPending}
+                  type="submit"
+                >
+                  <ContestIcon />
+                  {createContestMutation.isPending ? '생성 중' : '대회 생성'}
+                </button>
+              </div>
+            </form>
+          </AdminPanel>
+        </div>
       </div>
     </PageLayout>
   );

@@ -17,6 +17,7 @@ export const routeText = {
   notFound: '찾을 수 없는 페이지',
   notices: '공지사항',
   operator: '운영자',
+  operatorBoard: '대회 운영 게시판',
   operatorContest: '대회 운영',
   operatorNotices: '대회 운영 공지',
   operatorParticipants: '대회 운영 참가팀',
@@ -29,6 +30,11 @@ export const routeText = {
 
 export const headerText = {
   admin: '관리자',
+  logoutCancel: '취소',
+  logoutConfirm: '로그아웃',
+  logoutConfirmDescription:
+    '현재 계정의 로그인 상태가 이 브라우저에서 해제됩니다. 다시 이용하려면 이메일 인증으로 로그인해야 합니다.',
+  logoutConfirmTitle: '로그아웃할까요?',
   login: '로그인',
   logout: '로그아웃',
   loggingOut: '로그아웃 중',
@@ -67,6 +73,7 @@ export const mainPageText = {
 export const operatorNavText = {
   home: '운영 홈',
   notices: '공지',
+  board: '게시판',
   participants: '참가팀',
   problems: '문제',
   scoreboard: '스코어보드',
@@ -123,6 +130,8 @@ export const publicPageText = {
 export const contestListItemText = {
   periodPrefix: '기간',
   registrationDeadlinePrefix: '모집 마감',
+  unavailableMessage:
+    '대회 정보를 연결하지 못해 이동할 수 없습니다. 관리자에게 문의해 주세요.',
 } as const;
 
 export const sharedUiText = {
@@ -157,6 +166,11 @@ export const accessText = {
     '권한이 필요한 경우 대회 운영자 또는 서비스 관리자에게 요청하세요.',
   operatorNoPermissionTitle: '운영 권한 없음',
   operatorReturnLink: '내 운영 대회로 돌아가기',
+  participantNoAccessDescription:
+    '현재 로그인한 계정은 이 대회의 참가자로 등록되어 있지 않습니다.',
+  participantNoAccessMessage:
+    '참가 등록된 계정으로 다시 로그인하거나 대회 운영자에게 참가자 등록 상태를 확인하세요.',
+  participantNoAccessTitle: '참가 권한 없음',
 } as const;
 
 export const loginPageText = {
@@ -189,4 +203,6 @@ export const loginPageText = {
   otpSent: '인증번호가 이메일로 발송되었습니다. 인증번호 유효시간은 5분입니다.',
   spamHelp: '인증번호 메일이 보이지 않으면 스팸함도 함께 확인해 주세요.',
   title: '로그인',
+  unregisteredEmail:
+    '등록된 이메일이 아닙니다. 대회 참가 등록에 사용한 이메일을 입력해 주세요.',
 } as const;

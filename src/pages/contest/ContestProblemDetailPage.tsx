@@ -18,6 +18,11 @@ import {
   createSubmission,
   getSubmission,
 } from '@/domains/submissionScoreboard/api';
+import {
+  isJudgeLanguage,
+  loadLastJudgeLanguage,
+  saveLastJudgeLanguage,
+} from '@/domains/submissionScoreboard/languagePreference';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 import PageNotice from '@/shared/ui/PageNotice';
 
@@ -33,12 +38,7 @@ type SubmitVariables = {
   sourceCode: string;
 };
 
-const judgeLanguages: JudgeLanguage[] = ['cpp17', 'python313', 'java8', 'c99'];
 const emptySubmitFeedback: SubmitFeedback = { message: '', status: 'idle' };
-
-function isJudgeLanguage(value?: string | null): value is JudgeLanguage {
-  return judgeLanguages.includes(value as JudgeLanguage);
-}
 
 function problemViewFromParam(value?: string): ProblemView {
   if (value === 'statement') return 'problem';
@@ -61,6 +61,9 @@ function ContestProblemDetailContent({
   const selectedSubmissionId = searchParams.get('submissionId');
   const { activeParticipantSession, ensureParticipantSession, generalSession } =
     useContestParticipantSession(contestId);
+  const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
+    () => loadLastJudgeLanguage(),
+  );
   const [draftLanguages, setDraftLanguages] = useState<
     Record<string, JudgeLanguage>
   >({});
@@ -153,7 +156,7 @@ function ContestProblemDetailContent({
     : `problem:${problemId}`;
   const fallbackLanguage = isJudgeLanguage(selectedSubmission?.language)
     ? selectedSubmission.language
-    : 'cpp17';
+    : lastJudgeLanguage;
   const activeLanguage = draftLanguages[activeDraftKey] ?? fallbackLanguage;
   const activeSourceCode =
     draftSourceCodes[activeDraftKey] ?? selectedSubmission?.source_code ?? '';
@@ -182,6 +185,8 @@ function ContestProblemDetailContent({
     !selectedSubmissionQuery.isError && !selectedSubmissionProblemMismatch;
 
   function handleLanguageChange(nextLanguage: JudgeLanguage) {
+    setLastJudgeLanguage(nextLanguage);
+    saveLastJudgeLanguage(nextLanguage);
     setDraftLanguages((previous) => ({
       ...previous,
       [activeDraftKey]: nextLanguage,
