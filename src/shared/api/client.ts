@@ -1,5 +1,9 @@
 import { toApiError } from '@/shared/api/errors';
-import type { ApiPageMeta, ApiPagePayload, ApiRawResponse } from '@/shared/api/types';
+import type {
+  ApiPageMeta,
+  ApiPagePayload,
+  ApiRawResponse,
+} from '@/shared/api/types';
 import {
   emitSessionSync,
   loadStoredGeneralSession,
@@ -50,60 +54,59 @@ export async function apiFetchRaw(
 
 export function canAttemptAutoRefresh(path: string) {
   if (!path.startsWith('/')) return false;
-  if (path === '/auth/staff/refresh' || path === '/auth/general/refresh') return false;
-  if (path === '/auth/staff/login' || path === '/auth/general/otp/verify') return false;
-  if (path === '/auth/staff/otp/verify' || path === '/auth/general/password/otp/verify') return false;
-  if (path === '/auth/general/password/login' || path === '/auth/general/login-method') return false;
+  if (path === '/auth/staff/refresh' || path === '/auth/general/refresh')
+    return false;
+  if (path === '/auth/staff/login' || path === '/auth/general/otp/verify')
+    return false;
+  if (
+    path === '/auth/staff/otp/verify' ||
+    path === '/auth/general/password/otp/verify'
+  )
+    return false;
+  if (
+    path === '/auth/general/password/login' ||
+    path === '/auth/general/login-method'
+  )
+    return false;
   if (path === '/auth/general/password/otp/request') return false;
-  if (path === '/auth/general/otp/request' || path === '/auth/staff/otp/request') return false;
-  if (path === '/auth/staff/logout' || path === '/auth/general/logout') return false;
+  if (
+    path === '/auth/general/otp/request' ||
+    path === '/auth/staff/otp/request'
+  )
+    return false;
+  if (path === '/auth/staff/logout' || path === '/auth/general/logout')
+    return false;
 
   return true;
 }
 
-function storedReplacementTokenForRequest(token: string, path: string): string | null {
+function storedReplacementTokenForRequest(
+  token: string,
+  path: string,
+): string | null {
+  void token;
+  void path;
+  return null;
+}
+
+function preferredStoredTokenForRequest(
+  path: string,
+  token?: string,
+): string | undefined {
+  if (token) return token;
+
   const general = loadStoredGeneralSession();
   if (
     (path.startsWith('/operator/') || path.startsWith('/admin/')) &&
-    general?.operatorSession?.accessToken &&
-    general.operatorSession.accessToken !== token
+    general?.operatorSession?.accessToken
   ) {
     return general.operatorSession.accessToken;
   }
 
   if (
     (path === '/auth/general/me' || path.startsWith('/auth/general/')) &&
-    general?.accessToken &&
-    general.accessToken !== token
+    general?.accessToken
   ) {
-    return general.accessToken;
-  }
-
-  const contestId = parseContestId(path);
-  const participant = loadStoredParticipantSession();
-  if (
-    contestId &&
-    participant?.accessToken &&
-    participant.accessToken !== token &&
-    (!participant.contestId || participant.contestId === contestId)
-  ) {
-    return participant.accessToken;
-  }
-
-  if (general?.accessToken && general.accessToken !== token) {
-    return general.accessToken;
-  }
-
-  return null;
-}
-
-function preferredStoredTokenForRequest(path: string, token?: string): string | undefined {
-  const general = loadStoredGeneralSession();
-  if ((path.startsWith('/operator/') || path.startsWith('/admin/')) && general?.operatorSession?.accessToken) {
-    return general.operatorSession.accessToken;
-  }
-
-  if ((path === '/auth/general/me' || path.startsWith('/auth/general/')) && general?.accessToken) {
     return general.accessToken;
   }
 
@@ -120,7 +123,9 @@ function preferredStoredTokenForRequest(path: string, token?: string): string | 
   return token;
 }
 
-async function refreshOperatorAccessTokenViaGeneralSession(): Promise<string | null> {
+async function refreshOperatorAccessTokenViaGeneralSession(): Promise<
+  string | null
+> {
   const general = loadStoredGeneralSession();
   if (!general?.accessToken) return null;
 
@@ -138,7 +143,8 @@ async function refreshOperatorAccessTokenViaGeneralSession(): Promise<string | n
   if (!result.response.ok) return null;
 
   const next = mapGeneralSession(
-    (result.payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>).data!,
+    (result.payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>)
+      .data!,
     loadStoredGeneralSession(),
   );
   saveGeneralSession(next);
@@ -171,16 +177,22 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
       );
       if (!response.ok) return null;
 
-      const data = (payload as DataEnvelope<Partial<Parameters<typeof mapStaffSession>[0]>>).data;
+      const data = (
+        payload as DataEnvelope<Partial<Parameters<typeof mapStaffSession>[0]>>
+      ).data;
       if (!data) return null;
 
       const refreshed = mapStaffSession({
         access_token: data.access_token ?? operatorSession.accessToken,
         refresh_token: data.refresh_token ?? operatorSession.refreshToken,
         staff: data.staff ?? operatorSession.staff,
-        default_redirect: data.default_redirect ?? operatorSession.defaultRedirect,
+        default_redirect:
+          data.default_redirect ?? operatorSession.defaultRedirect,
       });
-      const nextGeneral: GeneralSession = { ...general, operatorSession: refreshed };
+      const nextGeneral: GeneralSession = {
+        ...general,
+        operatorSession: refreshed,
+      };
       saveGeneralSession(nextGeneral);
       emitSessionSync();
       return refreshed.accessToken;
@@ -192,7 +204,9 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
   return staffRefreshInFlight;
 }
 
-async function refreshGeneralAccessToken(token: string): Promise<string | null> {
+async function refreshGeneralAccessToken(
+  token: string,
+): Promise<string | null> {
   const general = loadStoredGeneralSession();
   if (!general || general.accessToken !== token) return null;
 
@@ -210,7 +224,11 @@ async function refreshGeneralAccessToken(token: string): Promise<string | null> 
       );
       if (!response.ok) return null;
 
-      const next = mapGeneralSession((payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>).data!, general);
+      const next = mapGeneralSession(
+        (payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>)
+          .data!,
+        general,
+      );
       saveGeneralSession(next);
       emitSessionSync();
       return next.accessToken;
@@ -222,7 +240,10 @@ async function refreshGeneralAccessToken(token: string): Promise<string | null> 
   return generalRefreshInFlight;
 }
 
-async function refreshParticipantAccessToken(token: string, path: string): Promise<string | null> {
+async function refreshParticipantAccessToken(
+  token: string,
+  path: string,
+): Promise<string | null> {
   const participant = loadStoredParticipantSession();
   if (!participant || participant.accessToken !== token) return null;
 
@@ -255,12 +276,14 @@ async function refreshParticipantAccessToken(token: string, path: string): Promi
 
       if (!sessionResponse.response.ok) return null;
 
-      const data = (sessionResponse.payload as DataEnvelope<{
-        access_token: string;
-        team: ParticipantSession['team'];
-        member: ParticipantSession['member'];
-        division: ParticipantSession['division'];
-      }>).data;
+      const data = (
+        sessionResponse.payload as DataEnvelope<{
+          access_token: string;
+          team: ParticipantSession['team'];
+          member: ParticipantSession['member'];
+          division: ParticipantSession['division'];
+        }>
+      ).data;
 
       if (!data) return null;
 
@@ -282,13 +305,18 @@ async function refreshParticipantAccessToken(token: string, path: string): Promi
   return participantRefreshInFlight;
 }
 
-async function tryRefreshTokenForRequest(token: string, path: string): Promise<string | null> {
+async function tryRefreshTokenForRequest(
+  token: string,
+  path: string,
+): Promise<string | null> {
   const replacement = storedReplacementTokenForRequest(token, path);
   if (replacement) return replacement;
 
   if (path.startsWith('/operator/') || path.startsWith('/admin/')) {
-    const refreshedOperator = await refreshOperatorAccessTokenViaGeneralSession();
-    if (refreshedOperator && refreshedOperator !== token) return refreshedOperator;
+    const refreshedOperator =
+      await refreshOperatorAccessTokenViaGeneralSession();
+    if (refreshedOperator && refreshedOperator !== token)
+      return refreshedOperator;
   }
 
   const refreshedStaff = await refreshStaffAccessToken(token);
@@ -319,7 +347,9 @@ function clearStoredSessionForFailedToken(token: string, path: string) {
   const contestId = parseContestId(path);
   if (
     participant?.accessToken === token &&
-    (!contestId || !participant.contestId || participant.contestId === contestId)
+    (!contestId ||
+      !participant.contestId ||
+      participant.contestId === contestId)
   ) {
     saveParticipantSession(null);
     changed = true;
@@ -328,11 +358,20 @@ function clearStoredSessionForFailedToken(token: string, path: string) {
   if (changed) emitSessionSync();
 }
 
-export async function apiRequest<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  token?: string,
+  init?: RequestInit,
+): Promise<T> {
   let currentToken = preferredStoredTokenForRequest(path, token);
   let result = await apiFetchRaw(path, currentToken, init);
 
-  if (!result.response.ok && result.response.status === 401 && currentToken && canAttemptAutoRefresh(path)) {
+  if (
+    !result.response.ok &&
+    result.response.status === 401 &&
+    currentToken &&
+    canAttemptAutoRefresh(path)
+  ) {
     const refreshedToken = await tryRefreshTokenForRequest(currentToken, path);
     if (refreshedToken) {
       currentToken = refreshedToken;
@@ -341,7 +380,11 @@ export async function apiRequest<T>(path: string, token?: string, init?: Request
   }
 
   if (!result.response.ok) {
-    if (result.response.status === 401 && currentToken && canAttemptAutoRefresh(path)) {
+    if (
+      result.response.status === 401 &&
+      currentToken &&
+      canAttemptAutoRefresh(path)
+    ) {
       clearStoredSessionForFailedToken(currentToken, path);
     }
     throw toApiError(result.response, result.payload);
@@ -358,7 +401,12 @@ export async function apiPageRequest<T>(
   let currentToken = preferredStoredTokenForRequest(path, token);
   let result = await apiFetchRaw(path, currentToken, init);
 
-  if (!result.response.ok && result.response.status === 401 && currentToken && canAttemptAutoRefresh(path)) {
+  if (
+    !result.response.ok &&
+    result.response.status === 401 &&
+    currentToken &&
+    canAttemptAutoRefresh(path)
+  ) {
     const refreshedToken = await tryRefreshTokenForRequest(currentToken, path);
     if (refreshedToken) {
       currentToken = refreshedToken;
@@ -367,7 +415,11 @@ export async function apiPageRequest<T>(
   }
 
   if (!result.response.ok) {
-    if (result.response.status === 401 && currentToken && canAttemptAutoRefresh(path)) {
+    if (
+      result.response.status === 401 &&
+      currentToken &&
+      canAttemptAutoRefresh(path)
+    ) {
       clearStoredSessionForFailedToken(currentToken, path);
     }
     throw toApiError(result.response, result.payload);
@@ -376,6 +428,11 @@ export async function apiPageRequest<T>(
   const payload = result.payload as DataEnvelope<T>;
   return {
     data: (payload.data ?? []) as T,
-    page: payload.page ?? { limit: 20, next_cursor: null, current_cursor: '0', total_count: 0 },
+    page: payload.page ?? {
+      limit: 20,
+      next_cursor: null,
+      current_cursor: '0',
+      total_count: 0,
+    },
   };
 }

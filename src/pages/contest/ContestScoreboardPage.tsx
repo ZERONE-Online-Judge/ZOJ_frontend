@@ -15,8 +15,6 @@ import {
 import {
   getDivisionScoreboard,
   getScoreboard,
-  waitDivisionScoreboard,
-  waitScoreboard,
 } from '@/domains/submissionScoreboard/api';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import PageNotice from '@/shared/ui/PageNotice';
@@ -85,24 +83,16 @@ function ContestScoreboardContent({
     queryFn: async () => {
       const session = await ensureParticipantSession();
       if (session) {
-        return isDocumentVisible
-          ? waitDivisionScoreboard(
-              contestId,
-              session.division.division_id,
-              session.accessToken,
-            )
-          : getDivisionScoreboard(
-              contestId,
-              session.division.division_id,
-              session.accessToken,
-            );
+        return getDivisionScoreboard(
+          contestId,
+          session.division.division_id,
+          session.accessToken,
+        );
       }
 
-      return isDocumentVisible
-        ? waitScoreboard(contestId, generalSession?.accessToken)
-        : getScoreboard(contestId, generalSession?.accessToken);
+      return getScoreboard(contestId, generalSession?.accessToken);
     },
-    refetchInterval: isDocumentVisible ? 1_000 : false,
+    refetchInterval: isDocumentVisible ? 5_000 : false,
     refetchIntervalInBackground: false,
   });
   const rows = scoreboardQuery.data?.rows ?? [];
@@ -127,10 +117,7 @@ function ContestScoreboardContent({
 
       <div className="mt-9">
         {!canViewScoreboard ? (
-          <PageNotice
-            message="스코어보드를 볼 수 없습니다."
-            status="idle"
-          />
+          <PageNotice message="스코어보드를 볼 수 없습니다." status="idle" />
         ) : null}
         {scoreboardQuery.isLoading && (
           <PageNotice

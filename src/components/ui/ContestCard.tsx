@@ -1,8 +1,9 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { SvgIcon } from '@/utils/Icons';
 
 export type ContestCardData = {
   contestId?: string;
@@ -62,15 +63,25 @@ export default function ContestCard({
 
   const cardContent = (
     <>
-      <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5">
-        <span
-          className={
-            isOpen
-              ? 'size-2 rounded-full bg-emerald-500'
-              : 'bg-zoj-blue size-2 rounded-full'
-          }
-        />
-        <span className="text-sm font-semibold text-slate-700">{status}</span>
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {isParticipantContest ? (
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5">
+            <span className="bg-zoj-blue size-2 rounded-full" />
+            <span className="text-sm font-semibold text-slate-700">
+              내 참가
+            </span>
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5">
+          <span
+            className={
+              isOpen
+                ? 'size-2 rounded-full bg-emerald-500'
+                : 'size-2 rounded-full bg-slate-300'
+            }
+          />
+          <span className="text-sm font-semibold text-slate-700">{status}</span>
+        </span>
       </div>
 
       <h3 className="min-h-16 text-xl leading-8 font-semibold break-keep text-slate-950">
@@ -82,7 +93,8 @@ export default function ContestCard({
 
       <div className="mt-5 flex flex-wrap gap-2">
         {period ? (
-          <span className="bg-zoj-blue/10 text-zoj-blue px-3 py-1.5 text-sm font-semibold">
+          <span className="bg-zoj-blue/10 text-zoj-blue inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold">
+            <SvgIcon name="timer" size={14} />
             {contestListItemText.periodPrefix}: {period}
           </span>
         ) : null}

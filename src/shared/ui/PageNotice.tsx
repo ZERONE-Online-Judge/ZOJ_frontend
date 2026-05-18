@@ -1,3 +1,5 @@
+import { SvgIcon } from '@/utils/Icons';
+
 type PageNoticeStatus = 'loading' | 'ready' | 'error' | 'idle';
 
 type PageNoticeProps = {
@@ -8,9 +10,7 @@ type PageNoticeProps = {
 function noticeTone(message: string, status?: PageNoticeStatus) {
   if (
     status === 'error' ||
-    /실패|못했습니다|오류|입력|필요|불가|차단|권한이 없어|없습니다/.test(
-      message,
-    )
+    /실패|못했|오류|입력|필요|불가|차단|권한.*없|없습니다/.test(message)
   ) {
     return 'error';
   }
@@ -29,7 +29,8 @@ export default function PageNotice({
   if (!message) return null;
 
   const tone = noticeTone(message, status);
-  const icon = tone === 'error' ? '!' : tone === 'done' ? '✓' : '…';
+  const iconName: 'alert' | 'check' | 'timer' =
+    tone === 'error' ? 'alert' : tone === 'done' ? 'check' : 'timer';
 
   return (
     <section
@@ -44,7 +45,7 @@ export default function PageNotice({
       role={tone === 'error' ? 'alert' : 'status'}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold">
-        {icon}
+        <SvgIcon name={iconName} size={14} />
       </span>
       <span className="min-w-0 break-keep">{message}</span>
     </section>

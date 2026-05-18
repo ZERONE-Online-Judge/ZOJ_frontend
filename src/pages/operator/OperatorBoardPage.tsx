@@ -10,6 +10,7 @@ import {
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestAnswer,
   listOperatorContestQuestions,
@@ -62,16 +63,17 @@ function OperatorBoardContent({
   token: string;
 }) {
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [selectedQuestionId, setSelectedQuestionId] = useState('');
   const [answerForm, setAnswerForm] = useState(emptyAnswerForm);
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const questionsQuery = useQuery({
-    queryKey: ['operator', 'boards', contestId],
+    queryKey: ['operator', 'boards', contestId, queryIdentity],
     queryFn: () => listOperatorContestQuestions(contestId, token),
     refetchInterval: 15_000,
   });
@@ -86,7 +88,9 @@ function OperatorBoardContent({
     [questionsQuery.data],
   );
   const selectedQuestion =
-    questions.find((question) => question.contest_question_id === selectedQuestionId) ??
+    questions.find(
+      (question) => question.contest_question_id === selectedQuestionId,
+    ) ??
     questions[0] ??
     null;
 
@@ -160,7 +164,9 @@ function OperatorBoardContent({
                     : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50',
                 ].join(' ')}
                 key={question.contest_question_id}
-                onClick={() => setSelectedQuestionId(question.contest_question_id)}
+                onClick={() =>
+                  setSelectedQuestionId(question.contest_question_id)
+                }
                 type="button"
               >
                 <span className="mb-2 flex flex-wrap gap-2">
@@ -218,7 +224,9 @@ function OperatorBoardContent({
                     key={answer.contest_answer_id}
                   >
                     <div className="mb-2 flex flex-wrap gap-2 text-xs font-black text-slate-500">
-                      <span>{answer.visibility === 'public' ? '공개' : '질문자만'}</span>
+                      <span>
+                        {answer.visibility === 'public' ? '공개' : '질문자만'}
+                      </span>
                       <span>{formatDateTime(answer.created_at)}</span>
                     </div>
                     <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
@@ -233,7 +241,8 @@ function OperatorBoardContent({
                 ) : null}
               </section>
 
-              {answerForm.questionId === selectedQuestion.contest_question_id ? (
+              {answerForm.questionId ===
+              selectedQuestion.contest_question_id ? (
                 <form className="grid gap-3" onSubmit={submitAnswer}>
                   <label className="grid gap-2 text-sm font-black text-slate-700">
                     공개 범위
@@ -242,7 +251,8 @@ function OperatorBoardContent({
                       onChange={(event) =>
                         setAnswerForm((prev) => ({
                           ...prev,
-                          visibility: event.target.value as AnswerForm['visibility'],
+                          visibility: event.target
+                            .value as AnswerForm['visibility'],
                         }))
                       }
                       value={answerForm.visibility}

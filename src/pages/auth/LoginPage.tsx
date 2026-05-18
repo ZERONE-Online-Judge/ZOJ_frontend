@@ -12,7 +12,7 @@ import {
 } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import {
-  formatApiError,
+  formatUserApiError,
   isApiClientError,
   readRetryAfterSeconds,
 } from '@/shared/api/errors';
@@ -47,7 +47,7 @@ function formatLoginError(error: unknown) {
     return loginPageText.invalidCredentials;
   }
 
-  return formatApiError(error, loginPageText.loginFailed);
+  return formatUserApiError(error, loginPageText.loginFailed);
 }
 
 function isUnregisteredEmailError(error: unknown) {
@@ -164,7 +164,7 @@ export default function LoginPage() {
       setMessage(
         isUnregisteredEmailError(error)
           ? loginPageText.unregisteredEmail
-          : formatApiError(error, loginPageText.otpRequestFailed),
+          : formatUserApiError(error, loginPageText.otpRequestFailed),
       );
       setMessageStatus('error');
     }

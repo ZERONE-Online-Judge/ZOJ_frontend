@@ -12,6 +12,7 @@ import {
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import {
   listOperatorSubmissions,
@@ -55,18 +56,19 @@ function OperatorSubmissionsContent({
 }) {
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const waitingIds = useRef(new Set<string>());
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const problemsQuery = useQuery({
-    queryKey: ['operator', 'problems', contestId],
+    queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
   });
   const submissionsQuery = useQuery({
-    queryKey: ['operator', 'submissions', contestId],
+    queryKey: ['operator', 'submissions', contestId, queryIdentity],
     queryFn: () => listOperatorSubmissions(contestId, token),
     refetchInterval: (query) => {
       if (!isVisible) return false;

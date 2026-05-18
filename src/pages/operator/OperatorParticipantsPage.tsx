@@ -10,6 +10,7 @@ import {
   TeamIcon,
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   addParticipantTeamMember,
   bulkCreateParticipantTeams,
@@ -102,6 +103,7 @@ function OperatorParticipantsContent({
   token: string;
 }) {
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [teamForm, setTeamForm] = useState(emptyTeamForm);
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [bulkText, setBulkText] = useState('');
@@ -110,11 +112,11 @@ function OperatorParticipantsContent({
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const teamsQuery = useQuery({
-    queryKey: ['operator', 'participants', contestId],
+    queryKey: ['operator', 'participants', contestId, queryIdentity],
     queryFn: () => listParticipantTeams(contestId, token),
   });
 

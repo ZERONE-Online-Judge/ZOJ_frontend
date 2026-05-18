@@ -19,6 +19,7 @@ import {
 } from '@/domains/serviceCommunication/api';
 import { sharedUiText } from '@/data/uiText';
 import PageNotice from '@/shared/ui/PageNotice';
+import { SvgIcon } from '@/utils/Icons';
 
 type ContestPageShellProps = {
   children: (detail: PublicContestDetail) => ReactNode;
@@ -84,22 +85,9 @@ function EmergencyNoticeBanner({
   return (
     <section
       aria-label={sharedUiText.emergencyNoticeAriaLabel}
-      className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
+      className="flex w-full max-w-full min-w-0 items-center gap-3 overflow-hidden rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
     >
-      <svg
-        aria-hidden="true"
-        className="size-5 shrink-0"
-        fill="none"
-        viewBox="0 0 20 20"
-      >
-        <path
-          d="M3.75 11.5h2.5l5.25 3.25V5.25L6.25 8.5h-2.5v3ZM14 8l2.25-2.25M14.25 12.25 16.5 14.5M14.75 10.25h2.75"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
+      <SvgIcon name="megaphone" size={20} />
       <div className="min-w-0 flex-1 overflow-hidden" ref={viewportRef}>
         {shouldMarquee ? (
           <div className="animate-emergency-marquee flex w-max max-w-none gap-10 whitespace-nowrap">
@@ -122,19 +110,7 @@ function EmergencyNoticeBanner({
         onClick={onDismiss}
         type="button"
       >
-        <svg
-          aria-hidden="true"
-          className="size-4"
-          fill="none"
-          viewBox="0 0 16 16"
-        >
-          <path
-            d="m4.25 4.25 7.5 7.5M11.75 4.25l-7.5 7.5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="1.8"
-          />
-        </svg>
+        <SvgIcon name="close" size={14} />
       </button>
     </section>
   );

@@ -13,6 +13,7 @@ import {
   getOperatorContestDashboard,
   updateContestSettings,
 } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestNotice,
   listOperatorContestNotices,
@@ -71,17 +72,18 @@ function OperatorNoticesContent({
   token: string;
 }) {
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [form, setForm] = useState(emptyNoticeForm);
   const [emergencyNotice, setEmergencyNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [editorMode, setEditorMode] = useState<NoticeEditorMode>('notice');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const noticesQuery = useQuery({
-    queryKey: ['operator', 'notices', contestId],
+    queryKey: ['operator', 'notices', contestId, queryIdentity],
     queryFn: () => listOperatorContestNotices(contestId, token),
     refetchInterval: 15_000,
   });

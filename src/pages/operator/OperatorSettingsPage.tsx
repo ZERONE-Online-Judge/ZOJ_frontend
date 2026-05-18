@@ -24,6 +24,7 @@ import {
   isContestOperationLocked,
 } from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import type { StaffAccount } from '@/domains/identityAccess/types';
 import { formatApiError } from '@/shared/api/errors';
 import { dateTimeLocalToIso, dateTimeLocalValue } from '@/shared/lib/dateTime';
@@ -127,6 +128,7 @@ function OperatorSettingsContent({
   token: string;
 }) {
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft | null>(
     null,
   );
@@ -135,12 +137,12 @@ function OperatorSettingsContent({
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
 
   const operatorsQuery = useQuery({
-    queryKey: ['operator', 'operators', contestId],
+    queryKey: ['operator', 'operators', contestId, queryIdentity],
     queryFn: () => listContestOperators(contestId, token),
   });
 
@@ -332,7 +334,8 @@ function OperatorSettingsContent({
             <form className="grid gap-4" onSubmit={handleSettingsSubmit}>
               {operationLocked ? (
                 <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                  대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다. 종료/프리즈 시간과 긴급 공지만 조정하세요.
+                  대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
+                  종료/프리즈 시간과 긴급 공지만 조정하세요.
                 </p>
               ) : null}
               <QuickActions

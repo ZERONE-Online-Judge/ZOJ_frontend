@@ -16,6 +16,7 @@ import {
   waitAdminJudgeSubmissionStatus,
 } from '@/domains/auditMonitoring/api';
 import type { AdminJudgeSubmissionEntry } from '@/domains/auditMonitoring/types';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -42,6 +43,7 @@ export default function AdminJudgePage() {
 function AdminJudgeContent({ token }: { token: string }) {
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<
@@ -50,13 +52,13 @@ function AdminJudgeContent({ token }: { token: string }) {
   const waitingSubmissionIds = useRef(new Set<string>());
 
   const dashboardQuery = useQuery({
-    queryKey: ['admin', 'judge-dashboard'],
+    queryKey: ['admin', 'judge-dashboard', queryIdentity],
     queryFn: () => getAdminJudgeDashboard(token),
     refetchInterval: isVisible ? 5_000 : false,
   });
 
   const submissionsQuery = useQuery({
-    queryKey: ['admin', 'judge-submissions', cursor ?? 'first'],
+    queryKey: ['admin', 'judge-submissions', cursor ?? 'first', queryIdentity],
     queryFn: () =>
       listAdminJudgeSubmissions(token, {
         cursor,
@@ -68,7 +70,12 @@ function AdminJudgeContent({ token }: { token: string }) {
 
   const selectedSubmissionQuery = useQuery({
     enabled: Boolean(selectedSubmissionId),
-    queryKey: ['admin', 'judge-submission', selectedSubmissionId],
+    queryKey: [
+      'admin',
+      'judge-submission',
+      selectedSubmissionId,
+      queryIdentity,
+    ],
     queryFn: () => getAdminJudgeSubmission(selectedSubmissionId!, token, true),
   });
 
