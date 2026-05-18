@@ -1,64 +1,100 @@
-import FlowMarker from '@/components/common/FlowMarker';
-import PageInfoSection from '@/components/common/PageInfoSection';
-import {
-  publicJudgeStatusContent,
-  publicPageContent,
-} from '@/data/testContent';
+import { useQuery } from '@tanstack/react-query';
+import PageLayout from '@/components/common/PageLayout';
+import { publicPageText } from '@/data/uiText';
+import { getPublicJudgeStatus } from '@/domains/auditMonitoring/api';
+import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
+import AnimatedNumber from '@/shared/ui/AnimatedNumber';
+import PageNotice from '@/shared/ui/PageNotice';
+
+function policyLabel(policy?: string) {
+  if (!policy) return '-';
+
+  const labels: Record<string, string> = {
+    round_robin: 'Round Robin',
+    least_loaded: 'Least Loaded',
+    fifo: 'FIFO',
+  };
+
+  return labels[policy] ?? policy;
+}
 
 export default function JudgeStatusPage() {
+  const isDocumentVisible = useDocumentVisibility();
+  const statusQuery = useQuery({
+    queryKey: ['public-judge-status'],
+    queryFn: getPublicJudgeStatus,
+    refetchInterval: isDocumentVisible ? 5_000 : false,
+    refetchIntervalInBackground: false,
+  });
+
+  const status = statusQuery.data;
+  const lastUpdatedAt = statusQuery.dataUpdatedAt
+    ? new Date(statusQuery.dataUpdatedAt)
+    : null;
+
   return (
-    <>
-      <main className="mx-6 my-16 flex flex-col gap-8 lg:mx-64">
-        <FlowMarker>
-          공개 채점 상태의 정상/지연/장애 상태를 디자인에서 확인할 수 있도록
-          실제 카드형 대시보드를 추가했습니다.
-        </FlowMarker>
+    <PageLayout
+      description={publicPageText.judgeStatus.description}
+      eyebrow={publicPageText.judgeStatus.eyebrow}
+      title={publicPageText.judgeStatus.title}
+    >
+      {statusQuery.isLoading && !status ? (
+        <PageNotice
+          message={publicPageText.judgeStatus.loading}
+          status="loading"
+        />
+      ) : null}
+      {statusQuery.isError && !status ? (
+        <PageNotice
+          message={publicPageText.judgeStatus.loadError}
+          status="error"
+        />
+      ) : null}
 
-        <section className="rounded border-2 border-amber-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-emerald-700">
-                {publicJudgeStatusContent.overall}
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-950">
-                공개 채점 상태
-              </h1>
-            </div>
-            <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
-              마지막 갱신 {publicJudgeStatusContent.updatedAt}
-            </p>
-          </div>
+      <section className="grid gap-4 md:grid-cols-4">
+        <article className="rounded-md border border-slate-200 bg-white p-5">
+          <span className="text-sm font-semibold text-slate-500">
+            {publicPageText.judgeStatus.activeNodes}
+          </span>
+          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
+            <AnimatedNumber value={status?.active_node_count} />
+          </strong>
+        </article>
+        <article className="rounded-md border border-slate-200 bg-white p-5">
+          <span className="text-sm font-semibold text-slate-500">
+            {publicPageText.judgeStatus.runningJobs}
+          </span>
+          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
+            <AnimatedNumber value={status?.total_running_jobs} />
+          </strong>
+        </article>
+        <article className="rounded-md border border-slate-200 bg-white p-5">
+          <span className="text-sm font-semibold text-slate-500">
+            {publicPageText.judgeStatus.queueDepth}
+          </span>
+          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
+            <AnimatedNumber value={status?.total_queue_depth} />
+          </strong>
+        </article>
+        <article className="rounded-md border border-slate-200 bg-white p-5">
+          <span className="text-sm font-semibold text-slate-500">
+            {publicPageText.judgeStatus.allocationPolicy}
+          </span>
+          <strong className="mt-3 block text-xl font-black text-slate-950">
+            {policyLabel(status?.allocation_policy)}
+          </strong>
+        </article>
+      </section>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-            {publicJudgeStatusContent.metrics.map((metric) => (
-              <div
-                className="rounded border border-slate-200 bg-slate-50 p-5"
-                key={metric.label}
-              >
-                <p className="text-xs font-semibold text-slate-500">
-                  {metric.label}
-                </p>
-                <p className="mt-3 text-2xl font-semibold text-slate-950">
-                  {metric.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 rounded border border-slate-200 bg-amber-50 p-5">
-            <h2 className="text-lg font-semibold text-slate-950">
-              최근 상태 이벤트
-            </h2>
-            <ul className="mt-4 flex list-disc flex-col gap-2 pl-5 text-sm leading-6 text-slate-700">
-              {publicJudgeStatusContent.events.map((event) => (
-                <li key={event}>{event}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      </main>
-
-      <PageInfoSection content={publicPageContent.judgeStatus} />
-    </>
+      <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+        <span>{publicPageText.judgeStatus.refreshNotice}</span>
+        <time>
+          {publicPageText.judgeStatus.lastUpdated}:{' '}
+          {lastUpdatedAt
+            ? lastUpdatedAt.toLocaleTimeString('ko-KR', { hour12: false })
+            : '-'}
+        </time>
+      </div>
+    </PageLayout>
   );
 }

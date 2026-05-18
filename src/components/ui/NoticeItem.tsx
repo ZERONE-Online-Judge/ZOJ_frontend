@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { sharedUiText } from '@/data/uiText';
 
 export type NoticeItemData = {
   title: string;
@@ -7,25 +8,55 @@ export type NoticeItemData = {
   href?: string;
 };
 
-type NoticeItemProps = NoticeItemData;
+type NoticeItemProps = NoticeItemData & {
+  compact?: boolean;
+};
 
 export default function NoticeItem({
   title,
   date,
-  label = '공지',
+  label = sharedUiText.noticeLabel,
   href,
+  compact = false,
 }: NoticeItemProps) {
   const content = (
-    <div className="flex h-11 items-center justify-between gap-8 px-4 transition hover:bg-amber-50">
-      <div className="flex min-w-0 items-center gap-6">
-        <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
+    <div
+      className={[
+        'flex flex-col transition hover:bg-amber-50 sm:flex-row sm:items-center sm:justify-between',
+        compact
+          ? 'min-h-11 gap-2 px-3 py-2 sm:gap-4 sm:px-4'
+          : 'min-h-16 gap-3 px-4 py-4 sm:gap-10 sm:px-6',
+      ].join(' ')}
+    >
+      <div
+        className={[
+          'flex min-w-0 flex-wrap items-center',
+          compact ? 'gap-2 sm:gap-3' : 'gap-3 sm:gap-7',
+        ].join(' ')}
+      >
+        <span
+          className={[
+            'shrink-0 rounded-full bg-slate-950 font-semibold text-white',
+            compact ? 'px-2.5 py-1 text-xs' : 'px-4 py-1.5 text-sm',
+          ].join(' ')}
+        >
           {label}
         </span>
-        <span className="truncate text-sm font-semibold text-slate-950">
+        <span
+          className={[
+            'min-w-0 font-semibold break-keep text-slate-950 sm:truncate',
+            compact ? 'text-sm' : 'text-lg',
+          ].join(' ')}
+        >
           {title}
         </span>
       </div>
-      <time className="shrink-0 text-xs font-medium text-slate-500">
+      <time
+        className={[
+          'shrink-0 font-medium text-slate-500 sm:text-right',
+          compact ? 'text-xs' : 'text-sm',
+        ].join(' ')}
+      >
         {date}
       </time>
     </div>

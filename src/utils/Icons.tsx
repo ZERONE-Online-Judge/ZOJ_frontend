@@ -1,22 +1,11 @@
 import type { CSSProperties, HTMLAttributes } from 'react';
-import arrowIcon from '@/assets/icons/Arrow.svg?raw';
-
-export const icons = {
-  arrow: arrowIcon,
-} as const satisfies Record<string, string>;
-
-export type IconName = keyof typeof icons;
-
-export function getIconMarkup(name: IconName) {
-  return icons[name];
-}
+import { getIconMarkup, type IconName } from '@/utils/iconRegistry';
 
 type SvgIconProps = Omit<
   HTMLAttributes<HTMLSpanElement>,
   'children' | 'color'
 > & {
-  name?: IconName;
-  markup?: string;
+  name: IconName;
   label?: string;
   decorative?: boolean;
   size?: number | string;
@@ -31,7 +20,6 @@ function getSizedMarkup(markup: string) {
 
 export function SvgIcon({
   name,
-  markup,
   label,
   decorative = true,
   size = 24,
@@ -40,9 +28,7 @@ export function SvgIcon({
   ...props
 }: SvgIconProps) {
   const dimension = typeof size === 'number' ? `${size}px` : size;
-  const iconMarkup = getSizedMarkup(
-    markup ?? (name ? getIconMarkup(name) : ''),
-  );
+  const iconMarkup = getSizedMarkup(getIconMarkup(name));
   const iconStyle: CSSProperties = {
     display: 'inline-flex',
     flexShrink: 0,

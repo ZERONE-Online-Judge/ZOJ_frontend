@@ -1,0 +1,38 @@
+export type ServiceNotice = {
+  service_notice_id: string;
+  title: string;
+  summary: string;
+  body: string;
+  emergency: boolean;
+  published_at: string;
+};
+
+export type ContestNotice = {
+  contest_notice_id: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  emergency: boolean;
+  visibility: 'public' | 'participants';
+  published_at: string;
+};
+
+export type ContestAnswer = {
+  contest_answer_id: string;
+  body: string;
+  visibility: 'public' | 'questioner';
+  created_by_email?: string | null;
+  created_at: string;
+};
+
+export type ContestQuestion = {
+  contest_question_id: string;
+  title: string;
+  body: string;
+  visibility: 'public' | 'private';
+  team_name?: string | null;
+  author_name?: string | null;
+  created_at: string;
+  answers: ContestAnswer[];
+};
+

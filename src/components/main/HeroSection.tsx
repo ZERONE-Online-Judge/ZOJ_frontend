@@ -17,7 +17,7 @@ export default function HeroSection({
         <h1 className="text-6xl leading-tight font-semibold text-white">
           {headline}
         </h1>
-        <p className="text-hero-copy mt-16 max-w-5xl text-3xl leading-snug font-semibold">
+        <p className="text-hero-copy mt-12 max-w-5xl text-xl leading-snug font-semibold break-keep sm:mt-16 sm:text-2xl lg:text-3xl">
           {description}
         </p>
       </div>

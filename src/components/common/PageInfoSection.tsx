@@ -1,3 +1,5 @@
+import { sharedUiText } from '@/data/uiText';
+
 export type PageInfoBox = {
   title: string;
   items?: string[];
@@ -16,14 +18,14 @@ type PageInfoSectionProps = {
 
 export default function PageInfoSection({ content }: PageInfoSectionProps) {
   return (
-    <div className="mx-6 my-24 flex flex-col gap-10 lg:mx-64">
+    <div className="mx-auto my-24 flex w-full max-w-7xl flex-col gap-10 px-6 lg:px-8">
       <hr className="border-slate-200" />
 
       <header className="flex flex-col gap-3">
-        <h1 className="text-4xl font-semibold text-slate-950">
+        <h1 className="text-4xl font-semibold break-keep text-slate-950">
           {content.title}
         </h1>
-        <p className="text-base leading-7 text-slate-600">
+        <p className="text-base leading-7 break-keep text-slate-600">
           {content.description}
         </p>
       </header>
@@ -51,7 +53,7 @@ export default function PageInfoSection({ content }: PageInfoSectionProps) {
       {content.examples && content.examples.length > 0 ? (
         <section className="flex flex-col gap-5">
           <h2 className="text-2xl font-semibold text-slate-950">
-            간단 예시 요소
+            {sharedUiText.exampleSectionTitle}
           </h2>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {content.examples.map((example) => (

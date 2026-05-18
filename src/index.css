@@ -20,4 +20,24 @@
       'Segoe UI',
       sans-serif;
   }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+@keyframes zoj-emergency-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@layer utilities {
+  .animate-emergency-marquee {
+    animation: zoj-emergency-marquee 18s linear infinite;
+  }
 }
