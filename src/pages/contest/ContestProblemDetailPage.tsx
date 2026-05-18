@@ -316,6 +316,8 @@ function ContestProblemDetailContent({
             onLanguageChange={handleLanguageChange}
             onSourceCodeChange={handleSourceCodeChange}
             onSubmit={submitActiveDraft}
+            problemCode={problem.problem_code}
+            problemTitle={problem.title}
             sourceCode={activeSourceCode}
           />
         </section>
@@ -346,6 +348,8 @@ function ContestProblemDetailContent({
             onLanguageChange={handleLanguageChange}
             onSourceCodeChange={handleSourceCodeChange}
             onSubmit={submitActiveDraft}
+            problemCode={problem.problem_code}
+            problemTitle={problem.title}
             sourceCode={activeSourceCode}
           />
         </section>

@@ -15,7 +15,7 @@ import type {
   ContestNotice,
   ContestQuestion,
 } from '@/domains/serviceCommunication/types';
-import { formatApiError } from '@/shared/api/errors';
+import { formatUserApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 
@@ -484,7 +484,10 @@ function QuestionForm({
         <PageNotice
           message={
             formError ||
-            formatApiError(mutationError, contestBoardText.questionSubmitError)
+            formatUserApiError(
+              mutationError,
+              contestBoardText.questionSubmitError,
+            )
           }
           status="error"
         />

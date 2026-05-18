@@ -14,6 +14,7 @@ import {
   getAdminContests,
 } from '@/domains/contestAdministration/api';
 import type { Contest } from '@/domains/contestAdministration/types';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, todayInputValue } from '@/shared/lib/dateTime';
 
@@ -66,6 +67,7 @@ export default function AdminContestsPage() {
 
 function AdminContestsContent({ token }: { token: string }) {
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const createContestSectionRef = useRef<HTMLDivElement>(null);
   const [contestForm, setContestForm] = useState(emptyContestForm);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
@@ -73,7 +75,7 @@ function AdminContestsContent({ token }: { token: string }) {
   const [operatorFormError, setOperatorFormError] = useState('');
 
   const contestsQuery = useQuery({
-    queryKey: ['admin', 'contests'],
+    queryKey: ['admin', 'contests', queryIdentity],
     queryFn: () => getAdminContests(token),
   });
 

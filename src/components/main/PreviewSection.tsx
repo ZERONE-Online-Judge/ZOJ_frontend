@@ -5,34 +5,53 @@ import { SvgIcon } from '@/utils/Icons';
 type PreviewSectionProps = {
   title: string;
   children: ReactNode;
+  compact?: boolean;
   titleHref?: string;
 };
 
 export default function PreviewSection({
   title,
   children,
+  compact = false,
   titleHref,
 }: PreviewSectionProps) {
   const titleContent = (
     <>
-      <h2 className="text-3xl font-semibold break-keep text-slate-950 sm:text-4xl">
+      <h2
+        className={[
+          'font-semibold break-keep text-slate-950',
+          compact ? 'text-xl sm:text-2xl' : 'text-3xl sm:text-4xl',
+        ].join(' ')}
+      >
         {title}
       </h2>
-      <SvgIcon name="arrow" size={30} color="#000000" />
+      <SvgIcon name="arrow" size={compact ? 22 : 30} color="#000000" />
     </>
   );
 
   return (
-    <section className="flex flex-col gap-10">
+    <section
+      className={compact ? 'flex flex-col gap-4' : 'flex flex-col gap-10'}
+    >
       {titleHref ? (
         <Link
-          className="flex w-fit max-w-full items-center gap-3"
+          className={[
+            'flex w-fit max-w-full items-center',
+            compact ? 'gap-2' : 'gap-3',
+          ].join(' ')}
           to={titleHref}
         >
           {titleContent}
         </Link>
       ) : (
-        <div className="flex max-w-full items-center gap-3">{titleContent}</div>
+        <div
+          className={[
+            'flex max-w-full items-center',
+            compact ? 'gap-2' : 'gap-3',
+          ].join(' ')}
+        >
+          {titleContent}
+        </div>
       )}
 
       <div>{children}</div>

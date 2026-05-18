@@ -15,6 +15,7 @@ import {
   createAdminServiceNotice,
   listAdminServiceNotices,
 } from '@/domains/serviceCommunication/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import { formatApiError } from '@/shared/api/errors';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -45,17 +46,18 @@ export default function AdminHomePage() {
 function AdminHomeContent({ token }: { token: string }) {
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
+  const queryIdentity = tokenQueryIdentity(token);
   const [form, setForm] = useState<NoticeFormState>(emptyNoticeForm);
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
-    queryKey: ['admin', 'dashboard'],
+    queryKey: ['admin', 'dashboard', queryIdentity],
     queryFn: () => getAdminDashboard(token),
     refetchInterval: isVisible ? 15_000 : false,
   });
 
   const noticesQuery = useQuery({
-    queryKey: ['admin', 'service-notices'],
+    queryKey: ['admin', 'service-notices', queryIdentity],
     queryFn: () => listAdminServiceNotices(token),
     refetchInterval: isVisible ? 30_000 : false,
   });

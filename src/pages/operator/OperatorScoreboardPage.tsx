@@ -11,6 +11,7 @@ import {
   ScoreboardIcon,
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import {
   getOperatorDivisionScoreboard,
@@ -51,23 +52,24 @@ function OperatorScoreboardContent({
   token: string;
 }) {
   const isVisible = useDocumentVisibility();
+  const queryIdentity = tokenQueryIdentity(token);
   const [divisionId, setDivisionId] = useState('all');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const problemsQuery = useQuery({
-    queryKey: ['operator', 'problems', contestId],
+    queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
   });
   const scoreboardQuery = useQuery({
-    queryKey: ['operator', 'scoreboard', contestId, divisionId],
+    queryKey: ['operator', 'scoreboard', contestId, divisionId, queryIdentity],
     queryFn: () =>
       divisionId === 'all'
         ? getOperatorScoreboard(contestId, token)
         : getOperatorDivisionScoreboard(contestId, divisionId, token),
-    refetchInterval: isVisible ? 1_000 : false,
+    refetchInterval: isVisible ? 5_000 : false,
     refetchIntervalInBackground: false,
   });
 

@@ -18,7 +18,7 @@ export default function NoticeSection({
   notices = [],
 }: NoticeSectionProps) {
   return (
-    <PreviewSection title={title} titleHref={titleHref}>
+    <PreviewSection compact={compact} title={title} titleHref={titleHref}>
       {notices.length > 0 ? (
         <ul className="divide-y divide-slate-200 border-y border-slate-200">
           {notices.slice(0, 5).map((notice, index) => (

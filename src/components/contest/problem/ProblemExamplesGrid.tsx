@@ -1,4 +1,5 @@
 import type { ProblemExample } from '@/domains/problemManagement/types';
+import { SvgIcon } from '@/utils/Icons';
 
 type ProblemExamplesGridProps = {
   examples: ProblemExample[];
@@ -15,19 +16,7 @@ function ExampleBox({ title, value }: { title: string; value: string }) {
           onClick={() => void navigator.clipboard?.writeText(value)}
           type="button"
         >
-          <svg
-            aria-hidden="true"
-            className="size-3.5"
-            fill="none"
-            viewBox="0 0 16 16"
-          >
-            <path
-              d="M5.5 5.5h6v6h-6zM4.5 10.5h-1a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1"
-              stroke="currentColor"
-              strokeLinejoin="round"
-              strokeWidth="1.4"
-            />
-          </svg>
+          <SvgIcon name="clipboard" size={14} />
         </button>
       </header>
       <pre className="min-h-24 px-4 py-3 font-mono text-sm leading-6 whitespace-pre-wrap text-slate-950">

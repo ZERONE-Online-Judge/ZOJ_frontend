@@ -17,6 +17,7 @@ import {
   getOperatorContestDashboard,
   getOperatorContests,
 } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -43,8 +44,9 @@ function OperatorHomeContent({
   contestId?: string;
   token: string;
 }) {
+  const queryIdentity = tokenQueryIdentity(token);
   const contestsQuery = useQuery({
-    queryKey: ['operator', 'contests'],
+    queryKey: ['operator', 'contests', queryIdentity],
     queryFn: () => getOperatorContests(token),
   });
   const contests = contestsQuery.data ?? [];
@@ -52,7 +54,7 @@ function OperatorHomeContent({
 
   const dashboardQuery = useQuery({
     enabled: Boolean(selectedContestId),
-    queryKey: ['operator', 'dashboard', selectedContestId],
+    queryKey: ['operator', 'dashboard', selectedContestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(selectedContestId!, token),
     refetchInterval: 15_000,
   });

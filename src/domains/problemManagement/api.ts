@@ -12,23 +12,40 @@ import type {
   VerifiedTestcaseSetResponse,
   VerifiedTestcaseZipResponse,
 } from '@/domains/problemManagement/types';
-import { apiRequest } from '@/shared/api/client';
+import { API_BASE_URL, apiRequest } from '@/shared/api/client';
 import { encodeStorageKey, sha256Hex } from '@/shared/lib/files';
 
 export function getContestProblems(contestId: string, token?: string) {
   return apiRequest<Problem[]>(`/contests/${contestId}/problems`, token);
 }
 
-export function getDivisionProblems(contestId: string, divisionId: string, token?: string) {
-  return apiRequest<Problem[]>(`/contests/${contestId}/divisions/${divisionId}/problems`, token);
+export function getDivisionProblems(
+  contestId: string,
+  divisionId: string,
+  token?: string,
+) {
+  return apiRequest<Problem[]>(
+    `/contests/${contestId}/divisions/${divisionId}/problems`,
+    token,
+  );
 }
 
-export function getContestProblem(contestId: string, problemId: string, token?: string) {
-  return apiRequest<Problem>(`/contests/${contestId}/problems/${problemId}`, token);
+export function getContestProblem(
+  contestId: string,
+  problemId: string,
+  token?: string,
+) {
+  return apiRequest<Problem>(
+    `/contests/${contestId}/problems/${problemId}`,
+    token,
+  );
 }
 
 export function getOperatorProblems(contestId: string, token: string) {
-  return apiRequest<Problem[]>(`/operator/contests/${contestId}/problems`, token);
+  return apiRequest<Problem[]>(
+    `/operator/contests/${contestId}/problems`,
+    token,
+  );
 }
 
 export function createOperatorProblem(
@@ -45,10 +62,14 @@ export function createOperatorProblem(
     max_score: number;
   },
 ) {
-  return apiRequest<Problem>(`/operator/contests/${contestId}/problems`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Problem>(
+    `/operator/contests/${contestId}/problems`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function updateOperatorProblem(
@@ -57,10 +78,14 @@ export function updateOperatorProblem(
   token: string,
   body: Partial<Omit<Problem, 'problem_id' | 'division_id'>>,
 ) {
-  return apiRequest<Problem>(`/operator/contests/${contestId}/problems/${problemId}`, token, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Problem>(
+    `/operator/contests/${contestId}/problems/${problemId}`,
+    token,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function requestPresignedUpload(
@@ -68,16 +93,26 @@ export function requestPresignedUpload(
   token: string,
   body: { category: string; filename: string; content_type?: string },
 ) {
-  return apiRequest<PresignedUpload>(`/operator/contests/${contestId}/storage/presign-upload`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<PresignedUpload>(
+    `/operator/contests/${contestId}/storage/presign-upload`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
-export async function uploadToPresignedUrl(file: Blob, presigned: PresignedUpload) {
+export async function uploadToPresignedUrl(
+  file: Blob,
+  presigned: PresignedUpload,
+) {
   const response = await fetch(presigned.upload_url, {
     method: presigned.method ?? 'PUT',
-    headers: { 'content-type': file.type || presigned.content_type || 'application/octet-stream' },
+    headers: {
+      'content-type':
+        file.type || presigned.content_type || 'application/octet-stream',
+    },
     body: file,
   });
 
@@ -87,7 +122,10 @@ export async function uploadToPresignedUrl(file: Blob, presigned: PresignedUploa
 }
 
 export async function getStorageObjectText(storageKey: string) {
-  const response = await fetch(`/api/storage/objects/${encodeStorageKey(storageKey)}`);
+  const response = await fetch(
+    `${API_BASE_URL}/storage/objects/${encodeStorageKey(storageKey)}`,
+    { credentials: 'include' },
+  );
 
   if (!response.ok) {
     throw new Error(`storage object fetch failed: HTTP ${response.status}`);
@@ -110,23 +148,40 @@ export async function uploadProblemAsset(
   });
   await uploadToPresignedUrl(file, presigned);
 
-  return apiRequest<ProblemAsset>(`/operator/contests/${contestId}/problems/${problemId}/assets`, token, {
-    method: 'POST',
-    body: JSON.stringify({
-      original_filename: file.name,
-      storage_key: presigned.storage_key,
-      mime_type: file.type || presigned.content_type || 'application/octet-stream',
-      file_size: file.size,
-      sha256: await sha256Hex(file),
-    }),
-  });
+  return apiRequest<ProblemAsset>(
+    `/operator/contests/${contestId}/problems/${problemId}/assets`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        original_filename: file.name,
+        storage_key: presigned.storage_key,
+        mime_type:
+          file.type || presigned.content_type || 'application/octet-stream',
+        file_size: file.size,
+        sha256: await sha256Hex(file),
+      }),
+    },
+  );
 }
 
-export function getProblemAssets(contestId: string, problemId: string, token: string) {
-  return apiRequest<ProblemAsset[]>(`/operator/contests/${contestId}/problems/${problemId}/assets`, token);
+export function getProblemAssets(
+  contestId: string,
+  problemId: string,
+  token: string,
+) {
+  return apiRequest<ProblemAsset[]>(
+    `/operator/contests/${contestId}/problems/${problemId}/assets`,
+    token,
+  );
 }
 
-export function deleteProblemAsset(contestId: string, problemId: string, assetId: string, token: string) {
+export function deleteProblemAsset(
+  contestId: string,
+  problemId: string,
+  assetId: string,
+  token: string,
+) {
   return apiRequest<ProblemAsset>(
     `/operator/contests/${contestId}/problems/${problemId}/assets/${assetId}`,
     token,
@@ -134,7 +189,11 @@ export function deleteProblemAsset(contestId: string, problemId: string, assetId
   );
 }
 
-export function getProblemTestcaseSets(contestId: string, problemId: string, token: string) {
+export function getProblemTestcaseSets(
+  contestId: string,
+  problemId: string,
+  token: string,
+) {
   return apiRequest<TestcaseSet[]>(
     `/operator/contests/${contestId}/problems/${problemId}/testcase-sets`,
     token,
@@ -237,7 +296,8 @@ export function createVerifiedTestcaseSet(
   );
 }
 
-const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+const EMPTY_SHA256 =
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 type UploadedTestcaseFile = {
   stem: string;
@@ -287,10 +347,27 @@ export async function uploadAndCreateMatchedTestcaseSet(
     const file = validFiles[index];
     const ext = file.name.toLowerCase().endsWith('.in') ? 'in' : 'out';
     const stem = file.name.replace(/\.(in|out)$/i, '');
-    const result = await uploadTestcaseFile(contestId, problemId, token, file, file.name);
+    const result = await uploadTestcaseFile(
+      contestId,
+      problemId,
+      token,
+      file,
+      file.name,
+    );
 
-    uploaded.push({ stem, ext, storageKey: result.storageKey, sha: result.sha, name: file.name });
-    onProgress?.({ phase: 'upload', current: index + 1, total, filename: file.name });
+    uploaded.push({
+      stem,
+      ext,
+      storageKey: result.storageKey,
+      sha: result.sha,
+      name: file.name,
+    });
+    onProgress?.({
+      phase: 'upload',
+      current: index + 1,
+      total,
+      filename: file.name,
+    });
   }
 
   const grouped = new Map<
@@ -303,13 +380,19 @@ export async function uploadAndCreateMatchedTestcaseSet(
 
   for (const item of uploaded) {
     const current = grouped.get(item.stem) ?? {};
-    current[item.ext] = { storageKey: item.storageKey, sha: item.sha, name: item.name };
+    current[item.ext] = {
+      storageKey: item.storageKey,
+      sha: item.sha,
+      name: item.name,
+    };
     grouped.set(item.stem, current);
   }
 
   const warnings: string[] = [];
   const cases: VerifiedTestcaseSetRequest['cases'] = [];
-  const sorted = Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const sorted = Array.from(grouped.entries()).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
 
   for (let index = 0; index < sorted.length; index += 1) {
     const [stem, pair] = sorted[index];
@@ -318,14 +401,34 @@ export async function uploadAndCreateMatchedTestcaseSet(
 
     if (!input) {
       warnings.push(`${stem}: .in 누락 -> 빈 .in 생성`);
-      const fallback = await uploadTestcaseFile(contestId, problemId, token, new Blob([''], { type: 'text/plain' }), `${stem}.in`);
-      input = { storageKey: fallback.storageKey, sha: EMPTY_SHA256, name: `${stem}.in` };
+      const fallback = await uploadTestcaseFile(
+        contestId,
+        problemId,
+        token,
+        new Blob([''], { type: 'text/plain' }),
+        `${stem}.in`,
+      );
+      input = {
+        storageKey: fallback.storageKey,
+        sha: EMPTY_SHA256,
+        name: `${stem}.in`,
+      };
     }
 
     if (!output) {
       warnings.push(`${stem}: .out 누락 -> 빈 .out 생성`);
-      const fallback = await uploadTestcaseFile(contestId, problemId, token, new Blob([''], { type: 'text/plain' }), `${stem}.out`);
-      output = { storageKey: fallback.storageKey, sha: EMPTY_SHA256, name: `${stem}.out` };
+      const fallback = await uploadTestcaseFile(
+        contestId,
+        problemId,
+        token,
+        new Blob([''], { type: 'text/plain' }),
+        `${stem}.out`,
+      );
+      output = {
+        storageKey: fallback.storageKey,
+        sha: EMPTY_SHA256,
+        name: `${stem}.out`,
+      };
     }
 
     cases.push({
@@ -339,7 +442,9 @@ export async function uploadAndCreateMatchedTestcaseSet(
 
   onProgress?.({ phase: 'match', current: validFiles.length + 1, total });
 
-  const result = await createVerifiedTestcaseSet(contestId, problemId, token, { cases });
+  const result = await createVerifiedTestcaseSet(contestId, problemId, token, {
+    cases,
+  });
   onProgress?.({ phase: 'verify', current: total, total });
 
   return { ...result, warnings };
@@ -364,7 +469,11 @@ export function createVerifiedTestcaseSetFromZip(
   );
 }
 
-export function getProblemPackageStatus(contestId: string, problemId: string, token: string) {
+export function getProblemPackageStatus(
+  contestId: string,
+  problemId: string,
+  token: string,
+) {
   return apiRequest<ProblemPackageStatus>(
     `/operator/contests/${contestId}/problems/${problemId}/package-status`,
     token,
@@ -401,12 +510,19 @@ export function importPolygonProblem(
   const formData = new FormData();
   formData.set('file', body.file);
   formData.set('division_id', body.division_id);
-  if (body.display_order !== undefined) formData.set('display_order', String(body.display_order));
-  if (body.max_score !== undefined) formData.set('max_score', String(body.max_score));
-  if (body.build_tests !== undefined) formData.set('build_tests', String(body.build_tests));
+  if (body.display_order !== undefined)
+    formData.set('display_order', String(body.display_order));
+  if (body.max_score !== undefined)
+    formData.set('max_score', String(body.max_score));
+  if (body.build_tests !== undefined)
+    formData.set('build_tests', String(body.build_tests));
 
-  return apiRequest<unknown>(`/operator/contests/${contestId}/problems/import-polygon`, token, {
-    method: 'POST',
-    body: formData,
-  });
+  return apiRequest<unknown>(
+    `/operator/contests/${contestId}/problems/import-polygon`,
+    token,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  );
 }

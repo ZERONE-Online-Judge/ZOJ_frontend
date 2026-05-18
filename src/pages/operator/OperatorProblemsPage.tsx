@@ -10,6 +10,7 @@ import {
   ProblemIcon,
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   buildProblemPackageRecipe,
   createVerifiedTestcaseSetFromZip,
@@ -180,6 +181,7 @@ function OperatorProblemsContent({
   contestId: string;
   token: string;
 }) {
+  const queryIdentity = tokenQueryIdentity(token);
   const queryClient = useQueryClient();
   const [editorMode, setEditorMode] = useState<ProblemEditorMode>('create');
   const [form, setForm] = useState(emptyProblemForm);
@@ -196,11 +198,11 @@ function OperatorProblemsContent({
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId],
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const problemsQuery = useQuery({
-    queryKey: ['operator', 'problems', contestId],
+    queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
   });
 
@@ -232,6 +234,7 @@ function OperatorProblemsContent({
       'problem-assets',
       contestId,
       effectiveSelectedProblemId,
+      queryIdentity,
     ],
     queryFn: () =>
       getProblemAssets(contestId, effectiveSelectedProblemId, token),
@@ -243,6 +246,7 @@ function OperatorProblemsContent({
       'problem-testcase-sets',
       contestId,
       effectiveSelectedProblemId,
+      queryIdentity,
     ],
     queryFn: () =>
       getProblemTestcaseSets(contestId, effectiveSelectedProblemId, token),
@@ -254,6 +258,7 @@ function OperatorProblemsContent({
       'problem-package-status',
       contestId,
       effectiveSelectedProblemId,
+      queryIdentity,
     ],
     queryFn: () =>
       getProblemPackageStatus(contestId, effectiveSelectedProblemId, token),

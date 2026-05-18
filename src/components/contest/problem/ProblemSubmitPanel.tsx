@@ -3,6 +3,8 @@ import PageNotice from '@/shared/ui/PageNotice';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 
 type ProblemSubmitPanelProps = {
+  problemCode?: string;
+  problemTitle?: string;
   language: JudgeLanguage;
   sourceCode: string;
   isSubmitting: boolean;
@@ -24,6 +26,8 @@ const languageOptions: { label: string; value: JudgeLanguage }[] = [
 ];
 
 export default function ProblemSubmitPanel({
+  problemCode,
+  problemTitle,
   language,
   sourceCode,
   isSubmitting,
@@ -40,11 +44,15 @@ export default function ProblemSubmitPanel({
     layout === 'standalone'
       ? 'bg-slate-50 px-7 py-7'
       : 'border-l border-slate-200 bg-slate-50 px-5 py-7';
+  const headingProblemLabel =
+    problemCode || problemTitle
+      ? ` - ${problemCode ? `${problemCode}. ` : ''}${problemTitle ?? ''}`
+      : '';
 
   return (
     <aside className={panelClassName}>
-      <h2 className="text-2xl font-black tracking-normal text-slate-950">
-        코드 제출
+      <h2 className="text-2xl font-black tracking-normal break-keep text-slate-950">
+        코드 제출{headingProblemLabel}
       </h2>
 
       <label className="mt-6 grid gap-2">

@@ -7,11 +7,12 @@ import ContestPageShell from '@/components/contest/ContestPageShell';
 import NoticeSection from '@/components/main/NoticeSection';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { getContestNotices } from '@/domains/serviceCommunication/api';
 import type { ContestNotice } from '@/domains/serviceCommunication/types';
-import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { formatDateTime, formatTime, timeLeft } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
+import { SvgIcon } from '@/utils/Icons';
 
 const overviewTabs = [
   { label: '개요', path: '' },
@@ -64,22 +65,7 @@ function OverviewIconBadge({ icon }: { icon: OverviewIcon }) {
           />
         </svg>
       ) : null}
-      {icon === 'timer' ? (
-        <svg
-          aria-hidden="true"
-          className="size-7"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M9 3.75h6M12 8.5v4.25M12 20.25a7.25 7.25 0 1 0 0-14.5 7.25 7.25 0 0 0 0 14.5ZM17.25 6.75l1.25-1.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.1"
-          />
-        </svg>
-      ) : null}
+      {icon === 'timer' ? <SvgIcon name="timer" size={28} /> : null}
     </span>
   );
 }
@@ -173,10 +159,8 @@ function ContestOverviewContent({
   contest: Contest;
   divisions: Division[];
 }) {
-  const generalSession = useSessionStore((state) => state.generalSession);
-  const participantSession = useSessionStore(
-    (state) => state.participantSession,
-  );
+  const { generalSession, participantContest, participantSession, token } =
+    useContestParticipantSession(contest.contest_id);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -186,20 +170,14 @@ function ContestOverviewContent({
   }, []);
 
   const noticesQuery = useQuery({
-    queryKey: contestQueryKeys.notices(
-      contest.contest_id,
-      generalSession?.accessToken,
-    ),
-    queryFn: () =>
-      getContestNotices(contest.contest_id, generalSession?.accessToken),
-    refetchInterval: 15_000,
+    queryKey: contestQueryKeys.notices(contest.contest_id, token),
+    queryFn: () => getContestNotices(contest.contest_id, token),
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
   });
   const notices = useMemo(
     () => sortNotices(noticesQuery.data ?? []).slice(0, 3),
     [noticesQuery.data],
-  );
-  const participantContest = generalSession?.participantContests.find(
-    (item) => item.contest.contest_id === contest.contest_id,
   );
   const teamName =
     participantContest?.team.team_name ??

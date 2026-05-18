@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { SvgIcon } from '@/utils/Icons';
 
 export type ContestListItemData = {
   contestId: string;
@@ -44,35 +45,42 @@ export default function ContestListItem({
 
   const content = (
     <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
-      <div className="grid min-w-0 gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
+      <div className="grid min-w-0 gap-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {isParticipantContest ? (
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
+              <span className="bg-zoj-blue size-2 rounded-full" />
+              <span>내 참가</span>
+            </span>
+          ) : null}
+          <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
             <span
               className={
                 isOpen
                   ? 'size-2 rounded-full bg-emerald-500'
-                  : 'bg-zoj-blue size-2 rounded-full'
+                  : 'size-2 rounded-full bg-slate-300'
               }
             />
             {status}
           </span>
-          <span className="min-w-0 text-sm font-semibold break-keep text-slate-500">
+          <span className="min-w-0 text-sm font-bold break-keep text-slate-400">
             {organization}
           </span>
         </div>
-        <h2 className="text-xl leading-8 font-black break-keep text-slate-950">
+        <h2 className="text-xl leading-7 font-black break-keep text-slate-950">
           {title}
         </h2>
       </div>
 
-      <div className="flex flex-wrap gap-2 md:justify-end">
+      <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
         {period ? (
-          <span className="bg-zoj-blue/10 text-zoj-blue px-3 py-1.5 text-sm font-semibold">
+          <span className="bg-zoj-blue/15 text-zoj-blue inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold">
+            <SvgIcon name="timer" size={14} />
             {contestListItemText.periodPrefix}: {period}
           </span>
         ) : null}
         {registrationDeadline ? (
-          <span className="bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600">
+          <span className="bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600">
             {contestListItemText.registrationDeadlinePrefix}:{' '}
             {registrationDeadline}
           </span>
@@ -84,21 +92,27 @@ export default function ContestListItem({
   return (
     <li
       className={[
-        'rounded-md border border-slate-200 bg-white px-6 py-5 transition',
+        'relative overflow-hidden rounded border border-slate-200 bg-white transition',
         itemHref || !canOpenContest || canShowUnavailableMessage
           ? 'hover:border-zoj-blue hover:shadow-sm'
           : 'opacity-70',
       ].join(' ')}
     >
+      {isParticipantContest ? (
+        <span
+          aria-hidden="true"
+          className="bg-zoj-blue absolute inset-y-0 left-0 w-2"
+        />
+      ) : null}
       {itemHref ? (
-        <Link className="-mx-6 -my-5 block px-6 py-5" to={itemHref}>
+        <Link className="block px-8 py-7" to={itemHref}>
           {content}
         </Link>
       ) : !canOpenContest ? (
         <>
           <button
             aria-haspopup="dialog"
-            className="-mx-6 -my-5 block w-[calc(100%+3rem)] cursor-pointer px-6 py-5 text-left"
+            className="block w-full px-8 py-7 text-left"
             onClick={() => setIsAccessDeniedOpen(true)}
             type="button"
           >
@@ -112,7 +126,7 @@ export default function ContestListItem({
         </>
       ) : canShowUnavailableMessage ? (
         <button
-          className="-mx-6 -my-5 block w-[calc(100%+3rem)] px-6 py-5 text-left"
+          className="block w-full px-8 py-7 text-left"
           onClick={() => setIsUnavailableMessageVisible(true)}
           type="button"
         >
@@ -127,7 +141,7 @@ export default function ContestListItem({
           ) : null}
         </button>
       ) : (
-        content
+        <div className="px-8 py-7">{content}</div>
       )}
     </li>
   );
