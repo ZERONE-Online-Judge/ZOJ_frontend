@@ -100,7 +100,7 @@ function EmergencyNoticeBanner({
             </span>
           </div>
         ) : (
-          <span className="block truncate" ref={textRef}>
+          <span className="block whitespace-nowrap" ref={textRef}>
             {notice}
           </span>
         )}
