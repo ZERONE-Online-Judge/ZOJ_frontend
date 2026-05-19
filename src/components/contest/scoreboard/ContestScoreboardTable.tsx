@@ -74,7 +74,6 @@ export default function ContestScoreboardTable({
             <th className={`${headerCellClassName} w-24`}>순위</th>
             <th className={`${headerCellClassName} min-w-72`}>팀명</th>
             <th className={`${headerCellClassName} w-24`}>해결</th>
-            <th className={`${headerCellClassName} w-32`}>총시간(min)</th>
             <th className={`${headerCellClassName} w-24`}>시도</th>
             {scoreboardProblemScores.map((problem) => (
               <th
@@ -84,6 +83,7 @@ export default function ContestScoreboardTable({
                 {problem.problem_code}
               </th>
             ))}
+            <th className={`${headerCellClassName} w-32`}>총시간(min)</th>
           </tr>
         </thead>
         <tbody>
@@ -99,7 +99,6 @@ export default function ContestScoreboardTable({
               <td className={`${bodyCellClassName} font-bold`}>
                 {row.solved}개
               </td>
-              <td className={bodyCellClassName}>{totalPenalty(row)}</td>
               <td className={bodyCellClassName}>{submissionCount(row)}</td>
               {scoreboardProblemScores.map((problem) => {
                 const score = row.problem_scores.find(
@@ -115,6 +114,7 @@ export default function ContestScoreboardTable({
                   </td>
                 );
               })}
+              <td className={bodyCellClassName}>{totalPenalty(row)}</td>
             </tr>
           ))}
         </tbody>

@@ -77,6 +77,7 @@ export default function HeaderAuthControls({
   const clearSessions = useSessionStore((state) => state.clearSessions);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const accountEmail = generalSession?.account.email;
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -133,11 +134,23 @@ export default function HeaderAuthControls({
           <span>{headerText.admin}</span>
         </Link>
       ) : null}
-      {teamName ? (
-        <span className="max-w-36 truncate text-right text-sm font-bold text-slate-600">
-          {teamName}
-        </span>
-      ) : null}
+      <div className="grid max-w-48 justify-items-end text-right leading-tight">
+        {teamName ? (
+          <span
+            className="max-w-full truncate text-sm font-bold text-slate-600"
+            title={teamName}
+          >
+            {teamName}
+          </span>
+        ) : accountEmail ? (
+          <span
+            className="max-w-full truncate text-xs font-bold text-slate-400"
+            title={accountEmail}
+          >
+            {accountEmail}
+          </span>
+        ) : null}
+      </div>
       <button
         className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:text-slate-400"
         disabled={isLoggingOut}

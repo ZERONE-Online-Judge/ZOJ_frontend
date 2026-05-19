@@ -25,6 +25,10 @@ import {
   updateOperatorProblem,
   uploadProblemAsset,
 } from '@/domains/problemManagement/api';
+import {
+  parseProblemDocument,
+  serializeProblemDocument,
+} from '@/domains/problemManagement/document';
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import type { Problem } from '@/domains/problemManagement/types';
@@ -53,8 +57,12 @@ import { formatApiError } from '@/shared/api/errors';
 type ProblemForm = {
   displayOrder: string;
   divisionId: string;
+  exampleInput: string;
+  exampleOutput: string;
+  inputDescription: string;
   maxScore: string;
   memoryLimitMb: string;
+  outputDescription: string;
   problemCode: string;
   problemId: string;
   statement: string;
@@ -67,8 +75,12 @@ type ProblemEditorMode = 'create' | 'edit';
 const emptyProblemForm: ProblemForm = {
   displayOrder: '',
   divisionId: '',
+  exampleInput: '',
+  exampleOutput: '',
+  inputDescription: '',
   maxScore: '100',
   memoryLimitMb: '256',
+  outputDescription: '',
   problemCode: '',
   problemId: '',
   statement: PROBLEM_STATEMENT_TEMPLATE,
@@ -77,17 +89,39 @@ const emptyProblemForm: ProblemForm = {
 };
 
 function problemFormFromProblem(problem: Problem): ProblemForm {
+  const document = parseProblemDocument(problem.statement);
+  const firstExample = document.examples[0];
+
   return {
     displayOrder: String(problem.display_order ?? ''),
     divisionId: problem.division_id ?? '',
+    exampleInput: firstExample?.input ?? '',
+    exampleOutput: firstExample?.output ?? '',
+    inputDescription: document.inputDescription,
     maxScore: String(problem.max_score ?? 100),
     memoryLimitMb: String(problem.memory_limit_mb),
+    outputDescription: document.outputDescription,
     problemCode: problem.problem_code,
     problemId: problem.problem_id,
-    statement: problem.statement,
+    statement: document.statement,
     timeLimitMs: String(problem.time_limit_ms),
     title: problem.title,
   };
+}
+
+function problemStatementFromForm(form: ProblemForm) {
+  return serializeProblemDocument({
+    examples: [
+      {
+        input: form.exampleInput,
+        output: form.exampleOutput,
+      },
+    ],
+    inputDescription: form.inputDescription,
+    note: '',
+    outputDescription: form.outputDescription,
+    statement: form.statement,
+  });
 }
 
 function positiveNumberOrFallback(value: string, fallback: number) {
@@ -121,7 +155,7 @@ function previewProblemFromForm(
       form.problemCode.trim() || selectedProblem?.problem_code || 'Preview',
     problem_id: form.problemId || selectedProblem?.problem_id || 'preview',
     statement:
-      form.statement.trim() ||
+      problemStatementFromForm(form).trim() ||
       selectedProblem?.statement ||
       PROBLEM_STATEMENT_TEMPLATE,
     time_limit_ms: positiveNumberOrFallback(
@@ -274,7 +308,7 @@ function OperatorProblemsContent({
         max_score: Number(form.maxScore),
         memory_limit_mb: Number(form.memoryLimitMb),
         problem_code: form.problemCode.trim(),
-        statement: form.statement,
+        statement: problemStatementFromForm(form),
         time_limit_ms: Number(form.timeLimitMs),
         title: form.title.trim(),
       };
@@ -731,6 +765,62 @@ function OperatorProblemsContent({
                 value={form.statement}
               />
             </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                입력 설명
+                <textarea
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      inputDescription: event.target.value,
+                    }))
+                  }
+                  value={form.inputDescription}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                출력 설명
+                <textarea
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      outputDescription: event.target.value,
+                    }))
+                  }
+                  value={form.outputDescription}
+                />
+              </label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                예제 입력
+                <textarea
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      exampleInput: event.target.value,
+                    }))
+                  }
+                  value={form.exampleInput}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                예제 출력
+                <textarea
+                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      exampleOutput: event.target.value,
+                    }))
+                  }
+                  value={form.exampleOutput}
+                />
+              </label>
+            </div>
             {formError || saveProblemMutation.error ? (
               <ErrorBox
                 error={saveProblemMutation.error}
@@ -884,7 +974,7 @@ function OperatorProblemsContent({
               </div>
               <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
                 <p className="text-sm font-black text-indigo-800">
-                  리소스 / 테스트케이스 업로드
+                  리소스 / 테스트 케이스 ZIP
                 </p>
                 <label className="grid gap-2 text-xs font-black text-slate-600">
                   본문 이미지 리소스
@@ -970,6 +1060,14 @@ function OperatorProblemsContent({
                   if (effectiveSelectedProblemId) buildPackageMutation.mutate();
                 }}
               >
+                <div className="grid gap-1">
+                  <p className="text-sm font-black text-slate-800">
+                    패키지 빌드
+                  </p>
+                  <p className="text-xs font-bold text-slate-500">
+                    테스트케이스 생성 recipe를 확인한 뒤 패키지를 빌드합니다.
+                  </p>
+                </div>
                 <textarea
                   className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                   onChange={(event) => setPackageScript(event.target.value)}
@@ -983,10 +1081,15 @@ function OperatorProblemsContent({
                 ) : null}
                 <button
                   className="h-10 rounded border border-indigo-200 bg-indigo-50 px-4 text-sm font-black text-indigo-700 disabled:text-slate-300"
-                  disabled={!effectiveSelectedProblemId}
+                  disabled={
+                    !effectiveSelectedProblemId ||
+                    buildPackageMutation.isPending
+                  }
                   type="submit"
                 >
-                  패키지 빌드
+                  {buildPackageMutation.isPending
+                    ? '패키지 빌드 중'
+                    : '패키지 빌드'}
                 </button>
               </form>
             </>
@@ -1044,6 +1147,7 @@ function OperatorProblemsContent({
           problem={previewProblem}
           sourceCode={testSourceCode}
           testLanguage={testLanguage}
+          testSubmissionStatusCode={testSubmission?.status ?? ''}
         />
       ) : null}
     </PageLayout>
@@ -1067,7 +1171,7 @@ function ProblemPickerModal({
       className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
       role="dialog"
     >
-      <section className="grid max-h-[86vh] w-full max-w-3xl gap-5 overflow-hidden rounded border border-slate-200 bg-white p-6 shadow-2xl">
+      <section className="grid max-h-[86vh] w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)] gap-5 overflow-hidden rounded border border-slate-200 bg-white p-6 shadow-2xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="grid gap-1">
             <h2 className="text-xl font-black text-slate-950">
@@ -1086,7 +1190,7 @@ function ProblemPickerModal({
           </button>
         </header>
 
-        <div className="grid gap-2 overflow-y-auto pr-1">
+        <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
           {problems.length > 0 ? (
             problems.map((problem) => (
               <button
@@ -1132,6 +1236,7 @@ function ProblemPreviewModal({
   problem,
   sourceCode,
   testLanguage,
+  testSubmissionStatusCode,
 }: {
   canSubmit: boolean;
   isSubmitting: boolean;
@@ -1144,6 +1249,7 @@ function ProblemPreviewModal({
   problem: Problem;
   sourceCode: string;
   testLanguage: JudgeLanguage;
+  testSubmissionStatusCode: string;
 }) {
   return (
     <div
@@ -1188,6 +1294,14 @@ function ProblemPreviewModal({
               onSubmit={onSubmit}
               sourceCode={sourceCode}
             />
+            {testSubmissionStatusCode ? (
+              <div className="mx-7 mb-7 rounded border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-600">
+                관리자 테스트 제출 상태 코드:{' '}
+                <code className="text-indigo-700">
+                  {testSubmissionStatusCode}
+                </code>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

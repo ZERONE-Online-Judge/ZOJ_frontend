@@ -84,8 +84,34 @@ function storedReplacementTokenForRequest(
   token: string,
   path: string,
 ): string | null {
-  void token;
-  void path;
+  const contestId = parseContestId(path);
+  const participant = loadStoredParticipantSession();
+  if (
+    contestId &&
+    participant?.accessToken &&
+    participant.accessToken !== token &&
+    (!participant.contestId || participant.contestId === contestId)
+  ) {
+    return participant.accessToken;
+  }
+
+  const general = loadStoredGeneralSession();
+  if (
+    (path.startsWith('/operator/') || path.startsWith('/admin/')) &&
+    general?.operatorSession?.accessToken &&
+    general.operatorSession.accessToken !== token
+  ) {
+    return general.operatorSession.accessToken;
+  }
+
+  if (
+    general?.accessToken &&
+    general.accessToken !== token &&
+    (path.startsWith('/auth/general/') || contestId)
+  ) {
+    return general.accessToken;
+  }
+
   return null;
 }
 
@@ -329,6 +355,28 @@ async function tryRefreshTokenForRequest(
   if (refreshedParticipant) return refreshedParticipant;
 
   return null;
+}
+
+export async function refreshActiveAccessTokens() {
+  const general = loadStoredGeneralSession();
+  if (!general?.accessToken) return false;
+
+  const refreshedGeneral = await refreshGeneralAccessToken(general.accessToken);
+  const latestGeneral = loadStoredGeneralSession();
+  const staffToken = latestGeneral?.operatorSession?.accessToken;
+  const refreshedStaff = staffToken
+    ? await refreshStaffAccessToken(staffToken)
+    : null;
+
+  const participant = loadStoredParticipantSession();
+  const refreshedParticipant = participant?.accessToken
+    ? await refreshParticipantAccessToken(
+        participant.accessToken,
+        participant.contestId ? `/contests/${participant.contestId}` : '',
+      )
+    : null;
+
+  return Boolean(refreshedGeneral || refreshedStaff || refreshedParticipant);
 }
 
 function clearStoredSessionForFailedToken(token: string, path: string) {

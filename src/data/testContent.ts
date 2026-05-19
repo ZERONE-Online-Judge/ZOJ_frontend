@@ -1,4 +1,4 @@
-import heroImage from '@/assets/images/hero image.png';
+import heroImage from '@/assets/images/hero-image.jpg';
 
 export type HeroContent = {
   imageSrc: string;
