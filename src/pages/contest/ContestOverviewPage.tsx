@@ -84,15 +84,37 @@ function OverviewCard({ icon, title, subtitle }: OverviewCardProps) {
   );
 }
 
-function getRemainingTime(contest: Contest, now: number) {
+function formatOpenCountdown(startAt: string, now: number) {
+  const diff = Math.max(0, new Date(startAt).getTime() - now);
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+
+  if (days > 0) return `D-${days}, ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m ${seconds}s`;
+}
+
+function getTimerCard(contest: Contest, now: number) {
   const startAt = new Date(contest.start_at).getTime();
   const endAt = new Date(contest.end_at).getTime();
 
-  if (Number.isNaN(startAt) || Number.isNaN(endAt)) return '일정 미정';
-  if (now < startAt) return timeLeft(contest.start_at);
-  if (now >= endAt) return '종료됨';
+  if (Number.isNaN(startAt) || Number.isNaN(endAt)) {
+    return { subtitle: '시간 미정', title: '일정 미정' };
+  }
+  if (now < startAt) {
+    return {
+      subtitle: '오픈까지',
+      title: formatOpenCountdown(contest.start_at, now),
+    };
+  }
+  if (now >= endAt) return { subtitle: '대회 종료', title: '종료됨' };
 
-  return timeLeft(contest.end_at);
+  return {
+    subtitle: `freeze ${formatTime(contest.freeze_at)}`,
+    title: timeLeft(contest.end_at),
+  };
 }
 
 function sortNotices(notices: ContestNotice[]) {
@@ -229,7 +251,7 @@ function ContestOverviewContent({
     participantSession?.division.name ??
     divisions[0]?.name ??
     'division';
-  const remainingTime = getRemainingTime(contest, now);
+  const timerCard = getTimerCard(contest, now);
 
   return (
     <ContestPageFrame>
@@ -247,8 +269,8 @@ function ContestOverviewContent({
         <OverviewCard icon="team" subtitle={divisionName} title={teamName} />
         <OverviewCard
           icon="timer"
-          subtitle={`freeze ${formatTime(contest.freeze_at)}`}
-          title={remainingTime}
+          subtitle={timerCard.subtitle}
+          title={timerCard.title}
         />
       </section>
 
