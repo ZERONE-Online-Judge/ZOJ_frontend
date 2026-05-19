@@ -319,17 +319,18 @@ function NoticeBadge({
   emergency: boolean;
   pinned: boolean;
 }) {
+  const baseLabel = pinned
+    ? contestBoardText.pinnedBadge
+    : contestBoardText.tabNotices;
   const label = emergency
-    ? contestBoardText.emergencyBadge
-    : pinned
-      ? contestBoardText.pinnedBadge
-      : contestBoardText.tabNotices;
+    ? `${baseLabel} · ${contestBoardText.emergencyBadge}`
+    : baseLabel;
 
   return (
     <span
       className={[
         'inline-flex h-7 min-w-12 items-center justify-center rounded-full px-3 text-xs font-black',
-        emergency ? 'bg-slate-950 text-white' : 'bg-slate-950 text-white',
+        pinned ? 'bg-red-600 text-white' : 'bg-slate-950 text-white',
       ].join(' ')}
     >
       {label}

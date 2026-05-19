@@ -126,6 +126,11 @@ function sortNotices(notices: ContestNotice[]) {
   );
 }
 
+function noticeBadgeLabel(notice: ContestNotice) {
+  const base = notice.pinned ? '고정' : '공지';
+  return notice.emergency ? `${base} · 긴급` : base;
+}
+
 function NoticePreview({
   contestId,
   notices,
@@ -144,11 +149,13 @@ function NoticePreview({
       notices={notices.map((notice) => ({
         date: formatDateTime(notice.published_at),
         href: `/contests/${contestId}/board`,
-        label: notice.emergency ? '긴급' : notice.pinned ? '고정' : '공지',
+        label: noticeBadgeLabel(notice),
         title: notice.title,
+        tone: notice.pinned ? 'pinned' : 'default',
       }))}
       title="공지사항"
       titleHref={`/contests/${contestId}/board`}
+      titleSize="small"
     >
       {unavailableMessage || isLoading || isError || notices.length === 0 ? (
         <div className="border-y border-slate-200">
@@ -228,7 +235,7 @@ function ContestOverviewContent({
     refetchIntervalInBackground: false,
   });
   const notices = useMemo(
-    () => sortNotices(noticesQuery.data ?? []).slice(0, 3),
+    () => sortNotices(noticesQuery.data ?? []),
     [noticesQuery.data],
   );
   const teamName =

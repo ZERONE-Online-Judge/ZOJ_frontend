@@ -6,6 +6,7 @@ type PreviewSectionProps = {
   title: string;
   children: ReactNode;
   compact?: boolean;
+  titleSize?: 'default' | 'small';
   titleHref?: string;
 };
 
@@ -13,6 +14,7 @@ export default function PreviewSection({
   title,
   children,
   compact = false,
+  titleSize = 'default',
   titleHref,
 }: PreviewSectionProps) {
   const titleContent = (
@@ -20,7 +22,11 @@ export default function PreviewSection({
       <h2
         className={[
           'font-semibold break-keep text-slate-950',
-          compact ? 'text-xl sm:text-2xl' : 'text-3xl sm:text-4xl',
+          titleSize === 'small'
+            ? 'text-xl sm:text-2xl'
+            : compact
+              ? 'text-xl sm:text-2xl'
+              : 'text-3xl sm:text-4xl',
         ].join(' ')}
       >
         {title}

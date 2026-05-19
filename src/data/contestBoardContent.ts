@@ -17,7 +17,7 @@ export const contestBoardText = {
   pageDescription:
     '서비스 공지는 홈에서, 대회 공지와 질문은 대회 단위로 분리합니다.',
   pageTitle: '대회 공지와 질문 게시판',
-  pinnedBadge: '상단',
+  pinnedBadge: '고정',
   privateLabel: '비공개',
   publicLabel: '공개',
   questionBodyRequired: '질문 내용을 입력해 주세요.',
