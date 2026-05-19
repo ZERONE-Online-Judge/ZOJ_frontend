@@ -595,7 +595,7 @@ function OperatorProblemsContent({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className="grid content-start gap-4 rounded border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -659,7 +659,7 @@ function OperatorProblemsContent({
             ) : null}
           </div>
         </aside>
-        <div className="grid gap-6">
+        <div className="grid content-start gap-6">
         <OperatorPanel
           description={
             editorMode === 'edit'
@@ -673,7 +673,7 @@ function OperatorProblemsContent({
               수정할 문제를 목록에서 가져와 주세요.
             </p>
           ) : null}
-          <div className="grid gap-2 md:grid-cols-4">
+          <div className="grid items-start gap-2 md:grid-cols-4">
             {[
               ['settings', '기본 정보'],
               ['statement', '문제/예제'],
@@ -682,7 +682,7 @@ function OperatorProblemsContent({
             ].map(([value, label]) => (
               <button
                 className={[
-                  'rounded border px-4 py-3 text-sm font-black transition',
+                  'h-11 rounded border px-4 text-sm font-black transition',
                   authoringTab === value
                     ? 'border-indigo-300 bg-indigo-950 text-white'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',

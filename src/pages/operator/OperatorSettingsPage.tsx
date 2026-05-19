@@ -26,6 +26,7 @@ import {
 } from '@/domains/contestAdministration/logic';
 import type {
   Contest,
+  ContestSettingsPatch,
   ContestResourceAccess,
   Division,
 } from '@/domains/contestAdministration/types';
@@ -178,12 +179,10 @@ function OperatorSettingsContent({
   }
 
   const updateSettingsMutation = useMutation({
-    mutationFn: () =>
-      updateContestSettings(contestId, token, {
+    mutationFn: () => {
+      const body: ContestSettingsPatch = {
         end_at: dateTimeLocalToIso(settingsForm!.end_at),
         freeze_at: dateTimeLocalToIso(settingsForm!.freeze_at),
-        organization_name: settingsForm!.organization_name.trim(),
-        overview: settingsForm!.overview.trim(),
         problem_access_after_end: settingsForm!.problem_access_after_end,
         problem_public_after_end:
           settingsForm!.problem_access_after_end === 'public',
@@ -191,14 +190,22 @@ function OperatorSettingsContent({
         scoreboard_public_after_end:
           settingsForm!.scoreboard_access_after_end === 'public',
         start_at: dateTimeLocalToIso(settingsForm!.start_at),
-        status: settingsForm!.status,
         submission_access_after_end: settingsForm!.submission_access_after_end,
         submission_public_after_end:
           settingsForm!.submission_access_after_end === 'public',
         board_access_after_end: settingsForm!.board_access_after_end,
         notice_access_after_end: settingsForm!.notice_access_after_end,
-        title: settingsForm!.title.trim(),
-      }),
+      };
+
+      if (!operationLocked) {
+        body.organization_name = settingsForm!.organization_name.trim();
+        body.overview = settingsForm!.overview.trim();
+        body.status = settingsForm!.status;
+        body.title = settingsForm!.title.trim();
+      }
+
+      return updateContestSettings(contestId, token, body);
+    },
     onSuccess: () => {
       setSettingsDraft(null);
       setFormError('');
