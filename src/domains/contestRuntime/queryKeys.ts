@@ -47,10 +47,32 @@ export const contestQueryKeys = {
       divisionId ?? null,
       participantToken ?? null,
     ] as const,
-  notices: (contestId: string, token?: string) =>
-    ['contest-notices', contestId, token ?? null] as const,
-  questions: (contestId: string, token?: string) =>
-    ['contest-questions', contestId, token ?? null] as const,
+  notices: (
+    contestId: string,
+    token?: string,
+    participantContestId?: string,
+    participantToken?: string,
+  ) =>
+    [
+      'contest-notices',
+      contestId,
+      token ?? null,
+      participantContestId ?? null,
+      participantToken ?? null,
+    ] as const,
+  questions: (
+    contestId: string,
+    token?: string,
+    participantContestId?: string,
+    participantToken?: string,
+  ) =>
+    [
+      'contest-questions',
+      contestId,
+      token ?? null,
+      participantContestId ?? null,
+      participantToken ?? null,
+    ] as const,
   problemDetail: (
     contestId: string,
     problemId: string,

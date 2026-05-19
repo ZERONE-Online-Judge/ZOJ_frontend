@@ -21,7 +21,10 @@ export default function ContestPageNavigation({
           const to = tab.path
             ? `/contests/${contestId}/${tab.path}`
             : `/contests/${contestId}`;
-          const disabled = isBeforeStart && Boolean(tab.path);
+          const disabled =
+            isBeforeStart &&
+            tab.path !== '' &&
+            tab.path !== 'board';
 
           return (
             <li key={tab.path || 'overview'}>
@@ -29,7 +32,7 @@ export default function ContestPageNavigation({
                 <button
                   className="inline-flex h-8 cursor-not-allowed items-center rounded-full border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-slate-300"
                   disabled
-                  title="대회 시작 전에는 개요만 볼 수 있습니다."
+                  title="대회 시작 전에는 문제집, 채점현황, 스코어보드를 볼 수 없습니다."
                   type="button"
                 >
                   {tab.label}

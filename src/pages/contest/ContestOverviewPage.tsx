@@ -162,6 +162,7 @@ function ContestOverviewContent({
   divisions: Division[];
 }) {
   const {
+    activeParticipantSession,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -178,15 +179,25 @@ function ContestOverviewContent({
   }, []);
 
   const noticeAccess = contestResourceAccess(contest, 'notice');
+  const hasParticipantAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const canViewNotices =
     contestAccessPhase(contest) !== 'ended' ||
-    canViewContestResource(contest, Boolean(participantContest), noticeAccess);
+    canViewContestResource(contest, hasParticipantAccess, noticeAccess);
   const noticesQuery = useQuery({
     enabled: canViewNotices,
-    queryKey: contestQueryKeys.notices(contest.contest_id, token),
+    queryKey: contestQueryKeys.notices(
+      contest.contest_id,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
       const session =
-        participantContest || noticeAccess === 'participants'
+        participantContest ||
+        activeParticipantSession ||
+        noticeAccess === 'participants'
           ? await ensureParticipantSession()
           : null;
       return getContestNotices(contest.contest_id, session?.accessToken ?? token);
@@ -253,7 +264,7 @@ function ContestOverviewContent({
               : contestResourceAccessMessage(
                   contest,
                   'notice',
-                  Boolean(participantContest),
+                  hasParticipantAccess,
                 )
           }
         />

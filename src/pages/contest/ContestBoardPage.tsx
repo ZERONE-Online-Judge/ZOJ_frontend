@@ -60,20 +60,23 @@ function ContestBoardContent({
   contestId: string;
 }) {
   const queryClient = useQueryClient();
-  const { ensureParticipantSession, participantContest, token } =
-    useContestParticipantSession(contestId);
-  const hasSessionAccess = Boolean(participantContest);
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    participantContest,
+    token,
+  } = useContestParticipantSession(contestId);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const noticeAccess = contestResourceAccess(contest, 'notice');
   const boardAccess = contestResourceAccess(contest, 'board');
   const phase = contestAccessPhase(contest);
   const isEnded = phase === 'ended';
-  const isBeforeStart = phase === 'before';
   const canViewNotices =
-    !isBeforeStart &&
-    (!isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess));
+    !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);
   const canViewQuestions =
-    !isBeforeStart &&
-    (!isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess));
+    !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
   );
@@ -86,9 +89,16 @@ function ContestBoardContent({
 
   const noticesQuery = useQuery({
     enabled: canViewNotices,
-    queryKey: contestQueryKeys.notices(contestId, token),
+    queryKey: contestQueryKeys.notices(
+      contestId,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
       const session =
+        participantContest ||
+        activeParticipantSession ||
         noticeAccess === 'participants'
           ? await ensureParticipantSession()
           : null;
@@ -98,10 +108,17 @@ function ContestBoardContent({
   });
   const questionsQuery = useQuery({
     enabled: canViewQuestions,
-    queryKey: contestQueryKeys.questions(contestId, token),
+    queryKey: contestQueryKeys.questions(
+      contestId,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
     queryFn: async () => {
       const session =
-        participantContest || boardAccess === 'participants'
+        participantContest ||
+        activeParticipantSession ||
+        boardAccess === 'participants'
           ? await ensureParticipantSession()
           : null;
       return getContestQuestions(contestId, session?.accessToken ?? token);
