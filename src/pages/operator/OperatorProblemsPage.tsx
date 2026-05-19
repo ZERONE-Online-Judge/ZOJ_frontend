@@ -457,7 +457,7 @@ function OperatorProblemsContent({
         effectiveSelectedProblemId,
         token,
         file,
-        `problems/${effectiveSelectedProblemId}/support/${role}`,
+        `problems/${effectiveSelectedProblemId}/package-files/${role}`,
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({
@@ -1170,6 +1170,13 @@ function OperatorProblemsContent({
                           ? '채점 준비 완료'
                           : '채점 파일 확인 필요'}
                       </p>
+                    ) : null}
+                    {packageStatusQuery.data?.warnings.length ? (
+                      <ul className="grid gap-1 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
+                        {packageStatusQuery.data.warnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
                     ) : null}
                     <div className="grid gap-2">
                       {supportFileRows.map((file) => {
