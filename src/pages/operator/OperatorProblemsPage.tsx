@@ -12,6 +12,8 @@ import {
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
+  deleteProblemAsset,
+  deleteProblemTestcase,
   deleteProblemTestcaseSet,
   createOperatorProblem,
   getStorageObjectText,
@@ -222,6 +224,10 @@ function OperatorProblemsContent({
     storageKey: string;
     title: string;
   } | null>(null);
+  const [supportFilePreview, setSupportFilePreview] = useState<{
+    storageKey: string;
+    title: string;
+  } | null>(null);
   const [testLanguage, setTestLanguage] = useState<JudgeLanguage>(() =>
     loadLastJudgeLanguage(),
   );
@@ -271,7 +277,7 @@ function OperatorProblemsContent({
   const assetsQuery = useQuery({
     enabled:
       Boolean(effectiveSelectedProblemId) &&
-      (authoringTab === 'statement' || isPreviewOpen),
+      (authoringTab === 'statement' || authoringTab === 'tests' || isPreviewOpen),
     queryKey: [
       'operator',
       'problem-assets',
@@ -323,6 +329,15 @@ function OperatorProblemsContent({
       ),
     [assetsQuery.data],
   );
+  const supportAssetByRole = useMemo(() => {
+    const grouped = new Map<string, ProblemAsset>();
+    for (const asset of assetsQuery.data ?? []) {
+      const role = supportRoleFromStorageKey(asset.storage_key);
+      if (!role) continue;
+      grouped.set(role, asset);
+    }
+    return grouped;
+  }, [assetsQuery.data]);
   const testcaseFileQuery = useQuery({
     enabled: Boolean(testcaseFilePreview?.storageKey),
     queryKey: [
@@ -331,6 +346,15 @@ function OperatorProblemsContent({
       testcaseFilePreview?.storageKey ?? '',
     ],
     queryFn: () => getStorageObjectText(testcaseFilePreview!.storageKey),
+  });
+  const supportFileQuery = useQuery({
+    enabled: Boolean(supportFilePreview?.storageKey),
+    queryKey: [
+      'operator',
+      'support-file',
+      supportFilePreview?.storageKey ?? '',
+    ],
+    queryFn: () => getStorageObjectText(supportFilePreview!.storageKey),
   });
 
   const saveProblemMutation = useMutation({
@@ -415,6 +439,37 @@ function OperatorProblemsContent({
     },
   });
 
+  const deleteAssetMutation = useMutation({
+    mutationFn: (asset: ProblemAsset) =>
+      deleteProblemAsset(
+        contestId,
+        effectiveSelectedProblemId,
+        asset.asset_id,
+        token,
+      ),
+    onSuccess: (_asset, deletedAsset) => {
+      if (supportFilePreview?.storageKey === deletedAsset.storage_key) {
+        setSupportFilePreview(null);
+      }
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-assets',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
   const uploadMatchedTestcasesMutation = useMutation({
     mutationFn: (files: File[]) =>
       uploadAndCreateMatchedTestcaseSet(
@@ -463,6 +518,47 @@ function OperatorProblemsContent({
         token,
       ),
     onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-testcase-sets',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
+  const deleteTestcaseMutation = useMutation({
+    mutationFn: ({
+      testcaseId,
+      testcaseSetId,
+    }: {
+      testcaseId: string;
+      testcaseSetId: string;
+    }) =>
+      deleteProblemTestcase(
+        contestId,
+        effectiveSelectedProblemId,
+        testcaseSetId,
+        testcaseId,
+        token,
+      ),
+    onSuccess: (deletedTestcase) => {
+      if (
+        testcaseFilePreview?.storageKey === deletedTestcase.input_storage_key ||
+        testcaseFilePreview?.storageKey === deletedTestcase.output_storage_key
+      ) {
+        setTestcaseFilePreview(null);
+      }
       void queryClient.invalidateQueries({
         queryKey: [
           'operator',
@@ -1005,50 +1101,104 @@ function OperatorProblemsContent({
                       : '채점 파일 확인 필요'}
                   </p>
                   <div className="grid gap-2">
-                    {packageStatusQuery.data.support_files.map((file) => (
-                      <div
-                        className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
-                        key={file.role}
-                      >
-                        <span className="grid min-w-0 gap-1">
-                          <span>
-                            {file.label}
-                            {file.required ? ' *' : ''}
-                          </span>
-                          <span
-                            className={
-                              file.status === 'ready'
-                                ? 'text-emerald-700'
-                                : 'text-amber-700'
-                            }
-                          >
-                            {file.latest_filename ?? `${file.count}개`}
-                          </span>
-                        </span>
-                        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded border border-slate-200 bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
-                          파일 선택
-                          <input
-                            className="sr-only"
-                            disabled={
-                              !effectiveSelectedProblemId ||
-                              uploadRoleFileMutation.isPending
-                            }
-                            onChange={(event) => {
-                              const fileObject =
-                                event.currentTarget.files?.[0];
-                              if (fileObject) {
-                                uploadRoleFileMutation.mutate({
-                                  file: fileObject,
-                                  role: file.role,
-                                });
+                    {packageStatusQuery.data.support_files.map((file) => {
+                      const asset = supportAssetByRole.get(file.role);
+
+                      return (
+                        <div
+                          className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
+                          key={file.role}
+                        >
+                          <span className="grid min-w-0 gap-1">
+                            <span>
+                              {file.label}
+                              {file.required ? ' *' : ''}
+                            </span>
+                            <button
+                              className={[
+                                'w-fit max-w-full truncate text-left font-black',
+                                asset
+                                  ? 'text-indigo-700 hover:text-indigo-950'
+                                  : file.status === 'ready'
+                                    ? 'text-emerald-700'
+                                    : 'text-amber-700',
+                              ].join(' ')}
+                              disabled={!asset}
+                              onClick={() =>
+                                asset
+                                  ? setSupportFilePreview({
+                                      storageKey: asset.storage_key,
+                                      title: `${file.label} · ${asset.original_filename}`,
+                                    })
+                                  : undefined
                               }
-                              event.currentTarget.value = '';
-                            }}
-                            type="file"
-                          />
-                        </label>
-                      </div>
-                    ))}
+                              title={asset?.original_filename ?? undefined}
+                              type="button"
+                            >
+                              {asset?.original_filename ??
+                                file.latest_filename ??
+                                '파일 없음'}
+                            </button>
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {asset ? (
+                              <>
+                                <button
+                                  className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50"
+                                  onClick={() =>
+                                    setSupportFilePreview({
+                                      storageKey: asset.storage_key,
+                                      title: `${file.label} · ${asset.original_filename}`,
+                                    })
+                                  }
+                                  type="button"
+                                >
+                                  보기
+                                </button>
+                                <button
+                                  className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                                  disabled={deleteAssetMutation.isPending}
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `${asset.original_filename} 파일을 삭제할까요?`,
+                                      )
+                                    ) {
+                                      deleteAssetMutation.mutate(asset);
+                                    }
+                                  }}
+                                  type="button"
+                                >
+                                  삭제
+                                </button>
+                              </>
+                            ) : null}
+                            <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded border border-slate-200 bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
+                              파일 선택
+                              <input
+                                className="sr-only"
+                                disabled={
+                                  !effectiveSelectedProblemId ||
+                                  uploadRoleFileMutation.isPending
+                                }
+                                onChange={(event) => {
+                                  const fileObject =
+                                    event.currentTarget.files?.[0];
+                                  if (fileObject) {
+                                    uploadRoleFileMutation.mutate({
+                                      file: fileObject,
+                                      role: file.role,
+                                    });
+                                  }
+                                  event.currentTarget.value = '';
+                                }}
+                                type="file"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
@@ -1066,19 +1216,9 @@ function OperatorProblemsContent({
                       현재 테스트케이스{' '}
                       {latestTestcaseSet.testcases?.length ?? 0}개 보기
                     </button>
-                    <button
-                      className="rounded border border-rose-200 px-3 py-2 font-black text-rose-600"
-                      onClick={() => {
-                        if (window.confirm('현재 테스트케이스를 삭제할까요?')) {
-                          deleteTestcaseSetMutation.mutate(
-                            latestTestcaseSet.testcase_set_id,
-                          );
-                        }
-                      }}
-                      type="button"
-                    >
-                      삭제
-                    </button>
+                    <span className="text-xs font-bold text-slate-400">
+                      개별 케이스는 목록에서 삭제합니다.
+                    </span>
                   </div>
                 ) : (
                   <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
@@ -1141,12 +1281,16 @@ function OperatorProblemsContent({
                 ) : null}
                 {uploadRoleFileMutation.error ||
                 uploadMatchedTestcasesMutation.error ||
-                deleteTestcaseSetMutation.error ? (
+                deleteTestcaseSetMutation.error ||
+                deleteTestcaseMutation.error ||
+                deleteAssetMutation.error ? (
                   <ErrorBox
                     error={
                       uploadRoleFileMutation.error ||
                       uploadMatchedTestcasesMutation.error ||
-                      deleteTestcaseSetMutation.error
+                      deleteTestcaseSetMutation.error ||
+                      deleteTestcaseMutation.error ||
+                      deleteAssetMutation.error
                     }
                     fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
                   />
@@ -1169,8 +1313,29 @@ function OperatorProblemsContent({
             setIsTestcaseModalOpen(false);
             setTestcaseFilePreview(null);
           }}
+          onDeleteTestcase={(testcaseId) => {
+            if (!latestTestcaseSet) return;
+            if (window.confirm('이 테스트케이스 입력/출력 세트를 삭제할까요?')) {
+              deleteTestcaseMutation.mutate({
+                testcaseId,
+                testcaseSetId: latestTestcaseSet.testcase_set_id,
+              });
+            }
+          }}
           onSelectFile={setTestcaseFilePreview}
+          deletingTestcaseId={
+            deleteTestcaseMutation.variables?.testcaseId ?? null
+          }
           testcaseSet={latestTestcaseSet}
+        />
+      ) : null}
+      {supportFilePreview ? (
+        <FileContentModal
+          fileError={supportFileQuery.error}
+          filePreview={supportFilePreview}
+          fileText={supportFileQuery.data}
+          isFileLoading={supportFileQuery.isLoading}
+          onClose={() => setSupportFilePreview(null)}
         />
       ) : null}
 
@@ -1224,19 +1389,23 @@ function OperatorProblemsContent({
 }
 
 function TestcaseSetModal({
+  deletingTestcaseId,
   fileError,
   filePreview,
   fileText,
   isFileLoading,
   onClose,
+  onDeleteTestcase,
   onSelectFile,
   testcaseSet,
 }: {
+  deletingTestcaseId: string | null;
   fileError: unknown;
   filePreview: { storageKey: string; title: string } | null;
   fileText?: string;
   isFileLoading: boolean;
   onClose: () => void;
+  onDeleteTestcase: (testcaseId: string) => void;
   onSelectFile: (preview: { storageKey: string; title: string }) => void;
   testcaseSet: TestcaseSet;
 }) {
@@ -1283,9 +1452,10 @@ function TestcaseSetModal({
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     출력 파일
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
                     내용
                   </th>
+                  <th className="border-b border-slate-200 px-4 py-3">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1331,13 +1501,23 @@ function TestcaseSetModal({
                         </button>
                       </div>
                     </td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 disabled:text-slate-300"
+                        disabled={deletingTestcaseId === testcase.testcase_id}
+                        onClick={() => onDeleteTestcase(testcase.testcase_id)}
+                        type="button"
+                      >
+                        삭제
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {!testcases.length ? (
                   <tr>
                     <td
                       className="px-4 py-10 text-center text-sm font-bold text-slate-500"
-                      colSpan={4}
+                      colSpan={5}
                     >
                       표시할 테스트케이스가 없습니다.
                     </td>
@@ -1377,6 +1557,67 @@ function TestcaseSetModal({
               )}
             </div>
           </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function FileContentModal({
+  fileError,
+  filePreview,
+  fileText,
+  isFileLoading,
+  onClose,
+}: {
+  fileError: unknown;
+  filePreview: { storageKey: string; title: string };
+  fileText?: string;
+  isFileLoading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      role="dialog"
+    >
+      <section className="mx-auto grid h-full max-h-[calc(100vh-1.5rem)] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black text-indigo-600 uppercase">
+              Support file
+            </p>
+            <h2 className="truncate text-xl font-black text-slate-950">
+              {filePreview.title}
+            </h2>
+            <p className="break-all font-mono text-xs font-bold text-slate-400">
+              {filePreview.storageKey}
+            </p>
+          </div>
+          <button
+            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            닫기
+          </button>
+        </header>
+        <div className="min-h-0 p-5">
+          {isFileLoading ? (
+            <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
+              파일 내용을 불러오는 중입니다.
+            </p>
+          ) : fileError ? (
+            <ErrorBox
+              error={fileError}
+              fallback="파일 내용을 불러오지 못했습니다"
+            />
+          ) : (
+            <pre className="h-full min-h-72 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+              {fileText ?? ''}
+            </pre>
+          )}
         </div>
       </section>
     </div>
@@ -1468,6 +1709,10 @@ function ProblemPreviewModal({
       </section>
     </div>
   );
+}
+
+function supportRoleFromStorageKey(storageKey: string) {
+  return storageKey.match(/\/support\/([^/]+)\//)?.[1] ?? null;
 }
 
 function TextInput({
