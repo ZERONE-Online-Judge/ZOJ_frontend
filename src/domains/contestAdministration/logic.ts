@@ -8,13 +8,10 @@ import { timeLeft } from '@/shared/lib/dateTime';
 
 export const CONTEST_STATUS_OPTIONS: ContestStatus[] = [
   'draft',
-  'schedule_tbd',
   'scheduled',
   'open',
   'running',
   'ended',
-  'finalized',
-  'archived',
 ];
 
 export function emptyContest(contestId?: string): Contest {
@@ -80,16 +77,24 @@ export function isContestOperationLocked(contest: Contest) {
 export function contestStatusLabel(status: string) {
   const labels: Record<string, string> = {
     draft: '초안',
-    schedule_tbd: '스케줄 미정',
-    scheduled: '예정',
-    open: '접수 중',
-    running: '진행 중',
+    schedule_tbd: '초안',
+    scheduled: '예정(비공개)',
+    open: '예정(공개)',
+    running: '진행중',
     ended: '종료',
-    finalized: '결과 확정',
-    archived: '보관됨',
+    finalized: '종료',
+    archived: '종료',
   };
 
   return labels[status] ?? status;
+}
+
+export function isContestHiddenFromPublic(contestOrStatus: Contest | string) {
+  const status =
+    typeof contestOrStatus === 'string'
+      ? contestOrStatus
+      : contestOrStatus.status;
+  return ['draft', 'schedule_tbd', 'scheduled'].includes(status);
 }
 
 export function contestAccessPhase(
@@ -198,7 +203,7 @@ export function contestResourceAccessMessage(
   }
 
   if (phase === 'schedule_tbd')
-    return `대회 일정이 아직 확정되지 않아 ${labels[resource]}을 볼 수 없습니다.`;
+    return `대회가 초안 상태라 ${labels[resource]}을 볼 수 없습니다.`;
   if (phase === 'before')
     return `대회 시작 전이라 ${labels[resource]}을 볼 수 없습니다.`;
 
@@ -207,7 +212,7 @@ export function contestResourceAccessMessage(
 
 export function contestRemainingLabel(contest: Contest) {
   const phase = contestAccessPhase(contest);
-  if (phase === 'schedule_tbd') return '일정 미정';
+  if (phase === 'schedule_tbd') return '초안';
   if (phase === 'before') return `시작까지 ${timeLeft(contest.start_at)}`;
   if (phase === 'ended') return '종료됨';
   return `종료까지 ${timeLeft(contest.end_at)}`;
@@ -223,7 +228,7 @@ export function problemVisibilityMessage(
 
   const phase = contestAccessPhase(contest);
   if (phase === 'schedule_tbd')
-    return '대회 일정이 아직 확정되지 않아 문제집이 비공개 상태입니다.';
+    return '대회가 초안 상태라 문제집이 비공개 상태입니다.';
   if (phase === 'before') return '대회 시작 전이라 문제집이 비공개 상태입니다.';
   if (phase === 'ended') {
     return '대회가 종료되어 문제집이 비공개 상태입니다. 운영자가 종료 후 공개 범위를 변경하면 열람할 수 있습니다.';
@@ -239,7 +244,7 @@ export function participantProblemEmptyMessage(
 ) {
   const phase = contestAccessPhase(contest);
   if (phase === 'schedule_tbd')
-    return '대회 일정이 아직 확정되지 않아 문제집이 공개되지 않았습니다.';
+    return '대회가 초안 상태라 문제집이 공개되지 않았습니다.';
   if (phase === 'before')
     return '대회 시작 전이라 문제집이 아직 공개되지 않았습니다.';
   if (

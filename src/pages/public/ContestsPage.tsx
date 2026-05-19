@@ -7,7 +7,10 @@ import {
   getOperatorContests,
   getPublicContests,
 } from '@/domains/contestAdministration/api';
-import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import {
+  contestAccessPhase,
+  isContestHiddenFromPublic,
+} from '@/domains/contestAdministration/logic';
 import { toContestCardData } from '@/domains/contestAdministration/presentation';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
@@ -230,6 +233,9 @@ function ContestSectionList({
                   : undefined
               }
               key={contest.contest_id}
+              operatorOnlyVisible={
+                isOperatorContest && isContestHiddenFromPublic(contest)
+              }
               {...toContestCardData(contest)}
             />
           );

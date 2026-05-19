@@ -10,6 +10,7 @@ export type ContestListItemData = {
   title: string;
   organization: string;
   status: string;
+  operatorOnlyVisible?: boolean;
   countdownLabel?: string;
   period?: string;
   registrationDeadline?: string;
@@ -24,6 +25,7 @@ export default function ContestListItem({
   title,
   organization,
   status,
+  operatorOnlyVisible = false,
   countdownLabel,
   period,
   registrationDeadline,
@@ -74,6 +76,9 @@ export default function ContestListItem({
               }
             />
             {status}
+            {operatorOnlyVisible ? (
+              <span className="text-slate-400">* 비공개됨</span>
+            ) : null}
           </span>
           <span className="min-w-0 text-sm font-bold break-keep text-slate-400">
             {organization}

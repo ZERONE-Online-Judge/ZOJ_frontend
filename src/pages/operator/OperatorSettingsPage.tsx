@@ -81,13 +81,10 @@ const emptyOperatorForm: OperatorForm = {
 
 const statusOptions = [
   ['draft', '초안'],
-  ['schedule_tbd', '일정 미정'],
-  ['scheduled', '예정'],
-  ['open', '접수 중'],
-  ['running', '진행 중'],
+  ['scheduled', '예정(비공개)'],
+  ['open', '예정(공개)'],
+  ['running', '진행중'],
   ['ended', '종료'],
-  ['finalized', '결과 확정'],
-  ['archived', '보관'],
 ] as const;
 
 const accessOptions: { label: string; value: ContestResourceAccess }[] = [
@@ -97,6 +94,8 @@ const accessOptions: { label: string; value: ContestResourceAccess }[] = [
 ];
 
 function settingsFormFromContest(contest: Contest): SettingsForm {
+  const status = contest.status === 'schedule_tbd' ? 'draft' : contest.status;
+
   return {
     end_at: dateTimeLocalValue(contest.end_at),
     freeze_at: dateTimeLocalValue(contest.freeze_at),
@@ -105,7 +104,7 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
     problem_access_after_end: contestResourceAccess(contest, 'problem'),
     scoreboard_access_after_end: contestResourceAccess(contest, 'scoreboard'),
     start_at: dateTimeLocalValue(contest.start_at),
-    status: contest.status,
+    status,
     submission_access_after_end: contestResourceAccess(contest, 'submission'),
     board_access_after_end: contestResourceAccess(contest, 'board'),
     notice_access_after_end: contestResourceAccess(contest, 'notice'),

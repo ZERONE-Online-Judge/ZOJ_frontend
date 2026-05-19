@@ -13,16 +13,16 @@ import {
   createAdminContest,
   getAdminContests,
 } from '@/domains/contestAdministration/api';
+import { isContestHiddenFromPublic } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
-import { formatDateTime, todayInputValue } from '@/shared/lib/dateTime';
+import { formatDateTime } from '@/shared/lib/dateTime';
 
 type ContestFormState = {
   organizationName: string;
   operatorEmail: string;
   overview: string;
-  startDate: string;
   title: string;
 };
 
@@ -36,7 +36,6 @@ const emptyContestForm: ContestFormState = {
   organizationName: '',
   operatorEmail: '',
   overview: '',
-  startDate: todayInputValue(),
   title: '',
 };
 
@@ -47,14 +46,14 @@ const emptyOperatorForm: OperatorFormState = {
 };
 
 const statusLabels: Record<string, string> = {
-  archived: '보관',
   draft: '초안',
   ended: '종료',
-  finalized: '결과 확정',
-  open: '접수 중',
-  running: '진행 중',
-  schedule_tbd: '일정 미정',
-  scheduled: '예정',
+  finalized: '종료',
+  open: '예정(공개)',
+  running: '진행중',
+  schedule_tbd: '초안',
+  scheduled: '예정(비공개)',
+  archived: '종료',
 };
 
 export default function AdminContestsPage() {
@@ -96,8 +95,7 @@ function AdminContestsContent({ token }: { token: string }) {
         overview:
           contestForm.overview.trim() ||
           `${contestForm.organizationName.trim()}에서 주최하는 대회입니다.`,
-        start_at: `${contestForm.startDate}T00:00:00+09:00`,
-        status: 'schedule_tbd',
+        status: 'draft',
         title: contestForm.title.trim() || undefined,
       }),
     onSuccess: () => {
@@ -310,7 +308,7 @@ function AdminContestsContent({ token }: { token: string }) {
 
         <div ref={createContestSectionRef}>
           <AdminPanel
-            description="일정은 미정 상태로 생성하고, 이후 운영 페이지에서 상세 설정합니다."
+            description="대회는 초안 상태로 생성하고, 이후 운영 페이지에서 일정과 공개 상태를 설정합니다."
             title="대회 생성"
           >
             <form className="grid gap-4" onSubmit={handleCreateContest}>
@@ -341,20 +339,6 @@ function AdminContestsContent({ token }: { token: string }) {
                     }
                     placeholder="예: COSS"
                     value={contestForm.organizationName}
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-black text-slate-700">
-                  기준 시작일
-                  <input
-                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                    onChange={(event) =>
-                      setContestForm((prev) => ({
-                        ...prev,
-                        startDate: event.target.value,
-                      }))
-                    }
-                    type="date"
-                    value={contestForm.startDate}
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-black text-slate-700">
@@ -435,6 +419,9 @@ function ContestRow({ contest }: { contest: Contest }) {
       <td className="border-r border-slate-100 px-4 py-4">
         <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
           {statusLabels[contest.status] ?? contest.status}
+          {isContestHiddenFromPublic(contest) ? (
+            <span className="ml-1 text-violet-400">* 비공개됨</span>
+          ) : null}
         </span>
       </td>
       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-600">
@@ -446,9 +433,9 @@ function ContestRow({ contest }: { contest: Contest }) {
       <td className="px-4 py-4">
         <Link
           className="rounded border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
-          to={`/contests/${contest.contest_id}`}
+          to={`/operator/contests/${contest.contest_id}/settings`}
         >
-          대회 보기
+          운영 설정
         </Link>
       </td>
     </tr>

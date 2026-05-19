@@ -31,7 +31,7 @@ export function contestCountdownLabel(contest: Contest) {
     return `D-Day · 시작까지 ${timeLeft(contest.start_at)}`;
   }
 
-  if (phase === 'schedule_tbd') return '일정 미정';
+  if (phase === 'schedule_tbd') return '초안';
 
   return undefined;
 }
