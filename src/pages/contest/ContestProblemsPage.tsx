@@ -9,7 +9,8 @@ import { useContestParticipantSession } from '@/domains/contestRuntime/useContes
 import {
   canViewContestResource,
   contestAccessPhase,
-  participantProblemEmptyMessage,
+  contestResourceAccess,
+  contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import {
@@ -103,17 +104,21 @@ function ContestProblemsContent({
     participantContest,
   } = useContestParticipantSession(contestId);
   const hasSessionAccess = Boolean(participantContest);
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
+  const isEnded = contestAccessPhase(contest) === 'ended';
   const shouldUseParticipantScope =
-    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
+    hasSessionAccess &&
+    (!isEnded || problemAccess === 'participants' || scoreboardAccess === 'participants');
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.problem_public_after_end,
+    problemAccess,
   );
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.scoreboard_public_after_end,
+    scoreboardAccess,
   );
 
   const problemsQuery = useQuery({
@@ -231,11 +236,11 @@ function ContestProblemsContent({
         {!canViewProblems ? (
           <PageNotice
             message={
-              participantProblemEmptyMessage(
+              contestResourceAccessMessage(
                 contest,
+                'problem',
                 hasSessionAccess,
-                contest.problem_public_after_end,
-              ) ?? '문제집을 볼 수 없습니다.'
+              )
             }
             status="idle"
           />
@@ -315,7 +320,7 @@ function ContestProblemsContent({
           </div>
         ) : null}
 
-        {!problemsQuery.isLoading && problems.length === 0 ? (
+        {canViewProblems && !problemsQuery.isLoading && problems.length === 0 ? (
           <PageNotice message="표시할 문제가 없습니다." status="idle" />
         ) : null}
       </div>

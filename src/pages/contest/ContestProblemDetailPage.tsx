@@ -7,7 +7,12 @@ import ProblemNavigationPills from '@/components/contest/problem/ProblemNavigati
 import ProblemSidebar from '@/components/contest/problem/ProblemSidebar';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
-import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
+} from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -63,9 +68,23 @@ function ContestProblemDetailContent({
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const selectedSubmissionId = searchParams.get('submissionId');
-  const { activeParticipantSession, ensureParticipantSession, generalSession } =
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+  } =
     useContestParticipantSession(contestId);
-  const shouldUseParticipantScope = contestAccessPhase(contest) !== 'ended';
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const hasSessionAccess = Boolean(participantContest);
+  const canViewProblem = canViewContestResource(
+    contest,
+    hasSessionAccess,
+    problemAccess,
+  );
+  const shouldUseParticipantScope =
+    hasSessionAccess &&
+    (contestAccessPhase(contest) !== 'ended' || problemAccess === 'participants');
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -80,7 +99,7 @@ function ContestProblemDetailContent({
   >({});
 
   const problemQuery = useQuery({
-    enabled: Boolean(problemId),
+    enabled: canViewProblem && Boolean(problemId),
     queryKey: contestQueryKeys.problemDetail(
       contestId,
       problemId,
@@ -105,7 +124,7 @@ function ContestProblemDetailContent({
   const activeProblemId = problem?.problem_id ?? problemId;
 
   const problemsQuery = useQuery({
-    enabled: view !== 'submit',
+    enabled: canViewProblem && view !== 'submit',
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
@@ -134,7 +153,7 @@ function ContestProblemDetailContent({
   const problems = problemsQuery.data ?? [];
 
   const selectedSubmissionQuery = useQuery({
-    enabled: view === 'submit' && Boolean(selectedSubmissionId),
+    enabled: canViewProblem && view === 'submit' && Boolean(selectedSubmissionId),
     queryKey: contestQueryKeys.submissionDetail(
       contestId,
       selectedSubmissionId,
@@ -308,6 +327,16 @@ function ContestProblemDetailContent({
       problemsQuery.isLoading ||
       selectedSubmissionQuery.isLoading ? (
         <PageNotice message="문제를 불러오는 중입니다." status="loading" />
+      ) : null}
+      {!canViewProblem ? (
+        <PageNotice
+          message={contestResourceAccessMessage(
+            contest,
+            'problem',
+            hasSessionAccess,
+          )}
+          status="idle"
+        />
       ) : null}
       {problemQuery.isError ||
       problemsQuery.isError ||

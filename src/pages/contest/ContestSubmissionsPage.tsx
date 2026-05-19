@@ -7,6 +7,8 @@ import ContestSubmissionsTabs from '@/components/contest/submissions/ContestSubm
 import {
   canViewContestResource,
   contestAccessPhase,
+  contestResourceAccessMessage,
+  contestResourceAccess,
 } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
@@ -41,17 +43,21 @@ function ContestSubmissionsContent({
   const fallbackMemberName =
     participantContest?.member.name ?? activeParticipantSession?.member.name;
   const hasSessionAccess = Boolean(participantContest);
+  const submissionAccess = contestResourceAccess(contest, 'submission');
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const isEnded = contestAccessPhase(contest) === 'ended';
   const shouldUseParticipantScope =
-    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
+    hasSessionAccess &&
+    (!isEnded || submissionAccess === 'participants' || problemAccess === 'participants');
   const canViewSubmissions = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.submission_public_after_end,
+    submissionAccess,
   );
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.problem_public_after_end,
+    problemAccess,
   );
 
   const problemsQuery = useQuery({
@@ -130,7 +136,11 @@ function ContestSubmissionsContent({
       <div className="mt-9">
         {!canViewSubmissions ? (
           <PageNotice
-            message="대회 제출 현황을 볼 수 없습니다."
+            message={contestResourceAccessMessage(
+              contest,
+              'submission',
+              hasSessionAccess,
+            )}
             status="idle"
           />
         ) : null}
@@ -157,7 +167,7 @@ function ContestSubmissionsContent({
           />
         ) : null}
 
-        {!submissionsQuery.isLoading && submissions.length === 0 ? (
+        {canViewSubmissions && !submissionsQuery.isLoading && submissions.length === 0 ? (
           <PageNotice message="표시할 제출이 없습니다." status="idle" />
         ) : null}
       </div>

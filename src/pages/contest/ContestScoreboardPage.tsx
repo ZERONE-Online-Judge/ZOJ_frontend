@@ -7,6 +7,8 @@ import ContestScoreboardTabs from '@/components/contest/scoreboard/ContestScoreb
 import {
   canViewContestResource,
   contestAccessPhase,
+  contestResourceAccessMessage,
+  contestResourceAccess,
 } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
@@ -40,17 +42,21 @@ function ContestScoreboardContent({
     participantContest?.division.name ??
     activeParticipantSession?.division.name;
   const hasSessionAccess = Boolean(participantContest);
+  const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const isEnded = contestAccessPhase(contest) === 'ended';
   const shouldUseParticipantScope =
-    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
+    hasSessionAccess &&
+    (!isEnded || scoreboardAccess === 'participants' || problemAccess === 'participants');
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.scoreboard_public_after_end,
+    scoreboardAccess,
   );
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.problem_public_after_end,
+    problemAccess,
   );
 
   const problemsQuery = useQuery({
@@ -130,7 +136,14 @@ function ContestScoreboardContent({
 
       <div className="mt-9">
         {!canViewScoreboard ? (
-          <PageNotice message="스코어보드를 볼 수 없습니다." status="idle" />
+          <PageNotice
+            message={contestResourceAccessMessage(
+              contest,
+              'scoreboard',
+              hasSessionAccess,
+            )}
+            status="idle"
+          />
         ) : null}
         {scoreboardQuery.isLoading && (
           <PageNotice
@@ -155,7 +168,7 @@ function ContestScoreboardContent({
           <ContestScoreboardTable problems={problems} rows={rows} />
         ) : null}
 
-        {!scoreboardQuery.isLoading && rows.length === 0 ? (
+        {canViewScoreboard && !scoreboardQuery.isLoading && rows.length === 0 ? (
           <PageNotice message="표시할 스코어보드가 없습니다." status="idle" />
         ) : null}
       </div>

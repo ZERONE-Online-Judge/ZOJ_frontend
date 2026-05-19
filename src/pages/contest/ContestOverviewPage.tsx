@@ -5,6 +5,12 @@ import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import NoticeSection from '@/components/main/NoticeSection';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
+} from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -111,11 +117,13 @@ function NoticePreview({
   notices,
   isError,
   isLoading,
+  unavailableMessage,
 }: {
   contestId: string;
   notices: ContestNotice[];
   isError: boolean;
   isLoading: boolean;
+  unavailableMessage?: string;
 }) {
   return (
     <NoticeSection
@@ -129,8 +137,11 @@ function NoticePreview({
       title="공지사항"
       titleHref={`/contests/${contestId}/board`}
     >
-      {isLoading || isError || notices.length === 0 ? (
+      {unavailableMessage || isLoading || isError || notices.length === 0 ? (
         <div className="border-y border-slate-200">
+          {unavailableMessage ? (
+            <PageNotice message={unavailableMessage} status="idle" />
+          ) : null}
           {isLoading ? (
             <PageNotice
               message="공지사항을 불러오는 중입니다."
@@ -143,7 +154,7 @@ function NoticePreview({
               status="error"
             />
           ) : null}
-          {!isLoading && !isError && notices.length === 0 ? (
+          {!unavailableMessage && !isLoading && !isError && notices.length === 0 ? (
             <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
           ) : null}
         </div>
@@ -159,7 +170,13 @@ function ContestOverviewContent({
   contest: Contest;
   divisions: Division[];
 }) {
-  const { generalSession, participantContest, participantSession, token } =
+  const {
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+    participantSession,
+    token,
+  } =
     useContestParticipantSession(contest.contest_id);
   const [now, setNow] = useState(() => Date.now());
 
@@ -169,9 +186,18 @@ function ContestOverviewContent({
     return () => window.clearInterval(timer);
   }, []);
 
+  const noticeAccess = contestResourceAccess(contest, 'notice');
+  const canViewNotices =
+    contestAccessPhase(contest) !== 'ended' ||
+    canViewContestResource(contest, Boolean(participantContest), noticeAccess);
   const noticesQuery = useQuery({
+    enabled: canViewNotices,
     queryKey: contestQueryKeys.notices(contest.contest_id, token),
-    queryFn: () => getContestNotices(contest.contest_id, token),
+    queryFn: async () => {
+      const session =
+        noticeAccess === 'participants' ? await ensureParticipantSession() : null;
+      return getContestNotices(contest.contest_id, session?.accessToken ?? token);
+    },
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
   });
@@ -255,6 +281,15 @@ function ContestOverviewContent({
           isError={noticesQuery.isError}
           isLoading={noticesQuery.isLoading}
           notices={notices}
+          unavailableMessage={
+            canViewNotices
+              ? undefined
+              : contestResourceAccessMessage(
+                  contest,
+                  'notice',
+                  Boolean(participantContest),
+                )
+          }
         />
       </div>
     </ContestPageFrame>

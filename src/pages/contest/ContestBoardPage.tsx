@@ -4,6 +4,13 @@ import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestBoardText } from '@/data/contestBoardContent';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
+} from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -46,10 +53,26 @@ function shortDate(value?: string) {
     .replace(/\.$/, '');
 }
 
-function ContestBoardContent({ contestId }: { contestId: string }) {
+function ContestBoardContent({
+  contest,
+  contestId,
+}: {
+  contest: Contest;
+  contestId: string;
+}) {
   const queryClient = useQueryClient();
-  const { ensureParticipantSession, token } =
+  const { ensureParticipantSession, participantContest, token } =
     useContestParticipantSession(contestId);
+  const hasSessionAccess = Boolean(participantContest);
+  const noticeAccess = contestResourceAccess(contest, 'notice');
+  const boardAccess = contestResourceAccess(contest, 'board');
+  const isEnded = contestAccessPhase(contest) === 'ended';
+  const canViewNotices =
+    !isEnded ||
+    canViewContestResource(contest, hasSessionAccess, noticeAccess);
+  const canViewQuestions =
+    !isEnded ||
+    canViewContestResource(contest, hasSessionAccess, boardAccess);
   const [mode, setMode] = useState<BoardMode>('notices');
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
@@ -62,13 +85,23 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
   const [formError, setFormError] = useState('');
 
   const noticesQuery = useQuery({
+    enabled: canViewNotices,
     queryKey: contestQueryKeys.notices(contestId, token),
-    queryFn: () => getContestNotices(contestId, token),
+    queryFn: async () => {
+      const session =
+        noticeAccess === 'participants' ? await ensureParticipantSession() : null;
+      return getContestNotices(contestId, session?.accessToken ?? token);
+    },
     refetchInterval: 15_000,
   });
   const questionsQuery = useQuery({
+    enabled: canViewQuestions,
     queryKey: contestQueryKeys.questions(contestId, token),
-    queryFn: () => getContestQuestions(contestId, token),
+    queryFn: async () => {
+      const session =
+        boardAccess === 'participants' ? await ensureParticipantSession() : null;
+      return getContestQuestions(contestId, session?.accessToken ?? token);
+    },
     refetchInterval: 15_000,
   });
   const notices = useMemo(
@@ -145,35 +178,57 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
 
       <section className="mt-10">
         {mode === 'notices' ? (
-          <NoticePanel
-            isError={noticesQuery.isError}
-            isLoading={noticesQuery.isLoading}
-            notices={notices}
-            onSelect={setSelectedNotice}
-          />
+          canViewNotices ? (
+            <NoticePanel
+              isError={noticesQuery.isError}
+              isLoading={noticesQuery.isLoading}
+              notices={notices}
+              onSelect={setSelectedNotice}
+            />
+          ) : (
+            <PageNotice
+              message={contestResourceAccessMessage(
+                contest,
+                'notice',
+                hasSessionAccess,
+              )}
+              status="idle"
+            />
+          )
         ) : (
-          <QuestionPanel
-            form={questionForm}
-            formError={formError}
-            isError={questionsQuery.isError}
-            isLoading={questionsQuery.isLoading}
-            isSubmitting={createQuestionMutation.isPending}
-            isWriting={isWritingQuestion}
-            mutationError={createQuestionMutation.error}
-            onCancelWrite={() => {
-              setIsWritingQuestion(false);
-              setFormError('');
-            }}
-            onChangeForm={setQuestionForm}
-            onSelect={setSelectedQuestion}
-            onStartWrite={() => {
-              setMode('questions');
-              setIsWritingQuestion(true);
-              setFormError('');
-            }}
-            onSubmit={submitQuestion}
-            questions={questions}
-          />
+          canViewQuestions ? (
+            <QuestionPanel
+              form={questionForm}
+              formError={formError}
+              isError={questionsQuery.isError}
+              isLoading={questionsQuery.isLoading}
+              isSubmitting={createQuestionMutation.isPending}
+              isWriting={isWritingQuestion}
+              mutationError={createQuestionMutation.error}
+              onCancelWrite={() => {
+                setIsWritingQuestion(false);
+                setFormError('');
+              }}
+              onChangeForm={setQuestionForm}
+              onSelect={setSelectedQuestion}
+              onStartWrite={() => {
+                setMode('questions');
+                setIsWritingQuestion(true);
+                setFormError('');
+              }}
+              onSubmit={submitQuestion}
+              questions={questions}
+            />
+          ) : (
+            <PageNotice
+              message={contestResourceAccessMessage(
+                contest,
+                'board',
+                hasSessionAccess,
+              )}
+              status="idle"
+            />
+          )
         )}
       </section>
 
@@ -652,7 +707,9 @@ function DarkButton({
 export default function ContestBoardPage() {
   return (
     <ContestPageShell>
-      {({ contest }) => <ContestBoardContent contestId={contest.contest_id} />}
+      {({ contest }) => (
+        <ContestBoardContent contest={contest} contestId={contest.contest_id} />
+      )}
     </ContestPageShell>
   );
 }
