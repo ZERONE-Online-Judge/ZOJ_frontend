@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import CodeEditor from '@/shared/ui/CodeEditor';
 import PageNotice from '@/shared/ui/PageNotice';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
@@ -40,6 +41,10 @@ export default function ProblemSubmitPanel({
   editorHeight = 430,
   layout = 'side',
 }: ProblemSubmitPanelProps) {
+  const initialEditorHeight =
+    typeof editorHeight === 'number' ? editorHeight : 430;
+  const [resizedEditorHeight, setResizedEditorHeight] =
+    useState(initialEditorHeight);
   const panelClassName =
     layout === 'standalone'
       ? 'bg-slate-50 px-7 py-7'
@@ -57,26 +62,65 @@ export default function ProblemSubmitPanel({
 
       <label className="mt-6 grid gap-2">
         <span className="sr-only">언어</span>
-        <select
-          className="h-11 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition outline-none focus:border-[#6d5dfc] focus:ring-2 focus:ring-[#6d5dfc]/15 disabled:bg-slate-100"
+        <span className="relative block">
+          <select
+            className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-white px-5 pr-11 text-sm font-bold text-slate-700 transition outline-none focus:border-[#6d5dfc] focus:ring-2 focus:ring-[#6d5dfc]/15 disabled:bg-slate-100"
+            disabled={isSubmitting}
+            onChange={(event) =>
+              onLanguageChange(event.target.value as JudgeLanguage)
+            }
+            value={language}
+          >
+            {languageOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-slate-500"
+            fill="none"
+            viewBox="0 0 20 20"
+          >
+            <path
+              d="m5 7.5 5 5 5-5"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
+        </span>
+      </label>
+
+      <label className="mt-4 grid gap-2 text-xs font-bold text-slate-500">
+        <span className="flex items-center justify-between">
+          <span>편집기 높이</span>
+          <span>{resizedEditorHeight}px</span>
+        </span>
+        <input
+          className="accent-[#6d5dfc]"
           disabled={isSubmitting}
+          max={760}
+          min={280}
           onChange={(event) =>
-            onLanguageChange(event.target.value as JudgeLanguage)
+            setResizedEditorHeight(Number(event.target.value))
           }
-          value={language}
-        >
-          {languageOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          step={20}
+          type="range"
+          value={resizedEditorHeight}
+        />
       </label>
 
       <div className="mt-5">
         <CodeEditor
           disabled={isSubmitting}
-          height={editorHeight}
+          height={
+            typeof editorHeight === 'number'
+              ? resizedEditorHeight
+              : editorHeight
+          }
           language={language}
           onChange={onSourceCodeChange}
           value={sourceCode}

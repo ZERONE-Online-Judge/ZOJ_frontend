@@ -1,9 +1,18 @@
-import type { JudgeDetail, SubmissionProgressState } from '@/domains/submissionScoreboard/types';
+import type {
+  JudgeDetail,
+  SubmissionProgressState,
+} from '@/domains/submissionScoreboard/types';
 
-export const PENDING_SUBMISSION_STATUSES = ['waiting', 'preparing', 'judging'] as const;
+export const PENDING_SUBMISSION_STATUSES = [
+  'waiting',
+  'preparing',
+  'judging',
+] as const;
 
 export function isSubmissionPending(status?: string | null) {
-  return PENDING_SUBMISSION_STATUSES.includes(status as (typeof PENDING_SUBMISSION_STATUSES)[number]);
+  return PENDING_SUBMISSION_STATUSES.includes(
+    status as (typeof PENDING_SUBMISSION_STATUSES)[number],
+  );
 }
 
 export function isSubmissionTerminal(status?: string | null) {
@@ -43,13 +52,14 @@ export function submissionStatusTone(status?: string | null) {
   switch (status) {
     case 'accepted':
       return 'success';
+    case 'runtime_error':
+      return 'neutral';
     case 'waiting':
     case 'preparing':
     case 'judging':
       return 'pending';
     case 'wrong_answer':
     case 'compile_error':
-    case 'runtime_error':
     case 'time_limit_exceeded':
     case 'memory_limit_exceeded':
     case 'output_limit_exceeded':
@@ -60,13 +70,18 @@ export function submissionStatusTone(status?: string | null) {
   }
 }
 
-export function submissionProgressPercent(submission?: SubmissionProgressState | null) {
+export function submissionProgressPercent(
+  submission?: SubmissionProgressState | null,
+) {
   const status = submission?.status;
   const current = submission?.progress_current;
   const total = submission?.progress_total;
 
   if (isSubmissionPending(status) && total && total > 0) {
-    return Math.max(0, Math.min(100, Math.round(((current ?? 0) / total) * 100)));
+    return Math.max(
+      0,
+      Math.min(100, Math.round(((current ?? 0) / total) * 100)),
+    );
   }
 
   switch (status) {
@@ -90,7 +105,9 @@ export function submissionProgressPercent(submission?: SubmissionProgressState |
   }
 }
 
-export function submissionProgressText(submission?: SubmissionProgressState | null) {
+export function submissionProgressText(
+  submission?: SubmissionProgressState | null,
+) {
   const status = submission?.status;
   const current = submission?.progress_current;
   const total = submission?.progress_total;
@@ -106,11 +123,13 @@ export function parseJudgeDetail(message?: string | null): JudgeDetail {
     return { caseFiles: '', inputText: '', expectedText: '', actualText: '' };
   }
 
-  const caseFiles = message.match(/^testcase\s+#\d+\s*\(([^)]+)\):/i)?.[1] ?? '';
-  const inputText = message.match(/\[input\]\n([\s\S]*?)\n\[expected\]\n/)?.[1]?.trim() ?? '';
-  const expectedText = message.match(/\[expected\]\n([\s\S]*?)\n\[actual\]\n/)?.[1]?.trim() ?? '';
+  const caseFiles =
+    message.match(/^testcase\s+#\d+\s*\(([^)]+)\):/i)?.[1] ?? '';
+  const inputText =
+    message.match(/\[input\]\n([\s\S]*?)\n\[expected\]\n/)?.[1]?.trim() ?? '';
+  const expectedText =
+    message.match(/\[expected\]\n([\s\S]*?)\n\[actual\]\n/)?.[1]?.trim() ?? '';
   const actualText = message.match(/\[actual\]\n([\s\S]*)$/)?.[1]?.trim() ?? '';
 
   return { caseFiles, inputText, expectedText, actualText };
 }
-
