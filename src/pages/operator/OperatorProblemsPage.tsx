@@ -32,11 +32,17 @@ import {
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import type {
+  PackageFileRole,
+  PackageSupportFileStatus,
   Problem,
   ProblemAsset,
   TestcaseSet,
 } from '@/domains/problemManagement/types';
-import { PROBLEM_STATEMENT_TEMPLATE } from '@/domains/problemManagement/types';
+import {
+  PACKAGE_FILE_ROLES,
+  PROBLEM_STATEMENT_TEMPLATE,
+  TESTCASE_SUPPORT_FILE_ROLES,
+} from '@/domains/problemManagement/types';
 import {
   createOperatorTestSubmission,
   waitOperatorTestSubmissionStatus,
@@ -234,6 +240,7 @@ function OperatorProblemsContent({
   const [testSourceCode, setTestSourceCode] = useState('');
   const [testSubmission, setTestSubmission] = useState<Submission | null>(null);
   const [uploadProgress, setUploadProgress] = useState('');
+  const [uploadProgressValue, setUploadProgressValue] = useState(0);
   const [formError, setFormError] = useState('');
 
   const dashboardQuery = useQuery({
@@ -277,7 +284,9 @@ function OperatorProblemsContent({
   const assetsQuery = useQuery({
     enabled:
       Boolean(effectiveSelectedProblemId) &&
-      (authoringTab === 'statement' || authoringTab === 'tests' || isPreviewOpen),
+      (authoringTab === 'statement' ||
+        authoringTab === 'tests' ||
+        isPreviewOpen),
     queryKey: [
       'operator',
       'problem-assets',
@@ -332,12 +341,43 @@ function OperatorProblemsContent({
   const supportAssetByRole = useMemo(() => {
     const grouped = new Map<string, ProblemAsset>();
     for (const asset of assetsQuery.data ?? []) {
-      const role = supportRoleFromStorageKey(asset.storage_key);
+      const role = supportRoleFromAsset(asset);
       if (!role) continue;
       grouped.set(role, asset);
     }
     return grouped;
   }, [assetsQuery.data]);
+  const supportFileRows = useMemo(() => {
+    const statusByRole = new Map(
+      (packageStatusQuery.data?.support_files ?? []).map((file) => [
+        file.role,
+        file,
+      ]),
+    );
+
+    return TESTCASE_SUPPORT_FILE_ROLES.map((role) => {
+      const roleMeta = PACKAGE_FILE_ROLES.find((item) => item.value === role);
+      const fallback: PackageSupportFileStatus = {
+        role,
+        label: supportRoleRequiredFilename(role),
+        required: true,
+        count: 0,
+        latest_filename: null,
+        status: 'missing',
+      };
+      const current = statusByRole.get(role) ?? fallback;
+
+      return {
+        ...current,
+        detail: roleMeta?.detail ?? '',
+        label:
+          supportRoleRequiredFilename(role) ||
+          current.label ||
+          roleMeta?.label ||
+          role,
+      };
+    });
+  }, [packageStatusQuery.data?.support_files]);
   const testcaseFileQuery = useQuery({
     enabled: Boolean(testcaseFilePreview?.storageKey),
     queryKey: [
@@ -479,34 +519,41 @@ function OperatorProblemsContent({
         files,
         (progress) => {
           const filename = progress.filename ? ` · ${progress.filename}` : '';
+          setUploadProgressValue(
+            Math.round((progress.current / progress.total) * 100),
+          );
           setUploadProgress(
             `${progress.phase} ${progress.current}/${progress.total}${filename}`,
           );
         },
       ),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      setUploadProgressValue(100);
       setUploadProgress(
         result.warnings.length
           ? `검증 완료: ${result.verified_count}건, 경고 ${result.warnings.length}건`
           : `검증 완료: ${result.verified_count}건`,
       );
-      void queryClient.invalidateQueries({
-        queryKey: [
-          'operator',
-          'problem-testcase-sets',
-          contestId,
-          effectiveSelectedProblemId,
-        ],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: [
-          'operator',
-          'problem-package-status',
-          contestId,
-          effectiveSelectedProblemId,
-        ],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [
+            'operator',
+            'problem-testcase-sets',
+            contestId,
+            effectiveSelectedProblemId,
+          ],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [
+            'operator',
+            'problem-package-status',
+            contestId,
+            effectiveSelectedProblemId,
+          ],
+        }),
+      ]);
     },
+    onError: () => setUploadProgressValue(0),
   });
 
   const deleteTestcaseSetMutation = useMutation({
@@ -648,7 +695,9 @@ function OperatorProblemsContent({
   function removeExample(index: number) {
     setForm((prev) => ({
       ...prev,
-      examples: prev.examples.filter((_, exampleIndex) => exampleIndex !== index),
+      examples: prev.examples.filter(
+        (_, exampleIndex) => exampleIndex !== index,
+      ),
     }));
   }
 
@@ -667,11 +716,22 @@ function OperatorProblemsContent({
   }
 
   function handleMatchedFiles(files: File[]) {
-    const testcaseFiles = files.filter((file) => /\.(in|out)$/i.test(file.name));
+    if (
+      !effectiveSelectedProblemId ||
+      uploadMatchedTestcasesMutation.isPending
+    ) {
+      return;
+    }
+
+    const testcaseFiles = files.filter((file) =>
+      /\.(in|out)$/i.test(file.name),
+    );
     if (!testcaseFiles.length) {
       setUploadProgress('.in 또는 .out 파일을 선택해 주세요.');
       return;
     }
+    setUploadProgressValue(0);
+    setUploadProgress('업로드 준비 중');
     uploadMatchedTestcasesMutation.mutate(testcaseFiles);
   }
 
@@ -756,550 +816,582 @@ function OperatorProblemsContent({
           </div>
         </aside>
         <div className="grid content-start gap-6">
-        <OperatorPanel
-          description={
-            editorMode === 'edit'
-              ? '왼쪽 목록에서 선택한 문제를 수정합니다.'
-              : '새 문제의 기본 정보와 본문을 작성합니다.'
-          }
-          title={editorMode === 'edit' ? '문제 수정' : '문제 생성'}
-        >
-          {editorMode === 'edit' && !form.problemId ? (
-            <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-              수정할 문제를 목록에서 가져와 주세요.
-            </p>
-          ) : null}
-          <div className="grid items-start gap-2 md:grid-cols-4">
-            {[
-              ['settings', '기본 정보'],
-              ['statement', '문제/예제'],
-              ['tests', '테스트케이스'],
-              ['preview', '전체 미리보기'],
-            ].map(([value, label]) => (
-              <button
-                className={[
-                  'h-11 rounded border px-4 text-sm font-black transition',
-                  authoringTab === value
-                    ? 'border-indigo-300 bg-indigo-950 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',
-                ].join(' ')}
-                key={value}
-                onClick={() => {
-                  if (value === 'preview') {
-                    setIsPreviewOpen(true);
-                    return;
-                  }
-                  setAuthoringTab(value as typeof authoringTab);
-                }}
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <form className="grid gap-3" onSubmit={submitProblem}>
-            {authoringTab === 'settings' ? (
-              <>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              유형
-              <select
-                className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    divisionId: event.target.value,
-                  }))
-                }
-                value={form.divisionId}
-              >
-                <option value="">유형 선택</option>
-                {divisions.map((division) => (
-                  <option
-                    key={division.division_id}
-                    value={division.division_id}
-                  >
-                    {division.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <TextInput
-                label="문제 번호"
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, problemCode: value }))
-                }
-                value={form.problemCode}
-              />
-              <TextInput
-                label="제목"
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, title: value }))
-                }
-                value={form.title}
-              />
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <TextInput
-                label="시간(ms)"
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, timeLimitMs: value }))
-                }
-                value={form.timeLimitMs}
-              />
-              <TextInput
-                label="메모리(MB)"
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, memoryLimitMb: value }))
-                }
-                value={form.memoryLimitMb}
-              />
-            </div>
-            <TextInput
-              label="정렬 순서"
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, displayOrder: value }))
-              }
-              value={form.displayOrder}
-            />
-              </>
-            ) : null}
-            {authoringTab === 'statement' ? (
-              <>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              문제 본문
-              <textarea
-                className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    statement: event.target.value,
-                  }))
-                }
-                value={form.statement}
-              />
-            </label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                입력 설명
-                <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      inputDescription: event.target.value,
-                    }))
-                  }
-                  value={form.inputDescription}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                출력 설명
-                <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      outputDescription: event.target.value,
-                    }))
-                  }
-                  value={form.outputDescription}
-                />
-              </label>
-            </div>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              노트
-              <textarea
-                className="min-h-24 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, note: event.target.value }))
-                }
-                value={form.note}
-              />
-            </label>
-            <div className="grid gap-3 rounded border border-slate-200 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-800">예제</p>
-                  <p className="text-xs font-bold text-slate-500">
-                    예제 입력, 출력, 설명을 여러 개 관리합니다.
-                  </p>
-                </div>
-                <button
-                  className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
-                  onClick={addExample}
-                  type="button"
-                >
-                  예제 추가
-                </button>
-              </div>
-              {form.examples.map((example, index) => (
-                <section
-                  className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
-                  key={index}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <strong className="text-sm font-black text-slate-950">
-                      예제 {index + 1}
-                    </strong>
-                    <button
-                      className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
-                      onClick={() => removeExample(index)}
-                      type="button"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                예제 입력
-                <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    updateExample(index, { input: event.target.value })
-                  }
-                  value={example.input}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                예제 출력
-                <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    updateExample(index, { output: event.target.value })
-                  }
-                  value={example.output}
-                />
-              </label>
-                  </div>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    예제 설명
-                    <textarea
-                      className="min-h-20 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      onChange={(event) =>
-                        updateExample(index, { note: event.target.value })
-                      }
-                      value={example.note ?? ''}
-                    />
-                  </label>
-                </section>
-              ))}
-              {!form.examples.length ? (
-                <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                  등록된 예제가 없습니다.
-                </p>
-              ) : null}
-            </div>
-            <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-              <div className="grid gap-1">
-                <p className="text-sm font-black text-indigo-800">
-                  문제/예제 이미지
-                </p>
-                <p className="text-xs font-bold text-slate-600">
-                  본문이나 예제 설명에 사용할 이미지를 업로드합니다.
-                </p>
-              </div>
-              <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
-                이미지 선택
-                <input
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  disabled={
-                    !effectiveSelectedProblemId ||
-                    uploadAssetMutation.isPending
-                  }
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    if (file) uploadAssetMutation.mutate(file);
-                    event.currentTarget.value = '';
-                  }}
-                  type="file"
-                />
-              </label>
-              <div className="grid gap-2">
-                {imageAssets.map((asset) => (
-                  <p
-                    className="rounded border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-600"
-                    key={asset.asset_id}
-                  >
-                    {asset.original_filename}
-                  </p>
-                ))}
-                {effectiveSelectedProblemId &&
-                !assetsQuery.isLoading &&
-                !imageAssets.length ? (
-                  <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
-                    업로드된 이미지가 없습니다.
-                  </p>
-                ) : null}
-              </div>
-              {uploadAssetMutation.error ? (
-                <ErrorBox
-                  error={uploadAssetMutation.error}
-                  fallback="이미지 업로드에 실패했습니다"
-                />
-              ) : null}
-            </div>
-              </>
-            ) : null}
-            {authoringTab === 'tests' ? (
-              <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
-                아래 영역에서 채점 보조 파일과 .in/.out 테스트케이스를 관리합니다.
+          <OperatorPanel
+            description={
+              editorMode === 'edit'
+                ? '왼쪽 목록에서 선택한 문제를 수정합니다.'
+                : '새 문제의 기본 정보와 본문을 작성합니다.'
+            }
+            title={editorMode === 'edit' ? '문제 수정' : '문제 생성'}
+          >
+            {editorMode === 'edit' && !form.problemId ? (
+              <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                수정할 문제를 목록에서 가져와 주세요.
               </p>
             ) : null}
-            {formError || saveProblemMutation.error ? (
-              <ErrorBox
-                error={saveProblemMutation.error}
-                fallback={formError || '문제 저장에 실패했습니다'}
-              />
-            ) : null}
-            {authoringTab !== 'tests' ? (
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
-                disabled={editorMode === 'edit' && !form.problemId}
-                type="submit"
-              >
-                <ProblemIcon />
-                {editorMode === 'edit' ? '문제 수정' : '문제 생성'}
-              </button>
-            ) : null}
-          </form>
-        </OperatorPanel>
-
-        {authoringTab === 'tests' ? (
-        <OperatorPanel
-          description={
-            selectedProblem
-              ? `${selectedProblem.problem_code}. ${selectedProblem.title} 채점 파일입니다.`
-              : '문제를 생성하거나 왼쪽 목록에서 선택하면 채점 파일을 관리할 수 있습니다.'
-          }
-          title="채점 파일과 테스트케이스"
-        >
-          {!effectiveSelectedProblemId ? (
-            <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-              채점 파일을 확인할 문제를 먼저 선택해 주세요.
-            </p>
-          ) : (
-            <>
-              {packageStatusQuery.isLoading ? (
-                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
-                  채점 파일 상태를 불러오는 중입니다.
-                </p>
-              ) : null}
-              {packageStatusQuery.data ? (
-                <div className="grid gap-3">
-                  <p
-                    className={[
-                      'rounded border px-4 py-3 text-sm font-black',
-                      packageStatusQuery.data.ready
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : 'border-amber-200 bg-amber-50 text-amber-700',
-                    ].join(' ')}
-                  >
-                    {packageStatusQuery.data.ready
-                      ? '채점 준비 완료'
-                      : '채점 파일 확인 필요'}
-                  </p>
-                  <div className="grid gap-2">
-                    {packageStatusQuery.data.support_files.map((file) => {
-                      const asset = supportAssetByRole.get(file.role);
-
-                      return (
-                        <div
-                          className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
-                          key={file.role}
-                        >
-                          <span className="grid min-w-0 gap-1">
-                            <span>
-                              {file.label}
-                              {file.required ? ' *' : ''}
-                            </span>
-                            <button
-                              className={[
-                                'w-fit max-w-full truncate text-left font-black',
-                                asset
-                                  ? 'text-indigo-700 hover:text-indigo-950'
-                                  : file.status === 'ready'
-                                    ? 'text-emerald-700'
-                                    : 'text-amber-700',
-                              ].join(' ')}
-                              disabled={!asset}
-                              onClick={() =>
-                                asset
-                                  ? setSupportFilePreview({
-                                      storageKey: asset.storage_key,
-                                      title: `${file.label} · ${asset.original_filename}`,
-                                    })
-                                  : undefined
-                              }
-                              title={asset?.original_filename ?? undefined}
-                              type="button"
-                            >
-                              {asset?.original_filename ??
-                                file.latest_filename ??
-                                '파일 없음'}
-                            </button>
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {asset ? (
-                              <>
-                                <button
-                                  className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50"
-                                  onClick={() =>
-                                    setSupportFilePreview({
-                                      storageKey: asset.storage_key,
-                                      title: `${file.label} · ${asset.original_filename}`,
-                                    })
-                                  }
-                                  type="button"
-                                >
-                                  보기
-                                </button>
-                                <button
-                                  className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
-                                  disabled={deleteAssetMutation.isPending}
-                                  onClick={() => {
-                                    if (
-                                      window.confirm(
-                                        `${asset.original_filename} 파일을 삭제할까요?`,
-                                      )
-                                    ) {
-                                      deleteAssetMutation.mutate(asset);
-                                    }
-                                  }}
-                                  type="button"
-                                >
-                                  삭제
-                                </button>
-                              </>
-                            ) : null}
-                            <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded border border-slate-200 bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
-                              파일 선택
-                              <input
-                                className="sr-only"
-                                disabled={
-                                  !effectiveSelectedProblemId ||
-                                  uploadRoleFileMutation.isPending
-                                }
-                                onChange={(event) => {
-                                  const fileObject =
-                                    event.currentTarget.files?.[0];
-                                  if (fileObject) {
-                                    uploadRoleFileMutation.mutate({
-                                      file: fileObject,
-                                      role: file.role,
-                                    });
-                                  }
-                                  event.currentTarget.value = '';
-                                }}
-                                type="file"
-                              />
-                            </label>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-              <div className="grid gap-2">
-                {latestTestcaseSet ? (
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-3 text-xs font-bold text-slate-600"
-                    key={latestTestcaseSet.testcase_set_id}
-                  >
-                    <button
-                      className="text-left font-black text-indigo-700 hover:text-indigo-950"
-                      onClick={() => setIsTestcaseModalOpen(true)}
-                      type="button"
-                    >
-                      현재 테스트케이스{' '}
-                      {latestTestcaseSet.testcases?.length ?? 0}개 보기
-                    </button>
-                    <span className="text-xs font-bold text-slate-400">
-                      개별 케이스는 목록에서 삭제합니다.
-                    </span>
-                  </div>
-                ) : (
-                  <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                    업로드된 테스트케이스가 없습니다.
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                <p className="text-sm font-black text-indigo-800">
-                  .in/.out 파일 묶음
-                </p>
-                <div
+            <div className="grid items-start gap-2 md:grid-cols-4">
+              {[
+                ['settings', '기본 정보'],
+                ['statement', '문제/예제'],
+                ['tests', '테스트케이스'],
+                ['preview', '전체 미리보기'],
+              ].map(([value, label]) => (
+                <button
                   className={[
-                    'grid gap-3 rounded border border-dashed px-4 py-6 text-center transition',
-                    isCaseDropActive
-                      ? 'border-indigo-400 bg-white'
-                      : 'border-indigo-200 bg-white/70',
+                    'h-11 rounded border px-4 text-sm font-black transition',
+                    authoringTab === value
+                      ? 'border-indigo-300 bg-indigo-950 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',
                   ].join(' ')}
-                  onDragLeave={() => setIsCaseDropActive(false)}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setIsCaseDropActive(true);
+                  key={value}
+                  onClick={() => {
+                    if (value === 'preview') {
+                      setIsPreviewOpen(true);
+                      return;
+                    }
+                    setAuthoringTab(value as typeof authoringTab);
                   }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setIsCaseDropActive(false);
-                    handleMatchedFiles(Array.from(event.dataTransfer.files));
-                  }}
+                  type="button"
                 >
-                  <p className="text-sm font-black text-slate-800">
-                    .in/.out 파일을 이 영역에 드롭
-                  </p>
-                  <p className="text-xs font-bold text-slate-500">
-                    같은 파일명 기준으로 입력과 출력을 짝지어 한 번에 반영합니다.
-                  </p>
-                  <label className="mx-auto inline-flex h-10 cursor-pointer items-center rounded bg-emerald-700 px-4 text-xs font-black text-white transition hover:bg-emerald-800">
-                    파일 선택
-                    <input
-                      accept=".in,.out,text/plain"
-                      className="sr-only"
-                      disabled={
-                        !effectiveSelectedProblemId ||
-                        uploadMatchedTestcasesMutation.isPending
+                  {label}
+                </button>
+              ))}
+            </div>
+            <form className="grid gap-3" onSubmit={submitProblem}>
+              {authoringTab === 'settings' ? (
+                <>
+                  <label className="grid gap-2 text-sm font-black text-slate-700">
+                    유형
+                    <select
+                      className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          divisionId: event.target.value,
+                        }))
                       }
-                      multiple
-                      onChange={(event) => {
-                        handleMatchedFiles(
-                          Array.from(event.currentTarget.files ?? []),
-                        );
-                        event.currentTarget.value = '';
-                      }}
-                      type="file"
+                      value={form.divisionId}
+                    >
+                      <option value="">유형 선택</option>
+                      {divisions.map((division) => (
+                        <option
+                          key={division.division_id}
+                          value={division.division_id}
+                        >
+                          {division.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput
+                      label="문제 번호"
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, problemCode: value }))
+                      }
+                      value={form.problemCode}
+                    />
+                    <TextInput
+                      label="제목"
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, title: value }))
+                      }
+                      value={form.title}
+                    />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput
+                      label="시간(ms)"
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, timeLimitMs: value }))
+                      }
+                      value={form.timeLimitMs}
+                    />
+                    <TextInput
+                      label="메모리(MB)"
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, memoryLimitMb: value }))
+                      }
+                      value={form.memoryLimitMb}
+                    />
+                  </div>
+                  <TextInput
+                    label="정렬 순서"
+                    onChange={(value) =>
+                      setForm((prev) => ({ ...prev, displayOrder: value }))
+                    }
+                    value={form.displayOrder}
+                  />
+                </>
+              ) : null}
+              {authoringTab === 'statement' ? (
+                <>
+                  <label className="grid gap-2 text-sm font-black text-slate-700">
+                    문제 본문
+                    <textarea
+                      className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          statement: event.target.value,
+                        }))
+                      }
+                      value={form.statement}
                     />
                   </label>
-                </div>
-                {uploadProgress ? (
-                  <p className="text-xs font-bold text-slate-600">
-                    {uploadProgress}
-                  </p>
-                ) : null}
-                {uploadRoleFileMutation.error ||
-                uploadMatchedTestcasesMutation.error ||
-                deleteTestcaseSetMutation.error ||
-                deleteTestcaseMutation.error ||
-                deleteAssetMutation.error ? (
-                  <ErrorBox
-                    error={
-                      uploadRoleFileMutation.error ||
-                      uploadMatchedTestcasesMutation.error ||
-                      deleteTestcaseSetMutation.error ||
-                      deleteTestcaseMutation.error ||
-                      deleteAssetMutation.error
-                    }
-                    fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
-                  />
-                ) : null}
-              </div>
-            </>
-          )}
-        </OperatorPanel>
-        ) : null}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-black text-slate-700">
+                      입력 설명
+                      <textarea
+                        className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            inputDescription: event.target.value,
+                          }))
+                        }
+                        value={form.inputDescription}
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-black text-slate-700">
+                      출력 설명
+                      <textarea
+                        className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            outputDescription: event.target.value,
+                          }))
+                        }
+                        value={form.outputDescription}
+                      />
+                    </label>
+                  </div>
+                  <label className="grid gap-2 text-sm font-black text-slate-700">
+                    노트
+                    <textarea
+                      className="min-h-24 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          note: event.target.value,
+                        }))
+                      }
+                      value={form.note}
+                    />
+                  </label>
+                  <div className="grid gap-3 rounded border border-slate-200 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-800">
+                          예제
+                        </p>
+                        <p className="text-xs font-bold text-slate-500">
+                          예제 입력, 출력, 설명을 여러 개 관리합니다.
+                        </p>
+                      </div>
+                      <button
+                        className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                        onClick={addExample}
+                        type="button"
+                      >
+                        예제 추가
+                      </button>
+                    </div>
+                    {form.examples.map((example, index) => (
+                      <section
+                        className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+                        key={index}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <strong className="text-sm font-black text-slate-950">
+                            예제 {index + 1}
+                          </strong>
+                          <button
+                            className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
+                            onClick={() => removeExample(index)}
+                            type="button"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="grid gap-2 text-sm font-black text-slate-700">
+                            예제 입력
+                            <textarea
+                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              onChange={(event) =>
+                                updateExample(index, {
+                                  input: event.target.value,
+                                })
+                              }
+                              value={example.input}
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm font-black text-slate-700">
+                            예제 출력
+                            <textarea
+                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              onChange={(event) =>
+                                updateExample(index, {
+                                  output: event.target.value,
+                                })
+                              }
+                              value={example.output}
+                            />
+                          </label>
+                        </div>
+                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                          예제 설명
+                          <textarea
+                            className="min-h-20 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            onChange={(event) =>
+                              updateExample(index, { note: event.target.value })
+                            }
+                            value={example.note ?? ''}
+                          />
+                        </label>
+                      </section>
+                    ))}
+                    {!form.examples.length ? (
+                      <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                        등록된 예제가 없습니다.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                    <div className="grid gap-1">
+                      <p className="text-sm font-black text-indigo-800">
+                        문제/예제 이미지
+                      </p>
+                      <p className="text-xs font-bold text-slate-600">
+                        본문이나 예제 설명에 사용할 이미지를 업로드합니다.
+                      </p>
+                    </div>
+                    <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                      이미지 선택
+                      <input
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        disabled={
+                          !effectiveSelectedProblemId ||
+                          uploadAssetMutation.isPending
+                        }
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) uploadAssetMutation.mutate(file);
+                          event.currentTarget.value = '';
+                        }}
+                        type="file"
+                      />
+                    </label>
+                    <div className="grid gap-2">
+                      {imageAssets.map((asset) => (
+                        <p
+                          className="rounded border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-600"
+                          key={asset.asset_id}
+                        >
+                          {asset.original_filename}
+                        </p>
+                      ))}
+                      {effectiveSelectedProblemId &&
+                      !assetsQuery.isLoading &&
+                      !imageAssets.length ? (
+                        <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                          업로드된 이미지가 없습니다.
+                        </p>
+                      ) : null}
+                    </div>
+                    {uploadAssetMutation.error ? (
+                      <ErrorBox
+                        error={uploadAssetMutation.error}
+                        fallback="이미지 업로드에 실패했습니다"
+                      />
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+              {authoringTab === 'tests' ? (
+                <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
+                  아래 영역에서 채점 보조 파일과 .in/.out 테스트케이스를
+                  관리합니다.
+                </p>
+              ) : null}
+              {formError || saveProblemMutation.error ? (
+                <ErrorBox
+                  error={saveProblemMutation.error}
+                  fallback={formError || '문제 저장에 실패했습니다'}
+                />
+              ) : null}
+              {authoringTab !== 'tests' ? (
+                <button
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
+                  disabled={editorMode === 'edit' && !form.problemId}
+                  type="submit"
+                >
+                  <ProblemIcon />
+                  {editorMode === 'edit' ? '문제 수정' : '문제 생성'}
+                </button>
+              ) : null}
+            </form>
+          </OperatorPanel>
+
+          {authoringTab === 'tests' ? (
+            <OperatorPanel
+              description={
+                selectedProblem
+                  ? `${selectedProblem.problem_code}. ${selectedProblem.title} 채점 파일입니다.`
+                  : '문제를 생성하거나 왼쪽 목록에서 선택하면 채점 파일을 관리할 수 있습니다.'
+              }
+              title="채점 파일과 테스트케이스"
+            >
+              {!effectiveSelectedProblemId ? (
+                <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                  채점 파일을 확인할 문제를 먼저 선택해 주세요.
+                </p>
+              ) : (
+                <>
+                  {packageStatusQuery.isLoading ? (
+                    <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                      채점 파일 상태를 불러오는 중입니다.
+                    </p>
+                  ) : null}
+                  <div className="grid gap-3">
+                    {packageStatusQuery.data ? (
+                      <p
+                        className={[
+                          'rounded border px-4 py-3 text-sm font-black',
+                          packageStatusQuery.data.ready
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-amber-200 bg-amber-50 text-amber-700',
+                        ].join(' ')}
+                      >
+                        {packageStatusQuery.data.ready
+                          ? '채점 준비 완료'
+                          : '채점 파일 확인 필요'}
+                      </p>
+                    ) : null}
+                    <div className="grid gap-2">
+                      {supportFileRows.map((file) => {
+                        const asset = supportAssetByRole.get(file.role);
+
+                        return (
+                          <div
+                            className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
+                            key={file.role}
+                          >
+                            <span className="grid min-w-0 gap-1">
+                              <span>
+                                {file.label}
+                                {file.required ? ' *' : ''}
+                              </span>
+                              {file.detail ? (
+                                <span className="text-[11px] font-bold text-slate-400">
+                                  {file.detail}
+                                </span>
+                              ) : null}
+                              <button
+                                className={[
+                                  'w-fit max-w-full truncate text-left font-black',
+                                  asset
+                                    ? 'text-indigo-700 hover:text-indigo-950'
+                                    : file.status === 'ready'
+                                      ? 'text-emerald-700'
+                                      : 'text-amber-700',
+                                ].join(' ')}
+                                disabled={!asset}
+                                onClick={() =>
+                                  asset
+                                    ? setSupportFilePreview({
+                                        storageKey: asset.storage_key,
+                                        title: `${file.label} · ${asset.original_filename}`,
+                                      })
+                                    : undefined
+                                }
+                                title={asset?.original_filename ?? undefined}
+                                type="button"
+                              >
+                                {asset?.original_filename ??
+                                  file.latest_filename ??
+                                  '파일 없음'}
+                              </button>
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
+                                disabled={!asset}
+                                onClick={() =>
+                                  asset
+                                    ? setSupportFilePreview({
+                                        storageKey: asset.storage_key,
+                                        title: `${file.label} · ${asset.original_filename}`,
+                                      })
+                                    : undefined
+                                }
+                                type="button"
+                              >
+                                보기
+                              </button>
+                              <button
+                                className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
+                                disabled={
+                                  !asset || deleteAssetMutation.isPending
+                                }
+                                onClick={() => {
+                                  if (
+                                    asset &&
+                                    window.confirm(
+                                      `${asset.original_filename} 파일을 삭제할까요?`,
+                                    )
+                                  ) {
+                                    deleteAssetMutation.mutate(asset);
+                                  }
+                                }}
+                                type="button"
+                              >
+                                삭제
+                              </button>
+                              <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded border border-slate-200 bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
+                                파일 선택
+                                <input
+                                  className="sr-only"
+                                  disabled={
+                                    !effectiveSelectedProblemId ||
+                                    uploadRoleFileMutation.isPending
+                                  }
+                                  onChange={(event) => {
+                                    const fileObject =
+                                      event.currentTarget.files?.[0];
+                                    if (fileObject) {
+                                      uploadRoleFileMutation.mutate({
+                                        file: fileObject,
+                                        role: file.role,
+                                      });
+                                    }
+                                    event.currentTarget.value = '';
+                                  }}
+                                  type="file"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    {latestTestcaseSet ? (
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-3 text-xs font-bold text-slate-600"
+                        key={latestTestcaseSet.testcase_set_id}
+                      >
+                        <button
+                          className="text-left font-black text-indigo-700 hover:text-indigo-950"
+                          onClick={() => setIsTestcaseModalOpen(true)}
+                          type="button"
+                        >
+                          현재 테스트케이스{' '}
+                          {latestTestcaseSet.testcases?.length ?? 0}개 보기
+                        </button>
+                        <span className="text-xs font-bold text-slate-400">
+                          개별 케이스는 목록에서 삭제합니다.
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                        업로드된 테스트케이스가 없습니다.
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                    <p className="text-sm font-black text-indigo-800">
+                      .in/.out 파일 묶음
+                    </p>
+                    <div
+                      className={[
+                        'grid gap-3 rounded border border-dashed px-4 py-6 text-center transition',
+                        isCaseDropActive
+                          ? 'border-indigo-400 bg-white'
+                          : 'border-indigo-200 bg-white/70',
+                      ].join(' ')}
+                      onDragLeave={() => setIsCaseDropActive(false)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (uploadMatchedTestcasesMutation.isPending) return;
+                        setIsCaseDropActive(true);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setIsCaseDropActive(false);
+                        if (uploadMatchedTestcasesMutation.isPending) return;
+                        handleMatchedFiles(
+                          Array.from(event.dataTransfer.files),
+                        );
+                      }}
+                    >
+                      <p className="text-sm font-black text-slate-800">
+                        .in/.out 파일을 이 영역에 드롭
+                      </p>
+                      <p className="text-xs font-bold text-slate-500">
+                        같은 파일명 기준으로 입력과 출력을 짝지어 한 번에
+                        반영합니다.
+                      </p>
+                      <label
+                        className={[
+                          'mx-auto inline-flex h-10 items-center rounded px-4 text-xs font-black text-white transition',
+                          uploadMatchedTestcasesMutation.isPending
+                            ? 'cursor-not-allowed bg-slate-300'
+                            : 'cursor-pointer bg-emerald-700 hover:bg-emerald-800',
+                        ].join(' ')}
+                      >
+                        파일 선택
+                        <input
+                          accept=".in,.out,text/plain"
+                          className="sr-only"
+                          disabled={
+                            !effectiveSelectedProblemId ||
+                            uploadMatchedTestcasesMutation.isPending
+                          }
+                          multiple
+                          onChange={(event) => {
+                            handleMatchedFiles(
+                              Array.from(event.currentTarget.files ?? []),
+                            );
+                            event.currentTarget.value = '';
+                          }}
+                          type="file"
+                        />
+                      </label>
+                    </div>
+                    {uploadProgress ? (
+                      <p
+                        aria-live="polite"
+                        className="text-xs font-bold text-slate-600"
+                      >
+                        {uploadProgress}
+                      </p>
+                    ) : null}
+                    {uploadRoleFileMutation.error ||
+                    uploadMatchedTestcasesMutation.error ||
+                    deleteTestcaseSetMutation.error ||
+                    deleteTestcaseMutation.error ||
+                    deleteAssetMutation.error ? (
+                      <ErrorBox
+                        error={
+                          uploadRoleFileMutation.error ||
+                          uploadMatchedTestcasesMutation.error ||
+                          deleteTestcaseSetMutation.error ||
+                          deleteTestcaseMutation.error ||
+                          deleteAssetMutation.error
+                        }
+                        fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
+                      />
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </OperatorPanel>
+          ) : null}
         </div>
       </div>
 
@@ -1315,7 +1407,9 @@ function OperatorProblemsContent({
           }}
           onDeleteTestcase={(testcaseId) => {
             if (!latestTestcaseSet) return;
-            if (window.confirm('이 테스트케이스 입력/출력 세트를 삭제할까요?')) {
+            if (
+              window.confirm('이 테스트케이스 입력/출력 세트를 삭제할까요?')
+            ) {
               deleteTestcaseMutation.mutate({
                 testcaseId,
                 testcaseSetId: latestTestcaseSet.testcase_set_id,
@@ -1336,6 +1430,12 @@ function OperatorProblemsContent({
           fileText={supportFileQuery.data}
           isFileLoading={supportFileQuery.isLoading}
           onClose={() => setSupportFilePreview(null)}
+        />
+      ) : null}
+      {uploadMatchedTestcasesMutation.isPending ? (
+        <UploadProgressModal
+          message={uploadProgress || '테스트케이스 파일을 업로드하고 있습니다.'}
+          progress={uploadProgressValue}
         />
       ) : null}
 
@@ -1532,8 +1632,9 @@ function TestcaseSetModal({
               <p className="text-sm font-black text-slate-900">
                 {filePreview?.title ?? '파일 내용'}
               </p>
-              <p className="break-all font-mono text-xs font-bold text-slate-400">
-                {filePreview?.storageKey ?? '왼쪽 목록에서 입력 또는 출력을 선택하세요.'}
+              <p className="font-mono text-xs font-bold break-all text-slate-400">
+                {filePreview?.storageKey ??
+                  '왼쪽 목록에서 입력 또는 출력을 선택하세요.'}
               </p>
             </div>
             <div className="mt-4 min-h-0">
@@ -1591,7 +1692,7 @@ function FileContentModal({
             <h2 className="truncate text-xl font-black text-slate-950">
               {filePreview.title}
             </h2>
-            <p className="break-all font-mono text-xs font-bold text-slate-400">
+            <p className="font-mono text-xs font-bold break-all text-slate-400">
               {filePreview.storageKey}
             </p>
           </div>
@@ -1618,6 +1719,50 @@ function FileContentModal({
               {fileText ?? ''}
             </pre>
           )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function UploadProgressModal({
+  message,
+  progress,
+}: {
+  message: string;
+  progress: number;
+}) {
+  const safeProgress = Math.max(0, Math.min(100, progress));
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/70 p-4"
+      role="dialog"
+    >
+      <section className="w-full max-w-md rounded border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="grid gap-2">
+          <p className="text-xs font-black text-indigo-600 uppercase">
+            Uploading
+          </p>
+          <h2 className="text-xl font-black text-slate-950">
+            테스트케이스 반영 중
+          </h2>
+          <p className="text-sm font-bold text-slate-500">
+            업로드와 검증이 끝날 때까지 기다려 주세요.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-3">
+          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-indigo-700 transition-all"
+              style={{ width: `${safeProgress}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 text-xs font-black text-slate-600">
+            <span>{message}</span>
+            <span>{safeProgress}%</span>
+          </div>
         </div>
       </section>
     </div>
@@ -1711,8 +1856,31 @@ function ProblemPreviewModal({
   );
 }
 
-function supportRoleFromStorageKey(storageKey: string) {
-  return storageKey.match(/\/support\/([^/]+)\//)?.[1] ?? null;
+function supportRoleRequiredFilename(role: PackageFileRole) {
+  if (role === 'package-resource') return 'testlib.h';
+  if (role === 'validator') return 'validator.cpp';
+  if (role === 'checker') return 'checker.cpp';
+  return '';
+}
+
+function supportRoleFromAsset(asset: ProblemAsset): PackageFileRole | null {
+  const storageRole = asset.storage_key.match(
+    /\/support\/([^/]+)(?:\/|$)/,
+  )?.[1];
+  if (isPackageFileRole(storageRole)) return storageRole;
+
+  const filename = asset.original_filename.toLowerCase();
+  if (filename === 'testlib.h') return 'package-resource';
+  if (filename === 'validator.cpp') return 'validator';
+  if (filename === 'checker.cpp') return 'checker';
+
+  return null;
+}
+
+function isPackageFileRole(
+  value: string | undefined,
+): value is PackageFileRole {
+  return PACKAGE_FILE_ROLES.some((role) => role.value === value);
 }
 
 function TextInput({
