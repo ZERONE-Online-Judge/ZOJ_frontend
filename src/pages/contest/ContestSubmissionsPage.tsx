@@ -50,7 +50,9 @@ function ContestSubmissionsContent({
   const hasSessionAccess = Boolean(participantContest);
   const submissionAccess = contestResourceAccess(contest, 'submission');
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const isEnded = contestAccessPhase(contest) === 'ended';
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const currentCursor = cursorStack.at(-1);
@@ -70,12 +72,12 @@ function ContestSubmissionsContent({
     contest,
     hasSessionAccess,
     submissionAccess,
-  );
+  ) && !isBeforeStart;
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
     problemAccess,
-  );
+  ) && !isBeforeStart;
 
   useEffect(() => {
     if (
@@ -187,7 +189,7 @@ function ContestSubmissionsContent({
         variant="contest"
       />
 
-      <ContestSubmissionsTabs contestId={contestId} />
+      <ContestSubmissionsTabs contest={contest} contestId={contestId} />
 
       {shouldShowDivisionSelect ? (
         <DivisionSelect

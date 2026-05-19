@@ -27,8 +27,6 @@ import { formatUserApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 
-type BoardMode = 'notices' | 'questions';
-
 type QuestionFormState = {
   body: string;
   title: string;
@@ -67,12 +65,15 @@ function ContestBoardContent({
   const hasSessionAccess = Boolean(participantContest);
   const noticeAccess = contestResourceAccess(contest, 'notice');
   const boardAccess = contestResourceAccess(contest, 'board');
-  const isEnded = contestAccessPhase(contest) === 'ended';
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
   const canViewNotices =
-    !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);
+    !isBeforeStart &&
+    (!isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess));
   const canViewQuestions =
-    !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
-  const [mode, setMode] = useState<BoardMode>('notices');
+    !isBeforeStart &&
+    (!isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess));
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
   );
@@ -100,7 +101,7 @@ function ContestBoardContent({
     queryKey: contestQueryKeys.questions(contestId, token),
     queryFn: async () => {
       const session =
-        boardAccess === 'participants'
+        participantContest || boardAccess === 'participants'
           ? await ensureParticipantSession()
           : null;
       return getContestQuestions(contestId, session?.accessToken ?? token);
@@ -177,13 +178,11 @@ function ContestBoardContent({
         variant="contest"
       />
 
-      <ContestPageNavigation contestId={contestId} />
+      <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <BoardTabs mode={mode} onChange={setMode} />
-
-      <section className="mt-10">
-        {mode === 'notices' ? (
-          canViewNotices ? (
+      <div className="mt-10 grid gap-10">
+        <section>
+          {canViewNotices ? (
             <NoticePanel
               isError={noticesQuery.isError}
               isLoading={noticesQuery.isLoading}
@@ -200,7 +199,11 @@ function ContestBoardContent({
               status="idle"
             />
           )
-        ) : canViewQuestions ? (
+          }
+        </section>
+
+        <section>
+          {canViewQuestions ? (
           <QuestionPanel
             form={questionForm}
             formError={formError}
@@ -216,7 +219,6 @@ function ContestBoardContent({
             onChangeForm={setQuestionForm}
             onSelect={setSelectedQuestion}
             onStartWrite={() => {
-              setMode('questions');
               setIsWritingQuestion(true);
               setFormError('');
             }}
@@ -230,10 +232,11 @@ function ContestBoardContent({
               'board',
               hasSessionAccess,
             )}
-            status="idle"
-          />
-        )}
-      </section>
+              status="idle"
+            />
+          )}
+        </section>
+      </div>
 
       {selectedNotice ? (
         <NoticeDetail
@@ -249,42 +252,6 @@ function ContestBoardContent({
       ) : null}
     </ContestPageFrame>
   );
-}
-
-function BoardTabs({
-  mode,
-  onChange,
-}: {
-  mode: BoardMode;
-  onChange: (mode: BoardMode) => void;
-}) {
-  return (
-    <div className="mt-5 flex flex-wrap gap-2">
-      <button
-        className={tabClassName(mode === 'notices')}
-        onClick={() => onChange('notices')}
-        type="button"
-      >
-        {contestBoardText.tabNotices}
-      </button>
-      <button
-        className={tabClassName(mode === 'questions')}
-        onClick={() => onChange('questions')}
-        type="button"
-      >
-        {contestBoardText.tabQuestions}
-      </button>
-    </div>
-  );
-}
-
-function tabClassName(active: boolean) {
-  return [
-    'h-8 rounded-full border px-4 text-sm font-black transition',
-    active
-      ? 'border-slate-950 bg-slate-950 text-white'
-      : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-  ].join(' ');
 }
 
 function NoticePanel({

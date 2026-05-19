@@ -47,7 +47,9 @@ function ContestScoreboardContent({
   const hasSessionAccess = Boolean(participantContest);
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const isEnded = contestAccessPhase(contest) === 'ended';
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
@@ -65,12 +67,12 @@ function ContestScoreboardContent({
     contest,
     hasSessionAccess,
     scoreboardAccess,
-  );
+  ) && !isBeforeStart;
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
     problemAccess,
-  );
+  ) && !isBeforeStart;
 
   useEffect(() => {
     if (
@@ -176,7 +178,7 @@ function ContestScoreboardContent({
         variant="contest"
       />
 
-      <ContestScoreboardTabs contestId={contestId} />
+      <ContestScoreboardTabs contest={contest} contestId={contestId} />
 
       {shouldShowDivisionSelect ? (
         <DivisionSelect

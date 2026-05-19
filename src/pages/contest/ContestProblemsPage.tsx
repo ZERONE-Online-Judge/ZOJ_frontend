@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -24,14 +24,6 @@ import {
 } from '@/domains/submissionScoreboard/api';
 import type { ScoreboardProblemScore } from '@/domains/submissionScoreboard/types';
 import PageNotice from '@/shared/ui/PageNotice';
-
-const problemTabs = [
-  { label: '개요', path: '' },
-  { label: '문제집', path: 'problems' },
-  { label: '채점현황', path: 'submissions' },
-  { label: '스코어보드', path: 'scoreboard' },
-  { label: '게시판', path: 'board' },
-] as const;
 
 type ProblemStatus = 'success' | 'failed' | 'pending';
 
@@ -109,7 +101,9 @@ function ContestProblemsContent({
   const hasSessionAccess = Boolean(participantContest);
   const problemAccess = contestResourceAccess(contest, 'problem');
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
-  const isEnded = contestAccessPhase(contest) === 'ended';
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
@@ -127,12 +121,12 @@ function ContestProblemsContent({
     contest,
     hasSessionAccess,
     problemAccess,
-  );
+  ) && !isBeforeStart;
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
     scoreboardAccess,
-  );
+  ) && !isBeforeStart;
 
   useEffect(() => {
     if (
@@ -247,34 +241,7 @@ function ContestProblemsContent({
         variant="contest"
       />
 
-      <nav aria-label="대회 메뉴" className="mt-8">
-        <ul className="flex flex-wrap items-center gap-3">
-          {problemTabs.map((tab) => {
-            const to = tab.path
-              ? `/contests/${contestId}/${tab.path}`
-              : `/contests/${contestId}`;
-
-            return (
-              <li key={tab.path || 'overview'}>
-                <NavLink
-                  className={({ isActive }) =>
-                    [
-                      'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
-                      isActive
-                        ? 'border-slate-950 bg-slate-950 text-white'
-                        : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-                    ].join(' ')
-                  }
-                  end={!tab.path}
-                  to={to}
-                >
-                  {tab.label}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <ContestPageNavigation contest={contest} contestId={contestId} />
 
       {shouldShowDivisionSelect ? (
         <DivisionSelect

@@ -13,7 +13,9 @@ import { getOperatorContestDashboard } from '@/domains/contestAdministration/api
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestAnswer,
+  deleteContestQuestion,
   listOperatorContestQuestions,
+  updateContestQuestion,
 } from '@/domains/serviceCommunication/api';
 import type { ContestQuestion } from '@/domains/serviceCommunication/types';
 import { formatApiError } from '@/shared/api/errors';
@@ -109,6 +111,36 @@ function OperatorBoardContent({
     },
   });
 
+  const updateQuestionMutation = useMutation({
+    mutationFn: ({
+      questionId,
+      visibility,
+    }: {
+      questionId: string;
+      visibility: ContestQuestion['visibility'];
+    }) => updateContestQuestion(contestId, questionId, token, { visibility }),
+    onSuccess: (question) => {
+      setSelectedQuestionId(question.contest_question_id);
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: (questionId: string) =>
+      deleteContestQuestion(contestId, questionId, token),
+    onSuccess: (_result, questionId) => {
+      if (selectedQuestionId === questionId) {
+        setSelectedQuestionId('');
+        setAnswerForm(emptyAnswerForm);
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
+
   function startAnswer(question: ContestQuestion) {
     setSelectedQuestionId(question.contest_question_id);
     setAnswerForm({
@@ -130,6 +162,21 @@ function OperatorBoardContent({
       return;
     }
     answerMutation.mutate();
+  }
+
+  function toggleQuestionVisibility(question: ContestQuestion) {
+    updateQuestionMutation.mutate({
+      questionId: question.contest_question_id,
+      visibility: question.visibility === 'public' ? 'private' : 'public',
+    });
+  }
+
+  function removeQuestion(question: ContestQuestion) {
+    const confirmed = window.confirm(
+      `"${question.title}" 게시글을 삭제할까요? 답변도 함께 삭제되며 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+    deleteQuestionMutation.mutate(question.contest_question_id);
   }
 
   return (
@@ -195,14 +242,34 @@ function OperatorBoardContent({
         <OperatorPanel
           actions={
             selectedQuestion ? (
-              <button
-                className="inline-flex h-9 items-center gap-2 rounded bg-indigo-950 px-4 text-sm font-black text-white"
-                onClick={() => startAnswer(selectedQuestion)}
-                type="button"
-              >
-                <NoticeIcon />
-                답변 작성
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:bg-slate-300"
+                  onClick={() => startAnswer(selectedQuestion)}
+                  type="button"
+                >
+                  <NoticeIcon />
+                  답변 작성
+                </button>
+                <button
+                  className="h-9 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                  disabled={updateQuestionMutation.isPending}
+                  onClick={() => toggleQuestionVisibility(selectedQuestion)}
+                  type="button"
+                >
+                  {selectedQuestion.visibility === 'public'
+                    ? '비공개 전환'
+                    : '공개 전환'}
+                </button>
+                <button
+                  className="h-9 rounded border border-rose-200 bg-white px-4 text-sm font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                  disabled={deleteQuestionMutation.isPending}
+                  onClick={() => removeQuestion(selectedQuestion)}
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
             ) : null
           }
           description={
@@ -219,6 +286,15 @@ function OperatorBoardContent({
                   {selectedQuestion.body}
                 </p>
               </div>
+
+              {updateQuestionMutation.error || deleteQuestionMutation.error ? (
+                <ErrorBox
+                  error={
+                    updateQuestionMutation.error || deleteQuestionMutation.error
+                  }
+                  fallback="게시글 처리에 실패했습니다"
+                />
+              ) : null}
 
               <section className="grid gap-3">
                 <h3 className="text-sm font-black text-slate-700">답변</h3>
