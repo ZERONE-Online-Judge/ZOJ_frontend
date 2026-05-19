@@ -101,6 +101,13 @@ export function listOperatorSubmissions(contestId: string, token: string) {
   return apiRequest<Submission[]>(`/operator/contests/${contestId}/submissions`, token);
 }
 
+export function getOperatorSubmission(contestId: string, submissionId: string, token: string) {
+  return apiRequest<Submission>(
+    `/operator/contests/${contestId}/submissions/${submissionId}`,
+    token,
+  );
+}
+
 export function waitOperatorSubmissionStatus(
   contestId: string,
   submissionId: string,

@@ -153,11 +153,11 @@ function OperatorBoardContent({
           description="답변이 필요한 질문을 우선 표시합니다."
           title="질문 목록"
         >
-          <div className="grid gap-2">
+          <div className="grid auto-rows-fr gap-2">
             {questions.map((question) => (
               <button
                 className={[
-                  'rounded border px-4 py-3 text-left transition',
+                  'grid h-28 content-start rounded border px-4 py-3 text-left transition',
                   selectedQuestion?.contest_question_id ===
                   question.contest_question_id
                     ? 'border-indigo-300 bg-indigo-50'
@@ -175,10 +175,10 @@ function OperatorBoardContent({
                     {question.visibility === 'private' ? '비공개' : '공개'}
                   </span>
                 </span>
-                <strong className="block font-black text-slate-950">
+                <strong className="line-clamp-2 font-black text-slate-950">
                   {question.title}
                 </strong>
-                <span className="mt-1 block text-xs font-bold text-slate-500">
+                <span className="mt-1 line-clamp-1 text-xs font-bold text-slate-500">
                   {question.team_name ?? question.author_name ?? '참가자'} ·{' '}
                   {formatDateTime(question.created_at)}
                 </span>
@@ -205,7 +205,11 @@ function OperatorBoardContent({
               </button>
             ) : null
           }
-          description="질문 내용과 기존 답변을 확인합니다."
+          description={
+            selectedQuestion ? (
+              <QuestionMeta question={selectedQuestion} />
+            ) : undefined
+          }
           title={selectedQuestion?.title ?? '질문 상세'}
         >
           {selectedQuestion ? (
@@ -318,6 +322,16 @@ function StatusBadge({ answered }: { answered: boolean }) {
       ].join(' ')}
     >
       {answered ? '답변 완료' : '답변 필요'}
+    </span>
+  );
+}
+
+function QuestionMeta({ question }: { question: ContestQuestion }) {
+  return (
+    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold text-slate-500">
+      <span>팀: {question.team_name ?? '-'}</span>
+      <span>작성자: {question.author_name ?? '-'}</span>
+      <span>작성일: {formatDateTime(question.created_at)}</span>
     </span>
   );
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import {
@@ -15,7 +15,6 @@ import {
 } from '@/components/operator/OperatorShell';
 import {
   getOperatorContestDashboard,
-  getOperatorContests,
 } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
@@ -24,6 +23,10 @@ import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 
 export default function OperatorHomePage() {
   const { contestId } = useParams();
+
+  if (!contestId) {
+    return <Navigate replace to="/contests" />;
+  }
 
   return (
     <OperatorAccessGate contestId={contestId} permission="contest.view">
@@ -41,27 +44,17 @@ function OperatorHomeContent({
   contestId,
   token,
 }: {
-  contestId?: string;
+  contestId: string;
   token: string;
 }) {
   const queryIdentity = tokenQueryIdentity(token);
-  const contestsQuery = useQuery({
-    queryKey: ['operator', 'contests', queryIdentity],
-    queryFn: () => getOperatorContests(token),
-  });
-  const contests = contestsQuery.data ?? [];
-  const selectedContestId = contestId ?? contests[0]?.contest_id;
-
   const dashboardQuery = useQuery({
-    enabled: Boolean(selectedContestId),
-    queryKey: ['operator', 'dashboard', selectedContestId, queryIdentity],
-    queryFn: () => getOperatorContestDashboard(selectedContestId!, token),
+    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
+    queryFn: () => getOperatorContestDashboard(contestId, token),
     refetchInterval: 15_000,
   });
   const dashboard = dashboardQuery.data;
-  const contest =
-    dashboard?.contest ??
-    contests.find((item) => item.contest_id === selectedContestId);
+  const contest = dashboard?.contest;
 
   return (
     <PageLayout
@@ -70,52 +63,18 @@ function OperatorHomeContent({
       title={contest ? `${contest.title} 운영` : '대회 운영'}
       width="7xl"
     >
-      <OperatorTabs contestId={selectedContestId} />
+      <OperatorTabs contestId={contestId} />
 
-      {contestsQuery.error || dashboardQuery.error ? (
+      {dashboardQuery.error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
           {formatApiError(
-            contestsQuery.error || dashboardQuery.error,
+            dashboardQuery.error,
             '운영자 데이터를 불러오지 못했습니다',
           )}
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,0.38fr)_minmax(0,1fr)]">
-        <OperatorPanel
-          description="운영할 대회를 선택합니다."
-          title="내 운영 대회"
-        >
-          <div className="grid gap-2">
-            {contests.length > 0 ? (
-              contests.map((item) => (
-                <Link
-                  className={[
-                    'rounded border px-4 py-3 transition',
-                    item.contest_id === selectedContestId
-                      ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50',
-                  ].join(' ')}
-                  key={item.contest_id}
-                  to={`/operator/contests/${item.contest_id}`}
-                >
-                  <strong className="block truncate text-sm font-black">
-                    {item.title}
-                  </strong>
-                  <span className="mt-1 block truncate text-xs font-bold text-slate-500">
-                    {item.organization_name || item.contest_id}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                운영 권한이 있는 대회가 없습니다.
-              </p>
-            )}
-          </div>
-        </OperatorPanel>
-
-        <div className="grid gap-6">
+      <div className="grid gap-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <OperatorMetricCard
               description="전체 참가팀"
@@ -157,34 +116,28 @@ function OperatorHomeContent({
             description="운영자가 자주 쓰는 기능으로 이동합니다."
             title="운영 작업"
           >
-            {selectedContestId ? (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <OperatorQuickLink
-                  icon={<SettingsIcon />}
-                  label="대회 설정"
-                  to={`/operator/contests/${selectedContestId}/settings`}
-                />
-                <OperatorQuickLink
-                  icon={<TeamIcon />}
-                  label="참가팀 관리"
-                  to={`/operator/contests/${selectedContestId}/participants`}
-                />
-                <OperatorQuickLink
-                  icon={<ProblemIcon />}
-                  label="문제 관리"
-                  to={`/operator/contests/${selectedContestId}/problems`}
-                />
-                <OperatorQuickLink
-                  icon={<ScoreboardIcon />}
-                  label="스코어보드"
-                  to={`/operator/contests/${selectedContestId}/scoreboard`}
-                />
-              </div>
-            ) : (
-              <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                운영할 대회가 배정되면 작업 링크가 표시됩니다.
-              </p>
-            )}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <OperatorQuickLink
+                icon={<SettingsIcon />}
+                label="대회 설정"
+                to={`/operator/contests/${contestId}/settings`}
+              />
+              <OperatorQuickLink
+                icon={<TeamIcon />}
+                label="참가팀 관리"
+                to={`/operator/contests/${contestId}/participants`}
+              />
+              <OperatorQuickLink
+                icon={<ProblemIcon />}
+                label="문제 관리"
+                to={`/operator/contests/${contestId}/problems`}
+              />
+              <OperatorQuickLink
+                icon={<ScoreboardIcon />}
+                label="스코어보드"
+                to={`/operator/contests/${contestId}/scoreboard`}
+              />
+            </div>
           </OperatorPanel>
 
           <OperatorPanel
@@ -246,7 +199,6 @@ function OperatorHomeContent({
               </table>
             </div>
           </OperatorPanel>
-        </div>
       </div>
     </PageLayout>
   );

@@ -1,4 +1,10 @@
-import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -34,35 +40,21 @@ import { formatDateTime } from '@/shared/lib/dateTime';
 type TeamForm = {
   divisionId: string;
   leaderEmail: string;
+  leaderId: string;
   leaderName: string;
   status: string;
   teamId: string;
   teamName: string;
 };
 
-type MemberForm = {
-  email: string;
-  memberId: string;
-  name: string;
-  role: TeamMemberRole;
-  teamId: string;
-};
-
 const emptyTeamForm: TeamForm = {
   divisionId: '',
   leaderEmail: '',
+  leaderId: '',
   leaderName: '',
   status: 'active',
   teamId: '',
   teamName: '',
-};
-
-const emptyMemberForm: MemberForm = {
-  email: '',
-  memberId: '',
-  name: '',
-  role: 'member',
-  teamId: '',
 };
 
 const participantStatusOptions = [
@@ -104,8 +96,9 @@ function OperatorParticipantsContent({
 }) {
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
+  const teamEditorRef = useRef<HTMLDivElement | null>(null);
   const [teamForm, setTeamForm] = useState(emptyTeamForm);
-  const [memberForm, setMemberForm] = useState(emptyMemberForm);
+  const [draftMembers, setDraftMembers] = useState<TeamMember[]>([]);
   const [bulkText, setBulkText] = useState('');
   const [search, setSearch] = useState('');
   const [divisionFilter, setDivisionFilter] = useState('all');
@@ -130,10 +123,8 @@ function OperatorParticipantsContent({
       new Map(divisions.map((division) => [division.division_id, division])),
     [divisions],
   );
-  const selectedTeam =
-    teams.find((team) => team.participant_team_id === memberForm.teamId) ??
-    null;
   const filteredTeams = teams.filter((team) => {
+    if (team.team_name.startsWith('__operator_test__:')) return false;
     const keyword = search.trim().toLowerCase();
     const matchesDivision =
       divisionFilter === 'all' || team.division_id === divisionFilter;
@@ -160,24 +151,81 @@ function OperatorParticipantsContent({
   }
 
   const saveTeamMutation = useMutation({
-    mutationFn: () =>
-      teamForm.teamId
-        ? updateParticipantTeam(contestId, teamForm.teamId, token, {
-            division_id: teamForm.divisionId,
-            status: teamForm.status,
-            team_name: teamForm.teamName.trim(),
-          })
-        : createParticipantTeam(contestId, token, {
-            division_id: teamForm.divisionId,
-            leader: {
-              email: teamForm.leaderEmail.trim(),
-              name: teamForm.leaderName.trim(),
-              role: 'leader',
+    mutationFn: async () => {
+      const members = draftMembers
+        .filter((member) => member.name.trim() || member.email.trim())
+        .map((member) => ({
+          email: member.email.trim(),
+          name: member.name.trim(),
+          role: 'member' as TeamMemberRole,
+          team_member_id: member.team_member_id,
+        }));
+
+      if (!teamForm.teamId) {
+        return createParticipantTeam(contestId, token, {
+          division_id: teamForm.divisionId,
+          leader: {
+            email: teamForm.leaderEmail.trim(),
+            name: teamForm.leaderName.trim(),
+            role: 'leader',
+          },
+          members,
+          team_name: teamForm.teamName.trim(),
+        });
+      }
+
+      const updated = await updateParticipantTeam(
+        contestId,
+        teamForm.teamId,
+        token,
+        {
+          division_id: teamForm.divisionId,
+          status: teamForm.status,
+          team_name: teamForm.teamName.trim(),
+        },
+      );
+
+      if (teamForm.leaderId) {
+        await updateParticipantTeamMember(
+          contestId,
+          teamForm.teamId,
+          teamForm.leaderId,
+          token,
+          {
+            email: teamForm.leaderEmail.trim(),
+            name: teamForm.leaderName.trim(),
+            role: 'leader',
+          },
+        );
+      }
+
+      for (const member of members) {
+        if (member.team_member_id) {
+          await updateParticipantTeamMember(
+            contestId,
+            teamForm.teamId,
+            member.team_member_id,
+            token,
+            {
+              email: member.email,
+              name: member.name,
+              role: 'member',
             },
-            team_name: teamForm.teamName.trim(),
-          }),
+          );
+        } else {
+          await addParticipantTeamMember(contestId, teamForm.teamId, token, {
+            email: member.email,
+            name: member.name,
+            role: 'member',
+          });
+        }
+      }
+
+      return updated;
+    },
     onSuccess: () => {
       setTeamForm(emptyTeamForm);
+      setDraftMembers([]);
       setFormError('');
       invalidateParticipants();
     },
@@ -188,32 +236,7 @@ function OperatorParticipantsContent({
       deleteParticipantTeam(contestId, team.participant_team_id, token),
     onSuccess: () => {
       setTeamForm(emptyTeamForm);
-      setMemberForm(emptyMemberForm);
-      invalidateParticipants();
-    },
-  });
-
-  const saveMemberMutation = useMutation({
-    mutationFn: () =>
-      memberForm.memberId
-        ? updateParticipantTeamMember(
-            contestId,
-            memberForm.teamId,
-            memberForm.memberId,
-            token,
-            {
-              email: memberForm.email.trim(),
-              name: memberForm.name.trim(),
-              role: memberForm.role,
-            },
-          )
-        : addParticipantTeamMember(contestId, memberForm.teamId, token, {
-            email: memberForm.email.trim(),
-            name: memberForm.name.trim(),
-            role: memberForm.role,
-          }),
-    onSuccess: () => {
-      setMemberForm(emptyMemberForm);
+      setDraftMembers([]);
       invalidateParticipants();
     },
   });
@@ -253,19 +276,6 @@ function OperatorParticipantsContent({
     saveTeamMutation.mutate();
   }
 
-  function submitMember(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (
-      !memberForm.teamId ||
-      !memberForm.name.trim() ||
-      !memberForm.email.trim()
-    ) {
-      setFormError('팀, 이름, 이메일을 모두 입력해야 합니다.');
-      return;
-    }
-    saveMemberMutation.mutate();
-  }
-
   function editTeam(team: ParticipantTeam) {
     const leader =
       team.members.find((member) => member.role === 'leader') ??
@@ -273,21 +283,51 @@ function OperatorParticipantsContent({
     setTeamForm({
       divisionId: team.division_id,
       leaderEmail: leader?.email ?? '',
+      leaderId: leader?.team_member_id ?? '',
       leaderName: leader?.name ?? '',
       status: team.status,
       teamId: team.participant_team_id,
       teamName: team.team_name,
     });
+    setDraftMembers(
+      team.members
+        .filter((member) => member.team_member_id !== leader?.team_member_id)
+        .map((member) => ({ ...member, role: 'member' })),
+    );
+    setFormError('');
+    window.requestAnimationFrame(() => {
+      teamEditorRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
   }
 
-  function editMember(team: ParticipantTeam, member: TeamMember) {
-    setMemberForm({
-      email: member.email,
-      memberId: member.team_member_id ?? '',
-      name: member.name,
-      role: member.role,
-      teamId: team.participant_team_id,
-    });
+  function resetTeamEditor() {
+    setTeamForm(emptyTeamForm);
+    setDraftMembers([]);
+    setFormError('');
+  }
+
+  function addDraftMember() {
+    setDraftMembers((current) => [
+      ...current,
+      { email: '', name: '', role: 'member' },
+    ]);
+  }
+
+  function updateDraftMember(index: number, values: Partial<TeamMember>) {
+    setDraftMembers((current) =>
+      current.map((member, memberIndex) =>
+        memberIndex === index ? { ...member, ...values } : member,
+      ),
+    );
+  }
+
+  function removeDraftMember(index: number) {
+    setDraftMembers((current) =>
+      current.filter((_, memberIndex) => memberIndex !== index),
+    );
   }
 
   function confirmDeleteTeam(team: ParticipantTeam) {
@@ -327,45 +367,58 @@ function OperatorParticipantsContent({
       ) : null}
 
       <div className="grid gap-6">
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6">
+          <div ref={teamEditorRef}>
           <OperatorPanel
-            description="팀 단위로 참가자를 등록하거나 상태를 변경합니다."
+            description="팀 정보, 팀장, 팀원을 한 카드에서 함께 등록하거나 수정합니다."
             title={teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
           >
             <form className="grid gap-4" onSubmit={submitTeam}>
-              <TextInput
-                label="팀명"
-                onChange={(value) =>
-                  setTeamForm((prev) => ({ ...prev, teamName: value }))
-                }
-                value={teamForm.teamName}
-              />
-              <SelectInput
-                label="참가 유형"
-                onChange={(value) =>
-                  setTeamForm((prev) => ({ ...prev, divisionId: value }))
-                }
-                options={divisions.map((division) => ({
-                  label: division.name,
-                  value: division.division_id,
-                }))}
-                placeholder="유형 선택"
-                value={teamForm.divisionId}
-              />
-              {teamForm.teamId ? (
-                <SelectInput
-                  label="상태"
-                  onChange={(value) =>
-                    setTeamForm((prev) => ({ ...prev, status: value }))
-                  }
-                  options={participantStatusOptions.map(([value, label]) => ({
-                    label,
-                    value,
-                  }))}
-                  value={teamForm.status}
-                />
-              ) : (
-                <>
+              <div className="grid gap-4 rounded border border-slate-200 bg-slate-50/70 p-4">
+                <p className="text-xs font-black text-slate-500 uppercase">
+                  팀 설정
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextInput
+                    label="팀명"
+                    onChange={(value) =>
+                      setTeamForm((prev) => ({ ...prev, teamName: value }))
+                    }
+                    value={teamForm.teamName}
+                  />
+                  <SelectInput
+                    label="참가 유형"
+                    onChange={(value) =>
+                      setTeamForm((prev) => ({ ...prev, divisionId: value }))
+                    }
+                    options={divisions.map((division) => ({
+                      label: division.name,
+                      value: division.division_id,
+                    }))}
+                    placeholder="유형 선택"
+                    value={teamForm.divisionId}
+                  />
+                </div>
+                {teamForm.teamId ? (
+                  <SelectInput
+                    label="상태"
+                    onChange={(value) =>
+                      setTeamForm((prev) => ({ ...prev, status: value }))
+                    }
+                    options={participantStatusOptions.map(([value, label]) => ({
+                      label,
+                      value,
+                    }))}
+                    value={teamForm.status}
+                  />
+                ) : null}
+              </div>
+
+              <div className="grid gap-4 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                <p className="text-xs font-black text-indigo-700 uppercase">
+                  팀장 설정
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
                   <TextInput
                     label="팀장 이름"
                     onChange={(value) =>
@@ -380,8 +433,87 @@ function OperatorParticipantsContent({
                     }
                     value={teamForm.leaderEmail}
                   />
-                </>
-              )}
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded border border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-500 uppercase">
+                      팀원
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-slate-500">
+                      1인팀이면 비워두고, 여러 명이면 필요한 만큼 추가합니다.
+                    </p>
+                  </div>
+                  <button
+                    className="rounded border border-indigo-200 bg-white px-3 py-2 text-xs font-black text-indigo-700"
+                    onClick={addDraftMember}
+                    type="button"
+                  >
+                    팀원 추가
+                  </button>
+                </div>
+                {draftMembers.length > 0 ? (
+                  <div className="grid gap-3">
+                    {draftMembers.map((member, index) => (
+                      <div
+                        className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                        key={`${member.team_member_id ?? 'new'}-${index}`}
+                      >
+                        <TextInput
+                          label={`팀원 ${index + 1} 이름`}
+                          onChange={(value) =>
+                            updateDraftMember(index, { name: value })
+                          }
+                          value={member.name}
+                        />
+                        <TextInput
+                          label={`팀원 ${index + 1} 이메일`}
+                          onChange={(value) =>
+                            updateDraftMember(index, { email: value })
+                          }
+                          value={member.email}
+                        />
+                        <button
+                          className="self-end rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600 disabled:text-slate-300"
+                          disabled={Boolean(member.team_member_id)}
+                          onClick={() => removeDraftMember(index)}
+                          title={
+                            member.team_member_id
+                              ? '기존 팀원 삭제 API가 없어 이 화면에서는 제거할 수 없습니다.'
+                              : undefined
+                          }
+                          type="button"
+                        >
+                          제거
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-bold text-slate-500">
+                    추가 팀원이 없습니다.
+                  </p>
+                )}
+              </div>
+
+              {teamForm.teamId ? (
+                <div className="flex flex-wrap gap-2">
+                  {participantStatusOptions.map(([status, label]) => (
+                    <button
+                      className="rounded border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:border-indigo-200 hover:bg-indigo-50"
+                      key={status}
+                      onClick={() =>
+                        setTeamForm((prev) => ({ ...prev, status }))
+                      }
+                      type="button"
+                    >
+                      {label}로 표시
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {formError || saveTeamMutation.error ? (
                 <ErrorBox
                   error={saveTeamMutation.error}
@@ -401,74 +533,10 @@ function OperatorParticipantsContent({
                 <TeamIcon />
                 {teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
               </button>
-            </form>
-          </OperatorPanel>
-
-          <OperatorPanel
-            description={
-              selectedTeam
-                ? `${selectedTeam.team_name} 팀원을 관리합니다.`
-                : '팀원 추가 또는 기존 팀원 정보를 수정합니다.'
-            }
-            title={memberForm.memberId ? '팀원 수정' : '팀원 추가'}
-          >
-            <form className="grid gap-4" onSubmit={submitMember}>
-              <SelectInput
-                label="팀"
-                onChange={(value) =>
-                  setMemberForm((prev) => ({ ...prev, teamId: value }))
-                }
-                options={teams.map((team) => ({
-                  label: team.team_name,
-                  value: team.participant_team_id,
-                }))}
-                placeholder="팀 선택"
-                value={memberForm.teamId}
-              />
-              <TextInput
-                label="이름"
-                onChange={(value) =>
-                  setMemberForm((prev) => ({ ...prev, name: value }))
-                }
-                value={memberForm.name}
-              />
-              <TextInput
-                label="이메일"
-                onChange={(value) =>
-                  setMemberForm((prev) => ({ ...prev, email: value }))
-                }
-                value={memberForm.email}
-              />
-              <SelectInput
-                label="역할"
-                onChange={(value) =>
-                  setMemberForm((prev) => ({
-                    ...prev,
-                    role: value as TeamMemberRole,
-                  }))
-                }
-                options={[
-                  { label: '팀장', value: 'leader' },
-                  { label: '팀원', value: 'member' },
-                ]}
-                value={memberForm.role}
-              />
-              {saveMemberMutation.error ? (
-                <ErrorBox
-                  error={saveMemberMutation.error}
-                  fallback="팀원 저장에 실패했습니다"
-                />
-              ) : null}
               <div className="flex gap-2">
                 <button
-                  className="h-11 flex-1 rounded bg-indigo-950 px-4 text-sm font-black text-white"
-                  type="submit"
-                >
-                  {memberForm.memberId ? '팀원 수정' : '팀원 추가'}
-                </button>
-                <button
                   className="h-11 rounded border border-slate-200 px-4 text-sm font-black text-slate-600"
-                  onClick={() => setMemberForm(emptyMemberForm)}
+                  onClick={resetTeamEditor}
                   type="button"
                 >
                   초기화
@@ -479,7 +547,7 @@ function OperatorParticipantsContent({
         </div>
 
         <OperatorPanel
-          description="CSV/TSV 헤더: team_name, division, leader_name, leader_email"
+          description="CSV/TSV 헤더: team_name, division, leader_name, leader_email, member1_name, member1_email, member2_name, member2_email..."
           title="일괄 등록"
         >
           <form
@@ -499,7 +567,7 @@ function OperatorParticipantsContent({
               className="min-h-44 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
               onChange={(event) => setBulkText(event.target.value)}
               placeholder={
-                'team_name,division,leader_name,leader_email\nTeam A,일반,홍길동,a@example.com'
+                'team_name,division,leader_name,leader_email,member1_name,member1_email,member2_name,member2_email\nTeam A,일반,홍길동,a@example.com,김철수,b@example.com,이영희,c@example.com'
               }
               value={bulkText}
             />
@@ -520,11 +588,12 @@ function OperatorParticipantsContent({
               type="submit"
             >
               일괄 등록 실행
-            </button>
-          </form>
-        </OperatorPanel>
+              </button>
+            </form>
+          </OperatorPanel>
+          </div>
 
-        <OperatorPanel
+          <OperatorPanel
           actions={
             <>
               <select
@@ -606,13 +675,6 @@ function OperatorParticipantsContent({
                               <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
                                 {member.role === 'leader' ? '팀장' : '팀원'}
                               </span>
-                              <button
-                                className="rounded border border-indigo-200 px-2 py-1 text-xs font-black text-indigo-700"
-                                onClick={() => editMember(team, member)}
-                                type="button"
-                              >
-                                수정
-                              </button>
                               {member.team_member_id ? (
                                 <button
                                   className="rounded border border-amber-200 px-2 py-1 text-xs font-black text-amber-700"
@@ -641,19 +703,7 @@ function OperatorParticipantsContent({
                             onClick={() => editTeam(team)}
                             type="button"
                           >
-                            팀 수정
-                          </button>
-                          <button
-                            className="rounded border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700"
-                            onClick={() =>
-                              setMemberForm({
-                                ...emptyMemberForm,
-                                teamId: team.participant_team_id,
-                              })
-                            }
-                            type="button"
-                          >
-                            팀원 추가
+                            팀/팀원 편집
                           </button>
                           <button
                             className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"

@@ -4,7 +4,10 @@ import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestScoreboardTable from '@/components/contest/scoreboard/ContestScoreboardTable';
 import ContestScoreboardTabs from '@/components/contest/scoreboard/ContestScoreboardTabs';
-import { canViewContestResource } from '@/domains/contestAdministration/logic';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+} from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -37,6 +40,8 @@ function ContestScoreboardContent({
     participantContest?.division.name ??
     activeParticipantSession?.division.name;
   const hasSessionAccess = Boolean(participantContest);
+  const shouldUseParticipantScope =
+    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
@@ -53,13 +58,17 @@ function ContestScoreboardContent({
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
@@ -76,13 +85,17 @@ function ContestScoreboardContent({
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionScoreboard(
           contestId,
           session.division.division_id,

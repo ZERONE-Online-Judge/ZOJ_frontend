@@ -4,7 +4,10 @@ import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestSubmissionsTable from '@/components/contest/submissions/ContestSubmissionsTable';
 import ContestSubmissionsTabs from '@/components/contest/submissions/ContestSubmissionsTabs';
-import { canViewContestResource } from '@/domains/contestAdministration/logic';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+} from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -38,6 +41,8 @@ function ContestSubmissionsContent({
   const fallbackMemberName =
     participantContest?.member.name ?? activeParticipantSession?.member.name;
   const hasSessionAccess = Boolean(participantContest);
+  const shouldUseParticipantScope =
+    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
   const canViewSubmissions = canViewContestResource(
     contest,
     hasSessionAccess,
@@ -54,13 +59,17 @@ function ContestSubmissionsContent({
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
@@ -77,12 +86,14 @@ function ContestSubmissionsContent({
     queryKey: contestQueryKeys.submissions(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return listSubmissions(contestId, session.accessToken);
       }
 

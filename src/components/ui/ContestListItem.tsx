@@ -10,6 +10,7 @@ export type ContestListItemData = {
   title: string;
   organization: string;
   status: string;
+  countdownLabel?: string;
   period?: string;
   registrationDeadline?: string;
   isOpen?: boolean;
@@ -23,6 +24,7 @@ export default function ContestListItem({
   title,
   organization,
   status,
+  countdownLabel,
   period,
   registrationDeadline,
   isOpen = false,
@@ -37,9 +39,13 @@ export default function ContestListItem({
   const isParticipantContest = generalSession?.participantContests.some(
     (item) => item.contest.contest_id === contestId,
   );
-  const canOpenContest = !generalSession || isParticipantContest;
+  const isOperatorContest = generalSession?.operatorContests.some(
+    (item) => item.contest.contest_id === contestId,
+  );
+  const operatorHref = `/operator/contests/${encodeURIComponent(contestId)}`;
+  const canOpenContest = !generalSession || isParticipantContest || isOperatorContest;
   const itemHref = canOpenContest
-    ? (href ?? (generalSession ? contestHref : loginHref))
+    ? (href ?? (isOperatorContest ? operatorHref : generalSession ? contestHref : loginHref))
     : undefined;
   const canShowUnavailableMessage = canOpenContest && !itemHref;
 
@@ -51,6 +57,12 @@ export default function ContestListItem({
             <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
               <span className="bg-zoj-blue size-2 rounded-full" />
               <span>내 참가</span>
+            </span>
+          ) : null}
+          {isOperatorContest ? (
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-indigo-50 px-3 text-xs font-black text-indigo-700">
+              <span className="size-2 rounded-full bg-indigo-500" />
+              <span>운영</span>
             </span>
           ) : null}
           <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
@@ -73,6 +85,12 @@ export default function ContestListItem({
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+        {countdownLabel ? (
+          <span className="inline-flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 text-sm font-black text-amber-700">
+            <SvgIcon name="timer" size={14} />
+            {countdownLabel}
+          </span>
+        ) : null}
         {period ? (
           <span className="bg-zoj-blue/15 text-zoj-blue inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold">
             <SvgIcon name="timer" size={14} />
@@ -98,10 +116,13 @@ export default function ContestListItem({
           : 'opacity-70',
       ].join(' ')}
     >
-      {isParticipantContest ? (
+      {isParticipantContest || isOperatorContest ? (
         <span
           aria-hidden="true"
-          className="bg-zoj-blue absolute inset-y-0 left-0 w-2"
+          className={[
+            'absolute inset-y-0 left-0 w-2',
+            isOperatorContest ? 'bg-indigo-500' : 'bg-zoj-blue',
+          ].join(' ')}
         />
       ) : null}
       {itemHref ? (

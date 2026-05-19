@@ -8,6 +8,7 @@ import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   canViewContestResource,
+  contestAccessPhase,
   participantProblemEmptyMessage,
 } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
@@ -102,6 +103,8 @@ function ContestProblemsContent({
     participantContest,
   } = useContestParticipantSession(contestId);
   const hasSessionAccess = Boolean(participantContest);
+  const shouldUseParticipantScope =
+    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
@@ -118,13 +121,17 @@ function ContestProblemsContent({
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
@@ -142,13 +149,17 @@ function ContestProblemsContent({
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionScoreboard(
           contestId,
           session.division.division_id,

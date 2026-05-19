@@ -7,6 +7,8 @@ import ProblemNavigationPills from '@/components/contest/problem/ProblemNavigati
 import ProblemSidebar from '@/components/contest/problem/ProblemSidebar';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
+import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -48,10 +50,12 @@ function problemViewFromParam(value?: string): ProblemView {
 }
 
 function ContestProblemDetailContent({
+  contest,
   contestId,
   problemId,
   view,
 }: {
+  contest: Contest;
   contestId: string;
   problemId: string;
   view: ProblemView;
@@ -61,6 +65,7 @@ function ContestProblemDetailContent({
   const selectedSubmissionId = searchParams.get('submissionId');
   const { activeParticipantSession, ensureParticipantSession, generalSession } =
     useContestParticipantSession(contestId);
+  const shouldUseParticipantScope = contestAccessPhase(contest) !== 'ended';
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -84,7 +89,9 @@ function ContestProblemDetailContent({
       activeParticipantSession?.accessToken,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
 
       return getContestProblem(
         contestId,
@@ -102,13 +109,17 @@ function ContestProblemDetailContent({
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
@@ -128,11 +139,13 @@ function ContestProblemDetailContent({
       contestId,
       selectedSubmissionId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
       if (!session?.accessToken) {
         throw new Error('제출 코드를 보려면 대회 참가 로그인이 필요합니다.');
       }
@@ -219,7 +232,9 @@ function ContestProblemDetailContent({
         );
       }
 
-      const session = await ensureParticipantSession();
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
       const token = session?.accessToken;
 
       if (!token) {
@@ -366,6 +381,7 @@ export default function ContestProblemDetailPage() {
     <ContestPageShell>
       {({ contest }) => (
         <ContestProblemDetailContent
+          contest={contest}
           contestId={contest.contest_id}
           problemId={problemId}
           view={view}

@@ -1,26 +1,42 @@
-import ContestCard, { type ContestCardData } from '@/components/ui/ContestCard';
 import PreviewSection from '@/components/main/PreviewSection';
+import ContestListItem from '@/components/ui/ContestListItem';
+import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import { toContestCardData } from '@/domains/contestAdministration/presentation';
+import type { Contest } from '@/domains/contestAdministration/types';
+
+type ContestSectionKey = 'running' | 'upcoming' | 'ended';
 
 type ContestListSectionProps = {
   title: string;
   titleHref?: string;
-  contests?: ContestCardData[];
+  contests?: Contest[];
 };
 
-function getContestCardSpan(total: number, index: number) {
-  if (total === 1) {
-    return 'md:col-span-6';
-  }
+const contestSections: {
+  key: ContestSectionKey;
+  title: string;
+}[] = [
+  { key: 'running', title: '진행중 대회' },
+  { key: 'upcoming', title: '운영예정 대회' },
+  { key: 'ended', title: '이미 종료된 대회' },
+];
 
-  if (total === 2 || total === 4) {
-    return 'md:col-span-3';
-  }
+function sectionKeyForContest(contest: Contest): ContestSectionKey {
+  const phase = contestAccessPhase(contest);
+  if (phase === 'running') return 'running';
+  if (phase === 'ended') return 'ended';
+  return 'upcoming';
+}
 
-  if (total === 5 && index > 2) {
-    return 'md:col-span-3';
-  }
+function contestSortDate(contest: Contest) {
+  const sectionKey = sectionKeyForContest(contest);
+  const value = sectionKey === 'ended' ? contest.end_at : contest.start_at;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
 
-  return 'md:col-span-2';
+function sortContestsByRecentDate(contests: Contest[]) {
+  return [...contests].sort((a, b) => contestSortDate(b) - contestSortDate(a));
 }
 
 export default function ContestListSection({
@@ -28,19 +44,39 @@ export default function ContestListSection({
   titleHref,
   contests = [],
 }: ContestListSectionProps) {
-  const visibleContests = contests.slice(0, 6);
+  const sections = contestSections.map((section) => ({
+    ...section,
+    contests: sortContestsByRecentDate(
+      contests.filter((contest) => sectionKeyForContest(contest) === section.key),
+    ),
+  }));
 
   return (
     <PreviewSection title={title} titleHref={titleHref}>
-      <ul className="grid grid-cols-1 gap-6 md:grid-cols-6">
-        {visibleContests.map((contest, index) => (
-          <ContestCard
-            className={getContestCardSpan(visibleContests.length, index)}
-            key={`${contest.title}-${index}`}
-            {...contest}
-          />
-        ))}
-      </ul>
+      <div className="grid gap-7">
+        {sections.map((section) =>
+          section.contests.length > 0 ? (
+            <section className="grid gap-3" key={section.key}>
+              <header className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-black text-slate-950">
+                  {section.title}
+                </h3>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                  {section.contests.length}개
+                </span>
+              </header>
+              <ul className="grid grid-cols-1 gap-2.5">
+                {section.contests.map((contest) => (
+                  <ContestListItem
+                    key={contest.contest_id}
+                    {...toContestCardData(contest)}
+                  />
+                ))}
+              </ul>
+            </section>
+          ) : null,
+        )}
+      </div>
     </PreviewSection>
   );
 }

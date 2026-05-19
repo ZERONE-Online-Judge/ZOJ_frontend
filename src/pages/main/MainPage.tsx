@@ -5,8 +5,6 @@ import NoticeSection from '@/components/main/NoticeSection';
 import { mainPageContent } from '@/data/testContent';
 import { mainPageText } from '@/data/uiText';
 import { getPublicContests } from '@/domains/contestAdministration/api';
-import { sortContestsByStartAt } from '@/domains/contestAdministration/logic';
-import { toContestCardData } from '@/domains/contestAdministration/presentation';
 import { getPublicServiceNotices } from '@/domains/serviceCommunication/api';
 import { formatDateTime } from '@/shared/lib/dateTime';
 
@@ -31,9 +29,7 @@ export default function MainPage() {
       date: formatDateTime(notice.published_at),
       href: '/notices',
     })) ?? [];
-  const contestItems = sortContestsByStartAt(contestsQuery.data ?? [])
-    .slice(0, 6)
-    .map(toContestCardData);
+  const contestItems = contestsQuery.data ?? [];
 
   return (
     <>

@@ -30,7 +30,6 @@ import { formatApiError } from '@/shared/api/errors';
 import { dateTimeLocalToIso, dateTimeLocalValue } from '@/shared/lib/dateTime';
 
 type SettingsForm = {
-  emergency_notice: string;
   end_at: string;
   freeze_at: string;
   organization_name: string;
@@ -85,7 +84,6 @@ const statusOptions = [
 
 function settingsFormFromContest(contest: Contest): SettingsForm {
   return {
-    emergency_notice: contest.emergency_notice ?? '',
     end_at: dateTimeLocalValue(contest.end_at),
     freeze_at: dateTimeLocalValue(contest.freeze_at),
     organization_name: contest.organization_name,
@@ -167,7 +165,6 @@ function OperatorSettingsContent({
   const updateSettingsMutation = useMutation({
     mutationFn: () =>
       updateContestSettings(contestId, token, {
-        emergency_notice: settingsForm?.emergency_notice.trim() || null,
         end_at: dateTimeLocalToIso(settingsForm!.end_at),
         freeze_at: dateTimeLocalToIso(settingsForm!.freeze_at),
         organization_name: settingsForm!.organization_name.trim(),
@@ -325,7 +322,7 @@ function OperatorSettingsContent({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
         <OperatorPanel
           description="대회 기본 정보와 공개 정책을 수정합니다."
           title="대회 설정"
@@ -335,9 +332,29 @@ function OperatorSettingsContent({
               {operationLocked ? (
                 <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
                   대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
-                  종료/프리즈 시간과 긴급 공지만 조정하세요.
+                  시작/프리즈/종료 시간만 조정하세요.
                 </p>
               ) : null}
+              <div className="grid gap-4 rounded border border-indigo-100 bg-indigo-50/60 px-4 py-4 md:grid-cols-3">
+                <DateInput
+                  label="시작"
+                  name="start_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.start_at}
+                />
+                <DateInput
+                  label="프리즈"
+                  name="freeze_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.freeze_at}
+                />
+                <DateInput
+                  label="종료"
+                  name="end_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.end_at}
+                />
+              </div>
               <QuickActions
                 currentStatus={settingsForm.status}
                 onAction={applyQuickAction}
@@ -394,40 +411,6 @@ function OperatorSettingsContent({
                     )
                   }
                   value={settingsForm.overview}
-                />
-              </label>
-              <div className="grid gap-4 md:grid-cols-3">
-                <DateInput
-                  label="시작"
-                  name="start_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.start_at}
-                />
-                <DateInput
-                  label="종료"
-                  name="end_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.end_at}
-                />
-                <DateInput
-                  label="프리즈"
-                  name="freeze_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.freeze_at}
-                />
-              </div>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                긴급 공지
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
-                    setSettingsForm((prev) =>
-                      prev
-                        ? { ...prev, emergency_notice: event.target.value }
-                        : prev,
-                    )
-                  }
-                  value={settingsForm.emergency_notice}
                 />
               </label>
               <div className="grid gap-2 md:grid-cols-3">

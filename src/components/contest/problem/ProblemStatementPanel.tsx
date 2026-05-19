@@ -1,14 +1,16 @@
 import { parseProblemDocument } from '@/domains/problemManagement/document';
-import type { Problem } from '@/domains/problemManagement/types';
+import type { Problem, ProblemAsset } from '@/domains/problemManagement/types';
 import MarkdownPreview from '@/shared/ui/MarkdownPreview';
 import ProblemExamplesGrid from '@/components/contest/problem/ProblemExamplesGrid';
 import ProblemMetaPills from '@/components/contest/problem/ProblemMetaPills';
 
 type ProblemStatementPanelProps = {
+  assets?: ProblemAsset[];
   problem: Problem;
 };
 
 export default function ProblemStatementPanel({
+  assets = [],
   problem,
 }: ProblemStatementPanelProps) {
   const document = parseProblemDocument(problem.statement);
@@ -25,7 +27,7 @@ export default function ProblemStatementPanel({
       </header>
 
       <div className="mt-7">
-        <MarkdownPreview statement={document.statement} />
+        <MarkdownPreview assets={assets} statement={document.statement} />
       </div>
 
       {document.inputDescription ? (
@@ -34,7 +36,10 @@ export default function ProblemStatementPanel({
             입력
           </h2>
           <div className="mt-4">
-            <MarkdownPreview statement={document.inputDescription} />
+            <MarkdownPreview
+              assets={assets}
+              statement={document.inputDescription}
+            />
           </div>
         </section>
       ) : null}
@@ -45,7 +50,10 @@ export default function ProblemStatementPanel({
             출력
           </h2>
           <div className="mt-4">
-            <MarkdownPreview statement={document.outputDescription} />
+            <MarkdownPreview
+              assets={assets}
+              statement={document.outputDescription}
+            />
           </div>
         </section>
       ) : null}
@@ -56,7 +64,7 @@ export default function ProblemStatementPanel({
             노트
           </h2>
           <div className="mt-4">
-            <MarkdownPreview statement={document.note} />
+            <MarkdownPreview assets={assets} statement={document.note} />
           </div>
         </section>
       ) : null}

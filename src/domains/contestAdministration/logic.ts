@@ -95,8 +95,9 @@ export function canViewContestResource(
   hasSessionAccess: boolean,
   publicAfterEnd: boolean,
 ) {
+  if (isContestEnded(contest)) return publicAfterEnd;
   if (hasSessionAccess) return true;
-  return isContestEnded(contest) && publicAfterEnd;
+  return false;
 }
 
 export function sortContestsByStartAt(contests: Contest[]) {
