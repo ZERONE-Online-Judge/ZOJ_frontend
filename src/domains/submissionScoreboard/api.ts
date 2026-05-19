@@ -40,11 +40,12 @@ export function listSubmissions(
 export function listSubmissionsPage(
   contestId: string,
   token: string | undefined,
-  options: { limit?: number; cursor?: string } = {},
+  options: { divisionId?: string; limit?: number; cursor?: string } = {},
 ) {
   const search = new URLSearchParams();
   if (options.limit) search.set('limit', String(options.limit));
   if (options.cursor) search.set('cursor', options.cursor);
+  if (options.divisionId) search.set('division_id', options.divisionId);
 
   const query = search.toString();
   return apiPageRequest<Submission[]>(
@@ -135,6 +136,23 @@ export function waitDivisionScoreboard(
 export function listOperatorSubmissions(contestId: string, token: string) {
   return apiRequest<Submission[]>(
     `/operator/contests/${contestId}/submissions`,
+    token,
+  );
+}
+
+export function listOperatorSubmissionsPage(
+  contestId: string,
+  token: string,
+  options: { divisionId?: string; limit?: number; cursor?: string } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.limit) search.set('limit', String(options.limit));
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.divisionId) search.set('division_id', options.divisionId);
+  const query = search.toString();
+
+  return apiPageRequest<Submission[]>(
+    `/operator/contests/${contestId}/submissions${query ? `?${query}` : ''}`,
     token,
   );
 }

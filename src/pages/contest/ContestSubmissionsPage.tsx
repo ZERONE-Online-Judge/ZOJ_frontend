@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
@@ -18,11 +18,13 @@ import {
   getContestProblems,
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
-import { listSubmissions } from '@/domains/submissionScoreboard/api';
+import { listSubmissionsPage } from '@/domains/submissionScoreboard/api';
 import { isSubmissionPending } from '@/domains/submissionScoreboard/status';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import PageNotice from '@/shared/ui/PageNotice';
+
+const SUBMISSIONS_PAGE_SIZE = 20;
 
 function ContestSubmissionsContent({
   contest,
@@ -50,6 +52,8 @@ function ContestSubmissionsContent({
   const problemAccess = contestResourceAccess(contest, 'problem');
   const isEnded = contestAccessPhase(contest) === 'ended';
   const [publicDivisionId, setPublicDivisionId] = useState('');
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const currentCursor = cursorStack.at(-1);
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
   const shouldShowDivisionSelect = !hasSessionAccess && divisions.length > 1;
@@ -78,6 +82,7 @@ function ContestSubmissionsContent({
       !divisions.some((division) => division.division_id === publicDivisionId)
     ) {
       setPublicDivisionId('');
+      setCursorStack([]);
     }
   }, [divisions, publicDivisionId]);
 
@@ -117,6 +122,7 @@ function ContestSubmissionsContent({
 
       return getContestProblems(contestId, generalSession?.accessToken);
     },
+    placeholderData: keepPreviousData,
   });
 
   const submissionsQuery = useQuery({
@@ -133,23 +139,29 @@ function ContestSubmissionsContent({
       shouldUseParticipantScope
         ? activeParticipantSession?.accessToken
         : undefined,
+      currentCursor ?? undefined,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
-        return listSubmissions(contestId, session.accessToken);
+        return listSubmissionsPage(contestId, session.accessToken, {
+          cursor: currentCursor,
+          limit: SUBMISSIONS_PAGE_SIZE,
+        });
       }
 
-      return listSubmissions(contestId, generalSession?.accessToken, {
+      return listSubmissionsPage(contestId, generalSession?.accessToken, {
+        cursor: currentCursor,
         divisionId: effectiveDivisionId,
+        limit: SUBMISSIONS_PAGE_SIZE,
       });
     },
     refetchInterval: (query) => {
       if (!isDocumentVisible) return false;
 
-      const submissions = (query.state.data ?? []) as Submission[];
+      const submissions = (query.state.data?.data ?? []) as Submission[];
       const hasPendingSubmission =
         !query.state.data ||
         submissions.some((submission) =>
@@ -159,8 +171,10 @@ function ContestSubmissionsContent({
       return hasPendingSubmission ? 3_000 : 15_000;
     },
     refetchIntervalInBackground: false,
+    placeholderData: keepPreviousData,
   });
-  const submissions = submissionsQuery.data ?? [];
+  const submissions = submissionsQuery.data?.data ?? [];
+  const page = submissionsQuery.data?.page;
   const problems = problemsQuery.data ?? [];
 
   return (
@@ -177,7 +191,10 @@ function ContestSubmissionsContent({
       {shouldShowDivisionSelect ? (
         <DivisionSelect
           divisions={divisions}
-          onChange={setPublicDivisionId}
+          onChange={(divisionId) => {
+            setPublicDivisionId(divisionId);
+            setCursorStack([]);
+          }}
           value={selectedPublicDivisionId}
         />
       ) : null}
@@ -216,6 +233,24 @@ function ContestSubmissionsContent({
           />
         ) : null}
 
+        {canViewSubmissions ? (
+          <PaginationControls
+            currentCount={submissions.length}
+            currentCursor={page?.current_cursor ?? currentCursor ?? null}
+            hasNext={Boolean(page?.next_cursor)}
+            hasPrevious={cursorStack.length > 0}
+            isFetching={submissionsQuery.isFetching}
+            onNext={() => {
+              if (page?.next_cursor) {
+                setCursorStack((prev) => [...prev, page.next_cursor!]);
+              }
+            }}
+            onPrevious={() => setCursorStack((prev) => prev.slice(0, -1))}
+            pageSize={SUBMISSIONS_PAGE_SIZE}
+            totalCount={page?.total_count ?? null}
+          />
+        ) : null}
+
         {canViewSubmissions &&
         !submissionsQuery.isLoading &&
         submissions.length === 0 ? (
@@ -223,6 +258,62 @@ function ContestSubmissionsContent({
         ) : null}
       </div>
     </ContestPageFrame>
+  );
+}
+
+function PaginationControls({
+  currentCount,
+  currentCursor,
+  hasNext,
+  hasPrevious,
+  isFetching,
+  onNext,
+  onPrevious,
+  pageSize,
+  totalCount,
+}: {
+  currentCount: number;
+  currentCursor: string | null;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  isFetching: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+  pageSize: number;
+  totalCount: number | null;
+}) {
+  const start = currentCount
+    ? Number(currentCursor ?? 0) + 1
+    : Number(currentCursor ?? 0);
+  const end = Number(currentCursor ?? 0) + currentCount;
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
+      <span>
+        {totalCount === null
+          ? `${start}-${end}`
+          : `${start}-${end} / ${totalCount.toLocaleString('ko-KR')}`}
+        {isFetching ? ' · 갱신 중' : ''}
+      </span>
+      <div className="flex gap-2">
+        <button
+          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          disabled={!hasPrevious || isFetching}
+          onClick={onPrevious}
+          type="button"
+        >
+          이전
+        </button>
+        <button
+          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          disabled={!hasNext || isFetching || currentCount < pageSize}
+          onClick={onNext}
+          type="button"
+        >
+          다음
+        </button>
+      </div>
+    </div>
   );
 }
 

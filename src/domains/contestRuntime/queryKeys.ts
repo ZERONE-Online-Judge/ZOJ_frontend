@@ -21,6 +21,7 @@ export const contestQueryKeys = {
     participantContestId?: string,
     divisionId?: string,
     participantToken?: string,
+    cursor?: string,
   ) =>
     [
       'contest-submissions',
@@ -29,6 +30,7 @@ export const contestQueryKeys = {
       participantContestId ?? null,
       divisionId ?? null,
       participantToken ?? null,
+      cursor ?? null,
     ] as const,
   scoreboard: (
     contestId: string,

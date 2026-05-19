@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { sharedUiText } from '@/data/uiText';
 import ContestScoreboardTable from '@/components/contest/scoreboard/ContestScoreboardTable';
@@ -20,6 +25,26 @@ import { getOperatorProblems } from '@/domains/problemManagement/api';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
 import { formatApiError } from '@/shared/api/errors';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
+
+function operatorScoreboardDivisionStorageKey(contestId: string) {
+  return `zoj.operator.scoreboard.division.${contestId}`;
+}
+
+function readStoredValue(key: string) {
+  try {
+    return window.localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredValue(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage failures; the in-memory selection still works.
+  }
+}
 
 export default function OperatorScoreboardPage() {
   const { contestId } = useParams();
@@ -50,12 +75,17 @@ function ScoreboardFreezeControl({
   error,
   mode,
   onChange,
+  publicFrozen,
 }: {
   disabled: boolean;
   error: unknown;
   mode: ScoreboardFreezeMode;
   onChange: (mode: ScoreboardFreezeMode) => void;
+  publicFrozen: boolean;
 }) {
+  const effectiveMode: ScoreboardFreezeMode =
+    mode === 'auto' ? (publicFrozen ? 'frozen' : 'live') : mode;
+
   return (
     <section className="grid gap-3 rounded border border-slate-200 bg-white px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,7 +105,7 @@ function ScoreboardFreezeControl({
             <button
               className={[
                 'h-9 rounded px-5 text-sm font-black transition disabled:cursor-not-allowed',
-                mode === value
+                effectiveMode === value
                   ? 'bg-slate-950 text-white shadow-sm'
                   : 'text-slate-500 hover:bg-white hover:text-slate-950',
               ].join(' ')}
@@ -91,21 +121,8 @@ function ScoreboardFreezeControl({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-500">
-          자동 모드에서는 설정의 프리즈 시각 이후 공개 스코어보드가 멈춥니다.
+          설정의 프리즈 시각 이후 공개 스코어보드가 멈춥니다.
         </p>
-        <button
-          className={[
-            'h-8 rounded border px-3 text-xs font-black transition disabled:cursor-not-allowed',
-            mode === 'auto'
-              ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-              : 'border-slate-200 text-slate-600 hover:bg-slate-50',
-          ].join(' ')}
-          disabled={disabled}
-          onClick={() => onChange('auto')}
-          type="button"
-        >
-          시간 설정 기준
-        </button>
       </div>
       {error ? (
         <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
@@ -126,20 +143,26 @@ function OperatorScoreboardContent({
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
-  const [divisionId, setDivisionId] = useState('');
+  const divisionStorageKey = operatorScoreboardDivisionStorageKey(contestId);
+  const [divisionId, setDivisionId] = useState(() =>
+    readStoredValue(divisionStorageKey),
+  );
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
+    placeholderData: keepPreviousData,
   });
   const problemsQuery = useQuery({
     queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
+    placeholderData: keepPreviousData,
   });
   const scoreboardQuery = useQuery({
     enabled: Boolean(divisionId),
     queryKey: ['operator', 'scoreboard', contestId, divisionId, queryIdentity],
     queryFn: () => getOperatorDivisionScoreboard(contestId, divisionId, token),
+    placeholderData: keepPreviousData,
     refetchInterval: isVisible ? 5_000 : false,
     refetchIntervalInBackground: false,
   });
@@ -176,9 +199,11 @@ function OperatorScoreboardContent({
       !divisionId ||
       !divisions.some((division) => division.division_id === divisionId)
     ) {
-      setDivisionId(divisions[0].division_id);
+      const nextDivisionId = divisions[0].division_id;
+      setDivisionId(nextDivisionId);
+      writeStoredValue(divisionStorageKey, nextDivisionId);
     }
-  }, [divisions, divisionId]);
+  }, [divisionId, divisionStorageKey, divisions]);
 
   return (
     <PageLayout
@@ -194,6 +219,7 @@ function OperatorScoreboardContent({
         error={freezeModeMutation.error}
         mode={freezeMode}
         onChange={(mode) => freezeModeMutation.mutate(mode)}
+        publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
       />
 
       {dashboardQuery.error || problemsQuery.error || scoreboardQuery.error ? (
@@ -213,7 +239,10 @@ function OperatorScoreboardContent({
             <ScoreboardIcon />
             <select
               className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              onChange={(event) => setDivisionId(event.target.value)}
+              onChange={(event) => {
+                setDivisionId(event.target.value);
+                writeStoredValue(divisionStorageKey, event.target.value);
+              }}
               value={divisionId}
             >
               {divisions.map((division) => (

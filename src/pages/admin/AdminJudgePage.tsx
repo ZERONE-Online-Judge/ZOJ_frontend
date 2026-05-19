@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   AdminAccessGate,
   AdminMetricCard,
@@ -32,6 +36,25 @@ const pendingSubmissionStatuses = new Set([
   'waiting',
 ]);
 
+const ADMIN_JUDGE_PAGE_SIZE = 20;
+
+function readStoredValue(key: string) {
+  try {
+    return window.localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredValue(key: string, value: string) {
+  try {
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Ignore storage failures; the in-memory filter still works.
+  }
+}
+
 export default function AdminJudgePage() {
   return (
     <AdminAccessGate>
@@ -46,6 +69,12 @@ function AdminJudgeContent({ token }: { token: string }) {
   const queryIdentity = tokenQueryIdentity(token);
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [contestFilter, setContestFilter] = useState(() =>
+    readStoredValue('zoj.admin.judge.contest'),
+  );
+  const [divisionFilter, setDivisionFilter] = useState(() =>
+    readStoredValue('zoj.admin.judge.division'),
+  );
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<
     string | null
   >(null);
@@ -55,17 +84,28 @@ function AdminJudgeContent({ token }: { token: string }) {
     queryKey: ['admin', 'judge-dashboard', queryIdentity],
     queryFn: () => getAdminJudgeDashboard(token),
     refetchInterval: isVisible ? 5_000 : false,
+    placeholderData: keepPreviousData,
   });
 
   const submissionsQuery = useQuery({
-    queryKey: ['admin', 'judge-submissions', cursor ?? 'first', queryIdentity],
+    queryKey: [
+      'admin',
+      'judge-submissions',
+      contestFilter || 'all-contests',
+      divisionFilter || 'all-divisions',
+      cursor ?? 'first',
+      queryIdentity,
+    ],
     queryFn: () =>
       listAdminJudgeSubmissions(token, {
+        contestId: contestFilter || undefined,
         cursor,
+        divisionId: divisionFilter || undefined,
         includeSource: false,
-        limit: 20,
+        limit: ADMIN_JUDGE_PAGE_SIZE,
       }),
     refetchInterval: isVisible ? 5_000 : false,
+    placeholderData: keepPreviousData,
   });
 
   const selectedSubmissionQuery = useQuery({
@@ -77,6 +117,7 @@ function AdminJudgeContent({ token }: { token: string }) {
       queryIdentity,
     ],
     queryFn: () => getAdminJudgeSubmission(selectedSubmissionId!, token, true),
+    placeholderData: keepPreviousData,
   });
 
   useEffect(() => {
@@ -126,7 +167,29 @@ function AdminJudgeContent({ token }: { token: string }) {
   ]);
 
   const dashboard = dashboardQuery.data;
+  const submissions = submissionsQuery.data?.data ?? [];
+  const page = submissionsQuery.data?.page;
   const nextCursor = submissionsQuery.data?.page.next_cursor ?? null;
+  const contestOptions = Array.from(
+    new Map(
+      submissions
+        .map((entry) => entry.contest)
+        .filter(Boolean)
+        .map((contest) => [contest!.contest_id, contest!]),
+    ).values(),
+  );
+  const divisionOptions = Array.from(
+    new Map(
+      submissions
+        .filter(
+          (entry) =>
+            !contestFilter || entry.contest?.contest_id === contestFilter,
+        )
+        .map((entry) => entry.division)
+        .filter(Boolean)
+        .map((division) => [division!.division_id, division!]),
+    ).values(),
+  );
 
   function goNextPage() {
     if (!nextCursor) return;
@@ -141,6 +204,25 @@ function AdminJudgeContent({ token }: { token: string }) {
       setCursor(previousCursor || undefined);
       return next;
     });
+  }
+
+  function resetPage() {
+    setCursor(undefined);
+    setCursorHistory([]);
+  }
+
+  function updateContestFilter(value: string) {
+    setContestFilter(value);
+    setDivisionFilter('');
+    writeStoredValue('zoj.admin.judge.contest', value);
+    writeStoredValue('zoj.admin.judge.division', '');
+    resetPage();
+  }
+
+  function updateDivisionFilter(value: string) {
+    setDivisionFilter(value);
+    writeStoredValue('zoj.admin.judge.division', value);
+    resetPage();
   }
 
   return (
@@ -317,7 +399,34 @@ function AdminJudgeContent({ token }: { token: string }) {
 
         <AdminPanel
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+                onChange={(event) => updateContestFilter(event.target.value)}
+                value={contestFilter}
+              >
+                <option value="">전체 대회</option>
+                {contestOptions.map((contest) => (
+                  <option key={contest.contest_id} value={contest.contest_id}>
+                    {contest.title}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+                onChange={(event) => updateDivisionFilter(event.target.value)}
+                value={divisionFilter}
+              >
+                <option value="">전체 유형</option>
+                {divisionOptions.map((division) => (
+                  <option
+                    key={division.division_id}
+                    value={division.division_id}
+                  >
+                    {division.name}
+                  </option>
+                ))}
+              </select>
               <button
                 className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
                 disabled={cursorHistory.length === 0}
@@ -339,6 +448,15 @@ function AdminJudgeContent({ token }: { token: string }) {
           description="제출번호를 누르면 상세 정보와 소스 코드를 모달로 확인할 수 있습니다."
           title="최근 제출"
         >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
+            <span>
+              {page?.total_count === undefined || page.total_count === null
+                ? `${Number(page?.current_cursor ?? cursor ?? 0) + (submissions.length ? 1 : 0)}-${Number(page?.current_cursor ?? cursor ?? 0) + submissions.length}`
+                : `${Number(page.current_cursor ?? cursor ?? 0) + (submissions.length ? 1 : 0)}-${Number(page.current_cursor ?? cursor ?? 0) + submissions.length} / ${page.total_count.toLocaleString('ko-KR')}`}
+              {submissionsQuery.isFetching ? ' · 갱신 중' : ''}
+            </span>
+            <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
+          </div>
           <div className="overflow-x-auto rounded border border-slate-200">
             <table className="w-full min-w-[920px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
@@ -367,8 +485,8 @@ function AdminJudgeContent({ token }: { token: string }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(submissionsQuery.data?.data ?? []).length > 0 ? (
-                  (submissionsQuery.data?.data ?? []).map((entry) => (
+                {submissions.length > 0 ? (
+                  submissions.map((entry) => (
                     <SubmissionRow
                       entry={entry}
                       isSelected={

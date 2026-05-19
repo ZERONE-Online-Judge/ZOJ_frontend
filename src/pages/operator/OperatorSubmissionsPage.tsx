@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import { sharedUiText } from '@/data/uiText';
@@ -19,7 +23,7 @@ import { listParticipantTeams } from '@/domains/teamParticipation/api';
 import type { ParticipantTeam } from '@/domains/teamParticipation/types';
 import {
   getOperatorSubmission,
-  listOperatorSubmissions,
+  listOperatorSubmissionsPage,
   waitOperatorSubmissionStatus,
 } from '@/domains/submissionScoreboard/api';
 import type { Submission } from '@/domains/submissionScoreboard/types';
@@ -34,6 +38,28 @@ import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 import SubmissionStatusBadge from '@/shared/ui/SubmissionStatusBadge';
+
+const SUBMISSIONS_PAGE_SIZE = 20;
+
+function operatorSubmissionDivisionStorageKey(contestId: string) {
+  return `zoj.operator.submissions.division.${contestId}`;
+}
+
+function readStoredValue(key: string) {
+  try {
+    return window.localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredValue(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage failures; the in-memory selection still works.
+  }
+}
 
 export default function OperatorSubmissionsPage() {
   const { contestId } = useParams();
@@ -70,9 +96,16 @@ function OperatorSubmissionsContent({
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const waitingIds = useRef(new Set<string>());
+  const divisionStorageKey = operatorSubmissionDivisionStorageKey(contestId);
+  const [divisionId, setDivisionId] = useState(() =>
+    readStoredValue(divisionStorageKey),
+  );
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const currentCursor = cursorStack.at(-1);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState('');
   const [selectedProblemPreviewId, setSelectedProblemPreviewId] = useState('');
-  const [selectedOwnerSubmissionId, setSelectedOwnerSubmissionId] = useState('');
+  const [selectedOwnerSubmissionId, setSelectedOwnerSubmissionId] =
+    useState('');
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -83,11 +116,25 @@ function OperatorSubmissionsContent({
     queryFn: () => getOperatorProblems(contestId, token),
   });
   const submissionsQuery = useQuery({
-    queryKey: ['operator', 'submissions', contestId, queryIdentity],
-    queryFn: () => listOperatorSubmissions(contestId, token),
+    enabled: Boolean(divisionId),
+    queryKey: [
+      'operator',
+      'submissions',
+      contestId,
+      divisionId,
+      currentCursor ?? null,
+      queryIdentity,
+    ],
+    queryFn: () =>
+      listOperatorSubmissionsPage(contestId, token, {
+        cursor: currentCursor,
+        divisionId,
+        limit: SUBMISSIONS_PAGE_SIZE,
+      }),
+    placeholderData: keepPreviousData,
     refetchInterval: (query) => {
       if (!isVisible) return false;
-      const submissions = query.state.data ?? [];
+      const submissions = query.state.data?.data ?? [];
       return submissions.some((submission) =>
         isSubmissionPending(submission.status),
       )
@@ -99,12 +146,28 @@ function OperatorSubmissionsContent({
   const teamsQuery = useQuery({
     queryKey: ['operator', 'participants', contestId, queryIdentity],
     queryFn: () => listParticipantTeams(contestId, token),
+    placeholderData: keepPreviousData,
   });
+
+  const divisions = dashboardQuery.data?.divisions ?? [];
+
+  useEffect(() => {
+    if (!divisions.length) return;
+    if (
+      !divisionId ||
+      !divisions.some((division) => division.division_id === divisionId)
+    ) {
+      const nextDivisionId = divisions[0].division_id;
+      setDivisionId(nextDivisionId);
+      writeStoredValue(divisionStorageKey, nextDivisionId);
+      setCursorStack([]);
+    }
+  }, [divisionId, divisionStorageKey, divisions]);
 
   useEffect(() => {
     if (!isVisible) return;
 
-    (submissionsQuery.data ?? [])
+    (submissionsQuery.data?.data ?? [])
       .filter((submission) => isSubmissionPending(submission.status))
       .forEach((submission) => {
         if (waitingIds.current.has(submission.submission_id)) return;
@@ -134,7 +197,8 @@ function OperatorSubmissionsContent({
       });
   }, [contestId, isVisible, queryClient, submissionsQuery.data, token]);
 
-  const submissions = submissionsQuery.data ?? [];
+  const submissions = submissionsQuery.data?.data ?? [];
+  const page = submissionsQuery.data?.page;
   const pendingCount = submissions.filter((submission) =>
     isSubmissionPending(submission.status),
   ).length;
@@ -172,7 +236,8 @@ function OperatorSubmissionsContent({
       selectedSubmissionId,
       queryIdentity,
     ],
-    queryFn: () => getOperatorSubmission(contestId, selectedSubmissionId, token),
+    queryFn: () =>
+      getOperatorSubmission(contestId, selectedSubmissionId, token),
   });
 
   return (
@@ -226,6 +291,27 @@ function OperatorSubmissionsContent({
       </div>
 
       <OperatorPanel
+        actions={
+          <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+            유형
+            <select
+              className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              onChange={(event) => {
+                const nextDivisionId = event.target.value;
+                setDivisionId(nextDivisionId);
+                writeStoredValue(divisionStorageKey, nextDivisionId);
+                setCursorStack([]);
+              }}
+              value={divisionId}
+            >
+              {divisions.map((division) => (
+                <option key={division.division_id} value={division.division_id}>
+                  {division.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
         description="제출 상세에서 소스, 컴파일 로그, 실패 케이스 입출력을 확인합니다."
         title="제출 목록"
       >
@@ -233,10 +319,27 @@ function OperatorSubmissionsContent({
           onSelectOwner={(submissionId) =>
             setSelectedOwnerSubmissionId(submissionId)
           }
-          onSelectProblem={(problemId) => setSelectedProblemPreviewId(problemId)}
+          onSelectProblem={(problemId) =>
+            setSelectedProblemPreviewId(problemId)
+          }
           onSelectSubmission={setSelectedSubmissionId}
           problemById={problemById}
           submissions={submissions}
+        />
+        <PaginationControls
+          currentCount={submissions.length}
+          currentCursor={page?.current_cursor ?? currentCursor ?? null}
+          isFetching={submissionsQuery.isFetching}
+          onNext={() => {
+            if (page?.next_cursor) {
+              setCursorStack((prev) => [...prev, page.next_cursor!]);
+            }
+          }}
+          onPrevious={() => setCursorStack((prev) => prev.slice(0, -1))}
+          pageSize={SUBMISSIONS_PAGE_SIZE}
+          totalCount={page?.total_count ?? null}
+          hasNext={Boolean(page?.next_cursor)}
+          hasPrevious={cursorStack.length > 0}
         />
         {!submissionsQuery.isLoading && submissions.length === 0 ? (
           <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
@@ -287,14 +390,22 @@ function displaySubmissionId(submissionId: string) {
   return submissionId.split('-')[0] || submissionId;
 }
 
-function submissionProblem(submission: Submission, problemById: Map<string, Problem>) {
+function submissionProblem(
+  submission: Submission,
+  problemById: Map<string, Problem>,
+) {
   return submission.problem ?? problemById.get(submission.problem_id) ?? null;
 }
 
-function submissionProblemLabel(submission: Submission, problemById: Map<string, Problem>) {
+function submissionProblemLabel(
+  submission: Submission,
+  problemById: Map<string, Problem>,
+) {
   const problem = submissionProblem(submission, problemById);
   if (problem) return `${problem.problem_code}. ${problem.title}`;
-  return submission.problem_title ?? submission.problem_code ?? submission.problem_id;
+  return (
+    submission.problem_title ?? submission.problem_code ?? submission.problem_id
+  );
 }
 
 function submissionOwner(submission: Submission) {
@@ -332,7 +443,9 @@ function codeLength(submission: Submission) {
     submission.source_code_length ??
     submission.source_code?.length ??
     null;
-  return typeof length === 'number' ? `${length.toLocaleString('ko-KR')} B` : '-';
+  return typeof length === 'number'
+    ? `${length.toLocaleString('ko-KR')} B`
+    : '-';
 }
 
 function OperatorSubmissionsTable({
@@ -372,8 +485,14 @@ function OperatorSubmissionsTable({
           {submissions.map((submission) => {
             const problem = submissionProblem(submission, problemById);
             return (
-              <tr className="hover:bg-indigo-50/40" key={submission.submission_id}>
-                <td className={`${cellClass} font-mono text-xs font-bold`} title={submission.submission_id}>
+              <tr
+                className="hover:bg-indigo-50/40"
+                key={submission.submission_id}
+              >
+                <td
+                  className={`${cellClass} font-mono text-xs font-bold`}
+                  title={submission.submission_id}
+                >
                   {displaySubmissionId(submission.submission_id)}
                 </td>
                 <td className={`${cellClass} font-bold text-slate-800`}>
@@ -401,13 +520,30 @@ function OperatorSubmissionsTable({
                 <td className={cellClass}>
                   <SubmissionStatusBadge submission={submission} compact />
                 </td>
-                <td className={`${cellClass} font-bold`}>{submission.language}</td>
+                <td className={`${cellClass} font-bold`}>
+                  {submission.language}
+                </td>
                 <td className={`${cellClass} text-xs font-bold text-slate-500`}>
                   {submissionProgressText(submission) || '-'}
                 </td>
-                <td className={cellClass}>{formatRuntime(submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms)}</td>
-                <td className={cellClass}>{formatMemory(submission.memory_kb ?? submission.memory_usage_kb ?? submission.max_memory_kb)}</td>
-                <td className={`${cellClass} text-xs font-bold text-slate-500`} title={formatDateTime(submission.submitted_at)}>
+                <td className={cellClass}>
+                  {formatRuntime(
+                    submission.runtime_ms ??
+                      submission.time_ms ??
+                      submission.execution_time_ms,
+                  )}
+                </td>
+                <td className={cellClass}>
+                  {formatMemory(
+                    submission.memory_kb ??
+                      submission.memory_usage_kb ??
+                      submission.max_memory_kb,
+                  )}
+                </td>
+                <td
+                  className={`${cellClass} text-xs font-bold text-slate-500`}
+                  title={formatDateTime(submission.submitted_at)}
+                >
                   {formatRelativeTime(submission.submitted_at)}
                 </td>
                 <td className={cellClass}>
@@ -424,6 +560,62 @@ function OperatorSubmissionsTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function PaginationControls({
+  currentCount,
+  currentCursor,
+  hasNext,
+  hasPrevious,
+  isFetching,
+  onNext,
+  onPrevious,
+  pageSize,
+  totalCount,
+}: {
+  currentCount: number;
+  currentCursor: string | null;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  isFetching: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+  pageSize: number;
+  totalCount: number | null;
+}) {
+  const start = currentCount
+    ? Number(currentCursor ?? 0) + 1
+    : Number(currentCursor ?? 0);
+  const end = Number(currentCursor ?? 0) + currentCount;
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
+      <span>
+        {totalCount === null
+          ? `${start}-${end}`
+          : `${start}-${end} / ${totalCount.toLocaleString('ko-KR')}`}
+        {isFetching ? ' · 갱신 중' : ''}
+      </span>
+      <div className="flex gap-2">
+        <button
+          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          disabled={!hasPrevious || isFetching}
+          onClick={onPrevious}
+          type="button"
+        >
+          이전
+        </button>
+        <button
+          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          disabled={!hasNext || isFetching || currentCount < pageSize}
+          onClick={onNext}
+          type="button"
+        >
+          다음
+        </button>
+      </div>
     </div>
   );
 }
@@ -528,10 +720,7 @@ function TeamDetailModal({
                       : '팀장 정보 없음'
                   }
                 />
-                <DetailCard
-                  label="상태"
-                  value={team?.status ?? '-'}
-                />
+                <DetailCard label="상태" value={team?.status ?? '-'} />
               </div>
               <div className="grid gap-2">
                 <p className="text-sm font-black text-slate-800">팀원</p>
@@ -590,9 +779,13 @@ function SubmissionDetailModal({
       <section className="mx-auto grid max-h-[calc(100vh-1.5rem)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-xs font-black text-indigo-600 uppercase">Submission detail</p>
+            <p className="text-xs font-black text-indigo-600 uppercase">
+              Submission detail
+            </p>
             <h2 className="text-xl font-black text-slate-950">
-              {submission ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}` : '제출 상세'}
+              {submission
+                ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
+                : '제출 상세'}
             </h2>
           </div>
           <button
@@ -617,23 +810,64 @@ function SubmissionDetailModal({
           {submission ? (
             <div className="grid gap-5">
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-                <DetailCard label="문제" value={submissionProblemLabel(submission, problemById)} />
-                <DetailCard label="결과" value={submissionStatusLabel(submission.status)} />
+                <DetailCard
+                  label="문제"
+                  value={submissionProblemLabel(submission, problemById)}
+                />
+                <DetailCard
+                  label="결과"
+                  value={submissionStatusLabel(submission.status)}
+                />
                 <DetailCard label="언어" value={String(submission.language)} />
-                <DetailCard label="실패 케이스" value={String(submission.failed_testcase_order ?? '-')} />
+                <DetailCard
+                  label="실패 케이스"
+                  value={String(submission.failed_testcase_order ?? '-')}
+                />
                 <DetailCard label="코드 길이" value={codeLength(submission)} />
-                <DetailCard label="시간" value={formatRuntime(submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms)} />
-                <DetailCard label="메모리" value={formatMemory(submission.memory_kb ?? submission.memory_usage_kb ?? submission.max_memory_kb)} />
-                <DetailCard label="진행" value={submissionProgressText(submission) || '-'} />
-                <DetailCard label="제출 시각" value={formatDateTime(submission.submitted_at)} />
+                <DetailCard
+                  label="시간"
+                  value={formatRuntime(
+                    submission.runtime_ms ??
+                      submission.time_ms ??
+                      submission.execution_time_ms,
+                  )}
+                />
+                <DetailCard
+                  label="메모리"
+                  value={formatMemory(
+                    submission.memory_kb ??
+                      submission.memory_usage_kb ??
+                      submission.max_memory_kb,
+                  )}
+                />
+                <DetailCard
+                  label="진행"
+                  value={submissionProgressText(submission) || '-'}
+                />
+                <DetailCard
+                  label="제출 시각"
+                  value={formatDateTime(submission.submitted_at)}
+                />
                 <DetailCard label="제출 ID" value={submission.submission_id} />
               </div>
-              <LogBlock label="소스 코드" value={submission.source_code || '-'} />
-              <LogBlock label="컴파일 로그" value={submission.compile_message || '-'} />
-              <LogBlock label="채점 로그" value={submission.judge_message || '-'} />
+              <LogBlock
+                label="소스 코드"
+                value={submission.source_code || '-'}
+              />
+              <LogBlock
+                label="컴파일 로그"
+                value={submission.compile_message || '-'}
+              />
+              <LogBlock
+                label="채점 로그"
+                value={submission.judge_message || '-'}
+              />
               <div className="grid gap-4 lg:grid-cols-3">
                 <LogBlock label="실패 입력" value={detail.inputText || '-'} />
-                <LogBlock label="기대 출력" value={detail.expectedText || '-'} />
+                <LogBlock
+                  label="기대 출력"
+                  value={detail.expectedText || '-'}
+                />
                 <LogBlock label="실제 출력" value={detail.actualText || '-'} />
               </div>
             </div>
@@ -648,7 +882,9 @@ function DetailCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="text-xs font-black text-slate-500">{label}</span>
-      <strong className="break-words text-sm font-black text-slate-950">{value}</strong>
+      <strong className="text-sm font-black break-words text-slate-950">
+        {value}
+      </strong>
     </div>
   );
 }
