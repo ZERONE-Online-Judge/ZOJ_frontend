@@ -39,19 +39,6 @@ const emptyQuestionForm: QuestionFormState = {
   visibility: 'public',
 };
 
-function shortDate(value?: string) {
-  if (!value) return contestBoardText.listDateFallback;
-
-  return new Intl.DateTimeFormat('ko-KR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-    .format(new Date(value))
-    .replace(/\.\s?/g, '.')
-    .replace(/\.$/, '');
-}
-
 function ContestBoardContent({
   contest,
   contestId,
@@ -311,7 +298,7 @@ function NoticePanel({
                 {notice.title}
               </strong>
               <time className="shrink-0 text-sm font-medium text-slate-500">
-                {shortDate(notice.published_at)}
+                {formatDateTime(notice.published_at)}
               </time>
             </button>
           </li>
