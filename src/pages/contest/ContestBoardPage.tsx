@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestBoardText } from '@/data/contestBoardContent';
 import {
@@ -68,11 +69,9 @@ function ContestBoardContent({
   const boardAccess = contestResourceAccess(contest, 'board');
   const isEnded = contestAccessPhase(contest) === 'ended';
   const canViewNotices =
-    !isEnded ||
-    canViewContestResource(contest, hasSessionAccess, noticeAccess);
+    !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);
   const canViewQuestions =
-    !isEnded ||
-    canViewContestResource(contest, hasSessionAccess, boardAccess);
+    !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
   const [mode, setMode] = useState<BoardMode>('notices');
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
@@ -89,7 +88,9 @@ function ContestBoardContent({
     queryKey: contestQueryKeys.notices(contestId, token),
     queryFn: async () => {
       const session =
-        noticeAccess === 'participants' ? await ensureParticipantSession() : null;
+        noticeAccess === 'participants'
+          ? await ensureParticipantSession()
+          : null;
       return getContestNotices(contestId, session?.accessToken ?? token);
     },
     refetchInterval: 15_000,
@@ -99,7 +100,9 @@ function ContestBoardContent({
     queryKey: contestQueryKeys.questions(contestId, token),
     queryFn: async () => {
       const session =
-        boardAccess === 'participants' ? await ensureParticipantSession() : null;
+        boardAccess === 'participants'
+          ? await ensureParticipantSession()
+          : null;
       return getContestQuestions(contestId, session?.accessToken ?? token);
     },
     refetchInterval: 15_000,
@@ -174,6 +177,8 @@ function ContestBoardContent({
         variant="contest"
       />
 
+      <ContestPageNavigation contestId={contestId} />
+
       <BoardTabs mode={mode} onChange={setMode} />
 
       <section className="mt-10">
@@ -195,40 +200,38 @@ function ContestBoardContent({
               status="idle"
             />
           )
+        ) : canViewQuestions ? (
+          <QuestionPanel
+            form={questionForm}
+            formError={formError}
+            isError={questionsQuery.isError}
+            isLoading={questionsQuery.isLoading}
+            isSubmitting={createQuestionMutation.isPending}
+            isWriting={isWritingQuestion}
+            mutationError={createQuestionMutation.error}
+            onCancelWrite={() => {
+              setIsWritingQuestion(false);
+              setFormError('');
+            }}
+            onChangeForm={setQuestionForm}
+            onSelect={setSelectedQuestion}
+            onStartWrite={() => {
+              setMode('questions');
+              setIsWritingQuestion(true);
+              setFormError('');
+            }}
+            onSubmit={submitQuestion}
+            questions={questions}
+          />
         ) : (
-          canViewQuestions ? (
-            <QuestionPanel
-              form={questionForm}
-              formError={formError}
-              isError={questionsQuery.isError}
-              isLoading={questionsQuery.isLoading}
-              isSubmitting={createQuestionMutation.isPending}
-              isWriting={isWritingQuestion}
-              mutationError={createQuestionMutation.error}
-              onCancelWrite={() => {
-                setIsWritingQuestion(false);
-                setFormError('');
-              }}
-              onChangeForm={setQuestionForm}
-              onSelect={setSelectedQuestion}
-              onStartWrite={() => {
-                setMode('questions');
-                setIsWritingQuestion(true);
-                setFormError('');
-              }}
-              onSubmit={submitQuestion}
-              questions={questions}
-            />
-          ) : (
-            <PageNotice
-              message={contestResourceAccessMessage(
-                contest,
-                'board',
-                hasSessionAccess,
-              )}
-              status="idle"
-            />
-          )
+          <PageNotice
+            message={contestResourceAccessMessage(
+              contest,
+              'board',
+              hasSessionAccess,
+            )}
+            status="idle"
+          />
         )}
       </section>
 

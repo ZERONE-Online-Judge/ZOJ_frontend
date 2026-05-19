@@ -21,6 +21,7 @@ export type ContestFormatType =
   | string;
 
 export type ContestResourceAccess = 'private' | 'participants' | 'public';
+export type ScoreboardFreezeMode = 'auto' | 'live' | 'frozen';
 
 export type Contest = {
   contest_id: string;
@@ -44,6 +45,7 @@ export type Contest = {
   submission_access_after_end?: ContestResourceAccess;
   board_access_after_end?: ContestResourceAccess;
   notice_access_after_end?: ContestResourceAccess;
+  scoreboard_freeze_mode?: ScoreboardFreezeMode;
   emergency_notice: string | null;
 };
 
@@ -107,6 +109,7 @@ export type ContestSettingsPatch = Partial<
     | 'submission_access_after_end'
     | 'board_access_after_end'
     | 'notice_access_after_end'
+    | 'scoreboard_freeze_mode'
     | 'emergency_notice'
   >
 >;

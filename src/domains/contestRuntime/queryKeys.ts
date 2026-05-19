@@ -19,6 +19,7 @@ export const contestQueryKeys = {
     contestId: string,
     generalToken?: string,
     participantContestId?: string,
+    divisionId?: string,
     participantToken?: string,
   ) =>
     [
@@ -26,6 +27,7 @@ export const contestQueryKeys = {
       contestId,
       generalToken ?? null,
       participantContestId ?? null,
+      divisionId ?? null,
       participantToken ?? null,
     ] as const,
   scoreboard: (

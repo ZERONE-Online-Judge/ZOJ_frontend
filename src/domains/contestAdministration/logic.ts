@@ -37,6 +37,7 @@ export function emptyContest(contestId?: string): Contest {
     submission_access_after_end: 'private',
     board_access_after_end: 'participants',
     notice_access_after_end: 'public',
+    scoreboard_freeze_mode: 'auto',
     emergency_notice: null,
   };
 }
@@ -46,7 +47,10 @@ export function emptyDivision(): Division {
 }
 
 export function isScheduleTbd(contestOrStatus: Contest | string) {
-  const status = typeof contestOrStatus === 'string' ? contestOrStatus : contestOrStatus.status;
+  const status =
+    typeof contestOrStatus === 'string'
+      ? contestOrStatus
+      : contestOrStatus.status;
   return status === 'schedule_tbd' || status === 'draft';
 }
 
@@ -88,12 +92,17 @@ export function contestStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-export function contestAccessPhase(contest: Contest): 'schedule_tbd' | 'before' | 'running' | 'ended' {
+export function contestAccessPhase(
+  contest: Contest,
+): 'schedule_tbd' | 'before' | 'running' | 'ended' {
   if (isScheduleTbd(contest)) return 'schedule_tbd';
 
   const now = Date.now();
   if (now < new Date(contest.start_at).getTime()) return 'before';
-  if (now >= new Date(contest.end_at).getTime() || ['ended', 'finalized', 'archived'].includes(contest.status)) {
+  if (
+    now >= new Date(contest.end_at).getTime() ||
+    ['ended', 'finalized', 'archived'].includes(contest.status)
+  ) {
     return 'ended';
   }
 
@@ -105,18 +114,20 @@ export function canViewContestResource(
   hasSessionAccess: boolean,
   afterEndAccess: ContestResourceAccess | boolean | undefined,
 ) {
-  if (isContestEnded(contest)) {
-    const access =
-      typeof afterEndAccess === 'boolean'
-        ? afterEndAccess
-          ? 'public'
-          : 'private'
-        : (afterEndAccess ?? 'private');
+  const access =
+    typeof afterEndAccess === 'boolean'
+      ? afterEndAccess
+        ? 'public'
+        : 'private'
+      : (afterEndAccess ?? 'private');
 
+  if (isContestEnded(contest) || contestAccessPhase(contest) === 'running') {
     if (access === 'public') return true;
     if (access === 'participants') return hasSessionAccess;
+    if (hasSessionAccess) return true;
     return false;
   }
+
   if (hasSessionAccess) return true;
   return false;
 }
@@ -140,15 +151,25 @@ export function contestResourceAccess(
   resource: 'problem' | 'scoreboard' | 'submission' | 'board' | 'notice',
 ): ContestResourceAccess {
   if (resource === 'problem') {
-    return contest.problem_access_after_end ?? (contest.problem_public_after_end ? 'public' : 'private');
+    return (
+      contest.problem_access_after_end ??
+      (contest.problem_public_after_end ? 'public' : 'private')
+    );
   }
   if (resource === 'scoreboard') {
-    return contest.scoreboard_access_after_end ?? (contest.scoreboard_public_after_end ? 'public' : 'private');
+    return (
+      contest.scoreboard_access_after_end ??
+      (contest.scoreboard_public_after_end ? 'public' : 'private')
+    );
   }
   if (resource === 'submission') {
-    return contest.submission_access_after_end ?? (contest.submission_public_after_end ? 'public' : 'private');
+    return (
+      contest.submission_access_after_end ??
+      (contest.submission_public_after_end ? 'public' : 'private')
+    );
   }
-  if (resource === 'board') return contest.board_access_after_end ?? 'participants';
+  if (resource === 'board')
+    return contest.board_access_after_end ?? 'participants';
   return contest.notice_access_after_end ?? 'public';
 }
 
@@ -176,8 +197,10 @@ export function contestResourceAccessMessage(
     }
   }
 
-  if (phase === 'schedule_tbd') return `대회 일정이 아직 확정되지 않아 ${labels[resource]}을 볼 수 없습니다.`;
-  if (phase === 'before') return `대회 시작 전이라 ${labels[resource]}을 볼 수 없습니다.`;
+  if (phase === 'schedule_tbd')
+    return `대회 일정이 아직 확정되지 않아 ${labels[resource]}을 볼 수 없습니다.`;
+  if (phase === 'before')
+    return `대회 시작 전이라 ${labels[resource]}을 볼 수 없습니다.`;
 
   return `${labels[resource]}을 보려면 참가팀 로그인이 필요합니다.`;
 }
@@ -195,10 +218,12 @@ export function problemVisibilityMessage(
   hasSessionAccess: boolean,
   afterEndAccess: ContestResourceAccess | boolean | undefined,
 ) {
-  if (canViewContestResource(contest, hasSessionAccess, afterEndAccess)) return undefined;
+  if (canViewContestResource(contest, hasSessionAccess, afterEndAccess))
+    return undefined;
 
   const phase = contestAccessPhase(contest);
-  if (phase === 'schedule_tbd') return '대회 일정이 아직 확정되지 않아 문제집이 비공개 상태입니다.';
+  if (phase === 'schedule_tbd')
+    return '대회 일정이 아직 확정되지 않아 문제집이 비공개 상태입니다.';
   if (phase === 'before') return '대회 시작 전이라 문제집이 비공개 상태입니다.';
   if (phase === 'ended') {
     return '대회가 종료되어 문제집이 비공개 상태입니다. 운영자가 종료 후 공개 범위를 변경하면 열람할 수 있습니다.';
@@ -213,9 +238,14 @@ export function participantProblemEmptyMessage(
   afterEndAccess: ContestResourceAccess | boolean | undefined,
 ) {
   const phase = contestAccessPhase(contest);
-  if (phase === 'schedule_tbd') return '대회 일정이 아직 확정되지 않아 문제집이 공개되지 않았습니다.';
-  if (phase === 'before') return '대회 시작 전이라 문제집이 아직 공개되지 않았습니다.';
-  if (phase === 'ended' && !canViewContestResource(contest, hasSessionAccess, afterEndAccess)) {
+  if (phase === 'schedule_tbd')
+    return '대회 일정이 아직 확정되지 않아 문제집이 공개되지 않았습니다.';
+  if (phase === 'before')
+    return '대회 시작 전이라 문제집이 아직 공개되지 않았습니다.';
+  if (
+    phase === 'ended' &&
+    !canViewContestResource(contest, hasSessionAccess, afterEndAccess)
+  ) {
     return '대회가 종료되어 문제집이 비공개 상태입니다.';
   }
   if (!hasSessionAccess) return '문제집을 보려면 참가팀 로그인이 필요합니다.';
@@ -225,21 +255,38 @@ export function participantProblemEmptyMessage(
 
 export function isFrozen(contest: Contest) {
   const now = Date.now();
-  return now >= new Date(contest.freeze_at).getTime() && now < new Date(contest.end_at).getTime();
+  return (
+    now >= new Date(contest.freeze_at).getTime() &&
+    now < new Date(contest.end_at).getTime()
+  );
 }
 
 export function freezeAnnouncement(contest: Contest) {
-  const diffMinutes = Math.ceil((new Date(contest.freeze_at).getTime() - Date.now()) / 60000);
+  const diffMinutes = Math.ceil(
+    (new Date(contest.freeze_at).getTime() - Date.now()) / 60000,
+  );
   if (diffMinutes <= 0 || diffMinutes > 30) return '';
 
-  const threshold = diffMinutes <= 5 ? 5 : diffMinutes <= 10 ? 10 : diffMinutes <= 20 ? 20 : 30;
+  const threshold =
+    diffMinutes <= 5 ? 5 : diffMinutes <= 10 ? 10 : diffMinutes <= 20 ? 20 : 30;
   return `스코어보드 프리즈 ${threshold}분 전입니다. 프리즈 이후 공개 스코어보드는 프리즈 시점 순위만 표시됩니다.`;
 }
 
 export function contestEndAnnouncement(contest: Contest) {
-  const diffMinutes = Math.ceil((new Date(contest.end_at).getTime() - Date.now()) / 60000);
+  const diffMinutes = Math.ceil(
+    (new Date(contest.end_at).getTime() - Date.now()) / 60000,
+  );
   if (diffMinutes <= 0 || diffMinutes > 30) return '';
 
-  const threshold = diffMinutes <= 1 ? 1 : diffMinutes <= 5 ? 5 : diffMinutes <= 10 ? 10 : diffMinutes <= 20 ? 20 : 30;
+  const threshold =
+    diffMinutes <= 1
+      ? 1
+      : diffMinutes <= 5
+        ? 5
+        : diffMinutes <= 10
+          ? 10
+          : diffMinutes <= 20
+            ? 20
+            : 30;
   return `대회 종료 ${threshold}분 전입니다. 종료 후에는 제출할 수 없습니다.`;
 }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
@@ -12,7 +13,7 @@ import {
   contestResourceAccess,
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
-import type { Contest } from '@/domains/contestAdministration/types';
+import type { Contest, Division } from '@/domains/contestAdministration/types';
 import {
   getContestProblems,
   getDivisionProblems,
@@ -93,9 +94,11 @@ function isWaAcContest(contest: Contest) {
 function ContestProblemsContent({
   contest,
   contestId,
+  divisions,
 }: {
   contest: Contest;
   contestId: string;
+  divisions: Division[];
 }) {
   const {
     activeParticipantSession,
@@ -107,9 +110,18 @@ function ContestProblemsContent({
   const problemAccess = contestResourceAccess(contest, 'problem');
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const isEnded = contestAccessPhase(contest) === 'ended';
+  const [publicDivisionId, setPublicDivisionId] = useState('');
+  const selectedPublicDivisionId =
+    publicDivisionId || divisions[0]?.division_id || '';
+  const shouldShowDivisionSelect = !hasSessionAccess && divisions.length > 1;
   const shouldUseParticipantScope =
     hasSessionAccess &&
-    (!isEnded || problemAccess === 'participants' || scoreboardAccess === 'participants');
+    (!isEnded ||
+      problemAccess === 'participants' ||
+      scoreboardAccess === 'participants');
+  const effectiveDivisionId = shouldUseParticipantScope
+    ? activeParticipantSession?.division.division_id
+    : selectedPublicDivisionId;
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
@@ -121,16 +133,29 @@ function ContestProblemsContent({
     scoreboardAccess,
   );
 
+  useEffect(() => {
+    if (
+      publicDivisionId &&
+      !divisions.some((division) => division.division_id === publicDivisionId)
+    ) {
+      setPublicDivisionId('');
+    }
+  }, [divisions, publicDivisionId]);
+
   const problemsQuery = useQuery({
     enabled: canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
       shouldUseParticipantScope
         ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
         : undefined,
-      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope
@@ -141,6 +166,13 @@ function ContestProblemsContent({
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionProblems(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -154,11 +186,15 @@ function ContestProblemsContent({
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
       shouldUseParticipantScope
         ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
         : undefined,
-      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope
@@ -169,6 +205,13 @@ function ContestProblemsContent({
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionScoreboard(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -232,16 +275,22 @@ function ContestProblemsContent({
         </ul>
       </nav>
 
+      {shouldShowDivisionSelect ? (
+        <DivisionSelect
+          divisions={divisions}
+          onChange={setPublicDivisionId}
+          value={selectedPublicDivisionId}
+        />
+      ) : null}
+
       <div className="mt-9">
         {!canViewProblems ? (
           <PageNotice
-            message={
-              contestResourceAccessMessage(
-                contest,
-                'problem',
-                hasSessionAccess,
-              )
-            }
+            message={contestResourceAccessMessage(
+              contest,
+              'problem',
+              hasSessionAccess,
+            )}
             status="idle"
           />
         ) : null}
@@ -320,7 +369,9 @@ function ContestProblemsContent({
           </div>
         ) : null}
 
-        {canViewProblems && !problemsQuery.isLoading && problems.length === 0 ? (
+        {canViewProblems &&
+        !problemsQuery.isLoading &&
+        problems.length === 0 ? (
           <PageNotice message="표시할 문제가 없습니다." status="idle" />
         ) : null}
       </div>
@@ -331,12 +382,40 @@ function ContestProblemsContent({
 export default function ContestProblemsPage() {
   return (
     <ContestPageShell>
-      {({ contest }) => (
+      {({ contest, divisions }) => (
         <ContestProblemsContent
           contest={contest}
           contestId={contest.contest_id}
+          divisions={divisions}
         />
       )}
     </ContestPageShell>
+  );
+}
+
+function DivisionSelect({
+  divisions,
+  onChange,
+  value,
+}: {
+  divisions: Division[];
+  onChange: (divisionId: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="mt-5 inline-grid gap-2 text-sm font-black text-slate-700">
+      유형 선택
+      <select
+        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-slate-400"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {divisions.map((division) => (
+          <option key={division.division_id} value={division.division_id}>
+            {division.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
