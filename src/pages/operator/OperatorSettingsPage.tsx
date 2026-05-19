@@ -148,6 +148,7 @@ function OperatorSettingsContent({
   const [divisionForm, setDivisionForm] = useState(emptyDivisionForm);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
   const [formError, setFormError] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -177,37 +178,42 @@ function OperatorSettingsContent({
     setSettingsDraft(next ? { contestId, form: next } : null);
   }
 
+  function settingsPatchFromForm(form: SettingsForm): ContestSettingsPatch {
+    const body: ContestSettingsPatch = {
+      end_at: dateTimeLocalToIso(form.end_at),
+      freeze_at: dateTimeLocalToIso(form.freeze_at),
+      problem_access_after_end: form.problem_access_after_end,
+      problem_public_after_end: form.problem_access_after_end === 'public',
+      scoreboard_access_after_end: form.scoreboard_access_after_end,
+      scoreboard_public_after_end: form.scoreboard_access_after_end === 'public',
+      start_at: dateTimeLocalToIso(form.start_at),
+      submission_access_after_end: form.submission_access_after_end,
+      submission_public_after_end: form.submission_access_after_end === 'public',
+      board_access_after_end: form.board_access_after_end,
+      notice_access_after_end: form.notice_access_after_end,
+    };
+
+    if (!operationLocked) {
+      body.organization_name = form.organization_name.trim();
+      body.overview = form.overview.trim();
+      body.status = form.status;
+      body.title = form.title.trim();
+    }
+
+    return body;
+  }
+
   const updateSettingsMutation = useMutation({
-    mutationFn: () => {
-      const body: ContestSettingsPatch = {
-        end_at: dateTimeLocalToIso(settingsForm!.end_at),
-        freeze_at: dateTimeLocalToIso(settingsForm!.freeze_at),
-        problem_access_after_end: settingsForm!.problem_access_after_end,
-        problem_public_after_end:
-          settingsForm!.problem_access_after_end === 'public',
-        scoreboard_access_after_end: settingsForm!.scoreboard_access_after_end,
-        scoreboard_public_after_end:
-          settingsForm!.scoreboard_access_after_end === 'public',
-        start_at: dateTimeLocalToIso(settingsForm!.start_at),
-        submission_access_after_end: settingsForm!.submission_access_after_end,
-        submission_public_after_end:
-          settingsForm!.submission_access_after_end === 'public',
-        board_access_after_end: settingsForm!.board_access_after_end,
-        notice_access_after_end: settingsForm!.notice_access_after_end,
-      };
-
-      if (!operationLocked) {
-        body.organization_name = settingsForm!.organization_name.trim();
-        body.overview = settingsForm!.overview.trim();
-        body.status = settingsForm!.status;
-        body.title = settingsForm!.title.trim();
-      }
-
-      return updateContestSettings(contestId, token, body);
-    },
+    mutationFn: (body?: ContestSettingsPatch) =>
+      updateContestSettings(
+        contestId,
+        token,
+        body ?? settingsPatchFromForm(settingsForm!),
+      ),
     onSuccess: () => {
       setSettingsDraft(null);
       setFormError('');
+      setSavedMessage('설정이 저장되었습니다.');
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
       });
@@ -268,7 +274,8 @@ function OperatorSettingsContent({
       return;
     }
 
-    updateSettingsMutation.mutate();
+    setSavedMessage('');
+    updateSettingsMutation.mutate(undefined);
   }
 
   function updateDate(name: 'start_at' | 'end_at' | 'freeze_at', date: Date) {
@@ -310,18 +317,19 @@ function OperatorSettingsContent({
     if (action === 'freeze-30') updateDate('freeze_at', addMinutes(30));
     if (action === 'freeze-60') updateDate('freeze_at', addMinutes(60));
     if (action === 'open-after-end') {
-      setSettingsForm((prev) =>
-        prev
-          ? {
-              ...prev,
-              problem_access_after_end: 'public',
-              scoreboard_access_after_end: 'public',
-              submission_access_after_end: 'public',
-              board_access_after_end: 'public',
-              notice_access_after_end: 'public',
-            }
-          : prev,
-      );
+      if (!settingsForm) return;
+      const next: SettingsForm = {
+        ...settingsForm,
+        problem_access_after_end: 'public',
+        scoreboard_access_after_end: 'public',
+        submission_access_after_end: 'public',
+        board_access_after_end: 'public',
+        notice_access_after_end: 'public',
+      };
+      setSettingsDraft({ contestId, form: next });
+      setFormError('');
+      setSavedMessage('');
+      updateSettingsMutation.mutate(settingsPatchFromForm(next));
     }
   }
 
@@ -503,6 +511,11 @@ function OperatorSettingsContent({
                   error={updateSettingsMutation.error}
                   fallback={formError || '대회 설정 저장에 실패했습니다'}
                 />
+              ) : null}
+              {savedMessage ? (
+                <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                  {savedMessage}
+                </p>
               ) : null}
 
               <button
