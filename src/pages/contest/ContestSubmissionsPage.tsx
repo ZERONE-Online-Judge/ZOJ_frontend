@@ -56,12 +56,13 @@ function ContestSubmissionsContent({
   const currentCursor = cursorStack.at(-1);
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
-  const shouldShowDivisionSelect = !hasSessionAccess && divisions.length > 1;
   const shouldUseParticipantScope =
     hasSessionAccess &&
     (!isEnded ||
       submissionAccess === 'participants' ||
       problemAccess === 'participants');
+  const shouldShowDivisionSelect =
+    !shouldUseParticipantScope && divisions.length > 1;
   const effectiveDivisionId = shouldUseParticipantScope
     ? activeParticipantSession?.division.division_id
     : selectedPublicDivisionId;
@@ -341,19 +342,25 @@ function DivisionSelect({
   value: string;
 }) {
   return (
-    <label className="mt-5 inline-grid gap-2 text-sm font-black text-slate-700">
-      유형 선택
-      <select
-        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-slate-400"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
+    <section className="mt-5 grid gap-2">
+      <span className="text-sm font-black text-slate-700">유형 선택</span>
+      <div className="flex flex-wrap gap-2">
         {divisions.map((division) => (
-          <option key={division.division_id} value={division.division_id}>
+          <button
+            className={[
+              'h-9 rounded border px-4 text-sm font-black transition',
+              value === division.division_id
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400',
+            ].join(' ')}
+            key={division.division_id}
+            onClick={() => onChange(division.division_id)}
+            type="button"
+          >
             {division.name}
-          </option>
+          </button>
         ))}
-      </select>
-    </label>
+      </div>
+    </section>
   );
 }
