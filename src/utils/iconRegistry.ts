@@ -3,6 +3,7 @@ import arrowRightIcon from '@/assets/icons/arrow-right.svg?raw';
 import checkIcon from '@/assets/icons/check.svg?raw';
 import clipboardIcon from '@/assets/icons/clipboard.svg?raw';
 import closeIcon from '@/assets/icons/close.svg?raw';
+import githubIcon from '@/assets/icons/github.svg?raw';
 import megaphoneIcon from '@/assets/icons/megaphone.svg?raw';
 import timerIcon from '@/assets/icons/timer.svg?raw';
 import trophyIcon from '@/assets/icons/trophy.svg?raw';
@@ -14,6 +15,7 @@ export const icons = {
   check: checkIcon,
   clipboard: clipboardIcon,
   close: closeIcon,
+  github: githubIcon,
   megaphone: megaphoneIcon,
   timer: timerIcon,
   trophy: trophyIcon,
