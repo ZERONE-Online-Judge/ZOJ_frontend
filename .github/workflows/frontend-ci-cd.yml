@@ -1,0 +1,106 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "tsconfig.node.json"
+      - ".github/workflows/frontend-ci-cd.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "tsconfig.node.json"
+      - ".github/workflows/frontend-ci-cd.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy Frontend
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Configure SSH
+        env:
+          FRONTEND_DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
+          FRONTEND_DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
+          FRONTEND_DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
+          FRONTEND_DEPLOY_SSH_KEY: ${{ secrets.FRONTEND_DEPLOY_SSH_KEY }}
+        run: |
+          test -n "$FRONTEND_DEPLOY_HOST"
+          test -n "$FRONTEND_DEPLOY_USER"
+          test -n "$FRONTEND_DEPLOY_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$FRONTEND_DEPLOY_SSH_KEY" > ~/.ssh/frontend_deploy_key
+          chmod 600 ~/.ssh/frontend_deploy_key
+          ssh-keyscan -p "${FRONTEND_DEPLOY_PORT:-22}" "$FRONTEND_DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync dist to server
+        env:
+          FRONTEND_DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
+          FRONTEND_DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
+          FRONTEND_DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
+          FRONTEND_DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
+        run: |
+          test -n "$FRONTEND_DEPLOY_PATH"
+          ssh -i ~/.ssh/frontend_deploy_key \
+            -p "${FRONTEND_DEPLOY_PORT:-22}" \
+            "$FRONTEND_DEPLOY_USER@$FRONTEND_DEPLOY_HOST" \
+            "mkdir -p '$FRONTEND_DEPLOY_PATH'"
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/frontend_deploy_key -p ${FRONTEND_DEPLOY_PORT:-22}" \
+            dist/ \
+            "$FRONTEND_DEPLOY_USER@$FRONTEND_DEPLOY_HOST:$FRONTEND_DEPLOY_PATH/"
