@@ -41,6 +41,9 @@ export function submissionStatusLabel(status?: string | null) {
       return '메모리 초과';
     case 'output_limit_exceeded':
       return '출력 초과';
+    case 'presentation_error':
+    case 'output_format_error':
+      return '출력 형식 오류';
     case 'system_error':
       return '시스템 에러';
     default:
@@ -52,19 +55,23 @@ export function submissionStatusTone(status?: string | null) {
   switch (status) {
     case 'accepted':
       return 'success';
-    case 'runtime_error':
-      return 'neutral';
     case 'waiting':
+      return 'waiting';
     case 'preparing':
     case 'judging':
-      return 'pending';
+      return 'judging';
+    case 'runtime_error':
+      return 'runtime';
     case 'wrong_answer':
-    case 'compile_error':
     case 'time_limit_exceeded':
     case 'memory_limit_exceeded':
     case 'output_limit_exceeded':
-    case 'system_error':
+    case 'presentation_error':
+    case 'output_format_error':
       return 'danger';
+    case 'compile_error':
+    case 'system_error':
+      return 'neutral';
     default:
       return 'neutral';
   }
