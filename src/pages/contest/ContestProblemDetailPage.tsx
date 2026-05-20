@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
@@ -318,9 +319,17 @@ function ContestProblemDetailContent({
 
   return (
     <ContestPageFrame>
+      <PageHeading
+        className="gap-4"
+        description="문제별 제한, 제출 여부, 최근 결과를 빠르게 확인합니다."
+        title="문제집"
+        variant="contest"
+      />
+
       <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <div className="mb-6">
+      <div className="mb-7 mt-7 grid gap-3">
+        <span className="text-sm font-black text-slate-700">보기 설정</span>
         <ProblemNavigationPills
           active={view}
           contestId={contestId}
