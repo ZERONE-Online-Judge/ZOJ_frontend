@@ -129,6 +129,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     activeParticipantSession,
     ensureParticipantSession,
     generalSession,
+    isRefreshingGeneralSession,
     participantContest,
   } = useContestParticipantSession(resolvedContestId);
   const contestQuery = useQuery({
@@ -241,14 +242,23 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       {contestQuery.isError && (
         <PageNotice message="대회 정보를 불러오지 못했습니다." status="error" />
       )}
+      {detail && contest && isRefreshingGeneralSession ? (
+        <PageNotice message="참가 권한을 확인하는 중입니다." status="loading" />
+      ) : null}
 
-      {detail && contest && !hasContestParticipantAccess ? (
+      {detail &&
+      contest &&
+      !hasContestParticipantAccess &&
+      !isRefreshingGeneralSession ? (
         <ContestAccessDeniedModal
           onClose={() => navigate('/contests', { replace: true })}
         />
       ) : null}
 
-      {detail && contest && hasContestParticipantAccess ? (
+      {detail &&
+      contest &&
+      hasContestParticipantAccess &&
+      !isRefreshingGeneralSession ? (
         <>
           {contest.emergency_notice && !isEmergencyNoticeDismissed ? (
             <EmergencyNoticeBanner

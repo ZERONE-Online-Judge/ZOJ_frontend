@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
+import { getGeneralMe } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
 import { createParticipantSessionFromGeneralToken } from '@/domains/teamParticipation/api';
 
 const participantSessionRequests = new Map<
@@ -15,6 +17,8 @@ export function useContestParticipantSession(contestId: string) {
   const setParticipantSession = useSessionStore(
     (state) => state.setParticipantSession,
   );
+  const setGeneralSession = useSessionStore((state) => state.setGeneralSession);
+  const isRefreshingGeneralSession = useRefreshGeneralSession();
   const participantContest = generalSession?.participantContests.find(
     (item) => item.contest.contest_id === contestId,
   );
@@ -28,15 +32,30 @@ export function useContestParticipantSession(contestId: string) {
 
   const ensureParticipantSession = useCallback(async () => {
     if (activeParticipantSession) return activeParticipantSession;
-    if (!generalSession?.accessToken || !participantContest) return null;
+    if (!generalSession?.accessToken) return null;
 
-    const requestKey = `${contestId}:${generalSession.accessToken}`;
+    const latestGeneralSession =
+      participantContest || isRefreshingGeneralSession
+        ? generalSession
+        : await getGeneralMe(generalSession.accessToken, generalSession).catch(
+            () => generalSession,
+          );
+    const latestParticipantContest = latestGeneralSession.participantContests.find(
+      (item) => item.contest.contest_id === contestId,
+    );
+
+    if (!latestParticipantContest) return null;
+    if (latestGeneralSession !== generalSession) {
+      setGeneralSession(latestGeneralSession);
+    }
+
+    const requestKey = `${contestId}:${latestGeneralSession.accessToken}`;
     let request = participantSessionRequests.get(requestKey);
 
     if (!request) {
       request = createParticipantSessionFromGeneralToken(
         contestId,
-        generalSession.accessToken,
+        latestGeneralSession.accessToken,
       ).finally(() => {
         participantSessionRequests.delete(requestKey);
       });
@@ -51,7 +70,9 @@ export function useContestParticipantSession(contestId: string) {
     activeParticipantSession,
     contestId,
     generalSession,
+    isRefreshingGeneralSession,
     participantContest,
+    setGeneralSession,
     setParticipantSession,
   ]);
 
@@ -62,6 +83,7 @@ export function useContestParticipantSession(contestId: string) {
     generalSession,
     participantContest,
     participantSession,
+    isRefreshingGeneralSession,
     token,
   };
 }

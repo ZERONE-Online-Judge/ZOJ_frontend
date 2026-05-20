@@ -15,6 +15,7 @@ import { toContestCardData } from '@/domains/contestAdministration/presentation'
 import type { Contest } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ContestFilter = 'all' | 'mine';
@@ -65,6 +66,7 @@ function sortContestsByRecentDate(contests: Contest[]) {
 
 export default function ContestsPage() {
   const [filter, setFilter] = useState<ContestFilter>('all');
+  useRefreshGeneralSession();
   const generalSession = useSessionStore((state) => state.generalSession);
   const operatorToken = generalSession?.operatorSession?.accessToken;
   const operatorQueryIdentity = tokenQueryIdentity(operatorToken);

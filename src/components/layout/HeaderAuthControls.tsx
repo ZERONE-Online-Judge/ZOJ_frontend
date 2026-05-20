@@ -7,6 +7,7 @@ import type { Contest } from '@/domains/contestAdministration/types';
 import { logoutGeneral } from '@/domains/identityAccess/api';
 import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
 import { formatContestMoment } from '@/shared/lib/dateTime';
 
 type HeaderAuthControlsProps = {
@@ -91,6 +92,7 @@ export default function HeaderAuthControls({
 }: HeaderAuthControlsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useRefreshGeneralSession();
   const generalSession = useSessionStore((state) => state.generalSession);
   const clearSessions = useSessionStore((state) => state.clearSessions);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
