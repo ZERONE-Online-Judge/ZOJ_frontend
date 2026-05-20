@@ -26,6 +26,7 @@ export type Submission = {
   failed_testcase_order?: number | null;
   progress_current?: number | null;
   progress_total?: number | null;
+  progress_percent?: number | null;
   participant_team_id?: string;
   team_member_id?: string;
   team_name?: string | null;
@@ -47,7 +48,7 @@ export type Submission = {
 
 export type SubmissionProgressState = Pick<
   Submission,
-  'status' | 'progress_current' | 'progress_total'
+  'status' | 'progress_current' | 'progress_total' | 'progress_percent'
 >;
 
 export type SubmissionCreateRequest = {

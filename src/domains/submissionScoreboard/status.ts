@@ -83,7 +83,11 @@ export function submissionProgressPercent(
   const status = submission?.status;
   const current = submission?.progress_current;
   const total = submission?.progress_total;
+  const percent = submission?.progress_percent;
 
+  if (isSubmissionPending(status) && typeof percent === 'number') {
+    return Math.max(0, Math.min(100, Math.round(percent)));
+  }
   if (isSubmissionPending(status) && total && total > 0) {
     return Math.max(
       0,

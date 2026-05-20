@@ -44,7 +44,12 @@ export default function ContestSubmissionResultBadge({
   const detail = judgeMessage?.trim();
   const targetProgress = useMemo(
     () => progressTarget(submission, status),
-    [status, submission?.progress_current, submission?.progress_total],
+    [
+      status,
+      submission?.progress_current,
+      submission?.progress_percent,
+      submission?.progress_total,
+    ],
   );
   const [displayProgress, setDisplayProgress] = useState(0);
   const visibleProgress =
