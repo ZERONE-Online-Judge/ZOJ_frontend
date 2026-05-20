@@ -360,7 +360,7 @@ function OperatorProblemsContent({
       const fallback: PackageSupportFileStatus = {
         role,
         label: supportRoleRequiredFilename(role),
-        required: true,
+        required: role !== 'checker',
         count: 0,
         latest_filename: null,
         status: 'missing',
@@ -1872,7 +1872,7 @@ function supportRoleRequiredFilename(role: PackageFileRole) {
 
 function supportRoleFromAsset(asset: ProblemAsset): PackageFileRole | null {
   const storageRole = asset.storage_key.match(
-    /\/support\/([^/]+)(?:\/|$)/,
+    /\/(?:support|package-files)\/([^/]+)(?:\/|$)/,
   )?.[1];
   if (isPackageFileRole(storageRole)) return storageRole;
 

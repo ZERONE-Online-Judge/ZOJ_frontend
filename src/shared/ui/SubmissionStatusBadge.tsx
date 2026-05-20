@@ -14,14 +14,18 @@ type SubmissionStatusBadgeProps = {
 
 const toneClasses: Record<string, string> = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+  waiting: 'border-yellow-200 bg-yellow-50 text-yellow-700',
+  judging: 'border-orange-200 bg-orange-50 text-orange-700',
+  runtime: 'border-purple-200 bg-purple-50 text-purple-700',
   danger: 'border-red-200 bg-red-50 text-red-700',
   neutral: 'border-slate-200 bg-slate-50 text-slate-600',
 };
 
 const progressClasses: Record<string, string> = {
   success: 'bg-emerald-500',
-  pending: 'bg-amber-500',
+  waiting: 'bg-yellow-500',
+  judging: 'bg-orange-500',
+  runtime: 'bg-purple-500',
   danger: 'bg-red-500',
   neutral: 'bg-slate-400',
 };

@@ -10,7 +10,9 @@ type ContestSubmissionResultBadgeProps = {
 
 const toneClassNames = {
   success: 'text-emerald-600 no-underline',
-  pending: 'text-slate-950 underline decoration-current',
+  waiting: 'text-yellow-700 underline decoration-current',
+  judging: 'text-orange-700 underline decoration-current',
+  runtime: 'text-purple-700 no-underline',
   danger: 'text-red-500 no-underline',
   neutral: 'text-slate-950 underline decoration-current',
 } as const;
