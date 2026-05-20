@@ -182,12 +182,18 @@ function ContestSubmissionsContent({
   const submissions = submissionsQuery.data?.data ?? [];
   const page = submissionsQuery.data?.page;
   const problems = problemsQuery.data ?? [];
+  const participantTeamId = participantContest?.team.participant_team_id;
 
   useEffect(() => {
     if (!isDocumentVisible) return;
+    if (!participantContest) return;
 
     submissions
-      .filter((submission) => isSubmissionPending(submission.status))
+      .filter((submission) => {
+        if (!isSubmissionPending(submission.status)) return false;
+        if (shouldUseParticipantScope) return true;
+        return submission.participant_team_id === participantTeamId;
+      })
       .forEach((submission) => {
         if (waitingIds.current.has(submission.submission_id)) return;
 
@@ -222,7 +228,10 @@ function ContestSubmissionsContent({
     contestId,
     ensureParticipantSession,
     isDocumentVisible,
+    participantContest,
+    participantTeamId,
     queryClient,
+    shouldUseParticipantScope,
     submissions,
   ]);
 
