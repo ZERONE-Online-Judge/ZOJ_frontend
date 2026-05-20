@@ -59,7 +59,6 @@ export function createOperatorProblem(
     time_limit_ms: number;
     memory_limit_mb: number;
     display_order?: number;
-    max_score?: number;
   },
 ) {
   return apiRequest<Problem>(
@@ -503,7 +502,6 @@ export function importPolygonProblem(
     file: File;
     division_id: string;
     display_order?: number;
-    max_score?: number;
     build_tests?: boolean;
   },
 ) {
@@ -512,8 +510,6 @@ export function importPolygonProblem(
   formData.set('division_id', body.division_id);
   if (body.display_order !== undefined)
     formData.set('display_order', String(body.display_order));
-  if (body.max_score !== undefined)
-    formData.set('max_score', String(body.max_score));
   if (body.build_tests !== undefined)
     formData.set('build_tests', String(body.build_tests));
 
