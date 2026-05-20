@@ -15,8 +15,8 @@ type ContestSubmissionResultBadgeProps = {
 
 const toneClassNames = {
   success: 'text-emerald-600 no-underline',
-  waiting: 'text-yellow-700 underline decoration-current',
-  judging: 'text-orange-700 underline decoration-current',
+  waiting: 'text-amber-600 no-underline',
+  judging: 'text-amber-600 no-underline',
   runtime: 'text-purple-700 no-underline',
   danger: 'text-red-500 no-underline',
   neutral: 'text-slate-950 underline decoration-current',
@@ -98,9 +98,9 @@ export default function ContestSubmissionResultBadge({
         {detail ? `${displayLabel}(${detail})` : displayLabel}
       </span>
       {visibleProgress !== null ? (
-        <span className="h-1.5 w-24 overflow-hidden rounded-full bg-orange-100">
+        <span className="h-1.5 w-24 overflow-hidden rounded-full bg-amber-100">
           <span
-            className="block h-full rounded-full bg-orange-500 transition-[width] duration-200 ease-out"
+            className="block h-full rounded-full bg-amber-400 transition-[width] duration-200 ease-out"
             style={{ width: `${visibleProgress}%` }}
           />
         </span>
