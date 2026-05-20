@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { accessText, operatorNavText } from '@/data/uiText';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { listOperatorContestQuestions } from '@/domains/serviceCommunication/api';
 
 type OperatorAccessGateProps = {
   children: (session: StaffSession) => ReactNode;
@@ -142,9 +144,29 @@ export function OperatorAccessGate({
 
 export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const generalSession = useSessionStore((state) => state.generalSession);
+  const token = generalSession?.operatorSession?.accessToken;
+  const questionsQuery = useQuery({
+    enabled: Boolean(
+      contestId &&
+        token &&
+        hasContestPermission(
+          generalSession,
+          contestId,
+          'contest.board.question.view',
+        ),
+    ),
+    queryKey: ['operator', 'boards', contestId ?? null, 'tab-count', token],
+    queryFn: () => listOperatorContestQuestions(contestId!, token!),
+    refetchInterval: 15_000,
+  });
 
   if (!contestId) return null;
   const basePath = `/operator/contests/${contestId}`;
+  const questions = questionsQuery.data ?? [];
+  const boardCountLabel =
+    questions.length > 0
+      ? `${questions.length}건(답변필요:${questions.filter((question) => question.answers.length === 0).length})`
+      : '';
 
   return (
     <nav aria-label="운영자 메뉴" className="flex flex-wrap gap-2">
@@ -176,6 +198,16 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
             >
               <Icon />
               {tab.label}
+              {tab.path === 'board' && boardCountLabel ? (
+                <span
+                  className={[
+                    'rounded-full px-2 py-0.5 text-xs font-black',
+                    'bg-white/20 text-current',
+                  ].join(' ')}
+                >
+                  {boardCountLabel}
+                </span>
+              ) : null}
             </NavLink>
           );
         })}

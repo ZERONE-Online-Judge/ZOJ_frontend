@@ -16,6 +16,7 @@ import {
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestNotice,
+  deleteContestNotice,
   listOperatorContestNotices,
   updateContestNotice,
 } from '@/domains/serviceCommunication/api';
@@ -130,6 +131,20 @@ function OperatorNoticesContent({
     },
   });
 
+  const deleteNoticeMutation = useMutation({
+    mutationFn: (noticeId: string) =>
+      deleteContestNotice(contestId, noticeId, token),
+    onSuccess: (_result, noticeId) => {
+      if (form.noticeId === noticeId) {
+        setForm(emptyNoticeForm);
+        setFormError('');
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'notices', contestId],
+      });
+    },
+  });
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form.title.trim() || !form.body.trim()) {
@@ -149,6 +164,14 @@ function OperatorNoticesContent({
       visibility: notice.visibility,
     });
     setEditorMode('notice');
+  }
+
+  function removeNotice(notice: ContestNotice) {
+    const confirmed = window.confirm(
+      `"${notice.title}" 공지를 삭제할까요? 삭제한 공지는 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+    deleteNoticeMutation.mutate(notice.contest_notice_id);
   }
 
   return (
@@ -343,18 +366,28 @@ function OperatorNoticesContent({
                       {formatDateTime(notice.published_at)}
                     </time>
                   </div>
-                  <button
-                    className="text-left"
-                    onClick={() => editNotice(notice)}
-                    type="button"
-                  >
-                    <strong className="text-lg font-black text-slate-950">
-                      {notice.title}
-                    </strong>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
-                      {notice.body}
-                    </p>
-                  </button>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => editNotice(notice)}
+                      type="button"
+                    >
+                      <strong className="text-lg font-black break-keep text-slate-950">
+                        {notice.title}
+                      </strong>
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
+                        {notice.body}
+                      </p>
+                    </button>
+                    <button
+                      className="h-9 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                      disabled={deleteNoticeMutation.isPending}
+                      onClick={() => removeNotice(notice)}
+                      type="button"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </article>
               ))
             ) : (
@@ -363,6 +396,14 @@ function OperatorNoticesContent({
               </p>
             )}
           </div>
+          {deleteNoticeMutation.error ? (
+            <div className="mt-3">
+              <ErrorBox
+                error={deleteNoticeMutation.error}
+                fallback="공지 삭제에 실패했습니다"
+              />
+            </div>
+          ) : null}
         </OperatorPanel>
       </div>
     </PageLayout>

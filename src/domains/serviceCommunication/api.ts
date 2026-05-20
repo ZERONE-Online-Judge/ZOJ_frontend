@@ -28,6 +28,14 @@ export function createAdminServiceNotice(
   });
 }
 
+export function deleteAdminServiceNotice(noticeId: string, token: string) {
+  return apiRequest<{ service_notice_id: string; deleted: boolean }>(
+    `/admin/service-notices/${noticeId}`,
+    token,
+    { method: 'DELETE' },
+  );
+}
+
 export function listOperatorContestNotices(contestId: string, token: string) {
   return apiRequest<ContestNotice[]>(`/operator/contests/${contestId}/notices`, token);
 }
@@ -60,6 +68,18 @@ export function updateContestNotice(
   });
 }
 
+export function deleteContestNotice(
+  contestId: string,
+  noticeId: string,
+  token: string,
+) {
+  return apiRequest<{ contest_notice_id: string; deleted: boolean }>(
+    `/operator/contests/${contestId}/notices/${noticeId}`,
+    token,
+    { method: 'DELETE' },
+  );
+}
+
 export function getContestQuestions(contestId: string, token?: string) {
   return apiRequest<ContestQuestion[]>(`/contests/${contestId}/boards`, token);
 }
@@ -68,6 +88,34 @@ export function listOperatorContestQuestions(contestId: string, token: string) {
   return apiRequest<ContestQuestion[]>(
     `/operator/contests/${contestId}/boards`,
     token,
+  );
+}
+
+export function updateContestQuestion(
+  contestId: string,
+  questionId: string,
+  token: string,
+  body: Partial<Pick<ContestQuestion, 'visibility'>>,
+) {
+  return apiRequest<ContestQuestion>(
+    `/operator/contests/${contestId}/boards/${questionId}`,
+    token,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function deleteContestQuestion(
+  contestId: string,
+  questionId: string,
+  token: string,
+) {
+  return apiRequest<{ contest_question_id: string; deleted: boolean }>(
+    `/operator/contests/${contestId}/boards/${questionId}`,
+    token,
+    { method: 'DELETE' },
   );
 }
 

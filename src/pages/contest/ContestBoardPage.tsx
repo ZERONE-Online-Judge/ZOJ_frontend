@@ -2,8 +2,16 @@ import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestBoardText } from '@/data/contestBoardContent';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
+} from '@/domains/contestAdministration/logic';
+import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -19,8 +27,6 @@ import { formatUserApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 
-type BoardMode = 'notices' | 'questions';
-
 type QuestionFormState = {
   body: string;
   title: string;
@@ -33,24 +39,31 @@ const emptyQuestionForm: QuestionFormState = {
   visibility: 'public',
 };
 
-function shortDate(value?: string) {
-  if (!value) return contestBoardText.listDateFallback;
-
-  return new Intl.DateTimeFormat('ko-KR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-    .format(new Date(value))
-    .replace(/\.\s?/g, '.')
-    .replace(/\.$/, '');
-}
-
-function ContestBoardContent({ contestId }: { contestId: string }) {
+function ContestBoardContent({
+  contest,
+  contestId,
+}: {
+  contest: Contest;
+  contestId: string;
+}) {
   const queryClient = useQueryClient();
-  const { ensureParticipantSession, token } =
-    useContestParticipantSession(contestId);
-  const [mode, setMode] = useState<BoardMode>('notices');
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    participantContest,
+    token,
+  } = useContestParticipantSession(contestId);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
+  const noticeAccess = contestResourceAccess(contest, 'notice');
+  const boardAccess = contestResourceAccess(contest, 'board');
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const canViewNotices =
+    !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);
+  const canViewQuestions =
+    !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
   );
@@ -62,13 +75,41 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
   const [formError, setFormError] = useState('');
 
   const noticesQuery = useQuery({
-    queryKey: contestQueryKeys.notices(contestId, token),
-    queryFn: () => getContestNotices(contestId, token),
+    enabled: canViewNotices,
+    queryKey: contestQueryKeys.notices(
+      contestId,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
+    queryFn: async () => {
+      const session =
+        participantContest ||
+        activeParticipantSession ||
+        noticeAccess === 'participants'
+          ? await ensureParticipantSession()
+          : null;
+      return getContestNotices(contestId, session?.accessToken ?? token);
+    },
     refetchInterval: 15_000,
   });
   const questionsQuery = useQuery({
-    queryKey: contestQueryKeys.questions(contestId, token),
-    queryFn: () => getContestQuestions(contestId, token),
+    enabled: canViewQuestions,
+    queryKey: contestQueryKeys.questions(
+      contestId,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
+    queryFn: async () => {
+      const session =
+        participantContest ||
+        activeParticipantSession ||
+        boardAccess === 'participants'
+          ? await ensureParticipantSession()
+          : null;
+      return getContestQuestions(contestId, session?.accessToken ?? token);
+    },
     refetchInterval: 15_000,
   });
   const notices = useMemo(
@@ -141,17 +182,32 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
         variant="contest"
       />
 
-      <BoardTabs mode={mode} onChange={setMode} />
+      <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <section className="mt-10">
-        {mode === 'notices' ? (
-          <NoticePanel
-            isError={noticesQuery.isError}
-            isLoading={noticesQuery.isLoading}
-            notices={notices}
-            onSelect={setSelectedNotice}
-          />
-        ) : (
+      <div className="mt-10 grid gap-10">
+        <section>
+          {canViewNotices ? (
+            <NoticePanel
+              isError={noticesQuery.isError}
+              isLoading={noticesQuery.isLoading}
+              notices={notices}
+              onSelect={setSelectedNotice}
+            />
+          ) : (
+            <PageNotice
+              message={contestResourceAccessMessage(
+                contest,
+                'notice',
+                hasSessionAccess,
+              )}
+              status="idle"
+            />
+          )
+          }
+        </section>
+
+        <section>
+          {canViewQuestions ? (
           <QuestionPanel
             form={questionForm}
             formError={formError}
@@ -167,15 +223,24 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
             onChangeForm={setQuestionForm}
             onSelect={setSelectedQuestion}
             onStartWrite={() => {
-              setMode('questions');
               setIsWritingQuestion(true);
               setFormError('');
             }}
             onSubmit={submitQuestion}
             questions={questions}
           />
-        )}
-      </section>
+        ) : (
+          <PageNotice
+            message={contestResourceAccessMessage(
+              contest,
+              'board',
+              hasSessionAccess,
+            )}
+              status="idle"
+            />
+          )}
+        </section>
+      </div>
 
       {selectedNotice ? (
         <NoticeDetail
@@ -191,42 +256,6 @@ function ContestBoardContent({ contestId }: { contestId: string }) {
       ) : null}
     </ContestPageFrame>
   );
-}
-
-function BoardTabs({
-  mode,
-  onChange,
-}: {
-  mode: BoardMode;
-  onChange: (mode: BoardMode) => void;
-}) {
-  return (
-    <div className="mt-5 flex flex-wrap gap-2">
-      <button
-        className={tabClassName(mode === 'notices')}
-        onClick={() => onChange('notices')}
-        type="button"
-      >
-        {contestBoardText.tabNotices}
-      </button>
-      <button
-        className={tabClassName(mode === 'questions')}
-        onClick={() => onChange('questions')}
-        type="button"
-      >
-        {contestBoardText.tabQuestions}
-      </button>
-    </div>
-  );
-}
-
-function tabClassName(active: boolean) {
-  return [
-    'h-8 rounded-full border px-4 text-sm font-black transition',
-    active
-      ? 'border-slate-950 bg-slate-950 text-white'
-      : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-  ].join(' ');
 }
 
 function NoticePanel({
@@ -269,7 +298,7 @@ function NoticePanel({
                 {notice.title}
               </strong>
               <time className="shrink-0 text-sm font-medium text-slate-500">
-                {shortDate(notice.published_at)}
+                {formatDateTime(notice.published_at)}
               </time>
             </button>
           </li>
@@ -290,17 +319,18 @@ function NoticeBadge({
   emergency: boolean;
   pinned: boolean;
 }) {
+  const baseLabel = pinned
+    ? contestBoardText.pinnedBadge
+    : contestBoardText.tabNotices;
   const label = emergency
-    ? contestBoardText.emergencyBadge
-    : pinned
-      ? contestBoardText.pinnedBadge
-      : contestBoardText.tabNotices;
+    ? `${baseLabel} · ${contestBoardText.emergencyBadge}`
+    : baseLabel;
 
   return (
     <span
       className={[
         'inline-flex h-7 min-w-12 items-center justify-center rounded-full px-3 text-xs font-black',
-        emergency ? 'bg-slate-950 text-white' : 'bg-slate-950 text-white',
+        pinned ? 'bg-red-600 text-white' : 'bg-slate-950 text-white',
       ].join(' ')}
     >
       {label}
@@ -652,7 +682,9 @@ function DarkButton({
 export default function ContestBoardPage() {
   return (
     <ContestPageShell>
-      {({ contest }) => <ContestBoardContent contestId={contest.contest_id} />}
+      {({ contest }) => (
+        <ContestBoardContent contest={contest} contestId={contest.contest_id} />
+      )}
     </ContestPageShell>
   );
 }

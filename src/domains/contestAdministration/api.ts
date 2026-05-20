@@ -116,7 +116,7 @@ export function createAdminContest(
   body: {
     organization_name: string;
     status: string;
-    start_at: string;
+    start_at?: string;
     operator_email?: string;
     title?: string;
     overview?: string;

@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { getPublicContest } from '@/domains/contestAdministration/api';
+import { contestAccessPhase } from '@/domains/contestAdministration/logic';
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -99,7 +100,7 @@ function EmergencyNoticeBanner({
             </span>
           </div>
         ) : (
-          <span className="block truncate" ref={textRef}>
+          <span className="block whitespace-nowrap" ref={textRef}>
             {notice}
           </span>
         )}
@@ -159,12 +160,16 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     if (!hasContestParticipantAccess) return;
 
     const currentContestId = contestId;
+    const currentDetail = detail;
     let cancelled = false;
 
     async function prefetchContestPageData() {
       const generalToken = generalSession?.accessToken;
-      const currentParticipantSession =
-        activeParticipantSession ?? (await ensureParticipantSession());
+      const shouldUseParticipantScope =
+        contestAccessPhase(currentDetail.contest) !== 'ended';
+      const currentParticipantSession = shouldUseParticipantScope
+        ? activeParticipantSession ?? (await ensureParticipantSession())
+        : null;
       if (cancelled) return;
 
       const participantToken = currentParticipantSession?.accessToken;

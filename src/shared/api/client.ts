@@ -119,7 +119,7 @@ function preferredStoredTokenForRequest(
   path: string,
   token?: string,
 ): string | undefined {
-  if (token) return token;
+  if (token) return storedReplacementTokenForRequest(token, path) ?? token;
 
   const general = loadStoredGeneralSession();
   if (
@@ -156,6 +156,10 @@ async function refreshOperatorAccessTokenViaGeneralSession(): Promise<
   if (!general?.accessToken) return null;
 
   let generalToken = general.accessToken;
+  if (general.refreshToken) {
+    generalToken = (await refreshGeneralAccessToken(generalToken)) ?? generalToken;
+  }
+
   let result = await apiFetchRaw('/auth/general/me', generalToken);
 
   if (result.response.status === 401) {
@@ -184,6 +188,9 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
   if (general?.operatorSession?.accessToken !== token) return null;
 
   const operatorSession = general.operatorSession;
+  if (!operatorSession.refreshToken) {
+    return refreshOperatorAccessTokenViaGeneralSession();
+  }
 
   if (!staffRefreshInFlight) {
     staffRefreshInFlight = (async () => {

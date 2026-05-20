@@ -13,7 +13,9 @@ import { getOperatorContestDashboard } from '@/domains/contestAdministration/api
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestAnswer,
+  deleteContestQuestion,
   listOperatorContestQuestions,
+  updateContestQuestion,
 } from '@/domains/serviceCommunication/api';
 import type { ContestQuestion } from '@/domains/serviceCommunication/types';
 import { formatApiError } from '@/shared/api/errors';
@@ -109,6 +111,36 @@ function OperatorBoardContent({
     },
   });
 
+  const updateQuestionMutation = useMutation({
+    mutationFn: ({
+      questionId,
+      visibility,
+    }: {
+      questionId: string;
+      visibility: ContestQuestion['visibility'];
+    }) => updateContestQuestion(contestId, questionId, token, { visibility }),
+    onSuccess: (question) => {
+      setSelectedQuestionId(question.contest_question_id);
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: (questionId: string) =>
+      deleteContestQuestion(contestId, questionId, token),
+    onSuccess: (_result, questionId) => {
+      if (selectedQuestionId === questionId) {
+        setSelectedQuestionId('');
+        setAnswerForm(emptyAnswerForm);
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
+
   function startAnswer(question: ContestQuestion) {
     setSelectedQuestionId(question.contest_question_id);
     setAnswerForm({
@@ -132,6 +164,21 @@ function OperatorBoardContent({
     answerMutation.mutate();
   }
 
+  function toggleQuestionVisibility(question: ContestQuestion) {
+    updateQuestionMutation.mutate({
+      questionId: question.contest_question_id,
+      visibility: question.visibility === 'public' ? 'private' : 'public',
+    });
+  }
+
+  function removeQuestion(question: ContestQuestion) {
+    const confirmed = window.confirm(
+      `"${question.title}" 게시글을 삭제할까요? 답변도 함께 삭제되며 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+    deleteQuestionMutation.mutate(question.contest_question_id);
+  }
+
   return (
     <PageLayout
       description="참가자가 남긴 질문을 확인하고 운영자 답변을 등록합니다."
@@ -153,11 +200,11 @@ function OperatorBoardContent({
           description="답변이 필요한 질문을 우선 표시합니다."
           title="질문 목록"
         >
-          <div className="grid gap-2">
+          <div className="grid auto-rows-fr gap-2">
             {questions.map((question) => (
               <button
                 className={[
-                  'rounded border px-4 py-3 text-left transition',
+                  'grid h-28 content-start rounded border px-4 py-3 text-left transition',
                   selectedQuestion?.contest_question_id ===
                   question.contest_question_id
                     ? 'border-indigo-300 bg-indigo-50'
@@ -175,10 +222,10 @@ function OperatorBoardContent({
                     {question.visibility === 'private' ? '비공개' : '공개'}
                   </span>
                 </span>
-                <strong className="block font-black text-slate-950">
+                <strong className="line-clamp-2 font-black text-slate-950">
                   {question.title}
                 </strong>
-                <span className="mt-1 block text-xs font-bold text-slate-500">
+                <span className="mt-1 line-clamp-1 text-xs font-bold text-slate-500">
                   {question.team_name ?? question.author_name ?? '참가자'} ·{' '}
                   {formatDateTime(question.created_at)}
                 </span>
@@ -195,17 +242,41 @@ function OperatorBoardContent({
         <OperatorPanel
           actions={
             selectedQuestion ? (
-              <button
-                className="inline-flex h-9 items-center gap-2 rounded bg-indigo-950 px-4 text-sm font-black text-white"
-                onClick={() => startAnswer(selectedQuestion)}
-                type="button"
-              >
-                <NoticeIcon />
-                답변 작성
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:bg-slate-300"
+                  onClick={() => startAnswer(selectedQuestion)}
+                  type="button"
+                >
+                  <NoticeIcon />
+                  답변 작성
+                </button>
+                <button
+                  className="h-9 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                  disabled={updateQuestionMutation.isPending}
+                  onClick={() => toggleQuestionVisibility(selectedQuestion)}
+                  type="button"
+                >
+                  {selectedQuestion.visibility === 'public'
+                    ? '비공개 전환'
+                    : '공개 전환'}
+                </button>
+                <button
+                  className="h-9 rounded border border-rose-200 bg-white px-4 text-sm font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                  disabled={deleteQuestionMutation.isPending}
+                  onClick={() => removeQuestion(selectedQuestion)}
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
             ) : null
           }
-          description="질문 내용과 기존 답변을 확인합니다."
+          description={
+            selectedQuestion ? (
+              <QuestionMeta question={selectedQuestion} />
+            ) : undefined
+          }
           title={selectedQuestion?.title ?? '질문 상세'}
         >
           {selectedQuestion ? (
@@ -215,6 +286,15 @@ function OperatorBoardContent({
                   {selectedQuestion.body}
                 </p>
               </div>
+
+              {updateQuestionMutation.error || deleteQuestionMutation.error ? (
+                <ErrorBox
+                  error={
+                    updateQuestionMutation.error || deleteQuestionMutation.error
+                  }
+                  fallback="게시글 처리에 실패했습니다"
+                />
+              ) : null}
 
               <section className="grid gap-3">
                 <h3 className="text-sm font-black text-slate-700">답변</h3>
@@ -318,6 +398,16 @@ function StatusBadge({ answered }: { answered: boolean }) {
       ].join(' ')}
     >
       {answered ? '답변 완료' : '답변 필요'}
+    </span>
+  );
+}
+
+function QuestionMeta({ question }: { question: ContestQuestion }) {
+  return (
+    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold text-slate-500">
+      <span>팀: {question.team_name ?? '-'}</span>
+      <span>작성자: {question.author_name ?? '-'}</span>
+      <span>작성일: {formatDateTime(question.created_at)}</span>
     </span>
   );
 }

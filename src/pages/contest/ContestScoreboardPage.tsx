@@ -1,11 +1,17 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ContestScoreboardTable from '@/components/contest/scoreboard/ContestScoreboardTable';
 import ContestScoreboardTabs from '@/components/contest/scoreboard/ContestScoreboardTabs';
-import { canViewContestResource } from '@/domains/contestAdministration/logic';
-import type { Contest } from '@/domains/contestAdministration/types';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccessMessage,
+  contestResourceAccess,
+} from '@/domains/contestAdministration/logic';
+import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -22,9 +28,11 @@ import PageNotice from '@/shared/ui/PageNotice';
 function ContestScoreboardContent({
   contest,
   contestId,
+  divisions,
 }: {
   contest: Contest;
   contestId: string;
+  divisions: Division[];
 }) {
   const isDocumentVisible = useDocumentVisibility();
   const {
@@ -37,33 +45,75 @@ function ContestScoreboardContent({
     participantContest?.division.name ??
     activeParticipantSession?.division.name;
   const hasSessionAccess = Boolean(participantContest);
+  const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
+  const [publicDivisionId, setPublicDivisionId] = useState('');
+  const selectedPublicDivisionId =
+    publicDivisionId || divisions[0]?.division_id || '';
+  const shouldUseParticipantScope =
+    hasSessionAccess &&
+    (!isEnded ||
+      scoreboardAccess === 'participants' ||
+      problemAccess === 'participants');
+  const shouldShowDivisionSelect =
+    !shouldUseParticipantScope && divisions.length > 1;
+  const effectiveDivisionId = shouldUseParticipantScope
+    ? activeParticipantSession?.division.division_id
+    : selectedPublicDivisionId;
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.scoreboard_public_after_end,
-  );
+    scoreboardAccess,
+  ) && !isBeforeStart;
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.problem_public_after_end,
-  );
+    problemAccess,
+  ) && !isBeforeStart;
+
+  useEffect(() => {
+    if (
+      publicDivisionId &&
+      !divisions.some((division) => division.division_id === publicDivisionId)
+    ) {
+      setPublicDivisionId('');
+    }
+  }, [divisions, publicDivisionId]);
 
   const problemsQuery = useQuery({
     enabled: canViewScoreboard && canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionProblems(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -76,17 +126,32 @@ function ContestScoreboardContent({
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionScoreboard(
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionScoreboard(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -113,11 +178,26 @@ function ContestScoreboardContent({
         variant="contest"
       />
 
-      <ContestScoreboardTabs contestId={contestId} />
+      <ContestScoreboardTabs contest={contest} contestId={contestId} />
+
+      {shouldShowDivisionSelect ? (
+        <DivisionSelect
+          divisions={divisions}
+          onChange={setPublicDivisionId}
+          value={selectedPublicDivisionId}
+        />
+      ) : null}
 
       <div className="mt-9">
         {!canViewScoreboard ? (
-          <PageNotice message="스코어보드를 볼 수 없습니다." status="idle" />
+          <PageNotice
+            message={contestResourceAccessMessage(
+              contest,
+              'scoreboard',
+              hasSessionAccess,
+            )}
+            status="idle"
+          />
         ) : null}
         {scoreboardQuery.isLoading && (
           <PageNotice
@@ -142,7 +222,9 @@ function ContestScoreboardContent({
           <ContestScoreboardTable problems={problems} rows={rows} />
         ) : null}
 
-        {!scoreboardQuery.isLoading && rows.length === 0 ? (
+        {canViewScoreboard &&
+        !scoreboardQuery.isLoading &&
+        rows.length === 0 ? (
           <PageNotice message="표시할 스코어보드가 없습니다." status="idle" />
         ) : null}
       </div>
@@ -153,12 +235,46 @@ function ContestScoreboardContent({
 export default function ContestScoreboardPage() {
   return (
     <ContestPageShell>
-      {({ contest }) => (
+      {({ contest, divisions }) => (
         <ContestScoreboardContent
           contest={contest}
           contestId={contest.contest_id}
+          divisions={divisions}
         />
       )}
     </ContestPageShell>
+  );
+}
+
+function DivisionSelect({
+  divisions,
+  onChange,
+  value,
+}: {
+  divisions: Division[];
+  onChange: (divisionId: string) => void;
+  value: string;
+}) {
+  return (
+    <section className="mt-5 grid gap-2">
+      <span className="text-sm font-black text-slate-700">유형 선택</span>
+      <div className="flex flex-wrap gap-2">
+        {divisions.map((division) => (
+          <button
+            className={[
+              'h-9 rounded border px-4 text-sm font-black transition',
+              value === division.division_id
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400',
+            ].join(' ')}
+            key={division.division_id}
+            onClick={() => onChange(division.division_id)}
+            type="button"
+          >
+            {division.name}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

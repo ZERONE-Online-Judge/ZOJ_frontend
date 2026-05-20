@@ -37,6 +37,14 @@ function displaySubmissionId(submissionId: string) {
   return submissionId.split('-')[0] || submissionId;
 }
 
+function isOperatorTestSubmission(submission: Submission) {
+  return (
+    submission.team_name?.startsWith('__operator_test__:') ||
+    submission.team?.team_name?.startsWith('__operator_test__:') ||
+    submission.participant_team_id?.startsWith('__operator_test__:')
+  );
+}
+
 function submissionMemory(submission: Submission) {
   return (
     submission.memory_kb ??
@@ -60,6 +68,8 @@ function submissionName(
   fallbackTeamName?: string,
   fallbackMemberName?: string,
 ) {
+  if (isOperatorTestSubmission(submission)) return '운영자 테스트';
+
   return (
     submission.team_name ??
     submission.team?.team_name ??

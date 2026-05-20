@@ -59,7 +59,7 @@ export function createOperatorProblem(
     time_limit_ms: number;
     memory_limit_mb: number;
     display_order?: number;
-    max_score: number;
+    max_score?: number;
   },
 ) {
   return apiRequest<Problem>(

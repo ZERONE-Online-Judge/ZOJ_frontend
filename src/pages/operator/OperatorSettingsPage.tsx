@@ -20,26 +20,33 @@ import {
   updateOperatorDivision,
 } from '@/domains/contestAdministration/api';
 import {
+  contestResourceAccess,
   contestStatusLabel,
   isContestOperationLocked,
 } from '@/domains/contestAdministration/logic';
-import type { Contest, Division } from '@/domains/contestAdministration/types';
+import type {
+  Contest,
+  ContestSettingsPatch,
+  ContestResourceAccess,
+  Division,
+} from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import type { StaffAccount } from '@/domains/identityAccess/types';
 import { formatApiError } from '@/shared/api/errors';
 import { dateTimeLocalToIso, dateTimeLocalValue } from '@/shared/lib/dateTime';
 
 type SettingsForm = {
-  emergency_notice: string;
   end_at: string;
   freeze_at: string;
   organization_name: string;
   overview: string;
-  problem_public_after_end: boolean;
-  scoreboard_public_after_end: boolean;
+  problem_access_after_end: ContestResourceAccess;
+  scoreboard_access_after_end: ContestResourceAccess;
   start_at: string;
   status: string;
-  submission_public_after_end: boolean;
+  submission_access_after_end: ContestResourceAccess;
+  board_access_after_end: ContestResourceAccess;
+  notice_access_after_end: ContestResourceAccess;
   title: string;
 };
 
@@ -74,27 +81,33 @@ const emptyOperatorForm: OperatorForm = {
 
 const statusOptions = [
   ['draft', '초안'],
-  ['schedule_tbd', '일정 미정'],
-  ['scheduled', '예정'],
-  ['open', '접수 중'],
-  ['running', '진행 중'],
+  ['scheduled', '예정(비공개)'],
+  ['open', '예정(공개)'],
+  ['running', '진행중'],
   ['ended', '종료'],
-  ['finalized', '결과 확정'],
-  ['archived', '보관'],
 ] as const;
 
+const accessOptions: { label: string; value: ContestResourceAccess }[] = [
+  { label: '비공개', value: 'private' },
+  { label: '참가자 공개 유지', value: 'participants' },
+  { label: '비로그인 공개', value: 'public' },
+];
+
 function settingsFormFromContest(contest: Contest): SettingsForm {
+  const status = contest.status === 'schedule_tbd' ? 'draft' : contest.status;
+
   return {
-    emergency_notice: contest.emergency_notice ?? '',
     end_at: dateTimeLocalValue(contest.end_at),
     freeze_at: dateTimeLocalValue(contest.freeze_at),
     organization_name: contest.organization_name,
     overview: contest.overview,
-    problem_public_after_end: contest.problem_public_after_end,
-    scoreboard_public_after_end: contest.scoreboard_public_after_end,
+    problem_access_after_end: contestResourceAccess(contest, 'problem'),
+    scoreboard_access_after_end: contestResourceAccess(contest, 'scoreboard'),
     start_at: dateTimeLocalValue(contest.start_at),
-    status: contest.status,
-    submission_public_after_end: contest.submission_public_after_end,
+    status,
+    submission_access_after_end: contestResourceAccess(contest, 'submission'),
+    board_access_after_end: contestResourceAccess(contest, 'board'),
+    notice_access_after_end: contestResourceAccess(contest, 'notice'),
     title: contest.title,
   };
 }
@@ -135,6 +148,7 @@ function OperatorSettingsContent({
   const [divisionForm, setDivisionForm] = useState(emptyDivisionForm);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
   const [formError, setFormError] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -164,24 +178,42 @@ function OperatorSettingsContent({
     setSettingsDraft(next ? { contestId, form: next } : null);
   }
 
+  function settingsPatchFromForm(form: SettingsForm): ContestSettingsPatch {
+    const body: ContestSettingsPatch = {
+      end_at: dateTimeLocalToIso(form.end_at),
+      freeze_at: dateTimeLocalToIso(form.freeze_at),
+      problem_access_after_end: form.problem_access_after_end,
+      problem_public_after_end: form.problem_access_after_end === 'public',
+      scoreboard_access_after_end: form.scoreboard_access_after_end,
+      scoreboard_public_after_end: form.scoreboard_access_after_end === 'public',
+      start_at: dateTimeLocalToIso(form.start_at),
+      submission_access_after_end: form.submission_access_after_end,
+      submission_public_after_end: form.submission_access_after_end === 'public',
+      board_access_after_end: form.board_access_after_end,
+      notice_access_after_end: form.notice_access_after_end,
+    };
+
+    if (!operationLocked) {
+      body.organization_name = form.organization_name.trim();
+      body.overview = form.overview.trim();
+      body.status = form.status;
+      body.title = form.title.trim();
+    }
+
+    return body;
+  }
+
   const updateSettingsMutation = useMutation({
-    mutationFn: () =>
-      updateContestSettings(contestId, token, {
-        emergency_notice: settingsForm?.emergency_notice.trim() || null,
-        end_at: dateTimeLocalToIso(settingsForm!.end_at),
-        freeze_at: dateTimeLocalToIso(settingsForm!.freeze_at),
-        organization_name: settingsForm!.organization_name.trim(),
-        overview: settingsForm!.overview.trim(),
-        problem_public_after_end: settingsForm!.problem_public_after_end,
-        scoreboard_public_after_end: settingsForm!.scoreboard_public_after_end,
-        start_at: dateTimeLocalToIso(settingsForm!.start_at),
-        status: settingsForm!.status,
-        submission_public_after_end: settingsForm!.submission_public_after_end,
-        title: settingsForm!.title.trim(),
-      }),
+    mutationFn: (body?: ContestSettingsPatch) =>
+      updateContestSettings(
+        contestId,
+        token,
+        body ?? settingsPatchFromForm(settingsForm!),
+      ),
     onSuccess: () => {
       setSettingsDraft(null);
       setFormError('');
+      setSavedMessage('설정이 저장되었습니다.');
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
       });
@@ -242,7 +274,8 @@ function OperatorSettingsContent({
       return;
     }
 
-    updateSettingsMutation.mutate();
+    setSavedMessage('');
+    updateSettingsMutation.mutate(undefined);
   }
 
   function updateDate(name: 'start_at' | 'end_at' | 'freeze_at', date: Date) {
@@ -284,16 +317,19 @@ function OperatorSettingsContent({
     if (action === 'freeze-30') updateDate('freeze_at', addMinutes(30));
     if (action === 'freeze-60') updateDate('freeze_at', addMinutes(60));
     if (action === 'open-after-end') {
-      setSettingsForm((prev) =>
-        prev
-          ? {
-              ...prev,
-              problem_public_after_end: true,
-              scoreboard_public_after_end: true,
-              submission_public_after_end: true,
-            }
-          : prev,
-      );
+      if (!settingsForm) return;
+      const next: SettingsForm = {
+        ...settingsForm,
+        problem_access_after_end: 'public',
+        scoreboard_access_after_end: 'public',
+        submission_access_after_end: 'public',
+        board_access_after_end: 'public',
+        notice_access_after_end: 'public',
+      };
+      setSettingsDraft({ contestId, form: next });
+      setFormError('');
+      setSavedMessage('');
+      updateSettingsMutation.mutate(settingsPatchFromForm(next));
     }
   }
 
@@ -325,7 +361,7 @@ function OperatorSettingsContent({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
         <OperatorPanel
           description="대회 기본 정보와 공개 정책을 수정합니다."
           title="대회 설정"
@@ -335,9 +371,29 @@ function OperatorSettingsContent({
               {operationLocked ? (
                 <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
                   대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
-                  종료/프리즈 시간과 긴급 공지만 조정하세요.
+                  시작/프리즈/종료 시간만 조정하세요.
                 </p>
               ) : null}
+              <div className="grid gap-4 rounded border border-indigo-100 bg-indigo-50/60 px-4 py-4 md:grid-cols-3">
+                <DateInput
+                  label="시작"
+                  name="start_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.start_at}
+                />
+                <DateInput
+                  label="프리즈"
+                  name="freeze_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.freeze_at}
+                />
+                <DateInput
+                  label="종료"
+                  name="end_at"
+                  setForm={setSettingsForm}
+                  value={settingsForm.end_at}
+                />
+              </div>
               <QuickActions
                 currentStatus={settingsForm.status}
                 onAction={applyQuickAction}
@@ -396,73 +452,57 @@ function OperatorSettingsContent({
                   value={settingsForm.overview}
                 />
               </label>
-              <div className="grid gap-4 md:grid-cols-3">
-                <DateInput
-                  label="시작"
-                  name="start_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.start_at}
+              <div className="grid gap-3 rounded border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
+                <AccessSelect
+                  label="문제집"
+                  onChange={(value) =>
+                    setSettingsForm((prev) =>
+                      prev ? { ...prev, problem_access_after_end: value } : prev,
+                    )
+                  }
+                  value={settingsForm.problem_access_after_end}
                 />
-                <DateInput
-                  label="종료"
-                  name="end_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.end_at}
-                />
-                <DateInput
-                  label="프리즈"
-                  name="freeze_at"
-                  setForm={setSettingsForm}
-                  value={settingsForm.freeze_at}
-                />
-              </div>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
-                긴급 공지
-                <input
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                  onChange={(event) =>
+                <AccessSelect
+                  label="스코어보드"
+                  onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev
-                        ? { ...prev, emergency_notice: event.target.value }
+                        ? { ...prev, scoreboard_access_after_end: value }
                         : prev,
                     )
                   }
-                  value={settingsForm.emergency_notice}
+                  value={settingsForm.scoreboard_access_after_end}
                 />
-              </label>
-              <div className="grid gap-2 md:grid-cols-3">
-                <Toggle
-                  checked={settingsForm.problem_public_after_end}
-                  label="종료 후 문제 공개"
-                  onChange={(checked) =>
+                <AccessSelect
+                  label="채점현황"
+                  onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev
-                        ? { ...prev, problem_public_after_end: checked }
+                        ? { ...prev, submission_access_after_end: value }
                         : prev,
                     )
                   }
+                  value={settingsForm.submission_access_after_end}
                 />
-                <Toggle
-                  checked={settingsForm.scoreboard_public_after_end}
-                  label="종료 후 스코어보드 공개"
-                  onChange={(checked) =>
+                <AccessSelect
+                  label="게시판"
+                  onChange={(value) =>
+                    setSettingsForm((prev) =>
+                      prev ? { ...prev, board_access_after_end: value } : prev,
+                    )
+                  }
+                  value={settingsForm.board_access_after_end}
+                />
+                <AccessSelect
+                  label="공지"
+                  onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev
-                        ? { ...prev, scoreboard_public_after_end: checked }
+                        ? { ...prev, notice_access_after_end: value }
                         : prev,
                     )
                   }
-                />
-                <Toggle
-                  checked={settingsForm.submission_public_after_end}
-                  label="종료 후 제출 공개"
-                  onChange={(checked) =>
-                    setSettingsForm((prev) =>
-                      prev
-                        ? { ...prev, submission_public_after_end: checked }
-                        : prev,
-                    )
-                  }
+                  value={settingsForm.notice_access_after_end}
                 />
               </div>
 
@@ -471,6 +511,11 @@ function OperatorSettingsContent({
                   error={updateSettingsMutation.error}
                   fallback={formError || '대회 설정 저장에 실패했습니다'}
                 />
+              ) : null}
+              {savedMessage ? (
+                <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                  {savedMessage}
+                </p>
               ) : null}
 
               <button
@@ -630,24 +675,31 @@ function DateInput({
   );
 }
 
-function Toggle({
-  checked,
+function AccessSelect({
   label,
   onChange,
+  value,
 }: {
-  checked: boolean;
   label: string;
-  onChange: (checked: boolean) => void;
+  onChange: (value: ContestResourceAccess) => void;
+  value: ContestResourceAccess;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-black text-slate-700">
-      <input
-        checked={checked}
-        className="size-4 accent-indigo-600"
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
+    <label className="grid gap-2 text-sm font-black text-slate-700">
       {label}
+      <select
+        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        onChange={(event) =>
+          onChange(event.target.value as ContestResourceAccess)
+        }
+        value={value}
+      >
+        {accessOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

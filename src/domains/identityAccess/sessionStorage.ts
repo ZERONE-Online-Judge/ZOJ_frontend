@@ -10,8 +10,6 @@ export const PARTICIPANT_SESSION_KEY = 'zoj.participantSession';
 export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
 
-let volatileGeneralSession: GeneralSession | null = null;
-
 function browserStorage() {
   return typeof window === 'undefined' ? null : window.sessionStorage;
 }
@@ -40,22 +38,6 @@ function readStoredSessionValue(key: string) {
 function removeStoredSessionValue(key: string) {
   browserStorage()?.removeItem(key);
   legacyBrowserStorage()?.removeItem(key);
-}
-
-function stripRefreshTokens(session: GeneralSession): GeneralSession {
-  const { operatorSession, ...general } = session;
-  delete general.refreshToken;
-
-  return {
-    ...general,
-    operatorSession: operatorSession
-      ? {
-          accessToken: operatorSession.accessToken,
-          defaultRedirect: operatorSession.defaultRedirect,
-          staff: operatorSession.staff,
-        }
-      : operatorSession,
-  };
 }
 
 export function emitSessionSync() {
@@ -169,14 +151,14 @@ export function loadStoredGeneralSession(): GeneralSession | null {
       operatorSession = {
         accessToken: operatorSession.accessToken,
         defaultRedirect: operatorSession.defaultRedirect,
-        refreshToken: volatileGeneralSession?.operatorSession?.refreshToken,
+        refreshToken: operatorSession.refreshToken,
         staff: operatorSession.staff,
       };
     }
 
     return {
       accessToken: parsed.accessToken,
-      refreshToken: volatileGeneralSession?.refreshToken,
+      refreshToken: parsed.refreshToken,
       account: parsed.account,
       participantContests: parsed.participantContests ?? [],
       operatorContests: parsed.operatorContests ?? [],
@@ -193,11 +175,9 @@ export function saveGeneralSession(session: GeneralSession | null) {
   if (!storage) return;
 
   if (session) {
-    volatileGeneralSession = session;
-    storage.setItem(GENERAL_SESSION_KEY, JSON.stringify(stripRefreshTokens(session)));
+    storage.setItem(GENERAL_SESSION_KEY, JSON.stringify(session));
     legacyBrowserStorage()?.removeItem(GENERAL_SESSION_KEY);
   } else {
-    volatileGeneralSession = null;
     removeStoredSessionValue(GENERAL_SESSION_KEY);
   }
 }

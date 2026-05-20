@@ -12,31 +12,57 @@ export function createSubmission(
   token: string,
   body: SubmissionCreateRequest,
 ) {
-  return apiRequest<Submission>(`/contests/${contestId}/problems/${problemId}/submissions`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Submission>(
+    `/contests/${contestId}/problems/${problemId}/submissions`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
-export function listSubmissions(contestId: string, token?: string) {
-  return apiRequest<Submission[]>(`/contests/${contestId}/submissions`, token);
+export function listSubmissions(
+  contestId: string,
+  token?: string,
+  options: { divisionId?: string } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.divisionId) search.set('division_id', options.divisionId);
+  const query = search.toString();
+
+  return apiRequest<Submission[]>(
+    `/contests/${contestId}/submissions${query ? `?${query}` : ''}`,
+    token,
+  );
 }
 
 export function listSubmissionsPage(
   contestId: string,
   token: string | undefined,
-  options: { limit?: number; cursor?: string } = {},
+  options: { divisionId?: string; limit?: number; cursor?: string } = {},
 ) {
   const search = new URLSearchParams();
   if (options.limit) search.set('limit', String(options.limit));
   if (options.cursor) search.set('cursor', options.cursor);
+  if (options.divisionId) search.set('division_id', options.divisionId);
 
   const query = search.toString();
-  return apiPageRequest<Submission[]>(`/contests/${contestId}/submissions${query ? `?${query}` : ''}`, token);
+  return apiPageRequest<Submission[]>(
+    `/contests/${contestId}/submissions${query ? `?${query}` : ''}`,
+    token,
+  );
 }
 
-export function getSubmission(contestId: string, submissionId: string, token: string) {
-  return apiRequest<Submission>(`/contests/${contestId}/submissions/${submissionId}`, token);
+export function getSubmission(
+  contestId: string,
+  submissionId: string,
+  token: string,
+) {
+  return apiRequest<Submission>(
+    `/contests/${contestId}/submissions/${submissionId}`,
+    token,
+  );
 }
 
 export function waitSubmissionStatus(
@@ -57,7 +83,10 @@ export function waitSubmissionStatus(
 }
 
 export function getScoreboard(contestId: string, token?: string) {
-  return apiRequest<ScoreboardResponse>(`/contests/${contestId}/scoreboard`, token);
+  return apiRequest<ScoreboardResponse>(
+    `/contests/${contestId}/scoreboard`,
+    token,
+  );
 }
 
 export function waitScoreboard(
@@ -76,8 +105,15 @@ export function waitScoreboard(
   );
 }
 
-export function getDivisionScoreboard(contestId: string, divisionId: string, token?: string) {
-  return apiRequest<ScoreboardResponse>(`/contests/${contestId}/divisions/${divisionId}/scoreboard`, token);
+export function getDivisionScoreboard(
+  contestId: string,
+  divisionId: string,
+  token?: string,
+) {
+  return apiRequest<ScoreboardResponse>(
+    `/contests/${contestId}/divisions/${divisionId}/scoreboard`,
+    token,
+  );
 }
 
 export function waitDivisionScoreboard(
@@ -98,7 +134,38 @@ export function waitDivisionScoreboard(
 }
 
 export function listOperatorSubmissions(contestId: string, token: string) {
-  return apiRequest<Submission[]>(`/operator/contests/${contestId}/submissions`, token);
+  return apiRequest<Submission[]>(
+    `/operator/contests/${contestId}/submissions`,
+    token,
+  );
+}
+
+export function listOperatorSubmissionsPage(
+  contestId: string,
+  token: string,
+  options: { divisionId?: string; limit?: number; cursor?: string } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.limit) search.set('limit', String(options.limit));
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.divisionId) search.set('division_id', options.divisionId);
+  const query = search.toString();
+
+  return apiPageRequest<Submission[]>(
+    `/operator/contests/${contestId}/submissions${query ? `?${query}` : ''}`,
+    token,
+  );
+}
+
+export function getOperatorSubmission(
+  contestId: string,
+  submissionId: string,
+  token: string,
+) {
+  return apiRequest<Submission>(
+    `/operator/contests/${contestId}/submissions/${submissionId}`,
+    token,
+  );
 }
 
 export function waitOperatorSubmissionStatus(
@@ -119,10 +186,17 @@ export function waitOperatorSubmissionStatus(
 }
 
 export function getOperatorScoreboard(contestId: string, token: string) {
-  return apiRequest<OperatorScoreboardResponse>(`/operator/contests/${contestId}/scoreboard/internal`, token);
+  return apiRequest<OperatorScoreboardResponse>(
+    `/operator/contests/${contestId}/scoreboard/internal`,
+    token,
+  );
 }
 
-export function getOperatorDivisionScoreboard(contestId: string, divisionId: string, token: string) {
+export function getOperatorDivisionScoreboard(
+  contestId: string,
+  divisionId: string,
+  token: string,
+) {
   return apiRequest<OperatorScoreboardResponse>(
     `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/internal`,
     token,
@@ -138,7 +212,10 @@ export function listAdminJudgeSubmissionsPage(
   if (options.cursor) search.set('cursor', options.cursor);
   search.set('include_source', String(options.includeSource ?? false));
 
-  return apiPageRequest<Submission[]>(`/admin/judge/submissions?${search}`, token);
+  return apiPageRequest<Submission[]>(
+    `/admin/judge/submissions?${search}`,
+    token,
+  );
 }
 
 export function createOperatorTestSubmission(
@@ -147,10 +224,14 @@ export function createOperatorTestSubmission(
   token: string,
   body: SubmissionCreateRequest,
 ) {
-  return apiRequest<Submission>(`/operator/contests/${contestId}/problems/${problemId}/test-submissions`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Submission>(
+    `/operator/contests/${contestId}/problems/${problemId}/test-submissions`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function waitOperatorTestSubmissionStatus(
@@ -164,5 +245,8 @@ export function waitOperatorTestSubmissionStatus(
     poll_interval_seconds: String(options.pollIntervalSeconds ?? 0.1),
   });
 
-  return apiRequest<Submission>(`/operator/contests/${contestId}/test-submissions/${submissionId}/status:wait?${search}`, token);
+  return apiRequest<Submission>(
+    `/operator/contests/${contestId}/test-submissions/${submissionId}/status:wait?${search}`,
+    token,
+  );
 }

@@ -33,18 +33,24 @@ export default function MarkdownPreview({
   assets = [],
 }: MarkdownPreviewProps) {
   const normalizedStatement = normalizeMathDelimiters(statement);
+  const renderImage = (src = '', alt = '') => {
+    const resolvedSrc = src ? resolveAssetSource(src, assets) : '';
+    if (!resolvedSrc) return null;
+
+    return (
+      <img
+        alt={alt}
+        className="max-h-96 rounded-md border border-slate-200 object-contain"
+        src={resolvedSrc}
+      />
+    );
+  };
 
   return (
     <div className="prose prose-slate max-w-none text-slate-800">
       <ReactMarkdown
         components={{
-          img: ({ src = '', alt = '' }) => (
-            <img
-              alt={alt}
-              className="max-h-96 rounded-md border border-slate-200 object-contain"
-              src={resolveAssetSource(src, assets)}
-            />
-          ),
+          img: ({ src = '', alt = '' }) => renderImage(src, alt),
           pre: ({ children }) => (
             <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-4 text-sm text-slate-50">
               {children}

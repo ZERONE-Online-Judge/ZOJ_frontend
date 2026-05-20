@@ -7,6 +7,7 @@ export type NoticeItemData = {
   date: string;
   label?: string;
   href?: string;
+  tone?: 'default' | 'pinned';
 };
 
 type NoticeItemProps = NoticeItemData & {
@@ -18,6 +19,7 @@ export default function NoticeItem({
   date,
   label = sharedUiText.noticeLabel,
   href,
+  tone = 'default',
   compact = false,
 }: NoticeItemProps) {
   const content = (
@@ -37,7 +39,8 @@ export default function NoticeItem({
       >
         <span
           className={[
-            'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-950 font-semibold text-white',
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold text-white',
+            tone === 'pinned' ? 'bg-red-600' : 'bg-slate-950',
             compact ? 'px-2 py-0.5 text-[11px]' : 'px-4 py-1.5 text-sm',
           ].join(' ')}
         >

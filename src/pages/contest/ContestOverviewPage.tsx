@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import NoticeSection from '@/components/main/NoticeSection';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
+} from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -13,14 +19,6 @@ import type { ContestNotice } from '@/domains/serviceCommunication/types';
 import { formatDateTime, formatTime, timeLeft } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 import { SvgIcon } from '@/utils/Icons';
-
-const overviewTabs = [
-  { label: '개요', path: '' },
-  { label: '문제집', path: 'problems' },
-  { label: '채점현황', path: 'submissions' },
-  { label: '스코어보드', path: 'scoreboard' },
-  { label: '게시판', path: 'board' },
-] as const;
 
 type OverviewIcon = 'user' | 'team' | 'timer';
 
@@ -86,15 +84,37 @@ function OverviewCard({ icon, title, subtitle }: OverviewCardProps) {
   );
 }
 
-function getRemainingTime(contest: Contest, now: number) {
+function formatOpenCountdown(startAt: string, now: number) {
+  const diff = Math.max(0, new Date(startAt).getTime() - now);
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+
+  if (days > 0) return `D-${days}, ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m ${seconds}s`;
+}
+
+function getTimerCard(contest: Contest, now: number) {
   const startAt = new Date(contest.start_at).getTime();
   const endAt = new Date(contest.end_at).getTime();
 
-  if (Number.isNaN(startAt) || Number.isNaN(endAt)) return '일정 미정';
-  if (now < startAt) return timeLeft(contest.start_at);
-  if (now >= endAt) return '종료됨';
+  if (Number.isNaN(startAt) || Number.isNaN(endAt)) {
+    return { subtitle: '시간 미정', title: '일정 미정' };
+  }
+  if (now < startAt) {
+    return {
+      subtitle: '오픈까지',
+      title: formatOpenCountdown(contest.start_at, now),
+    };
+  }
+  if (now >= endAt) return { subtitle: '대회 종료', title: '종료됨' };
 
-  return timeLeft(contest.end_at);
+  return {
+    subtitle: `freeze ${formatTime(contest.freeze_at)}`,
+    title: timeLeft(contest.end_at),
+  };
 }
 
 function sortNotices(notices: ContestNotice[]) {
@@ -106,31 +126,42 @@ function sortNotices(notices: ContestNotice[]) {
   );
 }
 
+function noticeBadgeLabel(notice: ContestNotice) {
+  const base = notice.pinned ? '고정' : '공지';
+  return notice.emergency ? `${base} · 긴급` : base;
+}
+
 function NoticePreview({
   contestId,
   notices,
   isError,
   isLoading,
+  unavailableMessage,
 }: {
   contestId: string;
   notices: ContestNotice[];
   isError: boolean;
   isLoading: boolean;
+  unavailableMessage?: string;
 }) {
   return (
     <NoticeSection
-      compact
       notices={notices.map((notice) => ({
         date: formatDateTime(notice.published_at),
         href: `/contests/${contestId}/board`,
-        label: notice.emergency ? '긴급' : notice.pinned ? '고정' : '공지',
+        label: noticeBadgeLabel(notice),
         title: notice.title,
+        tone: notice.pinned ? 'pinned' : 'default',
       }))}
       title="공지사항"
       titleHref={`/contests/${contestId}/board`}
+      titleSize="small"
     >
-      {isLoading || isError || notices.length === 0 ? (
+      {unavailableMessage || isLoading || isError || notices.length === 0 ? (
         <div className="border-y border-slate-200">
+          {unavailableMessage ? (
+            <PageNotice message={unavailableMessage} status="idle" />
+          ) : null}
           {isLoading ? (
             <PageNotice
               message="공지사항을 불러오는 중입니다."
@@ -143,7 +174,7 @@ function NoticePreview({
               status="error"
             />
           ) : null}
-          {!isLoading && !isError && notices.length === 0 ? (
+          {!unavailableMessage && !isLoading && !isError && notices.length === 0 ? (
             <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
           ) : null}
         </div>
@@ -159,7 +190,14 @@ function ContestOverviewContent({
   contest: Contest;
   divisions: Division[];
 }) {
-  const { generalSession, participantContest, participantSession, token } =
+  const {
+    activeParticipantSession,
+    ensureParticipantSession,
+    generalSession,
+    participantContest,
+    participantSession,
+    token,
+  } =
     useContestParticipantSession(contest.contest_id);
   const [now, setNow] = useState(() => Date.now());
 
@@ -169,14 +207,35 @@ function ContestOverviewContent({
     return () => window.clearInterval(timer);
   }, []);
 
+  const noticeAccess = contestResourceAccess(contest, 'notice');
+  const hasParticipantAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
+  const canViewNotices =
+    contestAccessPhase(contest) !== 'ended' ||
+    canViewContestResource(contest, hasParticipantAccess, noticeAccess);
   const noticesQuery = useQuery({
-    queryKey: contestQueryKeys.notices(contest.contest_id, token),
-    queryFn: () => getContestNotices(contest.contest_id, token),
+    enabled: canViewNotices,
+    queryKey: contestQueryKeys.notices(
+      contest.contest_id,
+      token,
+      participantContest?.contest.contest_id,
+      activeParticipantSession?.accessToken,
+    ),
+    queryFn: async () => {
+      const session =
+        participantContest ||
+        activeParticipantSession ||
+        noticeAccess === 'participants'
+          ? await ensureParticipantSession()
+          : null;
+      return getContestNotices(contest.contest_id, session?.accessToken ?? token);
+    },
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
   });
   const notices = useMemo(
-    () => sortNotices(noticesQuery.data ?? []).slice(0, 3),
+    () => sortNotices(noticesQuery.data ?? []),
     [noticesQuery.data],
   );
   const teamName =
@@ -199,7 +258,7 @@ function ContestOverviewContent({
     participantSession?.division.name ??
     divisions[0]?.name ??
     'division';
-  const remainingTime = getRemainingTime(contest, now);
+  const timerCard = getTimerCard(contest, now);
 
   return (
     <ContestPageFrame>
@@ -210,42 +269,15 @@ function ContestOverviewContent({
         variant="contest"
       />
 
-      <nav aria-label="대회 메뉴" className="mt-8">
-        <ul className="flex flex-wrap items-center gap-3">
-          {overviewTabs.map((tab) => {
-            const to = tab.path
-              ? `/contests/${contest.contest_id}/${tab.path}`
-              : `/contests/${contest.contest_id}`;
-
-            return (
-              <li key={tab.path || 'overview'}>
-                <NavLink
-                  className={({ isActive }) =>
-                    [
-                      'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
-                      isActive
-                        ? 'border-slate-950 bg-slate-950 text-white'
-                        : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-                    ].join(' ')
-                  }
-                  end={!tab.path}
-                  to={to}
-                >
-                  {tab.label}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <ContestPageNavigation contest={contest} contestId={contest.contest_id} />
 
       <section className="mt-8 grid gap-8 md:grid-cols-3">
         <OverviewCard icon="user" subtitle={memberEmail} title={memberName} />
         <OverviewCard icon="team" subtitle={divisionName} title={teamName} />
         <OverviewCard
           icon="timer"
-          subtitle={`freeze ${formatTime(contest.freeze_at)}`}
-          title={remainingTime}
+          subtitle={timerCard.subtitle}
+          title={timerCard.title}
         />
       </section>
 
@@ -255,6 +287,15 @@ function ContestOverviewContent({
           isError={noticesQuery.isError}
           isLoading={noticesQuery.isLoading}
           notices={notices}
+          unavailableMessage={
+            canViewNotices
+              ? undefined
+              : contestResourceAccessMessage(
+                  contest,
+                  'notice',
+                  hasParticipantAccess,
+                )
+          }
         />
       </div>
     </ContestPageFrame>

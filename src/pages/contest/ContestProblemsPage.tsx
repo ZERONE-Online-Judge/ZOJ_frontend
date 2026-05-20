@@ -1,16 +1,19 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   canViewContestResource,
-  participantProblemEmptyMessage,
+  contestAccessPhase,
+  contestResourceAccess,
+  contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
-import type { Contest } from '@/domains/contestAdministration/types';
+import type { Contest, Division } from '@/domains/contestAdministration/types';
 import {
   getContestProblems,
   getDivisionProblems,
@@ -21,14 +24,6 @@ import {
 } from '@/domains/submissionScoreboard/api';
 import type { ScoreboardProblemScore } from '@/domains/submissionScoreboard/types';
 import PageNotice from '@/shared/ui/PageNotice';
-
-const problemTabs = [
-  { label: '개요', path: '' },
-  { label: '문제집', path: 'problems' },
-  { label: '채점현황', path: 'submissions' },
-  { label: '스코어보드', path: 'scoreboard' },
-  { label: '게시판', path: 'board' },
-] as const;
 
 type ProblemStatus = 'success' | 'failed' | 'pending';
 
@@ -91,9 +86,11 @@ function isWaAcContest(contest: Contest) {
 function ContestProblemsContent({
   contest,
   contestId,
+  divisions,
 }: {
   contest: Contest;
   contestId: string;
+  divisions: Division[];
 }) {
   const {
     activeParticipantSession,
@@ -102,33 +99,75 @@ function ContestProblemsContent({
     participantContest,
   } = useContestParticipantSession(contestId);
   const hasSessionAccess = Boolean(participantContest);
+  const problemAccess = contestResourceAccess(contest, 'problem');
+  const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
+  const phase = contestAccessPhase(contest);
+  const isEnded = phase === 'ended';
+  const isBeforeStart = phase === 'before';
+  const [publicDivisionId, setPublicDivisionId] = useState('');
+  const selectedPublicDivisionId =
+    publicDivisionId || divisions[0]?.division_id || '';
+  const shouldUseParticipantScope =
+    hasSessionAccess &&
+    (!isEnded ||
+      problemAccess === 'participants' ||
+      scoreboardAccess === 'participants');
+  const shouldShowDivisionSelect =
+    !shouldUseParticipantScope && divisions.length > 1;
+  const effectiveDivisionId = shouldUseParticipantScope
+    ? activeParticipantSession?.division.division_id
+    : selectedPublicDivisionId;
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.problem_public_after_end,
-  );
+    problemAccess,
+  ) && !isBeforeStart;
   const canViewScoreboard = canViewContestResource(
     contest,
     hasSessionAccess,
-    contest.scoreboard_public_after_end,
-  );
+    scoreboardAccess,
+  ) && !isBeforeStart;
+
+  useEffect(() => {
+    if (
+      publicDivisionId &&
+      !divisions.some((division) => division.division_id === publicDivisionId)
+    ) {
+      setPublicDivisionId('');
+    }
+  }, [divisions, publicDivisionId]);
 
   const problemsQuery = useQuery({
     enabled: canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionProblems(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -142,17 +181,32 @@ function ContestProblemsContent({
     queryKey: contestQueryKeys.scoreboard(
       contestId,
       generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.division.division_id,
-      activeParticipantSession?.accessToken,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId
+        : undefined,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.division.division_id
+        : effectiveDivisionId,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
-      const session = await ensureParticipantSession();
-      if (session) {
+      const session = shouldUseParticipantScope
+        ? await ensureParticipantSession()
+        : null;
+      if (session && shouldUseParticipantScope) {
         return getDivisionScoreboard(
           contestId,
           session.division.division_id,
           session.accessToken,
+        );
+      }
+      if (effectiveDivisionId) {
+        return getDivisionScoreboard(
+          contestId,
+          effectiveDivisionId,
+          generalSession?.accessToken,
         );
       }
 
@@ -187,45 +241,24 @@ function ContestProblemsContent({
         variant="contest"
       />
 
-      <nav aria-label="대회 메뉴" className="mt-8">
-        <ul className="flex flex-wrap items-center gap-3">
-          {problemTabs.map((tab) => {
-            const to = tab.path
-              ? `/contests/${contestId}/${tab.path}`
-              : `/contests/${contestId}`;
+      <ContestPageNavigation contest={contest} contestId={contestId} />
 
-            return (
-              <li key={tab.path || 'overview'}>
-                <NavLink
-                  className={({ isActive }) =>
-                    [
-                      'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
-                      isActive
-                        ? 'border-slate-950 bg-slate-950 text-white'
-                        : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',
-                    ].join(' ')
-                  }
-                  end={!tab.path}
-                  to={to}
-                >
-                  {tab.label}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {shouldShowDivisionSelect ? (
+        <DivisionSelect
+          divisions={divisions}
+          onChange={setPublicDivisionId}
+          value={selectedPublicDivisionId}
+        />
+      ) : null}
 
       <div className="mt-9">
         {!canViewProblems ? (
           <PageNotice
-            message={
-              participantProblemEmptyMessage(
-                contest,
-                hasSessionAccess,
-                contest.problem_public_after_end,
-              ) ?? '문제집을 볼 수 없습니다.'
-            }
+            message={contestResourceAccessMessage(
+              contest,
+              'problem',
+              hasSessionAccess,
+            )}
             status="idle"
           />
         ) : null}
@@ -304,7 +337,9 @@ function ContestProblemsContent({
           </div>
         ) : null}
 
-        {!problemsQuery.isLoading && problems.length === 0 ? (
+        {canViewProblems &&
+        !problemsQuery.isLoading &&
+        problems.length === 0 ? (
           <PageNotice message="표시할 문제가 없습니다." status="idle" />
         ) : null}
       </div>
@@ -315,12 +350,46 @@ function ContestProblemsContent({
 export default function ContestProblemsPage() {
   return (
     <ContestPageShell>
-      {({ contest }) => (
+      {({ contest, divisions }) => (
         <ContestProblemsContent
           contest={contest}
           contestId={contest.contest_id}
+          divisions={divisions}
         />
       )}
     </ContestPageShell>
+  );
+}
+
+function DivisionSelect({
+  divisions,
+  onChange,
+  value,
+}: {
+  divisions: Division[];
+  onChange: (divisionId: string) => void;
+  value: string;
+}) {
+  return (
+    <section className="mt-5 grid gap-2">
+      <span className="text-sm font-black text-slate-700">유형 선택</span>
+      <div className="flex flex-wrap gap-2">
+        {divisions.map((division) => (
+          <button
+            className={[
+              'h-9 rounded border px-4 text-sm font-black transition',
+              value === division.division_id
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400',
+            ].join(' ')}
+            key={division.division_id}
+            onClick={() => onChange(division.division_id)}
+            type="button"
+          >
+            {division.name}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

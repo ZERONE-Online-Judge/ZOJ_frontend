@@ -20,6 +20,9 @@ export type ContestFormatType =
   | 'ioi'
   | string;
 
+export type ContestResourceAccess = 'private' | 'participants' | 'public';
+export type ScoreboardFreezeMode = 'auto' | 'live' | 'frozen';
+
 export type Contest = {
   contest_id: string;
   title: string;
@@ -33,10 +36,16 @@ export type Contest = {
   format?: ContestFormatType | null;
   format_type?: ContestFormatType | null;
   problem_public_after_end: boolean;
+  problem_access_after_end?: ContestResourceAccess;
   scoring_mode?: ContestFormatType | null;
   scoring_type?: ContestFormatType | null;
   scoreboard_public_after_end: boolean;
+  scoreboard_access_after_end?: ContestResourceAccess;
   submission_public_after_end: boolean;
+  submission_access_after_end?: ContestResourceAccess;
+  board_access_after_end?: ContestResourceAccess;
+  notice_access_after_end?: ContestResourceAccess;
+  scoreboard_freeze_mode?: ScoreboardFreezeMode;
   emergency_notice: string | null;
 };
 
@@ -95,6 +104,12 @@ export type ContestSettingsPatch = Partial<
     | 'problem_public_after_end'
     | 'scoreboard_public_after_end'
     | 'submission_public_after_end'
+    | 'problem_access_after_end'
+    | 'scoreboard_access_after_end'
+    | 'submission_access_after_end'
+    | 'board_access_after_end'
+    | 'notice_access_after_end'
+    | 'scoreboard_freeze_mode'
     | 'emergency_notice'
   >
 >;

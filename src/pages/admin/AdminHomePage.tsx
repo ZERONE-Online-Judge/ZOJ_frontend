@@ -13,6 +13,7 @@ import PageLayout from '@/components/common/PageLayout';
 import { getAdminDashboard } from '@/domains/auditMonitoring/api';
 import {
   createAdminServiceNotice,
+  deleteAdminServiceNotice,
   listAdminServiceNotices,
 } from '@/domains/serviceCommunication/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
@@ -78,6 +79,24 @@ function AdminHomeContent({ token }: { token: string }) {
       });
     },
   });
+
+  const deleteNoticeMutation = useMutation({
+    mutationFn: (noticeId: string) => deleteAdminServiceNotice(noticeId, token),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'service-notices'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['public-service-notices'] });
+    },
+  });
+
+  function removeNotice(noticeId: string, title: string) {
+    const confirmed = window.confirm(
+      `"${title}" 서비스 공지를 삭제할까요? 삭제한 공지는 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+    deleteNoticeMutation.mutate(noticeId);
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -251,23 +270,37 @@ function AdminHomeContent({ token }: { token: string }) {
                   className="grid gap-2 px-4 py-4"
                   key={notice.service_notice_id}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    {notice.emergency ? (
-                      <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">
-                        긴급
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
-                        일반
-                      </span>
-                    )}
-                    <strong className="text-base font-black text-slate-950">
-                      {notice.title}
-                    </strong>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {notice.emergency ? (
+                          <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">
+                            긴급
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+                            일반
+                          </span>
+                        )}
+                        <strong className="text-base font-black break-keep text-slate-950">
+                          {notice.title}
+                        </strong>
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-slate-600">
+                        {notice.summary || notice.body}
+                      </p>
+                    </div>
+                    <button
+                      className="h-9 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                      disabled={deleteNoticeMutation.isPending}
+                      onClick={() =>
+                        removeNotice(notice.service_notice_id, notice.title)
+                      }
+                      type="button"
+                    >
+                      삭제
+                    </button>
                   </div>
-                  <p className="text-sm font-medium text-slate-600">
-                    {notice.summary || notice.body}
-                  </p>
                   <time
                     className="text-xs font-bold text-slate-400"
                     dateTime={notice.published_at}
@@ -282,6 +315,14 @@ function AdminHomeContent({ token }: { token: string }) {
               </p>
             )}
           </div>
+          {deleteNoticeMutation.error ? (
+            <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+              {formatApiError(
+                deleteNoticeMutation.error,
+                '서비스 공지 삭제에 실패했습니다',
+              )}
+            </div>
+          ) : null}
         </div>
       </details>
     </PageLayout>
