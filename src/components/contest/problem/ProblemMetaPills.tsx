@@ -15,10 +15,6 @@ export default function ProblemMetaPills({ problem }: ProblemMetaPillsProps) {
         <dt className="inline">메모리 </dt>
         <dd className="inline">{problem.memory_limit_mb}MB</dd>
       </div>
-      <div className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700">
-        <dt className="inline">점수 </dt>
-        <dd className="inline">{problem.max_score}</dd>
-      </div>
     </dl>
   );
 }

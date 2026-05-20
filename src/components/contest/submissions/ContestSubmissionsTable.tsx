@@ -194,6 +194,7 @@ export default function ContestSubmissionsTable({
                   <td className={cellClassName}>
                     <ContestSubmissionResultBadge
                       judgeMessage={submission.judge_message}
+                      submission={submission}
                       status={submission.status}
                     />
                   </td>

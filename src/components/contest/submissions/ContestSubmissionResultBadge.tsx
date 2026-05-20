@@ -1,10 +1,14 @@
 import {
+  isSubmissionPending,
+  submissionProgressText,
   submissionStatusLabel,
   submissionStatusTone,
 } from '@/domains/submissionScoreboard/status';
+import type { SubmissionProgressState } from '@/domains/submissionScoreboard/types';
 
 type ContestSubmissionResultBadgeProps = {
   judgeMessage?: string | null;
+  submission?: SubmissionProgressState;
   status: string;
 };
 
@@ -19,11 +23,17 @@ const toneClassNames = {
 
 export default function ContestSubmissionResultBadge({
   judgeMessage,
+  submission,
   status,
 }: ContestSubmissionResultBadgeProps) {
   const tone = submissionStatusTone(status);
   const label = submissionStatusLabel(status);
   const detail = judgeMessage?.trim();
+  const progressText = submissionProgressText(submission ?? { status });
+  const displayLabel =
+    isSubmissionPending(status) && progressText
+      ? `${label} - ${progressText}`
+      : label;
 
   return (
     <span
@@ -32,7 +42,7 @@ export default function ContestSubmissionResultBadge({
         toneClassNames[tone],
       ].join(' ')}
     >
-      {detail ? `${label}(${detail})` : label}
+      {detail ? `${displayLabel}(${detail})` : displayLabel}
     </span>
   );
 }

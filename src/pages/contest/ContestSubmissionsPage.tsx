@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
@@ -19,6 +19,7 @@ import {
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
 import { listSubmissionsPage } from '@/domains/submissionScoreboard/api';
+import { waitSubmissionStatus } from '@/domains/submissionScoreboard/api';
 import { isSubmissionPending } from '@/domains/submissionScoreboard/status';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
@@ -35,7 +36,9 @@ function ContestSubmissionsContent({
   contestId: string;
   divisions: Division[];
 }) {
+  const queryClient = useQueryClient();
   const isDocumentVisible = useDocumentVisibility();
+  const waitingIds = useRef(new Set<string>());
   const {
     activeParticipantSession,
     ensureParticipantSession,
@@ -179,6 +182,49 @@ function ContestSubmissionsContent({
   const submissions = submissionsQuery.data?.data ?? [];
   const page = submissionsQuery.data?.page;
   const problems = problemsQuery.data ?? [];
+
+  useEffect(() => {
+    if (!isDocumentVisible) return;
+
+    submissions
+      .filter((submission) => isSubmissionPending(submission.status))
+      .forEach((submission) => {
+        if (waitingIds.current.has(submission.submission_id)) return;
+
+        waitingIds.current.add(submission.submission_id);
+        void ensureParticipantSession()
+          .then((session) => {
+            if (!session?.accessToken) return null;
+            return waitSubmissionStatus(
+              contestId,
+              submission.submission_id,
+              session.accessToken,
+              {
+                pollIntervalSeconds: 0.5,
+                waitSeconds: 4,
+              },
+            );
+          })
+          .then(() => {
+            void queryClient.invalidateQueries({
+              queryKey: ['contest-submissions', contestId],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ['contest-scoreboard', contestId],
+            });
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            waitingIds.current.delete(submission.submission_id);
+          });
+      });
+  }, [
+    contestId,
+    ensureParticipantSession,
+    isDocumentVisible,
+    queryClient,
+    submissions,
+  ]);
 
   return (
     <ContestPageFrame>

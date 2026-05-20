@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
+import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
 import ProblemNavigationPills from '@/components/contest/problem/ProblemNavigationPills';
 import ProblemSidebar from '@/components/contest/problem/ProblemSidebar';
@@ -66,6 +67,7 @@ function ContestProblemDetailContent({
   view: ProblemView;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedSubmissionId = searchParams.get('submissionId');
   const {
@@ -285,6 +287,7 @@ function ContestProblemDetailContent({
       void queryClient.invalidateQueries({
         queryKey: ['contest-problems', contestId],
       });
+      navigate(`/contests/${contestId}/submissions`);
     },
     onError: (error, { draftKey }: SubmitVariables) => {
       setSubmitFeedback(draftKey, {
@@ -315,6 +318,8 @@ function ContestProblemDetailContent({
 
   return (
     <ContestPageFrame>
+      <ContestPageNavigation contest={contest} contestId={contestId} />
+
       <div className="mb-6">
         <ProblemNavigationPills
           active={view}

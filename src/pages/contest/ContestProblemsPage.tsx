@@ -58,31 +58,6 @@ function ProblemStatusBadge({ status }: { status: ProblemStatus }) {
   );
 }
 
-function isWaAcContest(contest: Contest) {
-  const format = [
-    contest.scoring_type,
-    contest.scoring_mode,
-    contest.format_type,
-    contest.format,
-    contest.contest_type,
-  ]
-    .find((value) => typeof value === 'string' && value.trim())
-    ?.trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, '_');
-
-  return [
-    'wa_ac',
-    'wa/ac',
-    'ac',
-    'acm',
-    'icpc',
-    'pass_fail',
-    'binary',
-    'accepted_rejected',
-  ].includes(format ?? '');
-}
-
 function ContestProblemsContent({
   contest,
   contestId,
@@ -230,8 +205,6 @@ function ContestProblemsContent({
       score,
     ]),
   );
-  const shouldShowProblemScore = !isWaAcContest(contest);
-
   return (
     <ContestPageFrame>
       <PageHeading
@@ -278,10 +251,7 @@ function ContestProblemsContent({
         {canViewProblems ? (
           <div className="overflow-x-auto border border-slate-200 bg-white">
             <table
-              className={[
-                'w-full border-collapse text-left text-sm',
-                shouldShowProblemScore ? 'min-w-[920px]' : 'min-w-[800px]',
-              ].join(' ')}
+              className="w-full min-w-[800px] border-collapse text-left text-sm"
             >
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
@@ -290,9 +260,6 @@ function ContestProblemsContent({
                   <th className="w-36 px-6 py-4">정보</th>
                   <th className="w-32 px-6 py-4">제한 시간</th>
                   <th className="w-36 px-6 py-4">제한 메모리</th>
-                  {shouldShowProblemScore ? (
-                    <th className="w-28 px-6 py-4">배점</th>
-                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -324,11 +291,6 @@ function ContestProblemsContent({
                       <td className="px-6 py-4 font-medium text-slate-950">
                         {problem.memory_limit_mb} MB
                       </td>
-                      {shouldShowProblemScore ? (
-                        <td className="px-6 py-4 font-medium text-slate-950">
-                          {problem.max_score}점
-                        </td>
-                      ) : null}
                     </tr>
                   );
                 })}
