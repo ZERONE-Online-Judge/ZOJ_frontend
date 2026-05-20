@@ -149,9 +149,9 @@ export default function Footer() {
                 서비스 관련 문의{' '}
                 <a
                   className="font-black text-slate-900 underline-offset-4 hover:text-zoj-blue hover:underline"
-                  href="mailto:support@zerone01.kr"
+                  href="mailto:zoj.service@gmail.com"
                 >
-                  support@zerone01.kr
+                  zoj.service@gmail.com
                 </a>
               </p>
               <p>운영 이슈는 대회 게시판의 비공개 질문으로 접수해 주세요.</p>
@@ -170,7 +170,7 @@ export default function Footer() {
               </a>
               <a
                 className="inline-flex items-center gap-2 transition hover:text-zoj-blue"
-                href="mailto:support@zerone01.kr"
+                href="mailto:zoj.service@gmail.com"
               >
                 서비스 문의
                 <span className="text-xl text-slate-400">›</span>
@@ -181,7 +181,7 @@ export default function Footer() {
               <a
                 aria-label="GitHub 열기"
                 className="inline-flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:text-zoj-blue"
-                href="https://github.com/zerone-01"
+                href="https://github.com/ZERONE-Online-Judge"
                 rel="noreferrer"
                 target="_blank"
               >
@@ -190,7 +190,7 @@ export default function Footer() {
               <a
                 aria-label="문의 메일 보내기"
                 className="inline-flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:text-zoj-blue"
-                href="mailto:support@zerone01.kr"
+                href="mailto:zoj.service@gmail.com"
               >
                 @
               </a>
