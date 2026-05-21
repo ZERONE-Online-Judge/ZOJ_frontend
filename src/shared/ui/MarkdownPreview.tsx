@@ -51,6 +51,21 @@ export default function MarkdownPreview({
       <ReactMarkdown
         components={{
           img: ({ src = '', alt = '' }) => renderImage(src, alt),
+          ul: ({ children }) => (
+            <ul className="my-4 list-disc space-y-2 pl-6 leading-7">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="my-4 list-decimal space-y-2 pl-6 leading-7">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="pl-1 marker:font-black marker:text-slate-500">
+              {children}
+            </li>
+          ),
           pre: ({ children }) => (
             <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-4 text-sm text-slate-50">
               {children}

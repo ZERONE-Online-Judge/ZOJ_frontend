@@ -45,6 +45,10 @@ function operatorSubmissionDivisionStorageKey(contestId: string) {
   return `zoj.operator.submissions.division.${contestId}`;
 }
 
+function operatorSubmissionProblemStorageKey(contestId: string) {
+  return `zoj.operator.submissions.problem.${contestId}`;
+}
+
 function readStoredValue(key: string) {
   try {
     return window.localStorage.getItem(key) ?? '';
@@ -97,8 +101,12 @@ function OperatorSubmissionsContent({
   const queryIdentity = tokenQueryIdentity(token);
   const waitingIds = useRef(new Set<string>());
   const divisionStorageKey = operatorSubmissionDivisionStorageKey(contestId);
+  const problemStorageKey = operatorSubmissionProblemStorageKey(contestId);
   const [divisionId, setDivisionId] = useState(() =>
     readStoredValue(divisionStorageKey),
+  );
+  const [problemId, setProblemId] = useState(() =>
+    readStoredValue(problemStorageKey),
   );
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const currentCursor = cursorStack.at(-1);
@@ -122,6 +130,7 @@ function OperatorSubmissionsContent({
       'submissions',
       contestId,
       divisionId,
+      problemId || null,
       currentCursor ?? null,
       queryIdentity,
     ],
@@ -130,6 +139,7 @@ function OperatorSubmissionsContent({
         cursor: currentCursor,
         divisionId,
         limit: SUBMISSIONS_PAGE_SIZE,
+        problemId: problemId || undefined,
       }),
     placeholderData: keepPreviousData,
     refetchInterval: (query) => {
@@ -150,6 +160,10 @@ function OperatorSubmissionsContent({
   });
 
   const divisions = dashboardQuery.data?.divisions ?? [];
+  const problems = problemsQuery.data ?? [];
+  const filteredProblems = divisionId
+    ? problems.filter((problem) => problem.division_id === divisionId)
+    : problems;
 
   useEffect(() => {
     if (!divisions.length) return;
@@ -163,6 +177,17 @@ function OperatorSubmissionsContent({
       setCursorStack([]);
     }
   }, [divisionId, divisionStorageKey, divisions]);
+
+  useEffect(() => {
+    if (
+      problemId &&
+      !filteredProblems.some((problem) => problem.problem_id === problemId)
+    ) {
+      setProblemId('');
+      writeStoredValue(problemStorageKey, '');
+      setCursorStack([]);
+    }
+  }, [filteredProblems, problemId, problemStorageKey]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -292,25 +317,52 @@ function OperatorSubmissionsContent({
 
       <OperatorPanel
         actions={
-          <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
-            유형
-            <select
-              className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              onChange={(event) => {
-                const nextDivisionId = event.target.value;
-                setDivisionId(nextDivisionId);
-                writeStoredValue(divisionStorageKey, nextDivisionId);
-                setCursorStack([]);
-              }}
-              value={divisionId}
-            >
-              {divisions.map((division) => (
-                <option key={division.division_id} value={division.division_id}>
-                  {division.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+              유형
+              <select
+                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => {
+                  const nextDivisionId = event.target.value;
+                  setDivisionId(nextDivisionId);
+                  setProblemId('');
+                  writeStoredValue(divisionStorageKey, nextDivisionId);
+                  writeStoredValue(problemStorageKey, '');
+                  setCursorStack([]);
+                }}
+                value={divisionId}
+              >
+                {divisions.map((division) => (
+                  <option
+                    key={division.division_id}
+                    value={division.division_id}
+                  >
+                    {division.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+              문제
+              <select
+                className="h-10 min-w-52 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => {
+                  const nextProblemId = event.target.value;
+                  setProblemId(nextProblemId);
+                  writeStoredValue(problemStorageKey, nextProblemId);
+                  setCursorStack([]);
+                }}
+                value={problemId}
+              >
+                <option value="">전체</option>
+                {filteredProblems.map((problem) => (
+                  <option key={problem.problem_id} value={problem.problem_id}>
+                    {problem.problem_code}. {problem.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         }
         description="제출 상세에서 소스, 컴파일 로그, 실패 케이스 입출력을 확인합니다."
         title="제출 목록"

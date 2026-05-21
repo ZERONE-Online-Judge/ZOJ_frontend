@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageShell from '@/components/contest/ContestPageShell';
@@ -37,6 +38,7 @@ function ContestSubmissionsContent({
   divisions: Division[];
 }) {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isDocumentVisible = useDocumentVisibility();
   const waitingIds = useRef(new Set<string>());
   const {
@@ -57,6 +59,9 @@ function ContestSubmissionsContent({
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
+  const [selectedProblemId, setSelectedProblemId] = useState(
+    () => searchParams.get('problemId') ?? '',
+  );
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const currentCursor = cursorStack.at(-1);
   const selectedPublicDivisionId =
@@ -91,6 +96,12 @@ function ContestSubmissionsContent({
       setCursorStack([]);
     }
   }, [divisions, publicDivisionId]);
+
+  useEffect(() => {
+    const nextProblemId = searchParams.get('problemId') ?? '';
+    setSelectedProblemId(nextProblemId);
+    setCursorStack([]);
+  }, [searchParams]);
 
   const problemsQuery = useQuery({
     enabled: canViewSubmissions && canViewProblems,
@@ -146,6 +157,7 @@ function ContestSubmissionsContent({
         ? activeParticipantSession?.accessToken
         : undefined,
       currentCursor ?? undefined,
+      selectedProblemId || undefined,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope
@@ -155,6 +167,7 @@ function ContestSubmissionsContent({
         return listSubmissionsPage(contestId, session.accessToken, {
           cursor: currentCursor,
           limit: SUBMISSIONS_PAGE_SIZE,
+          problemId: selectedProblemId || undefined,
         });
       }
 
@@ -162,6 +175,7 @@ function ContestSubmissionsContent({
         cursor: currentCursor,
         divisionId: effectiveDivisionId,
         limit: SUBMISSIONS_PAGE_SIZE,
+        problemId: selectedProblemId || undefined,
       });
     },
     refetchInterval: (query) => {
@@ -182,6 +196,9 @@ function ContestSubmissionsContent({
   const submissions = submissionsQuery.data?.data ?? [];
   const page = submissionsQuery.data?.page;
   const problems = problemsQuery.data ?? [];
+  const availableProblems = effectiveDivisionId
+    ? problems.filter((problem) => problem.division_id === effectiveDivisionId)
+    : problems;
   const participantTeamId = participantContest?.team.participant_team_id;
 
   useEffect(() => {
@@ -251,9 +268,28 @@ function ContestSubmissionsContent({
           divisions={divisions}
           onChange={(divisionId) => {
             setPublicDivisionId(divisionId);
+            setSelectedProblemId('');
             setCursorStack([]);
+            const next = new URLSearchParams(searchParams);
+            next.delete('problemId');
+            setSearchParams(next, { replace: true });
           }}
           value={selectedPublicDivisionId}
+        />
+      ) : null}
+
+      {canViewSubmissions ? (
+        <ProblemFilterSelect
+          onChange={(problemId) => {
+            setSelectedProblemId(problemId);
+            setCursorStack([]);
+            const next = new URLSearchParams(searchParams);
+            if (problemId) next.set('problemId', problemId);
+            else next.delete('problemId');
+            setSearchParams(next, { replace: true });
+          }}
+          problems={availableProblems}
+          value={selectedProblemId}
         />
       ) : null}
 
@@ -372,6 +408,34 @@ function PaginationControls({
         </button>
       </div>
     </div>
+  );
+}
+
+function ProblemFilterSelect({
+  onChange,
+  problems,
+  value,
+}: {
+  onChange: (problemId: string) => void;
+  problems: { problem_id: string; problem_code: string; title: string }[];
+  value: string;
+}) {
+  return (
+    <section className="mt-5 grid gap-2">
+      <span className="text-sm font-black text-slate-700">문제 선택</span>
+      <select
+        className="h-10 w-full max-w-md rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        <option value="">전체</option>
+        {problems.map((problem) => (
+          <option key={problem.problem_id} value={problem.problem_id}>
+            {problem.problem_code}. {problem.title}
+          </option>
+        ))}
+      </select>
+    </section>
   );
 }
 

@@ -76,6 +76,76 @@ type ProblemForm = {
   title: string;
 };
 
+const TEST_SUBMISSION_MAX_WAIT_ATTEMPTS = 60;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+type VerificationCodeKind =
+  | 'accepted'
+  | 'wrong_answer'
+  | 'time_limit_exceeded'
+  | 'memory_limit_exceeded';
+
+type VerificationRunResult = {
+  asset?: ProblemAsset;
+  error?: string;
+  expectedStatus: string;
+  filename: string;
+  submission?: Submission;
+};
+
+const VERIFICATION_CODE_KINDS: {
+  description: string;
+  expectedStatus: VerificationCodeKind;
+  label: string;
+}[] = [
+  {
+    description: '정답으로 통과해야 하는 기준 코드입니다.',
+    expectedStatus: 'accepted',
+    label: '정답 코드',
+  },
+  {
+    description: '약한 테스트케이스를 잡기 위한 오답 코드입니다.',
+    expectedStatus: 'wrong_answer',
+    label: '오답 코드',
+  },
+  {
+    description: '시간 제한 검증용 코드입니다.',
+    expectedStatus: 'time_limit_exceeded',
+    label: '시간초과 코드',
+  },
+  {
+    description: '메모리 제한 검증용 코드입니다.',
+    expectedStatus: 'memory_limit_exceeded',
+    label: '메모리 초과 코드',
+  },
+];
+
+function verificationKindFromAsset(
+  asset: ProblemAsset,
+): VerificationCodeKind | null {
+  const match = asset.storage_key.match(/\/verification-solutions\/([^/]+)\//);
+  const value = match?.[1];
+  return VERIFICATION_CODE_KINDS.some((kind) => kind.expectedStatus === value)
+    ? (value as VerificationCodeKind)
+    : null;
+}
+
+function languageFromFilename(filename: string): JudgeLanguage | null {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.cpp') || lower.endsWith('.cc') || lower.endsWith('.cxx')) {
+    return 'cpp17';
+  }
+  if (lower.endsWith('.c')) return 'c99';
+  if (lower.endsWith('.py')) return 'python313';
+  if (lower.endsWith('.java')) return 'java8';
+  return null;
+}
+
 type ProblemEditorMode = 'create' | 'edit';
 
 const emptyProblemForm: ProblemForm = {
@@ -239,6 +309,9 @@ function OperatorProblemsContent({
   );
   const [testSourceCode, setTestSourceCode] = useState('');
   const [testSubmission, setTestSubmission] = useState<Submission | null>(null);
+  const [verificationResults, setVerificationResults] = useState<
+    Record<string, VerificationRunResult>
+  >({});
   const [uploadProgress, setUploadProgress] = useState('');
   const [uploadProgressValue, setUploadProgressValue] = useState(0);
   const [formError, setFormError] = useState('');
@@ -338,6 +411,28 @@ function OperatorProblemsContent({
       ),
     [assetsQuery.data],
   );
+  const verificationAssetsByKind = useMemo(() => {
+    const grouped = new Map<VerificationCodeKind, ProblemAsset[]>();
+    for (const kind of VERIFICATION_CODE_KINDS) {
+      grouped.set(kind.expectedStatus, []);
+    }
+    for (const asset of assetsQuery.data ?? []) {
+      const kind = verificationKindFromAsset(asset);
+      if (!kind) continue;
+      grouped.get(kind)?.push(asset);
+    }
+    for (const [kind, assets] of grouped) {
+      grouped.set(
+        kind,
+        [...assets].sort((a, b) =>
+          a.original_filename.localeCompare(b.original_filename, 'ko-KR', {
+            numeric: true,
+          }),
+        ),
+      );
+    }
+    return grouped;
+  }, [assetsQuery.data]);
   const supportAssetByRole = useMemo(() => {
     const grouped = new Map<string, ProblemAsset>();
     for (const asset of assetsQuery.data ?? []) {
@@ -479,6 +574,178 @@ function OperatorProblemsContent({
     },
   });
 
+  async function runOperatorTestSubmission(sourceCode: string, filename: string) {
+    const language = languageFromFilename(filename);
+    if (!language) {
+      throw new Error('지원하지 않는 코드 파일입니다. .c, .cpp, .py, .java 파일을 사용해 주세요.');
+    }
+
+    const submitted = await createOperatorTestSubmission(
+      contestId,
+      effectiveSelectedProblemId,
+      token,
+      {
+        language,
+        source_code: sourceCode,
+      },
+    );
+
+    return waitForOperatorTestSubmission(submitted);
+  }
+
+  async function waitForOperatorTestSubmission(submitted: Submission) {
+    let latest = submitted;
+    for (
+      let attempt = 0;
+      isSubmissionPending(latest.status) &&
+      attempt < TEST_SUBMISSION_MAX_WAIT_ATTEMPTS;
+      attempt += 1
+    ) {
+      latest = await waitOperatorTestSubmissionStatus(
+        contestId,
+        latest.submission_id,
+        token,
+        {
+          pollIntervalSeconds: 0.25,
+          waitSeconds: 2,
+        },
+      );
+
+      if (isSubmissionPending(latest.status)) {
+        await sleep(150);
+      }
+    }
+
+    return latest;
+  }
+
+  const uploadVerificationCodeMutation = useMutation({
+    mutationFn: async ({
+      expectedStatus,
+      files,
+    }: {
+      expectedStatus: VerificationCodeKind;
+      files: File[];
+    }) => {
+      const results: VerificationRunResult[] = [];
+
+      for (const file of files) {
+        const tempKey = `${expectedStatus}:${file.name}:${file.lastModified}`;
+        setVerificationResults((previous) => ({
+          ...previous,
+          [tempKey]: {
+            expectedStatus,
+            filename: file.name,
+          },
+        }));
+
+        try {
+          const sourceCode = await file.text();
+          const asset = await uploadProblemAsset(
+            contestId,
+            effectiveSelectedProblemId,
+            token,
+            file,
+            `problems/${effectiveSelectedProblemId}/verification-solutions/${expectedStatus}`,
+          );
+          const submission = await runOperatorTestSubmission(
+            sourceCode,
+            file.name,
+          );
+          const result = {
+            asset,
+            expectedStatus,
+            filename: file.name,
+            submission,
+          };
+          results.push(result);
+          setVerificationResults((previous) => {
+            const next = { ...previous };
+            delete next[tempKey];
+            next[asset.asset_id] = result;
+            return next;
+          });
+        } catch (error) {
+          const result = {
+            error:
+              error instanceof Error
+                ? error.message
+                : '검증 코드 처리에 실패했습니다.',
+            expectedStatus,
+            filename: file.name,
+          };
+          results.push(result);
+          setVerificationResults((previous) => ({
+            ...previous,
+            [tempKey]: result,
+          }));
+        }
+      }
+
+      return results;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-assets',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
+  const runVerificationCodeMutation = useMutation({
+    mutationFn: async ({
+      asset,
+      expectedStatus,
+    }: {
+      asset: ProblemAsset;
+      expectedStatus: VerificationCodeKind;
+    }) => {
+      setVerificationResults((previous) => ({
+        ...previous,
+        [asset.asset_id]: {
+          asset,
+          expectedStatus,
+          filename: asset.original_filename,
+        },
+      }));
+
+      const sourceCode = await getStorageObjectText(asset.storage_key);
+      const submission = await runOperatorTestSubmission(
+        sourceCode,
+        asset.original_filename,
+      );
+      const result = {
+        asset,
+        expectedStatus,
+        filename: asset.original_filename,
+        submission,
+      };
+      setVerificationResults((previous) => ({
+        ...previous,
+        [asset.asset_id]: result,
+      }));
+      return result;
+    },
+    onError: (error, variables) => {
+      setVerificationResults((previous) => ({
+        ...previous,
+        [variables.asset.asset_id]: {
+          asset: variables.asset,
+          error:
+            error instanceof Error
+              ? error.message
+              : '검증 코드 채점에 실패했습니다.',
+          expectedStatus: variables.expectedStatus,
+          filename: variables.asset.original_filename,
+        },
+      }));
+    },
+  });
+
   const deleteAssetMutation = useMutation({
     mutationFn: (asset: ProblemAsset) =>
       deleteProblemAsset(
@@ -491,6 +758,11 @@ function OperatorProblemsContent({
       if (supportFilePreview?.storageKey === deletedAsset.storage_key) {
         setSupportFilePreview(null);
       }
+      setVerificationResults((previous) => {
+        const next = { ...previous };
+        delete next[deletedAsset.asset_id];
+        return next;
+      });
       void queryClient.invalidateQueries({
         queryKey: [
           'operator',
@@ -637,15 +909,12 @@ function OperatorProblemsContent({
         },
       );
 
-      if (isSubmissionPending(submitted.status)) {
-        return waitOperatorTestSubmissionStatus(
-          contestId,
-          submitted.submission_id,
-          token,
-        );
-      }
+      setTestSubmission(submitted);
 
-      return submitted;
+      const latest = await waitForOperatorTestSubmission(submitted);
+      setTestSubmission(latest);
+
+      return latest;
     },
     onSuccess: (submission) => {
       setTestSubmission(submission);
@@ -1310,6 +1579,41 @@ function OperatorProblemsContent({
                       </p>
                     )}
                   </div>
+                  <VerificationCodeSection
+                    assetsByKind={verificationAssetsByKind}
+                    isBusy={
+                      uploadVerificationCodeMutation.isPending ||
+                      runVerificationCodeMutation.isPending
+                    }
+                    onDelete={(asset) => {
+                      if (
+                        window.confirm(
+                          `${asset.original_filename} 검증 코드를 삭제할까요?`,
+                        )
+                      ) {
+                        deleteAssetMutation.mutate(asset);
+                      }
+                    }}
+                    onPreview={(asset, label) =>
+                      setSupportFilePreview({
+                        storageKey: asset.storage_key,
+                        title: `${label} · ${asset.original_filename}`,
+                      })
+                    }
+                    onRun={(asset, expectedStatus) =>
+                      runVerificationCodeMutation.mutate({
+                        asset,
+                        expectedStatus,
+                      })
+                    }
+                    onUpload={(expectedStatus, files) =>
+                      uploadVerificationCodeMutation.mutate({
+                        expectedStatus,
+                        files,
+                      })
+                    }
+                    results={verificationResults}
+                  />
                   <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
                     <p className="text-sm font-black text-indigo-800">
                       .in/.out 파일 묶음
@@ -1382,14 +1686,18 @@ function OperatorProblemsContent({
                     uploadMatchedTestcasesMutation.error ||
                     deleteTestcaseSetMutation.error ||
                     deleteTestcaseMutation.error ||
-                    deleteAssetMutation.error ? (
+                    deleteAssetMutation.error ||
+                    uploadVerificationCodeMutation.error ||
+                    runVerificationCodeMutation.error ? (
                       <ErrorBox
                         error={
                           uploadRoleFileMutation.error ||
                           uploadMatchedTestcasesMutation.error ||
                           deleteTestcaseSetMutation.error ||
                           deleteTestcaseMutation.error ||
-                          deleteAssetMutation.error
+                          deleteAssetMutation.error ||
+                          uploadVerificationCodeMutation.error ||
+                          runVerificationCodeMutation.error
                         }
                         fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
                       />
@@ -1454,6 +1762,8 @@ function OperatorProblemsContent({
           message={
             !form.problemId
               ? '테스트 제출은 저장된 문제를 수정 모드로 가져온 뒤 사용할 수 있습니다.'
+              : testSubmissionMutation.isPending && testSubmission
+                ? `채점 중: ${submissionStatusLabel(testSubmission.status)}`
               : testSubmission
                 ? `결과: ${submissionStatusLabel(testSubmission.status)}${
                     testSubmission.awarded_score !== null
@@ -1772,6 +2082,221 @@ function UploadProgressModal({
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function VerificationCodeSection({
+  assetsByKind,
+  isBusy,
+  onDelete,
+  onPreview,
+  onRun,
+  onUpload,
+  results,
+}: {
+  assetsByKind: Map<VerificationCodeKind, ProblemAsset[]>;
+  isBusy: boolean;
+  onDelete: (asset: ProblemAsset) => void;
+  onPreview: (asset: ProblemAsset, label: string) => void;
+  onRun: (asset: ProblemAsset, expectedStatus: VerificationCodeKind) => void;
+  onUpload: (expectedStatus: VerificationCodeKind, files: File[]) => void;
+  results: Record<string, VerificationRunResult>;
+}) {
+  const pendingResults = Object.entries(results).filter(
+    ([assetId, result]) => !result.asset && assetId.includes(':'),
+  );
+
+  return (
+    <section className="grid gap-4 rounded border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid gap-1">
+          <h3 className="text-sm font-black text-slate-950">
+            검증 코드 채점
+          </h3>
+          <p className="text-xs leading-5 font-bold text-slate-500">
+            정답/오답/시간초과/메모리초과 코드를 여러 개 올려 테스트케이스가
+            의도대로 판정하는지 확인합니다.
+          </p>
+        </div>
+        {isBusy ? (
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">
+            채점 중
+          </span>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3">
+        {VERIFICATION_CODE_KINDS.map((kind) => {
+          const assets = assetsByKind.get(kind.expectedStatus) ?? [];
+
+          return (
+            <section
+              className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+              key={kind.expectedStatus}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="grid gap-1">
+                  <p className="text-sm font-black text-slate-900">
+                    {kind.label}
+                  </p>
+                  <p className="text-xs font-bold text-slate-500">
+                    기대 결과: {submissionStatusLabel(kind.expectedStatus)} ·{' '}
+                    {kind.description}
+                  </p>
+                </div>
+                <label className="inline-flex h-9 cursor-pointer items-center rounded bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
+                  파일 선택
+                  <input
+                    accept=".c,.cc,.cpp,.cxx,.py,.java,text/plain"
+                    className="sr-only"
+                    disabled={isBusy}
+                    multiple
+                    onChange={(event) => {
+                      const files = Array.from(event.currentTarget.files ?? []);
+                      if (files.length) onUpload(kind.expectedStatus, files);
+                      event.currentTarget.value = '';
+                    }}
+                    type="file"
+                  />
+                </label>
+              </div>
+
+              {assets.length ? (
+                <div className="grid gap-2">
+                  {assets.map((asset) => (
+                    <VerificationCodeRow
+                      asset={asset}
+                      expectedStatus={kind.expectedStatus}
+                      key={asset.asset_id}
+                      label={kind.label}
+                      onDelete={onDelete}
+                      onPreview={onPreview}
+                      onRun={onRun}
+                      result={results[asset.asset_id]}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs font-bold text-slate-500">
+                  등록된 {kind.label}가 없습니다.
+                </p>
+              )}
+            </section>
+          );
+        })}
+      </div>
+
+      {pendingResults.length ? (
+        <div className="grid gap-2">
+          {pendingResults.map(([key, result]) => (
+            <VerificationResultSummary key={key} result={result} />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function VerificationCodeRow({
+  asset,
+  expectedStatus,
+  label,
+  onDelete,
+  onPreview,
+  onRun,
+  result,
+}: {
+  asset: ProblemAsset;
+  expectedStatus: VerificationCodeKind;
+  label: string;
+  onDelete: (asset: ProblemAsset) => void;
+  onPreview: (asset: ProblemAsset, label: string) => void;
+  onRun: (asset: ProblemAsset, expectedStatus: VerificationCodeKind) => void;
+  result?: VerificationRunResult;
+}) {
+  return (
+    <div className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid min-w-0 gap-2">
+        <button
+          className="w-fit max-w-full truncate text-left text-xs font-black text-indigo-700 hover:text-indigo-950"
+          onClick={() => onPreview(asset, label)}
+          title={asset.original_filename}
+          type="button"
+        >
+          {asset.original_filename}
+        </button>
+        {result ? <VerificationResultSummary result={result} /> : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50"
+          onClick={() => onPreview(asset, label)}
+          type="button"
+        >
+          보기
+        </button>
+        <button
+          className="h-9 rounded border border-emerald-200 px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50"
+          onClick={() => onRun(asset, expectedStatus)}
+          type="button"
+        >
+          채점
+        </button>
+        <button
+          className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50"
+          onClick={() => onDelete(asset)}
+          type="button"
+        >
+          삭제
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VerificationResultSummary({
+  result,
+}: {
+  result: VerificationRunResult;
+}) {
+  const actualStatus = result.submission?.status;
+  const isPending = actualStatus ? isSubmissionPending(actualStatus) : false;
+  const passed =
+    actualStatus && !isPending && actualStatus === result.expectedStatus;
+  const failed = actualStatus && !isPending && actualStatus !== result.expectedStatus;
+
+  return (
+    <div
+      className={[
+        'grid gap-1 rounded px-3 py-2 text-xs font-bold',
+        result.error
+          ? 'border border-rose-200 bg-rose-50 text-rose-700'
+          : passed
+            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            : failed
+              ? 'border border-amber-200 bg-amber-50 text-amber-800'
+              : 'border border-slate-200 bg-slate-50 text-slate-600',
+      ].join(' ')}
+    >
+      <p className="font-black">
+        {result.filename} · 기대 {submissionStatusLabel(result.expectedStatus)}
+        {actualStatus ? ` / 실제 ${submissionStatusLabel(actualStatus)}` : ' / 채점 대기'}
+        {passed ? ' · 통과' : failed ? ' · 확인 필요' : ''}
+      </p>
+      {result.submission?.judge_message ? (
+        <p className="break-words text-[11px] leading-5">
+          {result.submission.judge_message}
+        </p>
+      ) : null}
+      {result.submission?.compile_message ? (
+        <p className="break-words text-[11px] leading-5">
+          {result.submission.compile_message}
+        </p>
+      ) : null}
+      {result.error ? (
+        <p className="break-words text-[11px] leading-5">{result.error}</p>
+      ) : null}
     </div>
   );
 }

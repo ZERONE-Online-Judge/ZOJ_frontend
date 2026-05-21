@@ -274,7 +274,7 @@ function ContestProblemDetailContent({
         status: 'loading',
       });
     },
-    onSuccess: (_submission, { draftKey }: SubmitVariables) => {
+    onSuccess: (submission, { draftKey }: SubmitVariables) => {
       setSubmitFeedback(draftKey, {
         message: '제출이 접수되었습니다.',
         status: 'ready',
@@ -288,7 +288,9 @@ function ContestProblemDetailContent({
       void queryClient.invalidateQueries({
         queryKey: ['contest-problems', contestId],
       });
-      navigate(`/contests/${contestId}/submissions`);
+      navigate(
+        `/contests/${contestId}/submissions?problemId=${encodeURIComponent(submission.problem_id)}`,
+      );
     },
     onError: (error, { draftKey }: SubmitVariables) => {
       setSubmitFeedback(draftKey, {
