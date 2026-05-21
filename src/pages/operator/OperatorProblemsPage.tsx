@@ -49,6 +49,7 @@ import {
 } from '@/domains/submissionScoreboard/api';
 import {
   parseJudgeDetail,
+  submissionProgressPercent,
   submissionProgressText,
   submissionStatusLabel,
   isSubmissionPending,
@@ -616,8 +617,13 @@ function OperatorProblemsContent({
     return waitForOperatorTestSubmission(submitted);
   }
 
-  async function waitForOperatorTestSubmission(submitted: Submission) {
+  async function waitForOperatorTestSubmission(
+    submitted: Submission,
+    onUpdate?: (submission: Submission) => void,
+  ) {
     let latest = submitted;
+    onUpdate?.(latest);
+
     for (
       let attempt = 0;
       isSubmissionPending(latest.status) &&
@@ -629,13 +635,14 @@ function OperatorProblemsContent({
         latest.submission_id,
         token,
         {
-          pollIntervalSeconds: 0.25,
-          waitSeconds: 2,
+          pollIntervalSeconds: 0.1,
+          waitSeconds: 0.35,
         },
       );
+      onUpdate?.(latest);
 
       if (isSubmissionPending(latest.status)) {
-        await sleep(150);
+        await sleep(100);
       }
     }
 
@@ -934,8 +941,10 @@ function OperatorProblemsContent({
 
       setTestSubmission(submitted);
 
-      const latest = await waitForOperatorTestSubmission(submitted);
-      setTestSubmission(latest);
+      const latest = await waitForOperatorTestSubmission(
+        submitted,
+        setTestSubmission,
+      );
 
       return latest;
     },
@@ -2339,6 +2348,7 @@ function OperatorPreviewJudgeResult({
 
   const detail = parseJudgeDetail(submission.judge_message);
   const progressText = submissionProgressText(submission);
+  const progressPercent = submissionProgressPercent(submission);
   const runtime = formatRuntime(
     submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms,
   );
@@ -2380,7 +2390,7 @@ function OperatorPreviewJudgeResult({
             <div
               className="h-full rounded-full bg-amber-400 transition-all"
               style={{
-                width: `${Math.max(0, Math.min(100, submission.progress_percent ?? 0))}%`,
+                width: `${progressPercent ?? 0}%`,
               }}
             />
           </div>
