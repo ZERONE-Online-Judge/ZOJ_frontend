@@ -48,6 +48,8 @@ import {
   waitOperatorTestSubmissionStatus,
 } from '@/domains/submissionScoreboard/api';
 import {
+  parseJudgeDetail,
+  submissionProgressText,
   submissionStatusLabel,
   isSubmissionPending,
 } from '@/domains/submissionScoreboard/status';
@@ -144,6 +146,27 @@ function languageFromFilename(filename: string): JudgeLanguage | null {
   if (lower.endsWith('.py')) return 'python313';
   if (lower.endsWith('.java')) return 'java8';
   return null;
+}
+
+function formatMemory(value?: number | null) {
+  if (value === undefined || value === null) return '-';
+  return `${value.toLocaleString('ko-KR')} KB`;
+}
+
+function formatRuntime(value?: number | null) {
+  if (value === undefined || value === null) return '-';
+  return `${value.toLocaleString('ko-KR')} ms`;
+}
+
+function codeLength(submission: Submission) {
+  const length =
+    submission.code_length_bytes ??
+    submission.source_code_length ??
+    submission.source_code?.length ??
+    null;
+  return typeof length === 'number'
+    ? `${length.toLocaleString('ko-KR')} B`
+    : '-';
 }
 
 type ProblemEditorMode = 'create' | 'edit';
@@ -1797,8 +1820,8 @@ function OperatorProblemsContent({
           onSubmit={() => testSubmissionMutation.mutate()}
           problem={previewProblem}
           sourceCode={testSourceCode}
+          testSubmission={testSubmission}
           testLanguage={testLanguage}
-          testSubmissionStatusCode={testSubmission?.status ?? ''}
         />
       ) : null}
     </PageLayout>
@@ -2301,6 +2324,115 @@ function VerificationResultSummary({
   );
 }
 
+function OperatorPreviewJudgeResult({
+  submission,
+}: {
+  submission: Submission | null;
+}) {
+  if (!submission) {
+    return (
+      <section className="mx-7 mb-7 rounded border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-bold text-slate-500">
+        테스트 제출 후 채점 진행률과 실패 케이스 상세가 여기에 표시됩니다.
+      </section>
+    );
+  }
+
+  const detail = parseJudgeDetail(submission.judge_message);
+  const progressText = submissionProgressText(submission);
+  const runtime = formatRuntime(
+    submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms,
+  );
+  const memory = formatMemory(
+    submission.memory_kb ??
+      submission.memory_usage_kb ??
+      submission.max_memory_kb,
+  );
+
+  return (
+    <section className="mx-7 mb-7 grid gap-4 rounded border border-slate-200 bg-white px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black text-indigo-600 uppercase">
+            Judge result
+          </p>
+          <h3 className="text-lg font-black text-slate-950">
+            {submissionStatusLabel(submission.status)}
+            {progressText ? ` · ${progressText}` : ''}
+          </h3>
+        </div>
+        <span
+          className={[
+            'rounded-full px-3 py-1 text-xs font-black',
+            isSubmissionPending(submission.status)
+              ? 'bg-amber-50 text-amber-700'
+              : submission.status === 'accepted'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-rose-50 text-rose-700',
+          ].join(' ')}
+        >
+          {submission.status}
+        </span>
+      </div>
+
+      {isSubmissionPending(submission.status) ? (
+        <div className="grid gap-2">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-amber-400 transition-all"
+              style={{
+                width: `${Math.max(0, Math.min(100, submission.progress_percent ?? 0))}%`,
+              }}
+            />
+          </div>
+          <p className="text-xs font-bold text-slate-500">
+            채점 서버 응답을 기다리는 중입니다.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <PreviewJudgeMetric label="실패 케이스" value={String(submission.failed_testcase_order ?? '-')} />
+        <PreviewJudgeMetric label="실패 파일" value={detail.caseFiles || '-'} />
+        <PreviewJudgeMetric label="소요 시간" value={runtime} />
+        <PreviewJudgeMetric label="사용 메모리" value={memory} />
+        <PreviewJudgeMetric label="언어" value={String(submission.language)} />
+        <PreviewJudgeMetric label="코드 길이" value={codeLength(submission)} />
+        <PreviewJudgeMetric label="제출 ID" value={submission.submission_id} />
+      </div>
+
+      <PreviewJudgeLog label="컴파일 로그" value={submission.compile_message || '-'} />
+      <PreviewJudgeLog label="채점 로그" value={submission.judge_message || '-'} />
+      <div className="grid gap-3 xl:grid-cols-3">
+        <PreviewJudgeLog label="실패 입력" value={detail.inputText || '-'} />
+        <PreviewJudgeLog label="기대 출력" value={detail.expectedText || '-'} />
+        <PreviewJudgeLog label="실제 출력" value={detail.actualText || '-'} />
+      </div>
+    </section>
+  );
+}
+
+function PreviewJudgeMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+      <span className="text-[11px] font-black text-slate-500">{label}</span>
+      <strong className="text-xs font-black break-words text-slate-950">
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function PreviewJudgeLog({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="grid gap-2 text-xs font-black text-slate-700">
+      {label}
+      <pre className="max-h-56 overflow-auto rounded border border-slate-200 bg-slate-950 px-3 py-2 font-mono text-[11px] leading-5 whitespace-pre-wrap text-slate-50">
+        {value}
+      </pre>
+    </label>
+  );
+}
+
 function ProblemPreviewModal({
   assets,
   canSubmit,
@@ -2313,8 +2445,8 @@ function ProblemPreviewModal({
   onSubmit,
   problem,
   sourceCode,
+  testSubmission,
   testLanguage,
-  testSubmissionStatusCode,
 }: {
   assets: ProblemAsset[];
   canSubmit: boolean;
@@ -2327,8 +2459,8 @@ function ProblemPreviewModal({
   onSubmit: () => void;
   problem: Problem;
   sourceCode: string;
+  testSubmission: Submission | null;
   testLanguage: JudgeLanguage;
-  testSubmissionStatusCode: string;
 }) {
   return (
     <div
@@ -2373,14 +2505,7 @@ function ProblemPreviewModal({
               onSubmit={onSubmit}
               sourceCode={sourceCode}
             />
-            {testSubmissionStatusCode ? (
-              <div className="mx-7 mb-7 rounded border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-600">
-                관리자 테스트 제출 상태 코드:{' '}
-                <code className="text-indigo-700">
-                  {testSubmissionStatusCode}
-                </code>
-              </div>
-            ) : null}
+            <OperatorPreviewJudgeResult submission={testSubmission} />
           </div>
         </div>
       </section>

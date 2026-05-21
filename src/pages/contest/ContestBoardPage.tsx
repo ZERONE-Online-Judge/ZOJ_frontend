@@ -67,8 +67,7 @@ function ContestBoardContent({
   const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
     null,
   );
-  const [selectedQuestion, setSelectedQuestion] =
-    useState<ContestQuestion | null>(null);
+  const [expandedQuestionId, setExpandedQuestionId] = useState('');
   const [isWritingQuestion, setIsWritingQuestion] = useState(false);
   const [questionForm, setQuestionForm] =
     useState<QuestionFormState>(emptyQuestionForm);
@@ -150,7 +149,7 @@ function ContestBoardContent({
       setQuestionForm(emptyQuestionForm);
       setFormError('');
       setIsWritingQuestion(false);
-      setSelectedQuestion(question);
+      setExpandedQuestionId(question.contest_question_id);
       void queryClient.invalidateQueries({
         queryKey: ['contest-questions', contestId],
       });
@@ -221,7 +220,12 @@ function ContestBoardContent({
               setFormError('');
             }}
             onChangeForm={setQuestionForm}
-            onSelect={setSelectedQuestion}
+            expandedQuestionId={expandedQuestionId}
+            onToggleQuestion={(questionId) =>
+              setExpandedQuestionId((current) =>
+                current === questionId ? '' : questionId,
+              )
+            }
             onStartWrite={() => {
               setIsWritingQuestion(true);
               setFormError('');
@@ -246,12 +250,6 @@ function ContestBoardContent({
         <NoticeDetail
           notice={selectedNotice}
           onClose={() => setSelectedNotice(null)}
-        />
-      ) : null}
-      {selectedQuestion ? (
-        <QuestionDetail
-          onClose={() => setSelectedQuestion(null)}
-          question={selectedQuestion}
         />
       ) : null}
     </ContestPageFrame>
@@ -374,6 +372,7 @@ function NoticeDetail({
 }
 
 function QuestionPanel({
+  expandedQuestionId,
   form,
   formError,
   isError,
@@ -383,11 +382,12 @@ function QuestionPanel({
   mutationError,
   onCancelWrite,
   onChangeForm,
-  onSelect,
+  onToggleQuestion,
   onStartWrite,
   onSubmit,
   questions,
 }: {
+  expandedQuestionId: string;
   form: QuestionFormState;
   formError: string;
   isError: boolean;
@@ -397,7 +397,7 @@ function QuestionPanel({
   mutationError: unknown;
   onCancelWrite: () => void;
   onChangeForm: (form: QuestionFormState) => void;
-  onSelect: (question: ContestQuestion) => void;
+  onToggleQuestion: (questionId: string) => void;
   onStartWrite: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   questions: ContestQuestion[];
@@ -440,7 +440,11 @@ function QuestionPanel({
         />
       ) : null}
 
-      <QuestionList onSelect={onSelect} questions={questions} />
+      <QuestionList
+        expandedQuestionId={expandedQuestionId}
+        onToggleQuestion={onToggleQuestion}
+        questions={questions}
+      />
 
       {!isLoading && questions.length === 0 ? (
         <PageNotice message={contestBoardText.emptyQuestions} status="idle" />
@@ -539,69 +543,74 @@ function QuestionForm({
 }
 
 function QuestionList({
+  expandedQuestionId,
+  onToggleQuestion,
   questions,
-  onSelect,
 }: {
+  expandedQuestionId: string;
+  onToggleQuestion: (questionId: string) => void;
   questions: ContestQuestion[];
-  onSelect: (question: ContestQuestion) => void;
 }) {
   return (
     <ul className="divide-y divide-slate-200 border-y border-slate-200">
-      {questions.map((question) => (
-        <li key={question.contest_question_id}>
-          <button
-            className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-slate-50"
-            onClick={() => onSelect(question)}
-            type="button"
-          >
-            <span className="flex min-w-0 flex-wrap items-center gap-3">
-              <VisibilityBadge visibility={question.visibility} />
-              <InfoPill>{contestBoardText.detailVisibilityQuestioner}</InfoPill>
-              <strong className="min-w-0 text-base font-black break-keep text-slate-950 sm:truncate">
-                {question.title}
-              </strong>
-            </span>
-            <span className="shrink-0 text-sm font-medium text-slate-500">
-              {question.author_name ?? contestBoardText.authorFallback} ·{' '}
-              {formatDateTime(question.created_at)}
-            </span>
-          </button>
-        </li>
-      ))}
+      {questions.map((question) => {
+        const isExpanded = expandedQuestionId === question.contest_question_id;
+
+        return (
+          <li key={question.contest_question_id}>
+            <button
+              aria-expanded={isExpanded}
+              className={[
+                'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-slate-50',
+                isExpanded ? 'bg-slate-50' : '',
+              ].join(' ')}
+              onClick={() => onToggleQuestion(question.contest_question_id)}
+              type="button"
+            >
+              <span className="flex min-w-0 flex-wrap items-center gap-3">
+                <VisibilityBadge visibility={question.visibility} />
+                <strong className="min-w-0 text-base font-black break-keep text-slate-950 sm:truncate">
+                  {question.title}
+                </strong>
+                <AnswerCountBadge count={question.answers.length} />
+              </span>
+              <span className="shrink-0 text-sm font-medium text-slate-500">
+                {question.author_name ?? contestBoardText.authorFallback} ·{' '}
+                {formatDateTime(question.created_at)}
+              </span>
+            </button>
+            {isExpanded ? <QuestionInlineDetail question={question} /> : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function QuestionDetail({
-  question,
-  onClose,
-}: {
-  question: ContestQuestion;
-  onClose: () => void;
-}) {
+function QuestionInlineDetail({ question }: { question: ContestQuestion }) {
   return (
-    <BoardOverlay>
-      <article className="grid w-full max-w-4xl gap-7 rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <header className="grid gap-5">
-          <h2 className="text-2xl font-black break-keep text-slate-950">
-            {question.title}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <InfoPill>
-              {question.author_name ?? contestBoardText.authorFallback}
-            </InfoPill>
-            <InfoPill>{formatDateTime(question.created_at)}</InfoPill>
-          </div>
-        </header>
-
-        <div className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
-          {question.body}
+    <article className="grid gap-5 bg-white px-4 pb-6">
+      <div className="rounded border border-slate-200 bg-white px-5 py-4">
+        <div className="mb-3 flex flex-wrap gap-2">
+          <InfoPill>{question.author_name ?? contestBoardText.authorFallback}</InfoPill>
+          <InfoPill>{formatDateTime(question.created_at)}</InfoPill>
         </div>
+        <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
+          {question.body}
+        </p>
+      </div>
 
-        {question.answers.length > 0 ? (
-          <section className="grid gap-5 border-t border-slate-200 pt-6">
-            {question.answers.map((answer) => (
-              <article className="grid gap-4" key={answer.contest_answer_id}>
+      {question.answers.length > 0 ? (
+        <section className="grid gap-3 pl-4 sm:pl-8">
+          {question.answers.map((answer) => (
+            <article
+              className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
+              key={answer.contest_answer_id}
+            >
+              <span className="pt-2 text-2xl leading-none font-black text-slate-300">
+                ㄴ
+              </span>
+              <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-5 py-4">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">
                     {contestBoardText.answerBadge}
@@ -611,18 +620,33 @@ function QuestionDetail({
                 <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
                   {answer.body}
                 </p>
-              </article>
-            ))}
-          </section>
-        ) : null}
-
-        <div className="flex justify-end">
-          <DarkButton onClick={onClose}>
-            {contestBoardText.closeButton}
-          </DarkButton>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <div className="pl-4 sm:pl-8">
+          <p className="rounded border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-slate-500">
+            아직 답변이 없습니다.
+          </p>
         </div>
-      </article>
-    </BoardOverlay>
+      )}
+    </article>
+  );
+}
+
+function AnswerCountBadge({ count }: { count: number }) {
+  return (
+    <span
+      className={[
+        'inline-flex h-7 items-center rounded-full px-3 text-xs font-black',
+        count > 0
+          ? 'bg-violet-100 text-violet-700'
+          : 'bg-amber-50 text-amber-700',
+      ].join(' ')}
+    >
+      {count > 0 ? `답변 ${count}건` : '답변 없음'}
+    </span>
   );
 }
 
