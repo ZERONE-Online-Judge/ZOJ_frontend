@@ -40,7 +40,7 @@ const emptyQuestionForm: QuestionFormState = {
   visibility: 'public',
 };
 
-const NOTICE_PAGE_SIZE = 20;
+const NOTICE_PAGE_SIZE = 5;
 
 function ContestBoardContent({
   contest,

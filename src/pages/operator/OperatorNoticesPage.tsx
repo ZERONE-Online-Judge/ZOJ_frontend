@@ -43,7 +43,7 @@ const emptyNoticeForm: NoticeForm = {
 };
 
 type NoticeEditorMode = 'notice' | 'emergency';
-const NOTICE_PAGE_SIZE = 20;
+const NOTICE_PAGE_SIZE = 5;
 
 export default function OperatorNoticesPage() {
   const { contestId } = useParams();
