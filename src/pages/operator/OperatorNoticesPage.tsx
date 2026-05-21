@@ -43,6 +43,7 @@ const emptyNoticeForm: NoticeForm = {
 };
 
 type NoticeEditorMode = 'notice' | 'emergency';
+const NOTICE_PAGE_SIZE = 20;
 
 export default function OperatorNoticesPage() {
   const { contestId } = useParams();
@@ -78,6 +79,8 @@ function OperatorNoticesContent({
   const [emergencyNotice, setEmergencyNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [editorMode, setEditorMode] = useState<NoticeEditorMode>('notice');
+  const [expandedNoticeId, setExpandedNoticeId] = useState('');
+  const [noticePage, setNoticePage] = useState(1);
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -91,6 +94,11 @@ function OperatorNoticesContent({
 
   const contest = dashboardQuery.data?.contest;
   const notices = noticesQuery.data ?? [];
+  const totalNoticePages = Math.max(1, Math.ceil(notices.length / NOTICE_PAGE_SIZE));
+  const pagedNotices = notices.slice(
+    (noticePage - 1) * NOTICE_PAGE_SIZE,
+    noticePage * NOTICE_PAGE_SIZE,
+  );
 
   const saveNoticeMutation = useMutation({
     mutationFn: () =>
@@ -172,6 +180,11 @@ function OperatorNoticesContent({
     );
     if (!confirmed) return;
     deleteNoticeMutation.mutate(notice.contest_notice_id);
+  }
+
+  function changeNoticePage(page: number) {
+    setNoticePage(page);
+    setExpandedNoticeId('');
   }
 
   return (
@@ -343,7 +356,7 @@ function OperatorNoticesContent({
         >
           <div className="divide-y divide-slate-100 rounded border border-slate-200">
             {notices.length > 0 ? (
-              notices.map((notice) => (
+              pagedNotices.map((notice) => (
                 <article
                   className="grid gap-3 px-4 py-4"
                   key={notice.contest_notice_id}
@@ -369,15 +382,25 @@ function OperatorNoticesContent({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <button
                       className="min-w-0 flex-1 text-left"
-                      onClick={() => editNotice(notice)}
+                      onClick={() =>
+                        setExpandedNoticeId((current) =>
+                          current === notice.contest_notice_id
+                            ? ''
+                            : notice.contest_notice_id,
+                        )
+                      }
                       type="button"
                     >
                       <strong className="text-lg font-black break-keep text-slate-950">
                         {notice.title}
                       </strong>
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
-                        {notice.body}
-                      </p>
+                    </button>
+                    <button
+                      className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"
+                      onClick={() => editNotice(notice)}
+                      type="button"
+                    >
+                      수정
                     </button>
                     <button
                       className="h-9 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
@@ -388,6 +411,11 @@ function OperatorNoticesContent({
                       삭제
                     </button>
                   </div>
+                  {expandedNoticeId === notice.contest_notice_id ? (
+                    <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 whitespace-pre-wrap text-slate-700">
+                      {notice.body}
+                    </p>
+                  ) : null}
                 </article>
               ))
             ) : (
@@ -396,6 +424,13 @@ function OperatorNoticesContent({
               </p>
             )}
           </div>
+          {notices.length > NOTICE_PAGE_SIZE ? (
+            <Pagination
+              currentPage={noticePage}
+              onChange={changeNoticePage}
+              totalPages={totalNoticePages}
+            />
+          ) : null}
           {deleteNoticeMutation.error ? (
             <div className="mt-3">
               <ErrorBox
@@ -407,6 +442,38 @@ function OperatorNoticesContent({
         </OperatorPanel>
       </div>
     </PageLayout>
+  );
+}
+
+function Pagination({
+  currentPage,
+  onChange,
+  totalPages,
+}: {
+  currentPage: number;
+  onChange: (page: number) => void;
+  totalPages: number;
+}) {
+  return (
+    <nav className="mt-4 flex flex-wrap items-center justify-center gap-2">
+      {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+        (page) => (
+          <button
+            className={[
+              'h-9 min-w-9 rounded border px-3 text-sm font-black transition',
+              currentPage === page
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            ].join(' ')}
+            key={page}
+            onClick={() => onChange(page)}
+            type="button"
+          >
+            {page}
+          </button>
+        ),
+      )}
+    </nav>
   );
 }
 

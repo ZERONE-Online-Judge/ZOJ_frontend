@@ -148,7 +148,9 @@ function NoticePreview({
     <NoticeSection
       notices={notices.map((notice) => ({
         date: formatDateTime(notice.published_at),
-        href: `/contests/${contestId}/board`,
+        href: `/contests/${contestId}/board?noticeId=${encodeURIComponent(
+          notice.contest_notice_id,
+        )}`,
         label: noticeBadgeLabel(notice),
         title: notice.title,
         tone: notice.pinned ? 'pinned' : 'default',

@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
@@ -39,6 +40,8 @@ const emptyQuestionForm: QuestionFormState = {
   visibility: 'public',
 };
 
+const NOTICE_PAGE_SIZE = 20;
+
 function ContestBoardContent({
   contest,
   contestId,
@@ -56,6 +59,8 @@ function ContestBoardContent({
   const hasSessionAccess = Boolean(
     participantContest || activeParticipantSession,
   );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedNoticeId = searchParams.get('noticeId') ?? '';
   const noticeAccess = contestResourceAccess(contest, 'notice');
   const boardAccess = contestResourceAccess(contest, 'board');
   const phase = contestAccessPhase(contest);
@@ -64,9 +69,8 @@ function ContestBoardContent({
     !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);
   const canViewQuestions =
     !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
-  const [selectedNotice, setSelectedNotice] = useState<ContestNotice | null>(
-    null,
-  );
+  const [expandedNoticeId, setExpandedNoticeId] = useState(requestedNoticeId);
+  const [noticePage, setNoticePage] = useState(1);
   const [expandedQuestionId, setExpandedQuestionId] = useState('');
   const [isWritingQuestion, setIsWritingQuestion] = useState(false);
   const [questionForm, setQuestionForm] =
@@ -121,6 +125,21 @@ function ContestBoardContent({
       ),
     [noticesQuery.data],
   );
+  const targetNoticeIndex = requestedNoticeId
+    ? notices.findIndex((notice) => notice.contest_notice_id === requestedNoticeId)
+    : -1;
+  const currentNoticePage =
+    targetNoticeIndex >= 0
+      ? Math.floor(targetNoticeIndex / NOTICE_PAGE_SIZE) + 1
+      : noticePage;
+  const totalNoticePages = Math.max(
+    1,
+    Math.ceil(notices.length / NOTICE_PAGE_SIZE),
+  );
+  const pagedNotices = notices.slice(
+    (currentNoticePage - 1) * NOTICE_PAGE_SIZE,
+    currentNoticePage * NOTICE_PAGE_SIZE,
+  );
   const questions = useMemo(
     () =>
       [...(questionsQuery.data ?? [])].sort(
@@ -172,6 +191,18 @@ function ContestBoardContent({
     createQuestionMutation.mutate();
   }
 
+  function toggleNotice(noticeId: string) {
+    const nextNoticeId = expandedNoticeId === noticeId ? '' : noticeId;
+    setExpandedNoticeId(nextNoticeId);
+    setSearchParams(nextNoticeId ? { noticeId: nextNoticeId } : {});
+  }
+
+  function changeNoticePage(page: number) {
+    setNoticePage(page);
+    setExpandedNoticeId('');
+    setSearchParams({});
+  }
+
   return (
     <ContestPageFrame>
       <PageHeading
@@ -187,10 +218,15 @@ function ContestBoardContent({
         <section>
           {canViewNotices ? (
             <NoticePanel
+              currentPage={currentNoticePage}
+              expandedNoticeId={expandedNoticeId}
               isError={noticesQuery.isError}
               isLoading={noticesQuery.isLoading}
-              notices={notices}
-              onSelect={setSelectedNotice}
+              notices={pagedNotices}
+              onChangePage={changeNoticePage}
+              onToggle={toggleNotice}
+              showPagination={notices.length > NOTICE_PAGE_SIZE}
+              totalPages={totalNoticePages}
             />
           ) : (
             <PageNotice
@@ -245,27 +281,30 @@ function ContestBoardContent({
           )}
         </section>
       </div>
-
-      {selectedNotice ? (
-        <NoticeDetail
-          notice={selectedNotice}
-          onClose={() => setSelectedNotice(null)}
-        />
-      ) : null}
     </ContestPageFrame>
   );
 }
 
 function NoticePanel({
+  currentPage,
+  expandedNoticeId,
   isError,
   isLoading,
   notices,
-  onSelect,
+  onChangePage,
+  onToggle,
+  showPagination,
+  totalPages,
 }: {
+  currentPage: number;
+  expandedNoticeId: string;
   isError: boolean;
   isLoading: boolean;
   notices: ContestNotice[];
-  onSelect: (notice: ContestNotice) => void;
+  onChangePage: (page: number) => void;
+  onToggle: (noticeId: string) => void;
+  showPagination: boolean;
+  totalPages: number;
 }) {
   return (
     <section className="grid gap-6">
@@ -281,32 +320,87 @@ function NoticePanel({
       ) : null}
 
       <ul className="divide-y divide-slate-200 border-y border-slate-200">
-        {notices.map((notice) => (
-          <li key={notice.contest_notice_id}>
-            <button
-              className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-slate-50"
-              onClick={() => onSelect(notice)}
-              type="button"
-            >
-              <NoticeBadge
-                emergency={notice.emergency}
-                pinned={notice.pinned}
-              />
-              <strong className="min-w-0 text-base font-black break-keep text-slate-950 sm:truncate">
-                {notice.title}
-              </strong>
-              <time className="shrink-0 text-sm font-medium text-slate-500">
-                {formatDateTime(notice.published_at)}
-              </time>
-            </button>
-          </li>
-        ))}
+        {notices.map((notice) => {
+          const isExpanded = expandedNoticeId === notice.contest_notice_id;
+
+          return (
+            <li key={notice.contest_notice_id}>
+              <button
+                aria-expanded={isExpanded}
+                className={[
+                  'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-slate-50',
+                  isExpanded ? 'bg-slate-50' : '',
+                ].join(' ')}
+                onClick={() => onToggle(notice.contest_notice_id)}
+                type="button"
+              >
+                <NoticeBadge
+                  emergency={notice.emergency}
+                  pinned={notice.pinned}
+                />
+                <strong className="min-w-0 text-base font-black break-keep text-slate-950 sm:truncate">
+                  {notice.title}
+                </strong>
+                <time className="shrink-0 text-sm font-medium text-slate-500">
+                  {formatDateTime(notice.published_at)}
+                </time>
+              </button>
+              {isExpanded ? (
+                <article className="bg-white px-4 pb-6">
+                  <p className="rounded border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 whitespace-pre-wrap text-slate-950">
+                    {notice.body}
+                  </p>
+                </article>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
+
+      {showPagination ? (
+        <Pagination
+          currentPage={currentPage}
+          onChange={onChangePage}
+          totalPages={totalPages}
+        />
+      ) : null}
 
       {!isLoading && notices.length === 0 ? (
         <PageNotice message={contestBoardText.emptyNotices} status="idle" />
       ) : null}
     </section>
+  );
+}
+
+function Pagination({
+  currentPage,
+  onChange,
+  totalPages,
+}: {
+  currentPage: number;
+  onChange: (page: number) => void;
+  totalPages: number;
+}) {
+  return (
+    <nav className="flex flex-wrap items-center justify-center gap-2">
+      {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+        (page) => (
+          <button
+            className={[
+              'h-9 min-w-9 rounded border px-3 text-sm font-black transition',
+              currentPage === page
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            ].join(' ')}
+            key={page}
+            onClick={() => onChange(page)}
+            type="button"
+          >
+            {page}
+          </button>
+        ),
+      )}
+    </nav>
   );
 }
 
@@ -333,41 +427,6 @@ function NoticeBadge({
     >
       {label}
     </span>
-  );
-}
-
-function NoticeDetail({
-  notice,
-  onClose,
-}: {
-  notice: ContestNotice;
-  onClose: () => void;
-}) {
-  return (
-    <BoardOverlay>
-      <article className="grid w-full max-w-4xl gap-7 rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <header className="grid gap-5">
-          <h2 className="text-2xl font-black break-keep text-slate-950">
-            {notice.title}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <InfoPill>{contestBoardText.noticePanelTitle}</InfoPill>
-            <InfoPill>{formatDateTime(notice.published_at)}</InfoPill>
-            <InfoPill>{contestBoardText.noticeDetailMeta}</InfoPill>
-          </div>
-        </header>
-
-        <div className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
-          {notice.body}
-        </div>
-
-        <div className="flex justify-end">
-          <DarkButton onClick={onClose}>
-            {contestBoardText.closeButton}
-          </DarkButton>
-        </div>
-      </article>
-    </BoardOverlay>
   );
 }
 
@@ -647,14 +706,6 @@ function AnswerCountBadge({ count }: { count: number }) {
     >
       {count > 0 ? `답변 ${count}건` : '답변 없음'}
     </span>
-  );
-}
-
-function BoardOverlay({ children }: { children: ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-white/85 px-4 py-24 backdrop-blur-[1px]">
-      {children}
-    </div>
   );
 }
 

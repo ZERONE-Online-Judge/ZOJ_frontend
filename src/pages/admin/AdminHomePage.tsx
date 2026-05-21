@@ -36,11 +36,45 @@ const emptyNoticeForm: NoticeFormState = {
   title: '',
 };
 
+const NOTICE_PAGE_SIZE = 20;
+
 export default function AdminHomePage() {
   return (
     <AdminAccessGate>
       {(session) => <AdminHomeContent token={session.accessToken} />}
     </AdminAccessGate>
+  );
+}
+
+function Pagination({
+  currentPage,
+  onChange,
+  totalPages,
+}: {
+  currentPage: number;
+  onChange: (page: number) => void;
+  totalPages: number;
+}) {
+  return (
+    <nav className="mt-4 flex flex-wrap items-center justify-center gap-2">
+      {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+        (page) => (
+          <button
+            className={[
+              'h-9 min-w-9 rounded border px-3 text-sm font-black transition',
+              currentPage === page
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            ].join(' ')}
+            key={page}
+            onClick={() => onChange(page)}
+            type="button"
+          >
+            {page}
+          </button>
+        ),
+      )}
+    </nav>
   );
 }
 
@@ -50,6 +84,8 @@ function AdminHomeContent({ token }: { token: string }) {
   const queryIdentity = tokenQueryIdentity(token);
   const [form, setForm] = useState<NoticeFormState>(emptyNoticeForm);
   const [formError, setFormError] = useState('');
+  const [expandedNoticeId, setExpandedNoticeId] = useState('');
+  const [noticePage, setNoticePage] = useState(1);
 
   const dashboardQuery = useQuery({
     queryKey: ['admin', 'dashboard', queryIdentity],
@@ -62,6 +98,15 @@ function AdminHomeContent({ token }: { token: string }) {
     queryFn: () => listAdminServiceNotices(token),
     refetchInterval: isVisible ? 30_000 : false,
   });
+  const serviceNotices = noticesQuery.data ?? [];
+  const totalNoticePages = Math.max(
+    1,
+    Math.ceil(serviceNotices.length / NOTICE_PAGE_SIZE),
+  );
+  const pagedServiceNotices = serviceNotices.slice(
+    (noticePage - 1) * NOTICE_PAGE_SIZE,
+    noticePage * NOTICE_PAGE_SIZE,
+  );
 
   const createNoticeMutation = useMutation({
     mutationFn: () =>
@@ -264,14 +309,24 @@ function AdminHomeContent({ token }: { token: string }) {
           ) : null}
 
           <div className="divide-y divide-slate-100 rounded border border-slate-200">
-            {(noticesQuery.data ?? []).length > 0 ? (
-              (noticesQuery.data ?? []).map((notice) => (
+            {serviceNotices.length > 0 ? (
+              pagedServiceNotices.map((notice) => (
                 <article
                   className="grid gap-2 px-4 py-4"
                   key={notice.service_notice_id}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() =>
+                        setExpandedNoticeId((current) =>
+                          current === notice.service_notice_id
+                            ? ''
+                            : notice.service_notice_id,
+                        )
+                      }
+                      type="button"
+                    >
                       <div className="flex flex-wrap items-center gap-2">
                         {notice.emergency ? (
                           <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">
@@ -286,10 +341,7 @@ function AdminHomeContent({ token }: { token: string }) {
                           {notice.title}
                         </strong>
                       </div>
-                      <p className="mt-2 text-sm font-medium text-slate-600">
-                        {notice.summary || notice.body}
-                      </p>
-                    </div>
+                    </button>
                     <button
                       className="h-9 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
                       disabled={deleteNoticeMutation.isPending}
@@ -307,6 +359,18 @@ function AdminHomeContent({ token }: { token: string }) {
                   >
                     {formatDateTime(notice.published_at)}
                   </time>
+                  {expandedNoticeId === notice.service_notice_id ? (
+                    <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+                      {notice.summary ? (
+                        <p className="text-sm font-bold text-slate-600">
+                          {notice.summary}
+                        </p>
+                      ) : null}
+                      <p className="text-sm leading-7 whitespace-pre-wrap text-slate-700">
+                        {notice.body}
+                      </p>
+                    </div>
+                  ) : null}
                 </article>
               ))
             ) : (
@@ -315,6 +379,16 @@ function AdminHomeContent({ token }: { token: string }) {
               </p>
             )}
           </div>
+          {serviceNotices.length > NOTICE_PAGE_SIZE ? (
+            <Pagination
+              currentPage={noticePage}
+              onChange={(page) => {
+                setNoticePage(page);
+                setExpandedNoticeId('');
+              }}
+              totalPages={totalNoticePages}
+            />
+          ) : null}
           {deleteNoticeMutation.error ? (
             <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
               {formatApiError(

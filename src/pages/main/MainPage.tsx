@@ -27,7 +27,7 @@ export default function MainPage() {
         : mainPageText.noticeLabel,
       title: notice.title,
       date: formatDateTime(notice.published_at),
-      href: '/notices',
+      href: `/notices?noticeId=${encodeURIComponent(notice.service_notice_id)}`,
     })) ?? [];
   const contestItems = contestsQuery.data ?? [];
 
