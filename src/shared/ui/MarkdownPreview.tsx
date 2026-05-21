@@ -13,6 +13,12 @@ type MarkdownPreviewProps = {
 };
 
 function normalizeMathDelimiters(markdown: string) {
+  const beginEnumerate = /\\begin\s*\{\s*enumerate\s*\}/g;
+  const endEnumerate = /\\end\s*\{\s*enumerate\s*\}/g;
+  const beginItemize = /\\begin\s*\{\s*itemize\s*\}/g;
+  const endItemize = /\\end\s*\{\s*itemize\s*\}/g;
+  const latexItem = /\\item(?:\s+|(?=\\|\{|$))/g;
+
   return markdown
     .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g)
     .map((part) => {
@@ -20,22 +26,26 @@ function normalizeMathDelimiters(markdown: string) {
 
       return part
         .replace(
-          /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+          /\\begin\s*\{\s*enumerate\s*\}([\s\S]*?)\\end\s*\{\s*enumerate\s*\}/g,
           (_, content: string) => {
             let index = 0;
-            return `\n${content.replace(/\\item\s+/g, () => {
+            return `\n${content.replace(latexItem, () => {
               index += 1;
               return `\n${index}. `;
             })}\n`;
           },
         )
         .replace(
-          /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+          /\\begin\s*\{\s*itemize\s*\}([\s\S]*?)\\end\s*\{\s*itemize\s*\}/g,
           (_, content: string) =>
-            `\n${content.replace(/\\item\s+/g, '\n- ')}\n`,
+            `\n${content.replace(latexItem, '\n- ')}\n`,
         )
+        .replace(beginEnumerate, '\n')
+        .replace(endEnumerate, '\n')
+        .replace(beginItemize, '\n')
+        .replace(endItemize, '\n')
         .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
-        .replace(/\\item\s+/g, '\n- ')
+        .replace(latexItem, '\n- ')
         .replace(/\\\s+/g, '\n')
         .replace(
           /\\\[([\s\S]*?)\\\]/g,
