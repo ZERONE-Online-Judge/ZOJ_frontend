@@ -1,38 +1,6 @@
 import backgroundLogoUrl from '@/assets/logos/background-logo.png';
 import { SvgIcon } from '@/utils/Icons';
 
-const footerLinkGroups = [
-  {
-    title: '서비스',
-    links: [
-      { label: '대회 목록', href: '/contests' },
-      { label: '공지사항', href: '/notices' },
-      { label: '지원 안내', href: '/support' },
-    ],
-  },
-  {
-    title: '운영',
-    links: [
-      { label: '운영자', href: '/operator' },
-      { label: '관리자', href: '/admin' },
-    ],
-  },
-  {
-    title: '채점',
-    links: [
-      { label: '채점 상태', href: '/judge-status' },
-      { label: '문제집', href: '/contests' },
-    ],
-  },
-  {
-    title: '개발',
-    links: [
-      { label: 'GitHub', href: 'https://github.com/ZERONE-Online-Judge' },
-      { label: '문의 메일', href: 'mailto:zoj.service@gmail.com' },
-    ],
-  },
-] as const;
-
 const footerPolicies = [
   { label: '이용안내', href: '/support' },
   { label: '개인정보처리방침', href: '/support' },
@@ -51,6 +19,11 @@ const footerPeople = [
     email: 'fgfg1025@hanyang.ac.kr',
   },
   {
+    role: 'Design',
+    name: '여 지훈',
+    email: '미공개',
+  },
+  {
     role: 'Backend',
     name: '손 동열',
     email: 'sdy423@hanyang.ac.kr',
@@ -62,46 +35,10 @@ const footerPeople = [
   },
 ] as const;
 
-function isExternalLink(href: string) {
-  return href.startsWith('http') || href.startsWith('mailto:');
-}
-
 export default function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-slate-50">
       <div className="mx-auto max-w-7xl px-6 py-0">
-        <nav
-          aria-label="푸터 링크"
-          className="grid border-x border-slate-200 bg-white sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {footerLinkGroups.map((group) => (
-            <details
-              className="group border-b border-slate-200 open:bg-slate-50 lg:border-b-0 lg:border-r lg:last:border-r-0"
-              key={group.title}
-            >
-              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-6 text-base font-black text-slate-950 marker:hidden">
-                {group.title}
-                <span className="text-2xl leading-none font-light text-slate-500 transition group-open:rotate-45">
-                  +
-                </span>
-              </summary>
-              <div className="grid gap-2 px-6 pb-5">
-                {group.links.map((link) => (
-                  <a
-                    className="text-sm font-bold text-slate-500 transition hover:text-zoj-blue"
-                    href={link.href}
-                    key={link.label}
-                    rel={isExternalLink(link.href) ? 'noreferrer' : undefined}
-                    target={link.href.startsWith('http') ? '_blank' : undefined}
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </details>
-          ))}
-        </nav>
-
         <section className="grid gap-12 bg-slate-100 px-6 py-12 md:grid-cols-[minmax(0,1fr)_auto] md:px-8">
           <div className="grid gap-8">
             <div className="flex items-center gap-4">
@@ -154,7 +91,6 @@ export default function Footer() {
                   zoj.service@gmail.com
                 </a>
               </p>
-              <p>운영 이슈는 대회 게시판의 비공개 질문으로 접수해 주세요.</p>
               </div>
             </div>
           </div>
