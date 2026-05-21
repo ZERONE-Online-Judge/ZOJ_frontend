@@ -20,6 +20,24 @@ function normalizeMathDelimiters(markdown: string) {
 
       return part
         .replace(
+          /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+          (_, content: string) => {
+            let index = 0;
+            return `\n${content.replace(/\\item\s+/g, () => {
+              index += 1;
+              return `\n${index}. `;
+            })}\n`;
+          },
+        )
+        .replace(
+          /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+          (_, content: string) =>
+            `\n${content.replace(/\\item\s+/g, '\n- ')}\n`,
+        )
+        .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+        .replace(/\\item\s+/g, '\n- ')
+        .replace(/\\\s+/g, '\n')
+        .replace(
           /\\\[([\s\S]*?)\\\]/g,
           (_, math: string) => `$$\n${math.trim()}\n$$`,
         )
