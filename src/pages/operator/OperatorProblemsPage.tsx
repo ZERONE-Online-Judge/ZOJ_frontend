@@ -2397,7 +2397,6 @@ function OperatorPreviewJudgeResult({
         <PreviewJudgeMetric label="사용 메모리" value={memory} />
         <PreviewJudgeMetric label="언어" value={String(submission.language)} />
         <PreviewJudgeMetric label="코드 길이" value={codeLength(submission)} />
-        <PreviewJudgeMetric label="제출 ID" value={submission.submission_id} />
       </div>
 
       <PreviewJudgeLog label="컴파일 로그" value={submission.compile_message || '-'} />
