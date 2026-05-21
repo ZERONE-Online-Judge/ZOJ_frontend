@@ -9,7 +9,12 @@ import {
 } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
-import { listOperatorContestQuestions } from '@/domains/serviceCommunication/api';
+import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
+import { getOperatorProblems } from '@/domains/problemManagement/api';
+import {
+  listOperatorContestNotices,
+  listOperatorContestQuestions,
+} from '@/domains/serviceCommunication/api';
 
 type OperatorAccessGateProps = {
   children: (session: StaffSession) => ReactNode;
@@ -96,6 +101,10 @@ const operatorTabs = [
   },
 ] as const;
 
+function countLabel(count: number, unit = '건') {
+  return count > 0 ? `${count}${unit}` : '';
+}
+
 export function OperatorAccessGate({
   children,
   contestId,
@@ -145,6 +154,30 @@ export function OperatorAccessGate({
 export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const generalSession = useSessionStore((state) => state.generalSession);
   const token = generalSession?.operatorSession?.accessToken;
+  const canViewParticipants = Boolean(
+    contestId &&
+      hasContestPermission(
+        generalSession,
+        contestId,
+        'contest.participant.view',
+      ),
+  );
+  const dashboardQuery = useQuery({
+    enabled: Boolean(contestId && token && canViewParticipants),
+    queryKey: ['operator', 'dashboard', contestId ?? null, 'tab-count', token],
+    queryFn: () => getOperatorContestDashboard(contestId!, token!),
+    refetchInterval: 15_000,
+  });
+  const noticesQuery = useQuery({
+    enabled: Boolean(
+      contestId &&
+        token &&
+        hasContestPermission(generalSession, contestId, 'contest.notice.view'),
+    ),
+    queryKey: ['operator', 'notices', contestId ?? null, 'tab-count', token],
+    queryFn: () => listOperatorContestNotices(contestId!, token!),
+    refetchInterval: 15_000,
+  });
   const questionsQuery = useQuery({
     enabled: Boolean(
       contestId &&
@@ -159,10 +192,28 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
     queryFn: () => listOperatorContestQuestions(contestId!, token!),
     refetchInterval: 15_000,
   });
+  const problemsQuery = useQuery({
+    enabled: Boolean(
+      contestId &&
+        token &&
+        hasContestPermission(generalSession, contestId, 'contest.problem.view'),
+    ),
+    queryKey: ['operator', 'problems', contestId ?? null, 'tab-count', token],
+    queryFn: () => getOperatorProblems(contestId!, token!),
+    refetchInterval: 15_000,
+  });
 
   if (!contestId) return null;
   const basePath = `/operator/contests/${contestId}`;
   const questions = questionsQuery.data ?? [];
+  const notices = noticesQuery.data ?? [];
+  const problems = problemsQuery.data ?? [];
+  const participantCountLabel = countLabel(
+    dashboardQuery.data?.participant_count ?? 0,
+    '팀',
+  );
+  const noticeCountLabel = countLabel(notices.length);
+  const problemCountLabel = countLabel(problems.length, '개');
   const boardCountLabel =
     questions.length > 0
       ? `${questions.length}건(답변필요:${questions.filter((question) => question.answers.length === 0).length})`
@@ -198,20 +249,30 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
             >
               <Icon />
               {tab.label}
+              {tab.path === 'notices' && noticeCountLabel ? (
+                <TabCountBadge>{noticeCountLabel}</TabCountBadge>
+              ) : null}
               {tab.path === 'board' && boardCountLabel ? (
-                <span
-                  className={[
-                    'rounded-full px-2 py-0.5 text-xs font-black',
-                    'bg-white/20 text-current',
-                  ].join(' ')}
-                >
-                  {boardCountLabel}
-                </span>
+                <TabCountBadge>{boardCountLabel}</TabCountBadge>
+              ) : null}
+              {tab.path === 'participants' && participantCountLabel ? (
+                <TabCountBadge>{participantCountLabel}</TabCountBadge>
+              ) : null}
+              {tab.path === 'problems' && problemCountLabel ? (
+                <TabCountBadge>{problemCountLabel}</TabCountBadge>
               ) : null}
             </NavLink>
           );
         })}
     </nav>
+  );
+}
+
+function TabCountBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-black text-current">
+      {children}
+    </span>
   );
 }
 
