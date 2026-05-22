@@ -15,6 +15,7 @@ export type ContestListItemData = {
   period?: string;
   registrationDeadline?: string;
   isOpen?: boolean;
+  publicResourceLabels?: string[];
   href?: string;
 };
 
@@ -30,6 +31,7 @@ export default function ContestListItem({
   period,
   registrationDeadline,
   isOpen = false,
+  publicResourceLabels = [],
   href,
 }: ContestListItemProps) {
   const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState(false);
@@ -56,8 +58,8 @@ export default function ContestListItem({
       <div className="grid min-w-0 gap-4">
         <div className="flex flex-wrap items-center gap-2.5">
           {isParticipantContest ? (
-            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
-              <span className="bg-zoj-blue size-2 rounded-full" />
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-sky-50 px-3 text-xs font-black text-sky-700">
+              <span className="size-2 rounded-full bg-sky-500" />
               <span>내 참가</span>
             </span>
           ) : null}
@@ -87,6 +89,18 @@ export default function ContestListItem({
         <h2 className="text-xl leading-7 font-black break-keep text-slate-950">
           {title}
         </h2>
+        {publicResourceLabels.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {publicResourceLabels.map((label) => (
+              <span
+                className="inline-flex h-7 items-center rounded-full bg-emerald-50 px-3 text-xs font-black text-emerald-700"
+                key={label}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
@@ -126,7 +140,7 @@ export default function ContestListItem({
           aria-hidden="true"
           className={[
             'absolute inset-y-0 left-0 w-2',
-            isOperatorContest ? 'bg-indigo-500' : 'bg-zoj-blue',
+            isOperatorContest ? 'bg-indigo-500' : 'bg-sky-500',
           ].join(' ')}
         />
       ) : null}

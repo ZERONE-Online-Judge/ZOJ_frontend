@@ -1,5 +1,9 @@
 import type { Contest } from '@/domains/contestAdministration/types';
-import { contestStatusLabel, contestAccessPhase } from '@/domains/contestAdministration/logic';
+import {
+  contestAccessPhase,
+  contestResourceAccess,
+  contestStatusLabel,
+} from '@/domains/contestAdministration/logic';
 import { formatContestMoment, timeLeft } from '@/shared/lib/dateTime';
 
 export function contestPeriodLabel(contest: Contest) {
@@ -36,6 +40,25 @@ export function contestCountdownLabel(contest: Contest) {
   return undefined;
 }
 
+function contestPublicResourceLabels(contest: Contest) {
+  if (contestAccessPhase(contest) !== 'ended') return [];
+
+  const resources = [
+    ['problem', '문제집'],
+    ['scoreboard', '스코어보드'],
+    ['submission', '채점현황'],
+    ['notice', '공지사항'],
+    ['board', '게시판'],
+  ] as const;
+
+  return resources.flatMap(([resource, label]) => {
+    const access = contestResourceAccess(contest, resource);
+    if (access === 'public') return [`${label} 비로그인 공개`];
+    if (access === 'participants') return [`${label} 참가자 공개 유지`];
+    return [];
+  });
+}
+
 export function toContestCardData(contest: Contest) {
   return {
     contestId: contest.contest_id,
@@ -45,5 +68,6 @@ export function toContestCardData(contest: Contest) {
     countdownLabel: contestCountdownLabel(contest),
     period: contestPeriodLabel(contest),
     isOpen: contestIsOpen(contest),
+    publicResourceLabels: contestPublicResourceLabels(contest),
   };
 }

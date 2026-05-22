@@ -10,7 +10,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { getPublicContest } from '@/domains/contestAdministration/api';
-import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+} from '@/domains/contestAdministration/logic';
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -153,8 +157,28 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   const isEmergencyNoticeDismissed =
     isStoredEmergencyNoticeDismissed ||
     dismissedEmergencyNoticeKey === emergencyNoticeKey;
+  const hasSessionAccess = Boolean(participantContest || activeParticipantSession);
+  const hasPublicAfterEndResource = contest
+    ? ([
+        'problem',
+        'scoreboard',
+        'submission',
+        'board',
+        'notice',
+      ] as const).some((resource) =>
+        canViewContestResource(
+          contest,
+          hasSessionAccess,
+          contestResourceAccess(contest, resource),
+        ),
+      )
+    : false;
+  const shouldRequireParticipantAccess =
+    contest ? contestAccessPhase(contest) !== 'ended' : true;
   const hasContestParticipantAccess =
-    !generalSession || Boolean(participantContest);
+    !generalSession ||
+    Boolean(participantContest) ||
+    (!shouldRequireParticipantAccess && hasPublicAfterEndResource);
 
   useEffect(() => {
     if (!contestId || !detail) return;
