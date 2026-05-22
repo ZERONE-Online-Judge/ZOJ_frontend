@@ -89,7 +89,7 @@ function MockJudgeResult({
     typeof result.progress_percent === 'number'
       ? result.progress_percent
       : judgingStatuses.has(result.status)
-        ? 15
+        ? 0
         : 100;
   const done = !judgingStatuses.has(result.status);
   return (

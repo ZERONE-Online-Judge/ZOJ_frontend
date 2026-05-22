@@ -463,41 +463,29 @@ function AdminJudgeContent({ token }: { token: string }) {
             <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
           </div>
           <div className="overflow-x-auto rounded border border-slate-200">
-            <table className="w-full min-w-[1480px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     제출
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
-                    팀/계정
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
-                    문제
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
                     대회/유형
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
-                    결과
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
-                    에이전트
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     언어
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
-                    진행
+                    에이전트
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    결과
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     시간
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     메모리
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
-                    제출 시각
                   </th>
                   <th className="border-b border-slate-200 px-4 py-3 text-center">
                     보기
@@ -522,7 +510,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                   <tr>
                     <td
                       className="px-4 py-10 text-center text-sm font-bold text-slate-500"
-                      colSpan={12}
+                      colSpan={8}
                     >
                       표시할 제출이 없습니다.
                     </td>
@@ -602,31 +590,25 @@ function SubmissionRow({
     submission.memory_kb ??
     submission.memory_usage_kb ??
     submission.max_memory_kb;
+  const progressSubmission = {
+    ...submission,
+    queue_position:
+      entry.judge_job?.status === 'pending'
+        ? entry.judge_job.queue_position
+        : submission.queue_position,
+  };
   const contestDivision = entryContestDivisionLabel(entry);
 
   return (
     <tr className={isSelected ? 'bg-violet-50/70' : 'hover:bg-violet-50/40'}>
       <td
         className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-700"
-        title={submission.submission_id}
+        title={`${submission.submission_id} · ${formatDateTime(submission.submitted_at)}`}
       >
         {shortSubmissionId(submission.submission_id)}
-      </td>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <strong className="block max-w-40 truncate font-black text-slate-950">
-          {entryOwner(entry)}
-        </strong>
-        <span className="mt-1 block max-w-40 truncate text-xs font-bold text-slate-400">
-          {entryOwnerDetail(entry)}
+        <span className="mt-1 block font-sans text-[11px] font-bold text-slate-400">
+          {formatRelativeTime(submission.submitted_at)}
         </span>
-      </td>
-      <td className="border-r border-slate-100 px-4 py-4" title={entryProblemLabel(entry)}>
-        <strong className="font-black text-slate-950">
-          {entry.problem?.problem_code ?? submission.problem_code ?? '-'}
-        </strong>
-        <p className="max-w-44 truncate text-xs font-bold text-slate-400">
-          {entry.problem?.title ?? submission.problem_title ?? entry.contest?.title ?? '-'}
-        </p>
       </td>
       <td
         className="border-r border-slate-100 px-4 py-4"
@@ -639,37 +621,31 @@ function SubmissionRow({
           {contestDivision.division}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <ContestSubmissionResultBadge
-          submission={submission}
-          status={submission.status}
-        />
+      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+        {submission.language}
       </td>
       <td className="border-r border-slate-100 px-4 py-4">
         <strong className="block max-w-40 truncate text-xs font-black text-slate-700">
           {entryJudgeNodeLabel(entry)}
         </strong>
         <span className="mt-1 block max-w-40 truncate font-mono text-[11px] font-bold text-slate-400">
-          {entry.judge_job?.judge_job_id ?? '-'}
+          {entry.judge_job?.assigned_node_id ?? '-'}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
-        {submission.language}
-      </td>
-      <td className="border-r border-slate-100 px-4 py-4 text-xs font-bold text-slate-500">
-        {submissionProgressText(submission) || '-'}
+      <td className="border-r border-slate-100 px-4 py-4">
+        <ContestSubmissionResultBadge
+          submission={progressSubmission}
+          status={submission.status}
+        />
+        <span className="mt-1 block text-xs font-bold text-slate-500">
+          {submissionProgressText(progressSubmission) || '-'}
+        </span>
       </td>
       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
         {formatDuration(runtime)}
       </td>
       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
         {formatMemory(memory)}
-      </td>
-      <td
-        className="border-r border-slate-100 px-4 py-4 text-xs font-bold text-slate-500"
-        title={formatDateTime(submission.submitted_at)}
-      >
-        {formatRelativeTime(submission.submitted_at)}
       </td>
       <td className="px-4 py-4 text-center">
         <button
@@ -769,21 +745,30 @@ function SubmissionDetail({
     submission.memory_kb ??
     submission.memory_usage_kb ??
     submission.max_memory_kb;
+  const progressSubmission = {
+    ...submission,
+    queue_position:
+      entry.judge_job?.status === 'pending'
+        ? entry.judge_job.queue_position
+        : submission.queue_position,
+  };
   const contestDivision = entryContestDivisionLabel(entry);
 
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <DetailCard label="제출" value={submission.submission_id} />
         <DetailCard label="대회" value={contestDivision.contest} />
         <DetailCard label="유형" value={contestDivision.division} />
         <DetailCard label="에이전트" value={entryJudgeNodeLabel(entry)} />
         <DetailCard label="팀/계정" value={entryOwner(entry)} />
+        <DetailCard label="계정 정보" value={entryOwnerDetail(entry)} />
         <DetailCard label="문제" value={entryProblemLabel(entry)} />
         <DetailCard label="결과" value={submissionStatusLabel(submission.status)} />
         <DetailCard label="언어" value={String(submission.language)} />
         <DetailCard
           label="진행"
-          value={submissionProgressText(submission) || '-'}
+          value={submissionProgressText(progressSubmission) || '-'}
         />
         <DetailCard label="시간" value={formatDuration(runtime)} />
         <DetailCard label="메모리" value={formatMemory(memory)} />
@@ -791,12 +776,16 @@ function SubmissionDetail({
           label="실패 케이스"
           value={String(submission.failed_testcase_order ?? '-')}
         />
+        <DetailCard
+          label="제출 시각"
+          value={formatDateTime(submission.submitted_at)}
+        />
       </div>
 
       <div className="grid gap-2">
         <p className="text-sm font-black text-slate-700">결과</p>
         <ContestSubmissionResultBadge
-          submission={submission}
+          submission={progressSubmission}
           status={submission.status}
         />
       </div>

@@ -97,11 +97,9 @@ export function submissionProgressPercent(
 
   switch (status) {
     case 'waiting':
-      return 0;
     case 'preparing':
-      return 35;
     case 'judging':
-      return 75;
+      return null;
     case 'accepted':
     case 'wrong_answer':
     case 'compile_error':
@@ -122,9 +120,14 @@ export function submissionProgressText(
   const status = submission?.status;
   const current = submission?.progress_current;
   const total = submission?.progress_total;
+  const queuePosition = submission?.queue_position;
   const percent = submissionProgressPercent(submission);
 
-  if (!isSubmissionPending(status) || percent === null) return '';
+  if (!isSubmissionPending(status)) return '';
+  if (status === 'waiting' && typeof queuePosition === 'number') {
+    return `큐 ${queuePosition}번째`;
+  }
+  if (percent === null) return '';
   if (total && total > 0) return `${current ?? 0}/${total} · ${percent}%`;
   return `${percent}%`;
 }
