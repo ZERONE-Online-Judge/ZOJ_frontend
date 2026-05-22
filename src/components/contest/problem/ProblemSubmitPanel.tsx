@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import CodeEditor from '@/shared/ui/CodeEditor';
 import PageNotice from '@/shared/ui/PageNotice';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
@@ -17,6 +17,10 @@ type ProblemSubmitPanelProps = {
   canSubmit?: boolean;
   editorHeight?: number | string;
   layout?: 'side' | 'standalone';
+  title?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
+  footer?: ReactNode;
 };
 
 const languageOptions: { label: string; value: JudgeLanguage }[] = [
@@ -40,6 +44,10 @@ export default function ProblemSubmitPanel({
   canSubmit = true,
   editorHeight = 430,
   layout = 'side',
+  title = '코드 제출',
+  submitLabel = '제출하기',
+  submittingLabel = '제출 중',
+  footer,
 }: ProblemSubmitPanelProps) {
   const initialEditorHeight =
     typeof editorHeight === 'number' ? editorHeight : 430;
@@ -57,7 +65,8 @@ export default function ProblemSubmitPanel({
   return (
     <aside className={panelClassName}>
       <h2 className="text-2xl font-black tracking-normal break-keep text-slate-950">
-        코드 제출{headingProblemLabel}
+        {title}
+        {headingProblemLabel}
       </h2>
 
       <label className="mt-6 grid gap-2">
@@ -133,12 +142,13 @@ export default function ProblemSubmitPanel({
         onClick={onSubmit}
         type="button"
       >
-        {isSubmitting ? '제출 중' : '제출하기'}
+        {isSubmitting ? submittingLabel : submitLabel}
       </button>
 
       <div className="mt-4">
         <PageNotice message={message} status={messageStatus} />
       </div>
+      {footer ? <div className="mt-4">{footer}</div> : null}
     </aside>
   );
 }

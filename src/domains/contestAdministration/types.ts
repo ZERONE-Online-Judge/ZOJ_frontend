@@ -46,6 +46,7 @@ export type Contest = {
   board_access_after_end?: ContestResourceAccess;
   notice_access_after_end?: ContestResourceAccess;
   scoreboard_freeze_mode?: ScoreboardFreezeMode;
+  mock_judging_enabled?: boolean;
   emergency_notice: string | null;
 };
 
@@ -110,6 +111,7 @@ export type ContestSettingsPatch = Partial<
     | 'board_access_after_end'
     | 'notice_access_after_end'
     | 'scoreboard_freeze_mode'
+    | 'mock_judging_enabled'
     | 'emergency_notice'
   >
 >;

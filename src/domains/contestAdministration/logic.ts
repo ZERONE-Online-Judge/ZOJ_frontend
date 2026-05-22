@@ -35,6 +35,7 @@ export function emptyContest(contestId?: string): Contest {
     board_access_after_end: 'participants',
     notice_access_after_end: 'public',
     scoreboard_freeze_mode: 'auto',
+    mock_judging_enabled: false,
     emergency_notice: null,
   };
 }

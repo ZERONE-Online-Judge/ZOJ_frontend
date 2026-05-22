@@ -5,17 +5,21 @@ type ProblemNavigationPillsProps = {
   contestId: string;
   problemId: string;
   active: 'combined' | 'problem' | 'submit';
+  allowSubmit?: boolean;
 };
 
 export default function ProblemNavigationPills({
   contestId,
   problemId,
   active,
+  allowSubmit = true,
 }: ProblemNavigationPillsProps) {
   return (
     <nav aria-label={sharedUiText.problemDetailMenuAriaLabel}>
       <ul className="flex flex-wrap items-center gap-3">
-        {problemDetailNavText.map((tab) => {
+        {problemDetailNavText
+          .filter((tab) => allowSubmit || tab.key === 'problem')
+          .map((tab) => {
           const to = tab.path
             ? `/contests/${contestId}/problems/${problemId}/${tab.path}`
             : `/contests/${contestId}/problems/${problemId}`;

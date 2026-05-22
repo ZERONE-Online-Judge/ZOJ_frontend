@@ -47,6 +47,7 @@ type SettingsForm = {
   submission_access_after_end: ContestResourceAccess;
   board_access_after_end: ContestResourceAccess;
   notice_access_after_end: ContestResourceAccess;
+  mock_judging_enabled: boolean;
   title: string;
 };
 
@@ -108,6 +109,10 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
     submission_access_after_end: contestResourceAccess(contest, 'submission'),
     board_access_after_end: contestResourceAccess(contest, 'board'),
     notice_access_after_end: contestResourceAccess(contest, 'notice'),
+    mock_judging_enabled:
+      contestResourceAccess(contest, 'problem') === 'private'
+        ? false
+        : Boolean(contest.mock_judging_enabled),
     title: contest.title,
   };
 }
@@ -191,6 +196,10 @@ function OperatorSettingsContent({
       submission_public_after_end: form.submission_access_after_end === 'public',
       board_access_after_end: form.board_access_after_end,
       notice_access_after_end: form.notice_access_after_end,
+      mock_judging_enabled:
+        form.problem_access_after_end === 'private'
+          ? false
+          : form.mock_judging_enabled,
     };
 
     if (!operationLocked) {
@@ -457,7 +466,16 @@ function OperatorSettingsContent({
                   label="문제집"
                   onChange={(value) =>
                     setSettingsForm((prev) =>
-                      prev ? { ...prev, problem_access_after_end: value } : prev,
+                      prev
+                        ? {
+                            ...prev,
+                            problem_access_after_end: value,
+                            mock_judging_enabled:
+                              value === 'private'
+                                ? false
+                                : prev.mock_judging_enabled,
+                          }
+                        : prev,
                     )
                   }
                   value={settingsForm.problem_access_after_end}
@@ -505,6 +523,34 @@ function OperatorSettingsContent({
                   value={settingsForm.notice_access_after_end}
                 />
               </div>
+
+              {settingsForm.problem_access_after_end !== 'private' ? (
+                <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  <input
+                    checked={settingsForm.mock_judging_enabled}
+                    className="mt-1 size-4 accent-amber-500"
+                    onChange={(event) =>
+                      setSettingsForm((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              mock_judging_enabled: event.target.checked,
+                            }
+                          : prev,
+                      )
+                    }
+                    type="checkbox"
+                  />
+                  <span className="grid gap-1">
+                    <span className="font-black">모의채점</span>
+                    <span className="font-bold text-amber-800">
+                      종료된 대회에서 문제집 접근자가 제출 필드로 채점 결과만
+                      확인할 수 있습니다. 일반 채점현황과 스코어보드에는
+                      기록하지 않습니다.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
 
               {formError || updateSettingsMutation.error ? (
                 <ErrorBox

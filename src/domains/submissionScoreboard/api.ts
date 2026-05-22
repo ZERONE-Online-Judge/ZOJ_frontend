@@ -83,6 +83,39 @@ export function waitSubmissionStatus(
   );
 }
 
+export function createMockSubmission(
+  contestId: string,
+  problemId: string,
+  token: string | undefined,
+  body: SubmissionCreateRequest,
+) {
+  return apiRequest<Submission>(
+    `/contests/${contestId}/problems/${problemId}/mock-submissions`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function waitMockSubmissionStatus(
+  contestId: string,
+  submissionId: string,
+  token: string | undefined,
+  options: { waitSeconds?: number; pollIntervalSeconds?: number } = {},
+) {
+  const search = new URLSearchParams({
+    wait_seconds: String(options.waitSeconds ?? 1),
+    poll_interval_seconds: String(options.pollIntervalSeconds ?? 0.15),
+  });
+
+  return apiRequest<Submission>(
+    `/contests/${contestId}/mock-submissions/${submissionId}/status:wait?${search}`,
+    token,
+  );
+}
+
 export function getScoreboard(contestId: string, token?: string) {
   return apiRequest<ScoreboardResponse>(
     `/contests/${contestId}/scoreboard`,

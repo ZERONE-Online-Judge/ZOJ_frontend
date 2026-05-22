@@ -24,8 +24,10 @@ import {
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
 import {
+  createMockSubmission,
   createSubmission,
   getSubmission,
+  waitMockSubmissionStatus,
 } from '@/domains/submissionScoreboard/api';
 import {
   isJudgeLanguage,
@@ -33,6 +35,7 @@ import {
   saveLastJudgeLanguage,
 } from '@/domains/submissionScoreboard/languagePreference';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
+import type { Submission } from '@/domains/submissionScoreboard/types';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ProblemView = 'combined' | 'problem' | 'submit';
@@ -46,8 +49,74 @@ type SubmitVariables = {
   language: JudgeLanguage;
   sourceCode: string;
 };
+type MockResult = Pick<
+  Submission,
+  'status' | 'progress_percent' | 'runtime_ms' | 'memory_kb'
+> | null;
 
 const emptySubmitFeedback: SubmitFeedback = { message: '', status: 'idle' };
+
+const judgingStatuses = new Set(['waiting', 'preparing', 'judging']);
+
+const statusLabels: Record<string, string> = {
+  waiting: '채점 대기중',
+  preparing: '채점 준비중',
+  judging: '채점중',
+  accepted: '맞았습니다',
+  wrong_answer: '틀렸습니다',
+  compile_error: '컴파일 에러',
+  runtime_error: '런타임 에러',
+  time_limit_exceeded: '시간초과',
+  memory_limit_exceeded: '메모리 초과',
+  output_limit_exceeded: '출력초과',
+  system_error: '시스템 오류',
+};
+
+function MockJudgeResult({
+  result,
+}: {
+  result: MockResult;
+  standalone?: boolean;
+}) {
+  if (!result) return null;
+  const progress =
+    typeof result.progress_percent === 'number'
+      ? result.progress_percent
+      : judgingStatuses.has(result.status)
+        ? 15
+        : 100;
+  const done = !judgingStatuses.has(result.status);
+  return (
+    <div className="rounded border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-black text-slate-950">모의채점 결과</span>
+        <span
+          className={[
+            'rounded-full px-3 py-1 text-xs font-black',
+            done
+              ? result.status === 'accepted'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-100 text-slate-700'
+              : 'bg-amber-100 text-amber-700',
+          ].join(' ')}
+        >
+          {statusLabels[result.status] ?? result.status}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-amber-400 transition-all duration-500"
+          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+        />
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-bold text-slate-600">
+        <span>{progress}%</span>
+        <span>시간 {result.runtime_ms ?? '-'} ms</span>
+        <span>메모리 {result.memory_kb ?? '-'} KB</span>
+      </div>
+    </div>
+  );
+}
 
 function problemViewFromParam(value?: string): ProblemView {
   if (value === 'statement') return 'problem';
@@ -79,6 +148,7 @@ function ContestProblemDetailContent({
   } =
     useContestParticipantSession(contestId);
   const problemAccess = contestResourceAccess(contest, 'problem');
+  const accessPhase = contestAccessPhase(contest);
   const hasSessionAccess = Boolean(
     participantContest || activeParticipantSession,
   );
@@ -88,11 +158,18 @@ function ContestProblemDetailContent({
     problemAccess,
   );
   const shouldUseParticipantScope =
-    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
+    hasSessionAccess && accessPhase !== 'ended';
   const shouldUseParticipantAuth =
     hasSessionAccess &&
-    contestAccessPhase(contest) === 'ended' &&
+    accessPhase === 'ended' &&
     problemAccess === 'participants';
+  const canMockJudge =
+    accessPhase === 'ended' &&
+    Boolean(contest.mock_judging_enabled) &&
+    problemAccess !== 'private' &&
+    canViewProblem;
+  const canShowSubmit = canMockJudge || accessPhase !== 'ended';
+  const effectiveView = canShowSubmit || view === 'problem' ? view : 'problem';
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -104,6 +181,9 @@ function ContestProblemDetailContent({
   >({});
   const [submitFeedbackByKey, setSubmitFeedbackByKey] = useState<
     Record<string, SubmitFeedback>
+  >({});
+  const [mockResultByKey, setMockResultByKey] = useState<
+    Record<string, MockResult>
   >({});
 
   const problemQuery = useQuery({
@@ -132,7 +212,7 @@ function ContestProblemDetailContent({
   const activeProblemId = problem?.problem_id ?? problemId;
 
   const problemsQuery = useQuery({
-    enabled: canViewProblem && view !== 'submit',
+    enabled: canViewProblem && effectiveView !== 'submit',
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
@@ -166,7 +246,11 @@ function ContestProblemDetailContent({
   const problems = problemsQuery.data ?? [];
 
   const selectedSubmissionQuery = useQuery({
-    enabled: canViewProblem && view === 'submit' && Boolean(selectedSubmissionId),
+    enabled:
+      canViewProblem &&
+      effectiveView === 'submit' &&
+      Boolean(selectedSubmissionId) &&
+      !canMockJudge,
     queryKey: contestQueryKeys.submissionDetail(
       contestId,
       selectedSubmissionId,
@@ -209,6 +293,7 @@ function ContestProblemDetailContent({
     draftSourceCodes[activeDraftKey] ?? selectedSubmission?.source_code ?? '';
   const submitFeedback =
     submitFeedbackByKey[activeDraftKey] ?? emptySubmitFeedback;
+  const mockResult = mockResultByKey[activeDraftKey] ?? null;
   const isViewingSubmissionCode = Boolean(selectedSubmissionId);
   const submitPanelMessage = selectedSubmissionQuery.isError
     ? '선택한 제출 코드를 불러오지 못했습니다.'
@@ -230,6 +315,8 @@ function ContestProblemDetailContent({
             : 'idle';
   const canSubmitActiveDraft =
     !selectedSubmissionQuery.isError && !selectedSubmissionProblemMismatch;
+  const submitPanelTitle = canMockJudge ? '모의채점' : '코드 제출';
+  const submitPanelButtonLabel = canMockJudge ? '모의채점 실행' : '제출하기';
 
   function handleLanguageChange(nextLanguage: JudgeLanguage) {
     setLastJudgeLanguage(nextLanguage);
@@ -315,6 +402,70 @@ function ContestProblemDetailContent({
     },
   });
 
+  const mockSubmitMutation = useMutation({
+    mutationFn: async ({ draftKey, language, sourceCode }: SubmitVariables) => {
+      if (!problem) throw new Error('문제 정보를 불러오는 중입니다.');
+      let token = generalSession?.accessToken;
+      if (problemAccess === 'participants') {
+        const session = await ensureParticipantSession();
+        if (!session) {
+          throw new Error('모의채점하려면 대회 참가 로그인이 필요합니다.');
+        }
+        token = session.accessToken;
+      }
+      const created = await createMockSubmission(
+        contestId,
+        problem.problem_id,
+        token,
+        { language, source_code: sourceCode },
+      );
+      setMockResultByKey((previous) => ({ ...previous, [draftKey]: created }));
+      let latest = created;
+      for (let index = 0; index < 60; index += 1) {
+        if (!judgingStatuses.has(latest.status)) {
+          return latest;
+        }
+        latest = await waitMockSubmissionStatus(
+          contestId,
+          created.submission_id,
+          token,
+          { waitSeconds: 1, pollIntervalSeconds: 0.15 },
+        );
+        setMockResultByKey((previous) => ({
+          ...previous,
+          [draftKey]: latest,
+        }));
+      }
+      return latest;
+    },
+    onMutate: ({ draftKey }: SubmitVariables) => {
+      setSubmitFeedback(draftKey, {
+        message: '모의채점을 실행하고 있습니다.',
+        status: 'loading',
+      });
+      setMockResultByKey((previous) => ({ ...previous, [draftKey]: null }));
+    },
+    onSuccess: (submission, { draftKey }: SubmitVariables) => {
+      setSubmitFeedback(draftKey, {
+        message: '모의채점이 완료되었습니다.',
+        status: 'ready',
+      });
+      setMockResultByKey((previous) => ({
+        ...previous,
+        [draftKey]: submission,
+      }));
+    },
+    onError: (error, { draftKey }: SubmitVariables) => {
+      setSubmitFeedback(draftKey, {
+        message:
+          error instanceof Error
+            ? error.message
+            : '모의채점을 처리하지 못했습니다.',
+        status: 'error',
+      });
+    },
+  });
+
   function submitActiveDraft() {
     if (!canSubmitActiveDraft) {
       setSubmitFeedback(activeDraftKey, {
@@ -324,11 +475,16 @@ function ContestProblemDetailContent({
       return;
     }
 
-    submitMutation.mutate({
+    const variables = {
       draftKey: activeDraftKey,
       language: activeLanguage,
       sourceCode: activeSourceCode,
-    });
+    };
+    if (canMockJudge) {
+      mockSubmitMutation.mutate(variables);
+      return;
+    }
+    submitMutation.mutate(variables);
   }
 
   return (
@@ -345,7 +501,8 @@ function ContestProblemDetailContent({
       <div className="mb-7 mt-7 grid gap-3">
         <span className="text-sm font-black text-slate-700">보기 설정</span>
         <ProblemNavigationPills
-          active={view}
+          active={effectiveView}
+          allowSubmit={canShowSubmit}
           contestId={contestId}
           problemId={problemId}
         />
@@ -372,7 +529,7 @@ function ContestProblemDetailContent({
         <PageNotice message="문제를 불러오지 못했습니다." status="error" />
       ) : null}
 
-      {problem && view === 'combined' ? (
+      {problem && effectiveView === 'combined' && canShowSubmit ? (
         <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white lg:grid-cols-[15rem_minmax(0,1fr)_20rem]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
@@ -381,7 +538,7 @@ function ContestProblemDetailContent({
           />
           <ProblemStatementPanel problem={problem} />
           <ProblemSubmitPanel
-            isSubmitting={submitMutation.isPending}
+            isSubmitting={submitMutation.isPending || mockSubmitMutation.isPending}
             language={activeLanguage}
             message={submitFeedback.message}
             messageStatus={submitFeedback.status}
@@ -391,11 +548,15 @@ function ContestProblemDetailContent({
             problemCode={problem.problem_code}
             problemTitle={problem.title}
             sourceCode={activeSourceCode}
+            submitLabel={submitPanelButtonLabel}
+            submittingLabel={canMockJudge ? '채점 중' : '제출 중'}
+            title={submitPanelTitle}
+            footer={<MockJudgeResult result={mockResult} />}
           />
         </section>
       ) : null}
 
-      {problem && view === 'problem' ? (
+      {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canMockJudge)) ? (
         <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white lg:grid-cols-[15rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
@@ -407,12 +568,12 @@ function ContestProblemDetailContent({
         </section>
       ) : null}
 
-      {problem && view === 'submit' ? (
+      {problem && effectiveView === 'submit' && canShowSubmit ? (
         <section className="min-h-[760px] min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
           <ProblemSubmitPanel
             canSubmit={canSubmitActiveDraft}
             editorHeight={560}
-            isSubmitting={submitMutation.isPending}
+            isSubmitting={submitMutation.isPending || mockSubmitMutation.isPending}
             language={activeLanguage}
             layout="standalone"
             message={submitPanelMessage}
@@ -423,6 +584,10 @@ function ContestProblemDetailContent({
             problemCode={problem.problem_code}
             problemTitle={problem.title}
             sourceCode={activeSourceCode}
+            submitLabel={submitPanelButtonLabel}
+            submittingLabel={canMockJudge ? '채점 중' : '제출 중'}
+            title={submitPanelTitle}
+            footer={<MockJudgeResult result={mockResult} />}
           />
         </section>
       ) : null}
