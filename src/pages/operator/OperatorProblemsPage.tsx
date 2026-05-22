@@ -330,6 +330,7 @@ function OperatorProblemsContent({
   const [form, setForm] = useState(emptyProblemForm);
   const [selectedProblemId, setSelectedProblemId] = useState('');
   const [copySourceProblemId, setCopySourceProblemId] = useState('');
+  const [isCopyPanelOpen, setIsCopyPanelOpen] = useState(false);
   const [filterDivisionId, setFilterDivisionId] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isTestcaseModalOpen, setIsTestcaseModalOpen] = useState(false);
@@ -594,6 +595,7 @@ function OperatorProblemsContent({
     },
     onSuccess: (problem) => {
       setCopySourceProblemId('');
+      setIsCopyPanelOpen(false);
       setEditorMode('edit');
       setAuthoringTab('statement');
       setSelectedProblemId(problem.problem_id);
@@ -1123,13 +1125,28 @@ function OperatorProblemsContent({
                 {filteredProblems.length}개
               </h2>
             </div>
-            <button
-              className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
-              onClick={startCreateMode}
-              type="button"
-            >
-              새 문제
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                onClick={startCreateMode}
+                type="button"
+              >
+                새 문제
+              </button>
+              <button
+                aria-expanded={isCopyPanelOpen}
+                className={[
+                  'rounded border px-3 py-2 text-xs font-black transition',
+                  isCopyPanelOpen
+                    ? 'border-indigo-300 bg-indigo-950 text-white'
+                    : 'border-slate-200 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
+                ].join(' ')}
+                onClick={() => setIsCopyPanelOpen((current) => !current)}
+                type="button"
+              >
+                문제 복사
+              </button>
+            </div>
           </div>
           <div className="flex gap-1 overflow-x-auto rounded-full bg-slate-100 p-1">
             {divisions.map((division) => (
@@ -1148,58 +1165,62 @@ function OperatorProblemsContent({
               </button>
             ))}
           </div>
-          <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-3">
-            <div>
-              <p className="text-xs font-black text-slate-700">
-                다른 유형 문제 가져오기
-              </p>
-              <p className="mt-1 text-[11px] font-bold text-slate-500">
-                선택한 문제의 기본 정보와 본문을 현재 유형으로 복사합니다.
-              </p>
-            </div>
-            <select
-              className="h-10 rounded border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              disabled={!copyableProblems.length || copyProblemMutation.isPending}
-              onChange={(event) => setCopySourceProblemId(event.target.value)}
-              value={copySourceProblemId}
-            >
-              <option value="">
-                {copyableProblems.length
-                  ? '복사할 문제 선택'
-                  : '다른 유형 문제가 없습니다'}
-              </option>
-              {copyableProblems.map((problem) => {
-                const divisionName =
-                  divisions.find(
-                    (division) => division.division_id === problem.division_id,
-                  )?.name ?? '다른 유형';
+          {isCopyPanelOpen ? (
+            <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-3">
+              <div>
+                <p className="text-xs font-black text-slate-700">
+                  다른 유형 문제 가져오기
+                </p>
+                <p className="mt-1 text-[11px] font-bold text-slate-500">
+                  채점 파일과 테스트케이스까지 현재 유형으로 복사합니다.
+                </p>
+              </div>
+              <select
+                className="h-10 rounded border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                disabled={!copyableProblems.length || copyProblemMutation.isPending}
+                onChange={(event) => setCopySourceProblemId(event.target.value)}
+                value={copySourceProblemId}
+              >
+                <option value="">
+                  {copyableProblems.length
+                    ? '복사할 문제 선택'
+                    : '다른 유형 문제가 없습니다'}
+                </option>
+                {copyableProblems.map((problem) => {
+                  const divisionName =
+                    divisions.find(
+                      (division) => division.division_id === problem.division_id,
+                    )?.name ?? '다른 유형';
 
-                return (
-                  <option key={problem.problem_id} value={problem.problem_id}>
-                    [{divisionName}] {problem.problem_code}. {problem.title}
-                  </option>
-                );
-              })}
-            </select>
-            <button
-              className="h-10 rounded bg-indigo-950 px-3 text-xs font-black text-white disabled:bg-slate-300"
-              disabled={
-                !copySourceProblemId ||
-                !activeDivisionId ||
-                copyProblemMutation.isPending
-              }
-              onClick={() => copyProblemMutation.mutate()}
-              type="button"
-            >
-              {copyProblemMutation.isPending ? '가져오는 중' : '현재 유형으로 가져오기'}
-            </button>
-            {copyProblemMutation.error ? (
-              <ErrorBox
-                error={copyProblemMutation.error}
-                fallback="문제 복사에 실패했습니다"
-              />
-            ) : null}
-          </div>
+                  return (
+                    <option key={problem.problem_id} value={problem.problem_id}>
+                      [{divisionName}] {problem.problem_code}. {problem.title}
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                className="h-10 rounded bg-indigo-950 px-3 text-xs font-black text-white disabled:bg-slate-300"
+                disabled={
+                  !copySourceProblemId ||
+                  !activeDivisionId ||
+                  copyProblemMutation.isPending
+                }
+                onClick={() => copyProblemMutation.mutate()}
+                type="button"
+              >
+                {copyProblemMutation.isPending
+                  ? '가져오는 중'
+                  : '현재 유형으로 가져오기'}
+              </button>
+              {copyProblemMutation.error ? (
+                <ErrorBox
+                  error={copyProblemMutation.error}
+                  fallback="문제 복사에 실패했습니다"
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
             {filteredProblems.map((problem) => (
               <button
