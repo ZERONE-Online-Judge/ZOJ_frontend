@@ -86,9 +86,11 @@ function ContestProblemsContent({
     publicDivisionId || divisions[0]?.division_id || '';
   const shouldUseParticipantScope =
     hasSessionAccess &&
-    (!isEnded ||
-      problemAccess === 'participants' ||
-      scoreboardAccess === 'participants');
+    !isEnded;
+  const shouldUseParticipantAuth =
+    isEnded &&
+    hasSessionAccess &&
+    (problemAccess === 'participants' || scoreboardAccess === 'participants');
   const shouldShowDivisionSelect =
     !shouldUseParticipantScope && divisions.length > 1;
   const effectiveDivisionId = shouldUseParticipantScope
@@ -127,10 +129,12 @@ function ContestProblemsContent({
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? activeParticipantSession?.accessToken
+        : shouldUseParticipantAuth
+          ? activeParticipantSession?.accessToken
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
@@ -144,11 +148,14 @@ function ContestProblemsContent({
         return getDivisionProblems(
           contestId,
           effectiveDivisionId,
-          generalSession?.accessToken,
+          session?.accessToken ?? generalSession?.accessToken,
         );
       }
 
-      return getContestProblems(contestId, generalSession?.accessToken);
+      return getContestProblems(
+        contestId,
+        session?.accessToken ?? generalSession?.accessToken,
+      );
     },
     refetchInterval: 15_000,
   });
@@ -166,10 +173,12 @@ function ContestProblemsContent({
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? activeParticipantSession?.accessToken
+        : shouldUseParticipantAuth
+          ? activeParticipantSession?.accessToken
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
@@ -183,11 +192,14 @@ function ContestProblemsContent({
         return getDivisionScoreboard(
           contestId,
           effectiveDivisionId,
-          generalSession?.accessToken,
+          session?.accessToken ?? generalSession?.accessToken,
         );
       }
 
-      return getScoreboard(contestId, generalSession?.accessToken);
+      return getScoreboard(
+        contestId,
+        session?.accessToken ?? generalSession?.accessToken,
+      );
     },
     refetchInterval: 10_000,
   });

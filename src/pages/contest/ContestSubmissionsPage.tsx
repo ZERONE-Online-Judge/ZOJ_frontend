@@ -70,9 +70,11 @@ function ContestSubmissionsContent({
     publicDivisionId || divisions[0]?.division_id || '';
   const shouldUseParticipantScope =
     hasSessionAccess &&
-    (!isEnded ||
-      submissionAccess === 'participants' ||
-      problemAccess === 'participants');
+    !isEnded;
+  const shouldUseParticipantAuth =
+    isEnded &&
+    hasSessionAccess &&
+    (submissionAccess === 'participants' || problemAccess === 'participants');
   const shouldShowDivisionSelect =
     !shouldUseParticipantScope && divisions.length > 1;
   const effectiveDivisionId = shouldUseParticipantScope
@@ -118,10 +120,12 @@ function ContestSubmissionsContent({
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? activeParticipantSession?.accessToken
+        : shouldUseParticipantAuth
+          ? activeParticipantSession?.accessToken
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
@@ -135,11 +139,14 @@ function ContestSubmissionsContent({
         return getDivisionProblems(
           contestId,
           effectiveDivisionId,
-          generalSession?.accessToken,
+          session?.accessToken ?? generalSession?.accessToken,
         );
       }
 
-      return getContestProblems(contestId, generalSession?.accessToken);
+      return getContestProblems(
+        contestId,
+        session?.accessToken ?? generalSession?.accessToken,
+      );
     },
     placeholderData: keepPreviousData,
   });
@@ -157,12 +164,14 @@ function ContestSubmissionsContent({
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? activeParticipantSession?.accessToken
+        : shouldUseParticipantAuth
+          ? activeParticipantSession?.accessToken
         : undefined,
       currentCursor ?? undefined,
       selectedProblemId || undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
@@ -173,12 +182,16 @@ function ContestSubmissionsContent({
         });
       }
 
-      return listSubmissionsPage(contestId, generalSession?.accessToken, {
+      return listSubmissionsPage(
+        contestId,
+        session?.accessToken ?? generalSession?.accessToken,
+        {
         cursor: currentCursor,
         divisionId: effectiveDivisionId,
         limit: SUBMISSIONS_PAGE_SIZE,
         problemId: selectedProblemId || undefined,
-      });
+        },
+      );
     },
     refetchInterval: (query) => {
       if (!isDocumentVisible) return false;

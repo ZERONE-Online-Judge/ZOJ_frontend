@@ -88,8 +88,11 @@ function ContestProblemDetailContent({
     problemAccess,
   );
   const shouldUseParticipantScope =
+    hasSessionAccess && contestAccessPhase(contest) !== 'ended';
+  const shouldUseParticipantAuth =
     hasSessionAccess &&
-    (contestAccessPhase(contest) !== 'ended' || problemAccess === 'participants');
+    contestAccessPhase(contest) === 'ended' &&
+    problemAccess === 'participants';
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -113,7 +116,7 @@ function ContestProblemDetailContent({
       activeParticipantSession?.accessToken,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
 
@@ -137,10 +140,12 @@ function ContestProblemDetailContent({
       shouldUseParticipantScope
         ? activeParticipantSession?.division.division_id
         : undefined,
-      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
+      shouldUseParticipantScope || shouldUseParticipantAuth
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
         ? await ensureParticipantSession()
         : null;
       if (session && shouldUseParticipantScope) {
@@ -151,7 +156,10 @@ function ContestProblemDetailContent({
         );
       }
 
-      return getContestProblems(contestId, generalSession?.accessToken);
+      return getContestProblems(
+        contestId,
+        session?.accessToken ?? generalSession?.accessToken,
+      );
     },
     refetchInterval: 15_000,
   });
@@ -164,7 +172,9 @@ function ContestProblemDetailContent({
       selectedSubmissionId,
       generalSession?.accessToken,
       shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
-      shouldUseParticipantScope ? activeParticipantSession?.accessToken : undefined,
+      shouldUseParticipantScope || shouldUseParticipantAuth
+        ? activeParticipantSession?.accessToken
+        : undefined,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope
