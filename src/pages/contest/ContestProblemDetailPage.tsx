@@ -57,7 +57,7 @@ type SubmitVariables = {
 };
 type MockResult = Pick<
   Submission,
-  'status' | 'progress_percent' | 'runtime_ms' | 'memory_kb'
+  'status' | 'progress_percent' | 'runtime_ms' | 'memory_kb' | 'queue_position'
 > | null;
 
 const emptySubmitFeedback: SubmitFeedback = { message: '', status: 'idle' };
@@ -91,6 +91,10 @@ function MockJudgeResult({
       : judgingStatuses.has(result.status)
         ? 0
         : 100;
+  const queueText =
+    result.status === 'waiting' && typeof result.queue_position === 'number'
+      ? `큐 ${result.queue_position}번째`
+      : '';
   const done = !judgingStatuses.has(result.status);
   return (
     <div className="rounded border border-slate-200 bg-white p-4">
@@ -116,7 +120,7 @@ function MockJudgeResult({
         />
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-bold text-slate-600">
-        <span>{progress}%</span>
+        <span>{queueText || `${progress}%`}</span>
         <span>시간 {result.runtime_ms ?? '-'} ms</span>
         <span>메모리 {result.memory_kb ?? '-'} KB</span>
       </div>
