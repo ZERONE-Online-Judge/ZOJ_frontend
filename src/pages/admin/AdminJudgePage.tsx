@@ -592,10 +592,7 @@ function SubmissionRow({
     submission.max_memory_kb;
   const progressSubmission = {
     ...submission,
-    queue_position:
-      entry.judge_job?.status === 'pending'
-        ? entry.judge_job.queue_position
-        : submission.queue_position,
+    queue_position: submission.queue_position,
   };
   const contestDivision = entryContestDivisionLabel(entry);
 
@@ -747,10 +744,7 @@ function SubmissionDetail({
     submission.max_memory_kb;
   const progressSubmission = {
     ...submission,
-    queue_position:
-      entry.judge_job?.status === 'pending'
-        ? entry.judge_job.queue_position
-        : submission.queue_position,
+    queue_position: submission.queue_position,
   };
   const contestDivision = entryContestDivisionLabel(entry);
 
