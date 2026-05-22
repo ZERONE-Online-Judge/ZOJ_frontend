@@ -38,6 +38,7 @@ const adminTabs = [
     icon: ContestIcon,
   },
   { label: routeText.adminJudge, path: '/admin/judge', icon: JudgeIcon },
+  { label: '문의', path: '/admin/inquiries', icon: NoticeIcon },
 ] as const;
 
 const accentClassNames = {

@@ -7,6 +7,20 @@ export type ServiceNotice = {
   published_at: string;
 };
 
+export type ContactInquiry = {
+  contact_inquiry_id: string;
+  title: string;
+  sender_name: string;
+  sender_email: string;
+  body: string;
+  status: 'pending' | 'answered' | string;
+  answer_body?: string | null;
+  answered_by_email?: string | null;
+  answered_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ContestNotice = {
   contest_notice_id: string;
   title: string;
@@ -35,4 +49,3 @@ export type ContestQuestion = {
   created_at: string;
   answers: ContestAnswer[];
 };
-

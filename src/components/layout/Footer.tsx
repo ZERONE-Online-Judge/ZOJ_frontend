@@ -3,13 +3,13 @@ import { SvgIcon } from '@/utils/Icons';
 
 const footerPolicies = [
   { label: '이용안내', href: '/support' },
-  { label: '개인정보처리방침', href: '/support' },
-  { label: '서비스 문의', href: 'mailto:zoj.service@gmail.com' },
+  { label: '개인정보처리방침', href: '/support?tab=privacy' },
+  { label: '서비스 문의', href: '/support?tab=contact' },
 ] as const;
 
 const footerPeople = [
   {
-    role: 'Infra & DevOps',
+    role: 'Infra & DevOps & Backend',
     name: '손 동열',
     email: 'sdy423@hanyang.ac.kr',
   },
@@ -22,11 +22,6 @@ const footerPeople = [
     role: 'Design',
     name: '여 지훈',
     email: '미공개',
-  },
-  {
-    role: 'Backend',
-    name: '손 동열',
-    email: 'sdy423@hanyang.ac.kr',
   },
   {
     role: 'Frontend',
@@ -86,9 +81,9 @@ export default function Footer() {
                 서비스 관련 문의{' '}
                 <a
                   className="font-black text-slate-900 underline-offset-4 hover:text-zoj-blue hover:underline"
-                  href="mailto:zoj.service@gmail.com"
+                  href="/support?tab=contact"
                 >
-                  zoj.service@gmail.com
+                  문의 접수
                 </a>
               </p>
               </div>
@@ -106,7 +101,7 @@ export default function Footer() {
               </a>
               <a
                 className="inline-flex items-center gap-2 transition hover:text-zoj-blue"
-                href="mailto:zoj.service@gmail.com"
+                href="/support?tab=contact"
               >
                 서비스 문의
                 <span className="text-xl text-slate-400">›</span>
@@ -124,9 +119,9 @@ export default function Footer() {
                 <SvgIcon name="github" size={24} />
               </a>
               <a
-                aria-label="문의 메일 보내기"
+                aria-label="서비스 문의 접수"
                 className="inline-flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:text-zoj-blue"
-                href="mailto:zoj.service@gmail.com"
+                href="/support?tab=contact"
               >
                 @
               </a>

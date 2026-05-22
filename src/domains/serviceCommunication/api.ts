@@ -2,6 +2,7 @@ import type {
   ContestAnswer,
   ContestNotice,
   ContestQuestion,
+  ContactInquiry,
   ServiceNotice,
 } from '@/domains/serviceCommunication/types';
 import { apiRequest } from '@/shared/api/client';
@@ -12,6 +13,18 @@ export function getPublicServiceNotices() {
 
 export function getPublicServiceNotice(noticeId: string) {
   return apiRequest<ServiceNotice>(`/public/service-notices/${noticeId}`);
+}
+
+export function createPublicContactInquiry(body: {
+  title: string;
+  sender_name: string;
+  sender_email: string;
+  body: string;
+}) {
+  return apiRequest<ContactInquiry>('/public/contact-inquiries', undefined, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export function listAdminServiceNotices(token: string) {
@@ -33,6 +46,25 @@ export function deleteAdminServiceNotice(noticeId: string, token: string) {
     `/admin/service-notices/${noticeId}`,
     token,
     { method: 'DELETE' },
+  );
+}
+
+export function listAdminContactInquiries(token: string) {
+  return apiRequest<ContactInquiry[]>('/admin/contact-inquiries', token);
+}
+
+export function answerAdminContactInquiry(
+  inquiryId: string,
+  token: string,
+  body: { answer_body: string },
+) {
+  return apiRequest<ContactInquiry>(
+    `/admin/contact-inquiries/${inquiryId}/answer`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
   );
 }
 
