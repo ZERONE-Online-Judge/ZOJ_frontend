@@ -59,20 +59,8 @@ export function useAutoRefresh(
     const timer = window.setInterval(() => {
       void runRefresh();
     }, intervalMs);
-    const onFocus = () => {
-      void runRefresh();
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void runRefresh();
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [refresh, enabled, intervalMs]);
 }

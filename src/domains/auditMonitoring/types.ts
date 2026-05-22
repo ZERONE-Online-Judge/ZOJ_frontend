@@ -60,6 +60,14 @@ export type AdminJudgeSubmissionEntry = {
     assigned_node_id?: string | null;
     created_at: string;
   } | null;
+  judge_node?: {
+    judge_node_id: string;
+    node_name: string;
+    total_slots: number;
+    free_slots: number;
+    running_job_count: number;
+    last_heartbeat_at: string;
+    schedulable: boolean;
+  } | null;
   active_testcase_count: number;
 };
-

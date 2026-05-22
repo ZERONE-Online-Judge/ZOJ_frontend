@@ -31,20 +31,8 @@ export default function SessionRefreshProvider({
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refreshSessions();
     }, SESSION_REFRESH_INTERVAL_MS);
-    const onFocus = () => {
-      void refreshSessions();
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void refreshSessions();
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
