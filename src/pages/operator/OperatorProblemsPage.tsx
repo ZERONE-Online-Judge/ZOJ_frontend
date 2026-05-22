@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -56,6 +56,7 @@ import {
   isSubmissionPending,
 } from '@/domains/submissionScoreboard/status';
 import {
+  isJudgeLanguage,
   loadLastJudgeLanguage,
   saveLastJudgeLanguage,
 } from '@/domains/submissionScoreboard/languagePreference';
@@ -64,6 +65,7 @@ import type {
   Submission,
 } from '@/domains/submissionScoreboard/types';
 import { formatApiError } from '@/shared/api/errors';
+import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 
 type ProblemForm = {
   displayOrder: string;
@@ -391,6 +393,10 @@ function OperatorProblemsContent({
   const selectedProblem = problems.find(
     (problem) => problem.problem_id === effectiveSelectedProblemId,
   );
+  const testDraftScope = `operator:${contestId}`;
+  const testDraftKey = effectiveSelectedProblemId
+    ? `preview:${effectiveSelectedProblemId}`
+    : '';
   const previewProblem = useMemo(
     () => previewProblemFromForm(form, selectedProblem),
     [form, selectedProblem],
@@ -1014,6 +1020,34 @@ function OperatorProblemsContent({
       setTestSubmission(submission);
     },
   });
+
+  useEffect(() => {
+    if (!testDraftKey) {
+      setTestSourceCode('');
+      return;
+    }
+
+    const savedDraft = loadCodeDraft(testDraftScope, testDraftKey);
+    setTestSourceCode(savedDraft?.sourceCode ?? '');
+    if (isJudgeLanguage(savedDraft?.language)) {
+      setTestLanguage(savedDraft.language);
+    }
+  }, [testDraftKey, testDraftScope]);
+
+  function handleTestLanguageChange(language: JudgeLanguage) {
+    setTestLanguage(language);
+    saveLastJudgeLanguage(language);
+    if (testDraftKey) {
+      saveCodeDraft(testDraftScope, testDraftKey, { language });
+    }
+  }
+
+  function handleTestSourceCodeChange(sourceCode: string) {
+    setTestSourceCode(sourceCode);
+    if (testDraftKey) {
+      saveCodeDraft(testDraftScope, testDraftKey, { sourceCode });
+    }
+  }
 
   function editProblem(problem: Problem) {
     setEditorMode('edit');
@@ -1954,11 +1988,8 @@ function OperatorProblemsContent({
                     : 'idle'
           }
           onClose={() => setIsPreviewOpen(false)}
-          onLanguageChange={(language) => {
-            setTestLanguage(language);
-            saveLastJudgeLanguage(language);
-          }}
-          onSourceCodeChange={setTestSourceCode}
+          onLanguageChange={handleTestLanguageChange}
+          onSourceCodeChange={handleTestSourceCodeChange}
           onSubmit={() => testSubmissionMutation.mutate()}
           problem={previewProblem}
           sourceCode={testSourceCode}

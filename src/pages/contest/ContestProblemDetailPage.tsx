@@ -41,6 +41,7 @@ import {
 } from '@/domains/submissionScoreboard/languagePreference';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
+import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ProblemView = 'combined' | 'problem' | 'submit';
@@ -356,12 +357,17 @@ function ContestProblemDetailContent({
   const activeDraftKey = selectedSubmissionId
     ? `submission:${selectedSubmissionId}`
     : `problem:${problemId}`;
+  const activeDraftScope = `contest:${contestId}`;
+  const persistedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
   const fallbackLanguage = isJudgeLanguage(selectedSubmission?.language)
     ? selectedSubmission.language
     : lastJudgeLanguage;
-  const activeLanguage = draftLanguages[activeDraftKey] ?? fallbackLanguage;
+  const activeLanguage =
+    draftLanguages[activeDraftKey] ??
+    persistedDraft?.language ??
+    fallbackLanguage;
   const activeSourceCode =
-    draftSourceCodes[activeDraftKey] ?? selectedSubmission?.source_code ?? '';
+    draftSourceCodes[activeDraftKey] ?? persistedDraft?.sourceCode ?? '';
   const submitFeedback =
     submitFeedbackByKey[activeDraftKey] ?? emptySubmitFeedback;
   const mockResult = mockResultByKey[activeDraftKey] ?? null;
@@ -389,9 +395,57 @@ function ContestProblemDetailContent({
   const submitPanelTitle = canMockJudge ? '모의채점' : '코드 제출';
   const submitPanelButtonLabel = canMockJudge ? '모의채점 실행' : '제출하기';
 
+  useEffect(() => {
+    const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
+    const savedSourceCode = savedDraft?.sourceCode;
+    const savedLanguage = savedDraft?.language;
+    if (savedSourceCode !== undefined) {
+      setDraftSourceCodes((previous) =>
+        previous[activeDraftKey] === undefined
+          ? { ...previous, [activeDraftKey]: savedSourceCode }
+          : previous,
+      );
+    }
+    if (savedLanguage) {
+      setDraftLanguages((previous) =>
+        previous[activeDraftKey] === undefined
+          ? { ...previous, [activeDraftKey]: savedLanguage }
+          : previous,
+      );
+    }
+  }, [activeDraftKey, activeDraftScope]);
+
+  useEffect(() => {
+    if (!selectedSubmission?.source_code) return;
+
+    const submissionSourceCode = selectedSubmission.source_code;
+    setDraftSourceCodes((previous) => {
+      if (previous[activeDraftKey] !== undefined) return previous;
+      const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
+      if (savedDraft?.sourceCode !== undefined) return previous;
+      saveCodeDraft(activeDraftScope, activeDraftKey, {
+        sourceCode: submissionSourceCode,
+      });
+      return { ...previous, [activeDraftKey]: submissionSourceCode };
+    });
+    const submissionLanguage = selectedSubmission.language;
+    if (isJudgeLanguage(submissionLanguage)) {
+      setDraftLanguages((previous) => {
+        if (previous[activeDraftKey] !== undefined) return previous;
+        const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
+        if (savedDraft?.language) return previous;
+        saveCodeDraft(activeDraftScope, activeDraftKey, {
+          language: submissionLanguage,
+        });
+        return { ...previous, [activeDraftKey]: submissionLanguage };
+      });
+    }
+  }, [activeDraftKey, activeDraftScope, selectedSubmission]);
+
   function handleLanguageChange(nextLanguage: JudgeLanguage) {
     setLastJudgeLanguage(nextLanguage);
     saveLastJudgeLanguage(nextLanguage);
+    saveCodeDraft(activeDraftScope, activeDraftKey, { language: nextLanguage });
     setDraftLanguages((previous) => ({
       ...previous,
       [activeDraftKey]: nextLanguage,
@@ -399,6 +453,9 @@ function ContestProblemDetailContent({
   }
 
   function handleSourceCodeChange(nextSourceCode: string) {
+    saveCodeDraft(activeDraftScope, activeDraftKey, {
+      sourceCode: nextSourceCode,
+    });
     setDraftSourceCodes((previous) => ({
       ...previous,
       [activeDraftKey]: nextSourceCode,
