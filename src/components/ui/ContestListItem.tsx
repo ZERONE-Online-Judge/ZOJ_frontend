@@ -47,9 +47,17 @@ export default function ContestListItem({
     (item) => item.contest.contest_id === contestId,
   );
   const operatorHref = `/operator/contests/${encodeURIComponent(contestId)}`;
+  const hasPublicReadableResource = publicResourceLabels.some((label) =>
+    label.includes('비로그인 공개'),
+  );
   const canOpenContest = !generalSession || isParticipantContest || isOperatorContest;
   const itemHref = canOpenContest
-    ? (href ?? (isOperatorContest ? operatorHref : generalSession ? contestHref : loginHref))
+    ? (href ??
+      (isOperatorContest
+        ? operatorHref
+        : generalSession || hasPublicReadableResource
+          ? contestHref
+          : loginHref))
     : undefined;
   const canShowUnavailableMessage = canOpenContest && !itemHref;
 
