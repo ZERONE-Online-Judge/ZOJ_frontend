@@ -15,6 +15,7 @@ import {
   deleteProblemAsset,
   deleteProblemTestcase,
   deleteProblemTestcaseSet,
+  copyOperatorProblem,
   createOperatorProblem,
   getStorageObjectText,
   getOperatorProblems,
@@ -276,6 +277,18 @@ function validateProblemForm(form: ProblemForm) {
   );
 }
 
+function uniqueProblemCode(baseCode: string, existingCodes: Set<string>) {
+  if (!existingCodes.has(baseCode)) return baseCode;
+
+  let index = 1;
+  let candidate = `${baseCode}-copy`;
+  while (existingCodes.has(candidate)) {
+    index += 1;
+    candidate = `${baseCode}-copy${index}`;
+  }
+  return candidate;
+}
+
 function storageFileName(storageKey: string) {
   return decodeURIComponent(storageKey.split('/').pop() ?? storageKey);
 }
@@ -316,6 +329,7 @@ function OperatorProblemsContent({
   >('settings');
   const [form, setForm] = useState(emptyProblemForm);
   const [selectedProblemId, setSelectedProblemId] = useState('');
+  const [copySourceProblemId, setCopySourceProblemId] = useState('');
   const [filterDivisionId, setFilterDivisionId] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isTestcaseModalOpen, setIsTestcaseModalOpen] = useState(false);
@@ -369,6 +383,9 @@ function OperatorProblemsContent({
   const filteredProblems = activeDivisionId
     ? problems.filter((problem) => problem.division_id === activeDivisionId)
     : problems;
+  const copyableProblems = activeDivisionId
+    ? problems.filter((problem) => problem.division_id !== activeDivisionId)
+    : [];
   const effectiveSelectedProblemId = selectedProblemId;
   const selectedProblem = problems.find(
     (problem) => problem.problem_id === effectiveSelectedProblemId,
@@ -536,6 +553,49 @@ function OperatorProblemsContent({
     },
     onSuccess: (problem) => {
       setEditorMode('edit');
+      setSelectedProblemId(problem.problem_id);
+      setForm(problemFormFromProblem(problem));
+      setTestSubmission(null);
+      setFormError('');
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'problems', contestId],
+      });
+    },
+  });
+
+  const copyProblemMutation = useMutation({
+    mutationFn: () => {
+      const sourceProblem = problems.find(
+        (problem) => problem.problem_id === copySourceProblemId,
+      );
+      if (!sourceProblem) {
+        throw new Error('복사할 문제를 선택해 주세요.');
+      }
+      if (!activeDivisionId) {
+        throw new Error('문제를 가져올 유형을 선택해 주세요.');
+      }
+
+      const targetProblems = problems.filter(
+        (problem) => problem.division_id === activeDivisionId,
+      );
+      const existingCodes = new Set(
+        targetProblems.map((problem) => problem.problem_code),
+      );
+      const nextDisplayOrder =
+        Math.max(0, ...targetProblems.map((problem) => problem.display_order ?? 0)) +
+        1;
+
+      return copyOperatorProblem(contestId, token, {
+        display_order: nextDisplayOrder,
+        problem_code: uniqueProblemCode(sourceProblem.problem_code, existingCodes),
+        source_problem_id: sourceProblem.problem_id,
+        target_division_id: activeDivisionId,
+      });
+    },
+    onSuccess: (problem) => {
+      setCopySourceProblemId('');
+      setEditorMode('edit');
+      setAuthoringTab('statement');
       setSelectedProblemId(problem.problem_id);
       setForm(problemFormFromProblem(problem));
       setTestSubmission(null);
@@ -1087,6 +1147,58 @@ function OperatorProblemsContent({
                 {division.name}
               </button>
             ))}
+          </div>
+          <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-3">
+            <div>
+              <p className="text-xs font-black text-slate-700">
+                다른 유형 문제 가져오기
+              </p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">
+                선택한 문제의 기본 정보와 본문을 현재 유형으로 복사합니다.
+              </p>
+            </div>
+            <select
+              className="h-10 rounded border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              disabled={!copyableProblems.length || copyProblemMutation.isPending}
+              onChange={(event) => setCopySourceProblemId(event.target.value)}
+              value={copySourceProblemId}
+            >
+              <option value="">
+                {copyableProblems.length
+                  ? '복사할 문제 선택'
+                  : '다른 유형 문제가 없습니다'}
+              </option>
+              {copyableProblems.map((problem) => {
+                const divisionName =
+                  divisions.find(
+                    (division) => division.division_id === problem.division_id,
+                  )?.name ?? '다른 유형';
+
+                return (
+                  <option key={problem.problem_id} value={problem.problem_id}>
+                    [{divisionName}] {problem.problem_code}. {problem.title}
+                  </option>
+                );
+              })}
+            </select>
+            <button
+              className="h-10 rounded bg-indigo-950 px-3 text-xs font-black text-white disabled:bg-slate-300"
+              disabled={
+                !copySourceProblemId ||
+                !activeDivisionId ||
+                copyProblemMutation.isPending
+              }
+              onClick={() => copyProblemMutation.mutate()}
+              type="button"
+            >
+              {copyProblemMutation.isPending ? '가져오는 중' : '현재 유형으로 가져오기'}
+            </button>
+            {copyProblemMutation.error ? (
+              <ErrorBox
+                error={copyProblemMutation.error}
+                fallback="문제 복사에 실패했습니다"
+              />
+            ) : null}
           </div>
           <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
             {filteredProblems.map((problem) => (

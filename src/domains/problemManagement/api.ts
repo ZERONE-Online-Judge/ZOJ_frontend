@@ -71,6 +71,26 @@ export function createOperatorProblem(
   );
 }
 
+export function copyOperatorProblem(
+  contestId: string,
+  token: string,
+  body: {
+    source_problem_id: string;
+    target_division_id: string;
+    problem_code?: string;
+    display_order?: number;
+  },
+) {
+  return apiRequest<Problem>(
+    `/operator/contests/${contestId}/problems:copy`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 export function updateOperatorProblem(
   contestId: string,
   problemId: string,
