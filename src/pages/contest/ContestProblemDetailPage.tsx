@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
@@ -15,7 +20,7 @@ import {
   contestResourceAccess,
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
-import type { Contest } from '@/domains/contestAdministration/types';
+import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
@@ -128,16 +133,19 @@ function problemViewFromParam(value?: string): ProblemView {
 function ContestProblemDetailContent({
   contest,
   contestId,
+  divisions,
   problemId,
   view,
 }: {
   contest: Contest;
   contestId: string;
+  divisions: Division[];
   problemId: string;
   view: ProblemView;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const selectedSubmissionId = searchParams.get('submissionId');
   const {
@@ -210,16 +218,25 @@ function ContestProblemDetailContent({
 
   const problem = problemQuery.data;
   const activeProblemId = problem?.problem_id ?? problemId;
+  const selectedDivisionId = shouldUseParticipantScope
+    ? activeParticipantSession?.division.division_id ?? ''
+    : searchParams.get('divisionId') ??
+      problem?.division_id ??
+      divisions[0]?.division_id ??
+      '';
+  const showDivisionSelectInSidebar =
+    !shouldUseParticipantScope && divisions.length > 1;
 
   const problemsQuery = useQuery({
-    enabled: canViewProblem && effectiveView !== 'submit',
+    enabled:
+      canViewProblem &&
+      effectiveView !== 'submit' &&
+      (shouldUseParticipantScope || Boolean(selectedDivisionId)),
     queryKey: contestQueryKeys.problems(
       contestId,
       generalSession?.accessToken,
       shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
-      shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id
-        : undefined,
+      shouldUseParticipantScope ? selectedDivisionId : selectedDivisionId,
       shouldUseParticipantScope || shouldUseParticipantAuth
         ? activeParticipantSession?.accessToken
         : undefined,
@@ -235,6 +252,13 @@ function ContestProblemDetailContent({
           session.accessToken,
         );
       }
+      if (selectedDivisionId) {
+        return getDivisionProblems(
+          contestId,
+          selectedDivisionId,
+          session?.accessToken ?? generalSession?.accessToken,
+        );
+      }
 
       return getContestProblems(
         contestId,
@@ -244,6 +268,53 @@ function ContestProblemDetailContent({
     refetchInterval: 15_000,
   });
   const problems = problemsQuery.data ?? [];
+
+  function routeForProblem(nextProblemId: string, divisionId: string) {
+    const search = divisionId
+      ? `?divisionId=${encodeURIComponent(divisionId)}`
+      : '';
+    if (effectiveView === 'problem') {
+      return `/contests/${contestId}/problems/${nextProblemId}/statement${search}`;
+    }
+    if (effectiveView === 'submit') {
+      return `/contests/${contestId}/problems/${nextProblemId}/submit${search}`;
+    }
+    return `/contests/${contestId}/problems/${nextProblemId}${search}`;
+  }
+
+  function handleSidebarDivisionChange(nextDivisionId: string) {
+    const currentParams = new URLSearchParams(location.search);
+    currentParams.set('divisionId', nextDivisionId);
+    currentParams.delete('submissionId');
+    const suffix = currentParams.toString();
+    navigate(
+      `${location.pathname}${suffix ? `?${suffix}` : ''}`,
+      { replace: false },
+    );
+  }
+
+  useEffect(() => {
+    if (
+      !showDivisionSelectInSidebar ||
+      !selectedDivisionId ||
+      problemsQuery.isFetching ||
+      problems.length === 0 ||
+      problems.some((item) => item.problem_id === activeProblemId)
+    ) {
+      return;
+    }
+
+    navigate(routeForProblem(problems[0].problem_id, selectedDivisionId), {
+      replace: true,
+    });
+  }, [
+    activeProblemId,
+    navigate,
+    problems,
+    problemsQuery.isFetching,
+    selectedDivisionId,
+    showDivisionSelectInSidebar,
+  ]);
 
   const selectedSubmissionQuery = useQuery({
     enabled:
@@ -505,6 +576,7 @@ function ContestProblemDetailContent({
           allowSubmit={canShowSubmit}
           contestId={contestId}
           problemId={problemId}
+          search={location.search}
         />
       </div>
 
@@ -534,7 +606,13 @@ function ContestProblemDetailContent({
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
+            divisions={divisions}
+            onDivisionChange={
+              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+            }
             problems={problems}
+            selectedDivisionId={selectedDivisionId}
+            search={location.search}
           />
           <ProblemStatementPanel problem={problem} />
           <ProblemSubmitPanel
@@ -561,8 +639,14 @@ function ContestProblemDetailContent({
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
+            divisions={divisions}
+            onDivisionChange={
+              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+            }
             problems={problems}
+            selectedDivisionId={selectedDivisionId}
             targetView="problem"
+            search={location.search}
           />
           <ProblemStatementPanel problem={problem} />
         </section>
@@ -601,10 +685,11 @@ export default function ContestProblemDetailPage() {
 
   return (
     <ContestPageShell>
-      {({ contest }) => (
+      {({ contest, divisions }) => (
         <ContestProblemDetailContent
           contest={contest}
           contestId={contest.contest_id}
+          divisions={divisions}
           problemId={problemId}
           view={view}
         />

@@ -21,6 +21,11 @@ import {
 } from '@/domains/auditMonitoring/api';
 import type { AdminJudgeSubmissionEntry } from '@/domains/auditMonitoring/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import {
+  parseJudgeDetail,
+  submissionProgressText,
+  submissionStatusLabel,
+} from '@/domains/submissionScoreboard/status';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -445,7 +450,7 @@ function AdminJudgeContent({ token }: { token: string }) {
               </button>
             </div>
           }
-          description="제출번호를 누르면 상세 정보와 소스 코드를 모달로 확인할 수 있습니다."
+          description="결과는 간단히 보고, 보기 버튼으로 소스와 채점 로그를 확인합니다."
           title="최근 제출"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
@@ -458,20 +463,17 @@ function AdminJudgeContent({ token }: { token: string }) {
             <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
           </div>
           <div className="overflow-x-auto rounded border border-slate-200">
-            <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     제출
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
-                    대회
+                    팀/계정
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     문제
-                  </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
-                    팀
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     결과
@@ -479,8 +481,20 @@ function AdminJudgeContent({ token }: { token: string }) {
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     언어
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    진행
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    시간
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                    메모리
+                  </th>
+                  <th className="border-r border-b border-slate-200 px-4 py-3">
                     제출 시각
+                  </th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-center">
+                    보기
                   </th>
                 </tr>
               </thead>
@@ -502,7 +516,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                   <tr>
                     <td
                       className="px-4 py-10 text-center text-sm font-bold text-slate-500"
-                      colSpan={7}
+                      colSpan={10}
                     >
                       표시할 제출이 없습니다.
                     </td>
@@ -526,6 +540,32 @@ function AdminJudgeContent({ token }: { token: string }) {
   );
 }
 
+function entryOwner(entry: AdminJudgeSubmissionEntry) {
+  return (
+    entry.team?.team_name ??
+    entry.submission.team_name ??
+    entry.member?.name ??
+    entry.submission.member_name ??
+    '-'
+  );
+}
+
+function entryOwnerDetail(entry: AdminJudgeSubmissionEntry) {
+  return (
+    entry.member?.email ??
+    entry.submission.member_email ??
+    entry.contest?.title ??
+    '-'
+  );
+}
+
+function entryProblemLabel(entry: AdminJudgeSubmissionEntry) {
+  const code = entry.problem?.problem_code ?? entry.submission.problem_code;
+  const title = entry.problem?.title ?? entry.submission.problem_title;
+  if (code && title) return `${code}. ${title}`;
+  return code ?? title ?? entry.submission.problem_id;
+}
+
 function SubmissionRow({
   entry,
   isSelected,
@@ -536,48 +576,69 @@ function SubmissionRow({
   onSelect: () => void;
 }) {
   const { submission } = entry;
+  const runtime =
+    submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms;
+  const memory =
+    submission.memory_kb ??
+    submission.memory_usage_kb ??
+    submission.max_memory_kb;
 
   return (
     <tr className={isSelected ? 'bg-violet-50/70' : 'hover:bg-violet-50/40'}>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <button
-          className="text-left font-black text-violet-700 underline-offset-2 hover:underline"
-          onClick={onSelect}
-          type="button"
-        >
-          {shortSubmissionId(submission.submission_id)}
-        </button>
-      </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
-        {entry.contest?.title ?? '-'}
+      <td
+        className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-700"
+        title={submission.submission_id}
+      >
+        {shortSubmissionId(submission.submission_id)}
       </td>
       <td className="border-r border-slate-100 px-4 py-4">
+        <strong className="block max-w-40 truncate font-black text-slate-950">
+          {entryOwner(entry)}
+        </strong>
+        <span className="mt-1 block max-w-40 truncate text-xs font-bold text-slate-400">
+          {entryOwnerDetail(entry)}
+        </span>
+      </td>
+      <td className="border-r border-slate-100 px-4 py-4" title={entryProblemLabel(entry)}>
         <strong className="font-black text-slate-950">
           {entry.problem?.problem_code ?? submission.problem_code ?? '-'}
         </strong>
         <p className="max-w-44 truncate text-xs font-bold text-slate-400">
-          {entry.problem?.title ?? submission.problem_title ?? '-'}
-        </p>
-      </td>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <p className="max-w-44 truncate font-bold text-slate-700">
-          {entry.team?.team_name ?? submission.team_name ?? '-'}
-        </p>
-        <p className="max-w-44 truncate text-xs font-bold text-slate-400">
-          {entry.member?.name ?? submission.member_name ?? '-'}
+          {entry.problem?.title ?? submission.problem_title ?? entry.contest?.title ?? '-'}
         </p>
       </td>
       <td className="border-r border-slate-100 px-4 py-4">
         <ContestSubmissionResultBadge
-          judgeMessage={submission.judge_message}
+          submission={submission}
           status={submission.status}
         />
       </td>
       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
         {submission.language}
       </td>
-      <td className="px-4 py-4 font-bold text-slate-500">
-        {formatDateTime(submission.submitted_at)}
+      <td className="border-r border-slate-100 px-4 py-4 text-xs font-bold text-slate-500">
+        {submissionProgressText(submission) || '-'}
+      </td>
+      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+        {formatDuration(runtime)}
+      </td>
+      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+        {formatMemory(memory)}
+      </td>
+      <td
+        className="border-r border-slate-100 px-4 py-4 text-xs font-bold text-slate-500"
+        title={formatDateTime(submission.submitted_at)}
+      >
+        {formatRelativeTime(submission.submitted_at)}
+      </td>
+      <td className="px-4 py-4 text-center">
+        <button
+          className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-50"
+          onClick={onSelect}
+          type="button"
+        >
+          보기
+        </button>
       </td>
     </tr>
   );
@@ -661,38 +722,39 @@ function SubmissionDetail({
 
   const { submission } = entry;
   const sourceCode = submission.source_code?.trim() || '';
+  const detail = parseJudgeDetail(submission.judge_message);
+  const runtime =
+    submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms;
+  const memory =
+    submission.memory_kb ??
+    submission.memory_usage_kb ??
+    submission.max_memory_kb;
 
   return (
     <div className="grid gap-4">
-      <dl className="grid grid-cols-2 gap-3 rounded border border-slate-200 bg-slate-50 p-4 text-sm">
-        <div className="grid gap-1">
-          <dt className="text-xs font-black text-slate-400">문제</dt>
-          <dd className="font-black text-slate-950">
-            {entry.problem?.problem_code ?? submission.problem_code ?? '-'}
-          </dd>
-        </div>
-        <div className="grid gap-1">
-          <dt className="text-xs font-black text-slate-400">언어</dt>
-          <dd className="font-black text-slate-950">{submission.language}</dd>
-        </div>
-        <div className="grid gap-1">
-          <dt className="text-xs font-black text-slate-400">시간</dt>
-          <dd className="font-black text-slate-950">
-            {formatDuration(submission.execution_time_ms ?? submission.time_ms)}
-          </dd>
-        </div>
-        <div className="grid gap-1">
-          <dt className="text-xs font-black text-slate-400">메모리</dt>
-          <dd className="font-black text-slate-950">
-            {formatMemory(submission.memory_usage_kb ?? submission.memory_kb)}
-          </dd>
-        </div>
-      </dl>
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <DetailCard label="대회" value={entry.contest?.title ?? '-'} />
+        <DetailCard label="유형" value={entry.division?.name ?? '-'} />
+        <DetailCard label="팀/계정" value={entryOwner(entry)} />
+        <DetailCard label="문제" value={entryProblemLabel(entry)} />
+        <DetailCard label="결과" value={submissionStatusLabel(submission.status)} />
+        <DetailCard label="언어" value={String(submission.language)} />
+        <DetailCard
+          label="진행"
+          value={submissionProgressText(submission) || '-'}
+        />
+        <DetailCard label="시간" value={formatDuration(runtime)} />
+        <DetailCard label="메모리" value={formatMemory(memory)} />
+        <DetailCard
+          label="실패 케이스"
+          value={String(submission.failed_testcase_order ?? '-')}
+        />
+      </div>
 
       <div className="grid gap-2">
         <p className="text-sm font-black text-slate-700">결과</p>
         <ContestSubmissionResultBadge
-          judgeMessage={submission.judge_message}
+          submission={submission}
           status={submission.status}
         />
       </div>
@@ -705,6 +767,19 @@ function SubmissionDetail({
           </pre>
         </div>
       ) : null}
+
+      <div className="grid gap-2">
+        <p className="text-sm font-black text-slate-700">채점 로그</p>
+        <pre className="max-h-48 overflow-auto rounded border border-slate-200 bg-slate-950 p-3 text-xs leading-5 font-bold text-slate-50">
+          {submission.judge_message || '-'}
+        </pre>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <LogBlock label="실패 입력" value={detail.inputText || '-'} />
+        <LogBlock label="기대 출력" value={detail.expectedText || '-'} />
+        <LogBlock label="실제 출력" value={detail.actualText || '-'} />
+      </div>
 
       <div className="grid gap-2">
         <p className="text-sm font-black text-slate-700">소스 코드</p>
@@ -729,4 +804,26 @@ function formatMemory(value?: number | null) {
   if (typeof value !== 'number') return '-';
   if (value >= 1024) return `${Math.round(value / 102.4) / 10} MB`;
   return `${value} KB`;
+}
+
+function DetailCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+      <span className="text-xs font-black text-slate-500">{label}</span>
+      <strong className="text-sm font-black break-words text-slate-950">
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function LogBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-black text-slate-700">
+      {label}
+      <pre className="max-h-96 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+        {value}
+      </pre>
+    </label>
+  );
 }

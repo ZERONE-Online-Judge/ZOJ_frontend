@@ -219,6 +219,10 @@ function ContestProblemsContent({
       score,
     ]),
   );
+  const problemDetailSearch =
+    !shouldUseParticipantScope && selectedPublicDivisionId
+      ? `?divisionId=${encodeURIComponent(selectedPublicDivisionId)}`
+      : '';
   return (
     <ContestPageFrame>
       <PageHeading
@@ -291,7 +295,7 @@ function ContestProblemsContent({
                       <td className="px-6 py-4 font-bold text-slate-950">
                         <Link
                           className="hover:text-zoj-blue transition"
-                          to={`/contests/${contestId}/problems/${problem.problem_id}`}
+                          to={`/contests/${contestId}/problems/${problem.problem_id}${problemDetailSearch}`}
                         >
                           {problem.title}
                         </Link>
