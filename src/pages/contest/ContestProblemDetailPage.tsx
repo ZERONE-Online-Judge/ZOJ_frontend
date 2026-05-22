@@ -79,7 +79,9 @@ function ContestProblemDetailContent({
   } =
     useContestParticipantSession(contestId);
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const hasSessionAccess = Boolean(participantContest);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const canViewProblem = canViewContestResource(
     contest,
     hasSessionAccess,

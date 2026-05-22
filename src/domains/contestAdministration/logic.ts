@@ -126,9 +126,14 @@ export function canViewContestResource(
         : 'private'
       : (afterEndAccess ?? 'private');
 
-  if (isContestEnded(contest) || contestAccessPhase(contest) === 'running') {
+  if (isContestEnded(contest)) {
     if (access === 'public') return true;
     if (access === 'participants') return hasSessionAccess;
+    return false;
+  }
+
+  if (contestAccessPhase(contest) === 'running') {
+    if (access === 'public') return true;
     if (hasSessionAccess) return true;
     return false;
   }

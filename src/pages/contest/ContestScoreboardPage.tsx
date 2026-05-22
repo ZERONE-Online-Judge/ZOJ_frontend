@@ -44,7 +44,9 @@ function ContestScoreboardContent({
   const divisionName =
     participantContest?.division.name ??
     activeParticipantSession?.division.name;
-  const hasSessionAccess = Boolean(participantContest);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const problemAccess = contestResourceAccess(contest, 'problem');
   const phase = contestAccessPhase(contest);

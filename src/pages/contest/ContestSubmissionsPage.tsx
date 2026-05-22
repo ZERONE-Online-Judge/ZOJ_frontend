@@ -52,7 +52,9 @@ function ContestSubmissionsContent({
     activeParticipantSession?.team.team_name;
   const fallbackMemberName =
     participantContest?.member.name ?? activeParticipantSession?.member.name;
-  const hasSessionAccess = Boolean(participantContest);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const submissionAccess = contestResourceAccess(contest, 'submission');
   const problemAccess = contestResourceAccess(contest, 'problem');
   const phase = contestAccessPhase(contest);

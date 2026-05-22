@@ -73,7 +73,9 @@ function ContestProblemsContent({
     generalSession,
     participantContest,
   } = useContestParticipantSession(contestId);
-  const hasSessionAccess = Boolean(participantContest);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
   const problemAccess = contestResourceAccess(contest, 'problem');
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const phase = contestAccessPhase(contest);
