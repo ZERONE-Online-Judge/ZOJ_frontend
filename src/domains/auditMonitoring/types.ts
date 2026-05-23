@@ -16,6 +16,7 @@ export type AdminJudgeDashboard = {
     total_slots: number;
     free_slots: number;
     running_job_count: number;
+    agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;
     is_active: boolean;
@@ -66,6 +67,7 @@ export type AdminJudgeSubmissionEntry = {
     total_slots: number;
     free_slots: number;
     running_job_count: number;
+    agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;
   } | null;

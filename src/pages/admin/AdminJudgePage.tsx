@@ -271,7 +271,7 @@ function AdminJudgeContent({ token }: { token: string }) {
             <AnimatedNumber
               value={
                 dashboard?.nodes.reduce(
-                  (sum, node) => sum + node.free_slots,
+                  (sum, node) => sum + (node.is_active ? node.free_slots : 0),
                   0,
                 ) ?? 0
               }
@@ -326,7 +326,7 @@ function AdminJudgeContent({ token }: { token: string }) {
           </summary>
           <div className="border-t border-slate-100 p-6">
             <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
@@ -340,6 +340,9 @@ function AdminJudgeContent({ token }: { token: string }) {
                     </th>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
                       실행
+                    </th>
+                    <th className="border-r border-b border-slate-200 px-4 py-3">
+                      버전
                     </th>
                     <th className="border-b border-slate-200 px-4 py-3">
                       마지막 신호
@@ -381,6 +384,9 @@ function AdminJudgeContent({ token }: { token: string }) {
                         <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
                           {node.running_job_count}
                         </td>
+                        <td className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-600">
+                          {node.agent_version || '-'}
+                        </td>
                         <td className="px-4 py-4 font-bold text-slate-500">
                           {formatRelativeTime(node.last_heartbeat_at)}
                         </td>
@@ -390,7 +396,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                     <tr>
                       <td
                         className="px-4 py-8 text-center text-sm font-bold text-slate-500"
-                        colSpan={5}
+                        colSpan={6}
                       >
                         등록된 채점 노드가 없습니다.
                       </td>
