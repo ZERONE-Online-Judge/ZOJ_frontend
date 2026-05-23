@@ -40,12 +40,19 @@ export function listSubmissions(
 export function listSubmissionsPage(
   contestId: string,
   token: string | undefined,
-  options: { divisionId?: string; problemId?: string; limit?: number; cursor?: string } = {},
+  options: {
+    cursor?: string;
+    divisionId?: string;
+    includeSource?: boolean;
+    limit?: number;
+    problemId?: string;
+  } = {},
 ) {
   const search = new URLSearchParams();
   if (options.limit) search.set('limit', String(options.limit));
   if (options.cursor) search.set('cursor', options.cursor);
   if (options.divisionId) search.set('division_id', options.divisionId);
+  if (options.includeSource) search.set('include_source', 'true');
   if (options.problemId) search.set('problem_id', options.problemId);
 
   const query = search.toString();

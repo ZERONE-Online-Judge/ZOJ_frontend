@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { Problem } from '@/domains/problemManagement/types';
@@ -128,9 +128,7 @@ export default function ContestSubmissionsTable({
     'border-r border-slate-200 px-5 py-4 font-medium text-slate-950 last:border-r-0';
   const headerCellClassName =
     'border-r border-slate-200 px-5 py-4 last:border-r-0';
-  const [previewSubmission, setPreviewSubmission] = useState<Submission | null>(
-    null,
-  );
+  const [openSubmissionId, setOpenSubmissionId] = useState<string | null>(null);
 
   return (
     <>
@@ -159,130 +157,136 @@ export default function ContestSubmissionsTable({
               const problemId = submissionProblemId(submission, problemById);
               const sourceCode = submissionSourceCode(submission);
 
+              const isOpen = openSubmissionId === submission.submission_id;
+
               return (
-                <tr
-                  className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
-                  key={submission.submission_id}
-                >
-                  <td
-                    className={`${cellClassName} font-mono text-xs font-bold`}
-                    title={submission.submission_id}
-                  >
-                    {displaySubmissionId(submission.submission_id)}
-                  </td>
-                  <td
-                    className={`${cellClassName} max-w-32 truncate font-bold`}
-                    title={name}
-                  >
-                    {name}
-                  </td>
-                  <td
-                    className={`${cellClassName} font-bold`}
-                    title={submissionProblemTitle(submission, problemById)}
-                  >
-                    <Link
-                      className="hover:text-zoj-blue transition"
-                      to={`/contests/${contestId}/problems/${problemId}`}
+                <Fragment key={submission.submission_id}>
+                  <tr className="border-b border-slate-200 odd:bg-slate-50/80">
+                    <td
+                      className={`${cellClassName} font-mono text-xs font-bold`}
+                      title={submission.submission_id}
                     >
-                      {submissionProblem(submission, problemById)}
-                    </Link>
-                  </td>
-                  <td className={cellClassName}>
-                    <ContestSubmissionResultBadge
-                      judgeMessage={submission.judge_message}
-                      submission={submission}
-                      status={submission.status}
-                    />
-                  </td>
-                  <td className={cellClassName}>
-                    {formatMemoryKb(submissionMemory(submission))}
-                  </td>
-                  <td className={cellClassName}>
-                    {formatTimeMs(submissionTime(submission))}
-                  </td>
-                  <td className={cellClassName}>
-                    <span className="inline-flex items-center gap-3">
-                      <button
-                        className="font-bold text-slate-950 transition hover:text-zoj-blue"
-                        disabled={!sourceCode}
-                        onClick={() => setPreviewSubmission(submission)}
-                        title={sourceCode ? '제출 코드 보기' : '코드가 포함되지 않은 제출입니다.'}
-                        type="button"
+                      {displaySubmissionId(submission.submission_id)}
+                    </td>
+                    <td
+                      className={`${cellClassName} max-w-32 truncate font-bold`}
+                      title={name}
+                    >
+                      {name}
+                    </td>
+                    <td
+                      className={`${cellClassName} font-bold`}
+                      title={submissionProblemTitle(submission, problemById)}
+                    >
+                      <Link
+                        className="hover:text-zoj-blue transition"
+                        to={`/contests/${contestId}/problems/${problemId}`}
                       >
-                        {submission.language}
-                      </button>
-                      {sourceCode ? (
-                        <Link
-                          className="text-xs font-black text-zoj-blue transition hover:text-slate-950"
-                          to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
+                        {submissionProblem(submission, problemById)}
+                      </Link>
+                    </td>
+                    <td className={cellClassName}>
+                      <ContestSubmissionResultBadge
+                        judgeMessage={submission.judge_message}
+                        submission={submission}
+                        status={submission.status}
+                      />
+                    </td>
+                    <td className={cellClassName}>
+                      {formatMemoryKb(submissionMemory(submission))}
+                    </td>
+                    <td className={cellClassName}>
+                      {formatTimeMs(submissionTime(submission))}
+                    </td>
+                    <td className={cellClassName}>
+                      <span className="inline-flex items-center gap-3">
+                        <button
+                          aria-expanded={isOpen}
+                          className="font-bold text-slate-950 transition hover:text-zoj-blue disabled:cursor-not-allowed disabled:text-slate-400"
+                          disabled={!sourceCode}
+                          onClick={() =>
+                            setOpenSubmissionId((current) =>
+                              current === submission.submission_id
+                                ? null
+                                : submission.submission_id,
+                            )
+                          }
+                          title={
+                            sourceCode
+                              ? '제출 코드 보기'
+                              : '코드가 포함되지 않은 제출입니다.'
+                          }
+                          type="button"
                         >
-                          수정
-                        </Link>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className={cellClassName}>
-                    {formatCodeLength(submission)}
-                  </td>
-                  <td className={cellClassName}>
-                    {formatRelativeTime(submission.submitted_at)}
-                  </td>
-                </tr>
+                          {submission.language}
+                        </button>
+                        {sourceCode ? (
+                          <Link
+                            className="text-xs font-black text-zoj-blue transition hover:text-slate-950"
+                            to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
+                          >
+                            수정
+                          </Link>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td className={cellClassName}>
+                      {formatCodeLength(submission)}
+                    </td>
+                    <td className={cellClassName}>
+                      {formatRelativeTime(submission.submitted_at)}
+                    </td>
+                  </tr>
+                  {isOpen ? (
+                    <tr className="border-b border-slate-200 bg-white">
+                      <td className="p-0" colSpan={9}>
+                        <SubmissionCodeAccordion
+                          sourceCode={sourceCode}
+                          submission={submission}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
-      {previewSubmission ? (
-        <SubmissionCodeModal
-          onClose={() => setPreviewSubmission(null)}
-          submission={previewSubmission}
-        />
-      ) : null}
     </>
   );
 }
 
-function SubmissionCodeModal({
-  onClose,
+function SubmissionCodeAccordion({
+  sourceCode,
   submission,
 }: {
-  onClose: () => void;
+  sourceCode: string;
   submission: Submission;
 }) {
-  const sourceCode = submissionSourceCode(submission);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-      <section className="grid max-h-[86vh] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl">
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="text-base font-black text-slate-950">
+    <section className="grid gap-3 border-t border-slate-200 bg-slate-950 px-5 py-4 text-slate-50">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black text-slate-400">제출 코드</p>
+          <h2 className="mt-1 font-mono text-sm font-black">
+            {displaySubmissionId(submission.submission_id)} ·{' '}
             {submission.language}
           </h2>
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="제출 코드 복사"
-              className="flex size-9 items-center justify-center rounded border border-slate-200 text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-              onClick={() => void navigator.clipboard?.writeText(sourceCode)}
-              title="제출 코드 복사"
-              type="button"
-            >
-              <SvgIcon name="clipboard" size={16} />
-            </button>
-            <button
-              aria-label="닫기"
-              className="flex size-9 items-center justify-center rounded border border-slate-200 text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-              onClick={onClose}
-              type="button"
-            >
-              <SvgIcon name="close" size={14} />
-            </button>
-          </div>
-        </header>
-        <pre className="min-h-0 overflow-auto bg-slate-950 p-5 text-sm leading-6 text-slate-50">
-          <code>{sourceCode}</code>
-        </pre>
-      </section>
-    </div>
+        </div>
+        <button
+          aria-label="제출 코드 복사"
+          className="flex size-9 items-center justify-center rounded border border-slate-700 text-slate-200 transition hover:border-slate-400 hover:text-white"
+          onClick={() => void navigator.clipboard?.writeText(sourceCode)}
+          title="제출 코드 복사"
+          type="button"
+        >
+          <SvgIcon name="clipboard" size={16} />
+        </button>
+      </header>
+      <pre className="max-h-[420px] min-h-36 overflow-auto rounded border border-slate-800 bg-slate-900 p-4 text-sm leading-6 text-slate-50">
+        <code>{sourceCode}</code>
+      </pre>
+    </section>
   );
 }

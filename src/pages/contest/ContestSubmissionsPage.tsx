@@ -169,6 +169,7 @@ function ContestSubmissionsContent({
         : undefined,
       currentCursor ?? undefined,
       selectedProblemId || undefined,
+      shouldUseParticipantScope,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope || shouldUseParticipantAuth
@@ -177,6 +178,7 @@ function ContestSubmissionsContent({
       if (session && shouldUseParticipantScope) {
         return listSubmissionsPage(contestId, session.accessToken, {
           cursor: currentCursor,
+          includeSource: true,
           limit: SUBMISSIONS_PAGE_SIZE,
           problemId: selectedProblemId || undefined,
         });

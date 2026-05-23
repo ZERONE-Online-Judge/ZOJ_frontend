@@ -23,6 +23,7 @@ export const contestQueryKeys = {
     participantToken?: string,
     cursor?: string,
     problemId?: string,
+    includeSource?: boolean,
   ) =>
     [
       'contest-submissions',
@@ -33,6 +34,7 @@ export const contestQueryKeys = {
       participantToken ?? null,
       cursor ?? null,
       problemId ?? null,
+      includeSource ?? false,
     ] as const,
   scoreboard: (
     contestId: string,
