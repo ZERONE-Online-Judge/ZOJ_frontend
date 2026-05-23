@@ -48,6 +48,21 @@ function normalizedEmail(value?: string | null) {
   return value?.trim().toLowerCase() ?? '';
 }
 
+function authorContext(teamName?: string | null, divisionName?: string | null) {
+  const parts = [teamName, divisionName].filter(
+    (item): item is string => Boolean(item),
+  );
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function questionAuthorName(question: ContestQuestion) {
+  return question.author_name ?? contestBoardText.authorFallback;
+}
+
+function questionAuthorContext(question: ContestQuestion) {
+  return authorContext(question.team_name, question.division_name);
+}
+
 function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
   if (answer.created_by_role === 'operator') return '운영자 답변';
 
@@ -55,12 +70,16 @@ function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
     answer.created_by_name ||
     answer.created_by_email ||
     contestBoardText.authorFallback;
+  const answerEmail = normalizedEmail(answer.created_by_email);
   const isQuestionAuthor =
-    normalizedEmail(answer.created_by_email) &&
-    normalizedEmail(answer.created_by_email) ===
-      normalizedEmail(question.author_email);
+    answerEmail !== '' && answerEmail === normalizedEmail(question.author_email);
 
   return isQuestionAuthor ? `${name} (글쓴이)` : name;
+}
+
+function answerAuthorContext(answer: ContestAnswer) {
+  if (answer.created_by_role === 'operator') return null;
+  return authorContext(answer.created_by_team_name, answer.created_by_division_name);
 }
 
 function ContestBoardContent({
@@ -775,9 +794,15 @@ function QuestionList({
                 </strong>
                 <AnswerCountBadge count={question.answers.length} />
               </span>
-              <span className="shrink-0 text-sm font-medium text-slate-500">
-                {question.author_name ?? contestBoardText.authorFallback} ·{' '}
-                {formatDateTime(question.created_at)}
+              <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                <span className="text-sm font-black text-slate-700">
+                  {questionAuthorName(question)} · {formatDateTime(question.created_at)}
+                </span>
+                {questionAuthorContext(question) ? (
+                  <span className="text-xs font-bold text-slate-500">
+                    {questionAuthorContext(question)}
+                  </span>
+                ) : null}
               </span>
             </button>
             {isExpanded ? (
@@ -836,9 +861,10 @@ function QuestionInlineDetail({
     <article className="grid gap-5 bg-white px-4 pb-6">
       <div className="rounded border border-slate-200 bg-white px-5 py-4">
         <div className="mb-3 flex flex-wrap gap-2">
-          <InfoPill>
-            {question.author_name ?? contestBoardText.authorFallback}
-          </InfoPill>
+          <InfoPill>{questionAuthorName(question)}</InfoPill>
+          {questionAuthorContext(question) ? (
+            <InfoPill>{questionAuthorContext(question)}</InfoPill>
+          ) : null}
           <InfoPill>{formatDateTime(question.created_at)}</InfoPill>
         </div>
         <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
@@ -868,6 +894,9 @@ function QuestionInlineDetail({
                   >
                     {answerAuthorLabel(question, answer)}
                   </span>
+                  {answerAuthorContext(answer) ? (
+                    <InfoPill>{answerAuthorContext(answer)}</InfoPill>
+                  ) : null}
                   <InfoPill>{formatDateTime(answer.created_at)}</InfoPill>
                 </div>
                 <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">

@@ -42,16 +42,35 @@ function normalizedEmail(value?: string | null) {
   return value?.trim().toLowerCase() ?? '';
 }
 
+function authorContext(teamName?: string | null, divisionName?: string | null) {
+  const parts = [teamName, divisionName].filter(
+    (item): item is string => Boolean(item),
+  );
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function questionAuthorName(question: ContestQuestion) {
+  return question.author_name ?? '참가자';
+}
+
+function questionAuthorContext(question: ContestQuestion) {
+  return authorContext(question.team_name, question.division_name);
+}
+
 function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
   if (answer.created_by_role === 'operator') return '운영자 답변';
 
   const name = answer.created_by_name || answer.created_by_email || '참가자';
+  const answerEmail = normalizedEmail(answer.created_by_email);
   const isQuestionAuthor =
-    normalizedEmail(answer.created_by_email) &&
-    normalizedEmail(answer.created_by_email) ===
-      normalizedEmail(question.author_email);
+    answerEmail !== '' && answerEmail === normalizedEmail(question.author_email);
 
   return isQuestionAuthor ? `${name} (글쓴이)` : name;
+}
+
+function answerAuthorContext(answer: ContestAnswer) {
+  if (answer.created_by_role === 'operator') return null;
+  return authorContext(answer.created_by_team_name, answer.created_by_division_name);
 }
 
 function answerCountLabel(count: number) {
@@ -321,9 +340,16 @@ function OperatorBoardContent({
                     </strong>
                     <AnswerCountBadge count={question.answers.length} />
                   </span>
-                  <span className="shrink-0 text-sm font-medium text-slate-500">
-                    {question.team_name ?? question.author_name ?? '참가자'} ·{' '}
-                    {formatDateTime(question.created_at)}
+                  <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                    <span className="text-sm font-black text-slate-700">
+                      {questionAuthorName(question)} ·{' '}
+                      {formatDateTime(question.created_at)}
+                    </span>
+                    {questionAuthorContext(question) ? (
+                      <span className="text-xs font-bold text-slate-500">
+                        {questionAuthorContext(question)}
+                      </span>
+                    ) : null}
                   </span>
                 </button>
 
@@ -527,6 +553,11 @@ function QuestionInlineDetail({
                 >
                   {answerAuthorLabel(question, answer)}
                 </span>
+                {answerAuthorContext(answer) ? (
+                  <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                    {answerAuthorContext(answer)}
+                  </span>
+                ) : null}
                 <span className="rounded-full bg-white px-3 py-1 text-slate-600">
                   {answer.visibility === 'public' ? '공개' : '비공개'}
                 </span>
@@ -638,8 +669,9 @@ function QuestionInlineDetail({
 function QuestionMeta({ question }: { question: ContestQuestion }) {
   return (
     <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold text-slate-500">
+      <span>작성자: {questionAuthorName(question)}</span>
       <span>팀: {question.team_name ?? '-'}</span>
-      <span>작성자: {question.author_name ?? '-'}</span>
+      <span>유형: {question.division_name ?? '-'}</span>
       <span>작성일: {formatDateTime(question.created_at)}</span>
     </span>
   );
