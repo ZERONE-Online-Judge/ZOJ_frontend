@@ -16,6 +16,9 @@ export type AdminJudgeDashboard = {
     total_slots: number;
     free_slots: number;
     running_job_count: number;
+    reported_running_job_count?: number | null;
+    actual_running_job_count?: number | null;
+    running_job_count_mismatch?: boolean | null;
     agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;
@@ -67,6 +70,9 @@ export type AdminJudgeSubmissionEntry = {
     total_slots: number;
     free_slots: number;
     running_job_count: number;
+    reported_running_job_count?: number | null;
+    actual_running_job_count?: number | null;
+    running_job_count_mismatch?: boolean | null;
     agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;

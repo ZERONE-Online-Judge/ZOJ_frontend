@@ -382,7 +382,13 @@ function AdminJudgeContent({ token }: { token: string }) {
                           {node.free_slots}/{node.total_slots}
                         </td>
                         <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
-                          {node.running_job_count}
+                          {node.actual_running_job_count ??
+                            node.running_job_count}
+                          {node.running_job_count_mismatch ? (
+                            <span className="ml-2 rounded bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">
+                              보고 {node.reported_running_job_count ?? node.running_job_count}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-600">
                           {node.agent_version || '-'}

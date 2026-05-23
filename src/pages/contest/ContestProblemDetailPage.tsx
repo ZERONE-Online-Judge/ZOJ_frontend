@@ -695,7 +695,7 @@ function ContestProblemDetailContent({
         </section>
       ) : null}
 
-      {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canMockJudge)) ? (
+      {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canShowSubmit)) ? (
         <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white lg:grid-cols-[15rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
