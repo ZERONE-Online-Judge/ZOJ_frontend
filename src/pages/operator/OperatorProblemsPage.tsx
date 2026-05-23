@@ -108,6 +108,7 @@ type VerificationRunResult = {
   error?: string;
   expectedStatus: string;
   filename: string;
+  stage?: 'uploading' | 'loading_source' | 'submitting' | 'judging' | 'done';
   submission?: Submission;
 };
 
@@ -297,8 +298,34 @@ function storageFileName(storageKey: string) {
   return decodeURIComponent(storageKey.split('/').pop() ?? storageKey);
 }
 
+function formatTestcaseFileSize(sizeBytes?: number | null) {
+  if (
+    typeof sizeBytes !== 'number' ||
+    !Number.isFinite(sizeBytes) ||
+    sizeBytes < 0
+  ) {
+    return null;
+  }
+  if (sizeBytes >= 1024 * 1024) {
+    const sizeMb = sizeBytes / (1024 * 1024);
+    return `${sizeMb >= 10 ? sizeMb.toFixed(0) : sizeMb.toFixed(1)}MB`;
+  }
+  return `${Math.max(1, Math.ceil(sizeBytes / 1024))}KB`;
+}
+
 function testcaseDisplayFileName(displayOrder: number, extension: 'in' | 'out') {
-  return `${displayOrder}.${extension}`;
+  return `${String(displayOrder).padStart(2, '0')}.${extension}`;
+}
+
+function testcaseFileLabel(
+  displayOrder: number,
+  extension: 'in' | 'out',
+  sizeBytes?: number | null,
+) {
+  const sizeLabel = formatTestcaseFileSize(sizeBytes);
+  return `${testcaseDisplayFileName(displayOrder, extension)}${
+    sizeLabel ? `(${sizeLabel})` : ''
+  }`;
 }
 
 export default function OperatorProblemsPage() {
@@ -527,15 +554,21 @@ function OperatorProblemsContent({
       };
     });
   }, [packageStatusQuery.data?.support_files]);
+  const testcaseFileStorageKey = testcaseFilePreview?.storageKey ?? '';
   const testcaseFileQuery = useQuery({
-    enabled: Boolean(testcaseFilePreview?.storageKey),
-    queryKey: [
-      'operator',
-      'testcase-file',
-      testcaseFilePreview?.storageKey ?? '',
-    ],
-    queryFn: () => getStorageObjectText(testcaseFilePreview!.storageKey),
+    enabled: Boolean(testcaseFileStorageKey),
+    queryKey: ['operator', 'testcase-file', testcaseFileStorageKey],
+    queryFn: async () => ({
+      storageKey: testcaseFileStorageKey,
+      text: await getStorageObjectText(testcaseFileStorageKey),
+    }),
   });
+  const isTestcaseFileSettled =
+    testcaseFileQuery.data?.storageKey === testcaseFileStorageKey;
+  const isTestcaseFileLoading =
+    Boolean(testcaseFileStorageKey) &&
+    (testcaseFileQuery.isPending ||
+      (testcaseFileQuery.isFetching && !isTestcaseFileSettled));
   const supportFileQuery = useQuery({
     enabled: Boolean(supportFilePreview?.storageKey),
     queryKey: [
@@ -672,7 +705,11 @@ function OperatorProblemsContent({
     },
   });
 
-  async function runOperatorTestSubmission(sourceCode: string, filename: string) {
+  async function runOperatorTestSubmission(
+    sourceCode: string,
+    filename: string,
+    onUpdate?: (submission: Submission) => void,
+  ) {
     const language = languageFromFilename(filename);
     if (!language) {
       throw new Error('지원하지 않는 코드 파일입니다. .c, .cpp, .py, .java 파일을 사용해 주세요.');
@@ -688,7 +725,7 @@ function OperatorProblemsContent({
       },
     );
 
-    return waitForOperatorTestSubmission(submitted);
+    return waitForOperatorTestSubmission(submitted, onUpdate);
   }
 
   async function waitForOperatorTestSubmission(
@@ -740,6 +777,7 @@ function OperatorProblemsContent({
           [tempKey]: {
             expectedStatus,
             filename: file.name,
+            stage: 'uploading',
           },
         }));
 
@@ -752,14 +790,34 @@ function OperatorProblemsContent({
             file,
             `problems/${effectiveSelectedProblemId}/verification-solutions/${expectedStatus}`,
           );
+          setVerificationResults((previous) => ({
+            ...previous,
+            [tempKey]: {
+              expectedStatus,
+              filename: file.name,
+              stage: 'submitting',
+            },
+          }));
           const submission = await runOperatorTestSubmission(
             sourceCode,
             file.name,
+            (latestSubmission) => {
+              setVerificationResults((previous) => ({
+                ...previous,
+                [tempKey]: {
+                  expectedStatus,
+                  filename: file.name,
+                  stage: 'judging',
+                  submission: latestSubmission,
+                },
+              }));
+            },
           );
           const result = {
             asset,
             expectedStatus,
             filename: file.name,
+            stage: 'done' as const,
             submission,
           };
           results.push(result);
@@ -777,6 +835,7 @@ function OperatorProblemsContent({
                 : '검증 코드 처리에 실패했습니다.',
             expectedStatus,
             filename: file.name,
+            stage: 'done' as const,
           };
           results.push(result);
           setVerificationResults((previous) => ({
@@ -814,18 +873,41 @@ function OperatorProblemsContent({
           asset,
           expectedStatus,
           filename: asset.original_filename,
+          stage: 'loading_source',
         },
       }));
 
       const sourceCode = await getStorageObjectText(asset.storage_key);
+      setVerificationResults((previous) => ({
+        ...previous,
+        [asset.asset_id]: {
+          asset,
+          expectedStatus,
+          filename: asset.original_filename,
+          stage: 'submitting',
+        },
+      }));
       const submission = await runOperatorTestSubmission(
         sourceCode,
         asset.original_filename,
+        (latestSubmission) => {
+          setVerificationResults((previous) => ({
+            ...previous,
+            [asset.asset_id]: {
+              asset,
+              expectedStatus,
+              filename: asset.original_filename,
+              stage: 'judging',
+              submission: latestSubmission,
+            },
+          }));
+        },
       );
       const result = {
         asset,
         expectedStatus,
         filename: asset.original_filename,
+        stage: 'done' as const,
         submission,
       };
       setVerificationResults((previous) => ({
@@ -845,6 +927,7 @@ function OperatorProblemsContent({
               : '검증 코드 채점에 실패했습니다.',
           expectedStatus: variables.expectedStatus,
           filename: variables.asset.original_filename,
+          stage: 'done',
         },
       }));
     },
@@ -1921,10 +2004,12 @@ function OperatorProblemsContent({
 
       {isTestcaseModalOpen && latestTestcaseSet ? (
         <TestcaseSetModal
-          fileError={testcaseFileQuery.error}
+          fileError={isTestcaseFileLoading ? null : testcaseFileQuery.error}
           filePreview={testcaseFilePreview}
-          fileText={testcaseFileQuery.data}
-          isFileLoading={testcaseFileQuery.isLoading}
+          fileText={
+            isTestcaseFileSettled ? testcaseFileQuery.data?.text : undefined
+          }
+          isFileLoading={isTestcaseFileLoading}
           onClose={() => {
             setIsTestcaseModalOpen(false);
             setTestcaseFilePreview(null);
@@ -2108,18 +2193,20 @@ function TestcaseSetModal({
                           className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
                           title={storageFileName(testcase.input_storage_key)}
                         >
-                          {testcaseDisplayFileName(
+                          {testcaseFileLabel(
                             testcase.display_order,
                             'in',
+                            testcase.input_size_bytes,
                           )}
                         </td>
                         <td
                           className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
                           title={storageFileName(testcase.output_storage_key)}
                         >
-                          {testcaseDisplayFileName(
+                          {testcaseFileLabel(
                             testcase.display_order,
                             'out',
+                            testcase.output_size_bytes,
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -2525,6 +2612,26 @@ function VerificationResultSummary({
   const passed =
     actualStatus && !isPending && actualStatus === result.expectedStatus;
   const failed = actualStatus && !isPending && actualStatus !== result.expectedStatus;
+  const progressText = submissionProgressText(result.submission);
+  const progressPercent = submissionProgressPercent(result.submission);
+  const isWorking =
+    !result.error &&
+    (isPending ||
+      result.stage === 'uploading' ||
+      result.stage === 'loading_source' ||
+      result.stage === 'submitting' ||
+      result.stage === 'judging');
+  const progressWidth =
+    typeof progressPercent === 'number'
+      ? progressPercent
+      : actualStatus === 'waiting'
+        ? 12
+        : isWorking
+          ? 6
+          : 0;
+  const currentLabel = actualStatus
+    ? submissionStatusLabel(actualStatus)
+    : verificationStageLabel(result.stage);
 
   return (
     <div
@@ -2536,14 +2643,29 @@ function VerificationResultSummary({
             ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
             : failed
               ? 'border border-amber-200 bg-amber-50 text-amber-800'
-              : 'border border-slate-200 bg-slate-50 text-slate-600',
+              : isWorking
+                ? 'border border-indigo-200 bg-indigo-50 text-indigo-800'
+                : 'border border-slate-200 bg-slate-50 text-slate-600',
       ].join(' ')}
     >
       <p className="font-black">
         {result.filename} · 기대 {submissionStatusLabel(result.expectedStatus)}
-        {actualStatus ? ` / 실제 ${submissionStatusLabel(actualStatus)}` : ' / 채점 대기'}
+        {` / 현재 ${currentLabel}`}
         {passed ? ' · 통과' : failed ? ' · 확인 필요' : ''}
       </p>
+      {isWorking ? (
+        <div className="grid gap-1">
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/70">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+              style={{ width: `${Math.max(0, Math.min(100, progressWidth))}%` }}
+            />
+          </div>
+          <p className="text-[11px] leading-5">
+            {progressText || verificationStageHelp(result.stage, actualStatus)}
+          </p>
+        </div>
+      ) : null}
       {result.submission?.judge_message ? (
         <p className="break-words text-[11px] leading-5">
           {result.submission.judge_message}
@@ -2559,6 +2681,42 @@ function VerificationResultSummary({
       ) : null}
     </div>
   );
+}
+
+function verificationStageLabel(stage?: VerificationRunResult['stage']) {
+  switch (stage) {
+    case 'uploading':
+      return '업로드 중';
+    case 'loading_source':
+      return '코드 불러오는 중';
+    case 'submitting':
+      return '채점 제출 중';
+    case 'judging':
+      return '채점 중';
+    case 'done':
+      return '채점 완료';
+    default:
+      return '채점 대기';
+  }
+}
+
+function verificationStageHelp(
+  stage?: VerificationRunResult['stage'],
+  status?: string | null,
+) {
+  if (status === 'waiting') return '채점 큐에서 순서를 기다리는 중입니다.';
+  if (status === 'preparing') return '채점 환경을 준비하는 중입니다.';
+  if (status === 'judging') return '테스트케이스를 실행하는 중입니다.';
+  switch (stage) {
+    case 'uploading':
+      return '검증 코드를 등록하는 중입니다.';
+    case 'loading_source':
+      return '저장된 검증 코드를 불러오는 중입니다.';
+    case 'submitting':
+      return '채점 큐에 제출하는 중입니다.';
+    default:
+      return '채점 서버 응답을 기다리는 중입니다.';
+  }
 }
 
 function OperatorPreviewJudgeResult({

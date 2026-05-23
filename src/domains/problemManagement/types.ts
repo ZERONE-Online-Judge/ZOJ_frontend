@@ -54,6 +54,8 @@ export type Testcase = {
   output_storage_key: string;
   input_sha256: string;
   output_sha256: string;
+  input_size_bytes?: number | null;
+  output_size_bytes?: number | null;
 };
 
 export type TestcaseSet = {
