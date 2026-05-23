@@ -76,6 +76,41 @@
   }
 }
 
+@keyframes zoj-hero-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes zoj-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoj-typing-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
 @layer utilities {
   .animate-emergency-marquee {
     animation: zoj-emergency-marquee var(--zoj-emergency-marquee-duration, 14s)
@@ -100,6 +135,18 @@
 
   .animate-backdrop-enter {
     animation: zoj-fade-in 140ms ease-out both;
+  }
+
+  .animate-hero-title {
+    animation: zoj-hero-title-in 520ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-hero-copy {
+    animation: zoj-hero-copy-in 360ms cubic-bezier(0.2, 0, 0, 1) 180ms both;
+  }
+
+  .animate-typing-caret {
+    animation: zoj-typing-caret 900ms steps(1, end) infinite;
   }
 
   .zoj-surface {
