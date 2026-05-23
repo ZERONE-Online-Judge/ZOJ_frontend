@@ -1,4 +1,10 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -289,6 +295,10 @@ function uniqueProblemCode(baseCode: string, existingCodes: Set<string>) {
 
 function storageFileName(storageKey: string) {
   return decodeURIComponent(storageKey.split('/').pop() ?? storageKey);
+}
+
+function testcaseDisplayFileName(displayOrder: number, extension: 'in' | 'out') {
+  return `${displayOrder}.${extension}`;
 }
 
 export default function OperatorProblemsPage() {
@@ -1018,16 +1028,20 @@ function OperatorProblemsContent({
   });
 
   useEffect(() => {
-    if (!testDraftKey) {
-      setTestSourceCode('');
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (!testDraftKey) {
+        setTestSourceCode('');
+        return;
+      }
 
-    const savedDraft = loadCodeDraft(testDraftScope, testDraftKey);
-    setTestSourceCode(savedDraft?.sourceCode ?? '');
-    if (isJudgeLanguage(savedDraft?.language)) {
-      setTestLanguage(savedDraft.language);
-    }
+      const savedDraft = loadCodeDraft(testDraftScope, testDraftKey);
+      setTestSourceCode(savedDraft?.sourceCode ?? '');
+      if (isJudgeLanguage(savedDraft?.language)) {
+        setTestLanguage(savedDraft.language);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [testDraftKey, testDraftScope]);
 
   function handleTestLanguageChange(language: JudgeLanguage) {
@@ -2015,12 +2029,19 @@ function TestcaseSetModal({
   isFileLoading: boolean;
   onClose: () => void;
   onDeleteTestcase: (testcaseId: string) => void;
-  onSelectFile: (preview: { storageKey: string; title: string }) => void;
+  onSelectFile: (preview: { storageKey: string; title: string } | null) => void;
   testcaseSet: TestcaseSet;
 }) {
   const testcases = [...(testcaseSet.testcases ?? [])].sort(
     (a, b) => a.display_order - b.display_order,
   );
+  const selectedStorageKey = filePreview?.storageKey ?? null;
+
+  function selectTestcaseFile(storageKey: string, title: string) {
+    onSelectFile(
+      selectedStorageKey === storageKey ? null : { storageKey, title },
+    );
+  }
 
   return (
     <div
@@ -2028,7 +2049,7 @@ function TestcaseSetModal({
       className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
       role="dialog"
     >
-      <section className="mx-auto grid h-full max-h-[calc(100vh-1.5rem)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <section className="mx-auto grid h-full max-h-[calc(100vh-1.5rem)] w-full max-w-[min(96rem,calc(100vw-1.5rem))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:max-w-[min(96rem,calc(100vw-3rem))]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <p className="text-xs font-black text-indigo-600 uppercase">
@@ -2047,81 +2068,160 @@ function TestcaseSetModal({
           </button>
         </header>
 
-        <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(24rem,0.8fr)]">
-          <div className="min-h-0 overflow-auto border-b border-slate-200 lg:border-r lg:border-b-0">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <div className="min-h-0 overflow-hidden">
+          <div className="h-full min-w-0 overflow-x-scroll overflow-y-auto [scrollbar-gutter:stable]">
+            <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
               <thead className="sticky top-0 bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-20 border-r border-b border-slate-200 px-4 py-3">
                     번호
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-36 border-r border-b border-slate-200 px-4 py-3">
                     입력 파일
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-36 border-r border-b border-slate-200 px-4 py-3">
                     출력 파일
                   </th>
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     내용
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">관리</th>
+                  <th className="w-28 border-b border-slate-200 px-4 py-3">
+                    관리
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {testcases.map((testcase) => (
-                  <tr
-                    className="hover:bg-indigo-50/40"
-                    key={testcase.testcase_id}
-                  >
-                    <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
-                      {testcase.display_order}
-                    </td>
-                    <td className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold text-slate-600">
-                      {storageFileName(testcase.input_storage_key)}
-                    </td>
-                    <td className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold text-slate-600">
-                      {storageFileName(testcase.output_storage_key)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50"
-                          onClick={() =>
-                            onSelectFile({
-                              storageKey: testcase.input_storage_key,
-                              title: `${testcase.display_order}번 입력`,
-                            })
-                          }
-                          type="button"
+                {testcases.map((testcase) => {
+                  const isInputOpen =
+                    selectedStorageKey === testcase.input_storage_key;
+                  const isOutputOpen =
+                    selectedStorageKey === testcase.output_storage_key;
+                  const isOpen = isInputOpen || isOutputOpen;
+
+                  return (
+                    <Fragment key={testcase.testcase_id}>
+                      <tr className="hover:bg-indigo-50/40">
+                        <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                          {testcase.display_order}
+                        </td>
+                        <td
+                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
+                          title={storageFileName(testcase.input_storage_key)}
                         >
-                          입력 보기
-                        </button>
-                        <button
-                          className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50"
-                          onClick={() =>
-                            onSelectFile({
-                              storageKey: testcase.output_storage_key,
-                              title: `${testcase.display_order}번 출력`,
-                            })
-                          }
-                          type="button"
+                          {testcaseDisplayFileName(
+                            testcase.display_order,
+                            'in',
+                          )}
+                        </td>
+                        <td
+                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
+                          title={storageFileName(testcase.output_storage_key)}
                         >
-                          출력 보기
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 disabled:text-slate-300"
-                        disabled={deletingTestcaseId === testcase.testcase_id}
-                        onClick={() => onDeleteTestcase(testcase.testcase_id)}
-                        type="button"
-                      >
-                        삭제
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                          {testcaseDisplayFileName(
+                            testcase.display_order,
+                            'out',
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              aria-expanded={isInputOpen}
+                              className={[
+                                'rounded border px-3 py-2 text-xs font-black whitespace-nowrap',
+                                isInputOpen
+                                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                                  : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50',
+                              ].join(' ')}
+                              onClick={() =>
+                                selectTestcaseFile(
+                                  testcase.input_storage_key,
+                                  `${testcase.display_order}번 입력`,
+                                )
+                              }
+                              type="button"
+                            >
+                              입력 보기
+                            </button>
+                            <button
+                              aria-expanded={isOutputOpen}
+                              className={[
+                                'rounded border px-3 py-2 text-xs font-black whitespace-nowrap',
+                                isOutputOpen
+                                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                                  : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50',
+                              ].join(' ')}
+                              onClick={() =>
+                                selectTestcaseFile(
+                                  testcase.output_storage_key,
+                                  `${testcase.display_order}번 출력`,
+                                )
+                              }
+                              type="button"
+                            >
+                              출력 보기
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            className="rounded border border-rose-200 px-3 py-2 text-xs font-black whitespace-nowrap text-rose-600 hover:bg-rose-50 disabled:text-slate-300"
+                            disabled={
+                              deletingTestcaseId === testcase.testcase_id
+                            }
+                            onClick={() =>
+                              onDeleteTestcase(testcase.testcase_id)
+                            }
+                            type="button"
+                          >
+                            삭제
+                          </button>
+                        </td>
+                      </tr>
+                      {isOpen ? (
+                        <tr className="bg-slate-50">
+                          <td
+                            className="border-t border-slate-100 px-4 py-4"
+                            colSpan={5}
+                          >
+                            <div className="animate-panel-enter grid gap-3 rounded border border-slate-200 bg-white p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-black text-slate-950">
+                                    {filePreview?.title ?? '파일 내용'}
+                                  </p>
+                                  <p className="font-mono text-xs font-bold break-all text-slate-400">
+                                    {filePreview?.storageKey}
+                                  </p>
+                                </div>
+                                <button
+                                  className="h-8 rounded border border-slate-200 px-3 text-xs font-black text-slate-600 hover:bg-slate-50"
+                                  onClick={() => onSelectFile(null)}
+                                  type="button"
+                                >
+                                  접기
+                                </button>
+                              </div>
+                              {isFileLoading ? (
+                                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                                  파일 내용을 불러오는 중입니다.
+                                </p>
+                              ) : fileError ? (
+                                <ErrorBox
+                                  error={fileError}
+                                  fallback="파일 내용을 불러오지 못했습니다"
+                                />
+                              ) : (
+                                <pre className="max-h-96 min-h-32 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+                                  {fileText ?? ''}
+                                </pre>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
                 {!testcases.length ? (
                   <tr>
                     <td
@@ -2134,38 +2234,6 @@ function TestcaseSetModal({
                 ) : null}
               </tbody>
             </table>
-          </div>
-
-          <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] p-5">
-            <div className="grid gap-1">
-              <p className="text-sm font-black text-slate-900">
-                {filePreview?.title ?? '파일 내용'}
-              </p>
-              <p className="font-mono text-xs font-bold break-all text-slate-400">
-                {filePreview?.storageKey ??
-                  '왼쪽 목록에서 입력 또는 출력을 선택하세요.'}
-              </p>
-            </div>
-            <div className="mt-4 min-h-0">
-              {isFileLoading ? (
-                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                  파일 내용을 불러오는 중입니다.
-                </p>
-              ) : fileError ? (
-                <ErrorBox
-                  error={fileError}
-                  fallback="파일 내용을 불러오지 못했습니다"
-                />
-              ) : filePreview ? (
-                <pre className="h-full min-h-72 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
-                  {fileText ?? ''}
-                </pre>
-              ) : (
-                <p className="rounded border border-dashed border-slate-200 px-4 py-10 text-center text-sm font-bold text-slate-500">
-                  테스트케이스 파일을 선택하면 내용이 여기에 표시됩니다.
-                </p>
-              )}
-            </div>
           </div>
         </div>
       </section>
