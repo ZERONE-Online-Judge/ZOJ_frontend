@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import PageLayout from '@/components/common/PageLayout';
@@ -88,25 +86,13 @@ export default function LoginPage() {
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
+  const [email, setEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [now, setNow] = useState(currentTimestamp);
   const otpInputRef = useRef<HTMLInputElement | null>(null);
 
-  const {
-    formState: { errors, isSubmitting },
-    control,
-    handleSubmit,
-    register,
-    resetField,
-    setFocus,
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      otpCode: '',
-    },
-  });
-
-  const email = useWatch({ control, name: 'email' }) ?? '';
   const shouldShowContestLoginModal = searchParams.get('reason') === 'contest';
   const cooldownSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
   const otpExpiresSeconds = Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
@@ -121,25 +107,41 @@ export default function LoginPage() {
   useEffect(() => {
     if (!otpRequested) return;
 
-    setFocus('otpCode');
     otpInputRef.current?.focus();
-  }, [otpRequested, setFocus]);
+  }, [otpRequested]);
+
+  function validateEmail() {
+    const parsed = loginSchema.safeParse({ email, otpCode });
+    if (parsed.success) {
+      setEmailError('');
+      return true;
+    }
+
+    const issue = parsed.error.issues.find((item) =>
+      item.path.includes('email'),
+    );
+    setEmailError(issue?.message ?? loginPageText.emailValidation);
+    return false;
+  }
 
   function resetOtpAfterEmailChange() {
     setOtpRequested(false);
     setRequestedOtpEmail('');
     setOtpExpiresAt(0);
     setCooldownUntil(0);
-    resetField('otpCode');
+    setOtpCode('');
     setMessage(loginPageText.emailChanged);
     setMessageStatus('idle');
   }
 
   async function requestOtp() {
+    if (!validateEmail()) return;
+
     const requestedEmail = email.trim();
 
     setMessage(loginPageText.otpRequesting);
     setMessageStatus('loading');
+    setIsSubmitting(true);
 
     try {
       const response = await requestGeneralOtp(requestedEmail);
@@ -147,7 +149,7 @@ export default function LoginPage() {
         response.cooldown_seconds > 0 ? response.cooldown_seconds : 10;
       const requestedAt = currentTimestamp();
 
-      resetField('otpCode');
+      setOtpCode('');
       setOtpRequested(true);
       setRequestedOtpEmail(requestedEmail);
       setCooldownUntil(requestedAt + cooldown * 1000);
@@ -167,10 +169,14 @@ export default function LoginPage() {
           : formatUserApiError(error, loginPageText.otpRequestFailed),
       );
       setMessageStatus('error');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   async function submitLogin(values: LoginFormValues) {
+    if (!validateEmail()) return;
+
     if (!otpRequested) {
       await requestOtp();
       return;
@@ -190,6 +196,7 @@ export default function LoginPage() {
 
     setMessage(loginPageText.loginSubmitting);
     setMessageStatus('loading');
+    setIsSubmitting(true);
 
     try {
       const session = await verifyGeneralOtp(
@@ -204,17 +211,16 @@ export default function LoginPage() {
       setOtpRequested(false);
       setRequestedOtpEmail('');
       setOtpExpiresAt(0);
-      resetField('otpCode');
+      setOtpCode('');
       const contestId = searchParams.get('contestId');
       navigate(contestId ? `/contests/${encodeURIComponent(contestId)}` : '/');
     } catch (error) {
       setMessage(formatLoginError(error));
       setMessageStatus('error');
+    } finally {
+      setIsSubmitting(false);
     }
   }
-
-  const emailField = register('email');
-  const otpCodeField = register('otpCode');
 
   return (
     <PageLayout
@@ -270,7 +276,10 @@ export default function LoginPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(22rem,32rem)_minmax(20rem,1fr)]">
         <form
           className="grid min-w-0 gap-5 rounded-md border border-slate-200 bg-white p-6 shadow-sm"
-          onSubmit={handleSubmit(submitLogin)}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitLogin({ email, otpCode });
+          }}
         >
           <label className="grid gap-2">
             <span className="text-sm font-bold text-slate-800">
@@ -282,22 +291,24 @@ export default function LoginPage() {
               disabled={isSubmitting}
               placeholder={loginPageText.emailPlaceholder}
               type="email"
-              {...emailField}
+              value={email}
               onChange={(event) => {
-                emailField.onChange(event);
+                const nextEmail = event.target.value;
+                setEmail(nextEmail);
+                if (emailError) setEmailError('');
                 if (
                   otpRequested &&
                   requestedOtpEmail &&
-                  event.target.value.trim() !== requestedOtpEmail
+                  nextEmail.trim() !== requestedOtpEmail
                 ) {
                   resetOtpAfterEmailChange();
                 }
               }}
             />
           </label>
-          {errors.email && (
+          {emailError && (
             <p className="text-sm font-medium text-red-700">
-              {errors.email.message}
+              {emailError}
             </p>
           )}
 
@@ -330,11 +341,9 @@ export default function LoginPage() {
                   autoComplete="one-time-code"
                   className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
                   placeholder={loginPageText.otpPlaceholder}
-                  {...otpCodeField}
-                  ref={(element) => {
-                    otpCodeField.ref(element);
-                    otpInputRef.current = element;
-                  }}
+                  ref={otpInputRef}
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value)}
                 />
               </label>
               <button

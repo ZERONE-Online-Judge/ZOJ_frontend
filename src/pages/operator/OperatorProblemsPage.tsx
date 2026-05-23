@@ -66,6 +66,7 @@ import type {
 } from '@/domains/submissionScoreboard/types';
 import { formatApiError } from '@/shared/api/errors';
 import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
+import { formatMemoryKb } from '@/shared/lib/formatters';
 
 type ProblemForm = {
   displayOrder: string;
@@ -150,11 +151,6 @@ function languageFromFilename(filename: string): JudgeLanguage | null {
   if (lower.endsWith('.py')) return 'python313';
   if (lower.endsWith('.java')) return 'java8';
   return null;
-}
-
-function formatMemory(value?: number | null) {
-  if (value === undefined || value === null) return '-';
-  return `${value.toLocaleString('ko-KR')} KB`;
 }
 
 function formatRuntime(value?: number | null) {
@@ -2516,7 +2512,7 @@ function OperatorPreviewJudgeResult({
   const runtime = formatRuntime(
     submission.runtime_ms ?? submission.time_ms ?? submission.execution_time_ms,
   );
-  const memory = formatMemory(
+  const memory = formatMemoryKb(
     submission.memory_kb ??
       submission.memory_usage_kb ??
       submission.max_memory_kb,

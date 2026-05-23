@@ -42,6 +42,7 @@ import {
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
+import { formatMemoryKb } from '@/shared/lib/formatters';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ProblemView = 'combined' | 'problem' | 'submit';
@@ -122,7 +123,7 @@ function MockJudgeResult({
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-bold text-slate-600">
         <span>{queueText || `${progress}%`}</span>
         <span>시간 {result.runtime_ms ?? '-'} ms</span>
-        <span>메모리 {result.memory_kb ?? '-'} KB</span>
+        <span>메모리 {formatMemoryKb(result.memory_kb)}</span>
       </div>
     </div>
   );

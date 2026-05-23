@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { Problem } from '@/domains/problemManagement/types';
 import { formatRelativeTime } from '@/shared/lib/dateTime';
+import { formatMemoryKb } from '@/shared/lib/formatters';
 import ContestSubmissionResultBadge from '@/components/contest/submissions/ContestSubmissionResultBadge';
 import { SvgIcon } from '@/utils/Icons';
 
@@ -13,11 +14,6 @@ type ContestSubmissionsTableProps = {
   problems?: Problem[];
   submissions: Submission[];
 };
-
-function formatMemory(value?: number | null) {
-  if (value === undefined || value === null) return '-';
-  return `${value.toLocaleString('ko-KR')} KB`;
-}
 
 function formatTimeMs(value?: number | null) {
   if (value === undefined || value === null) return '-';
@@ -199,7 +195,7 @@ export default function ContestSubmissionsTable({
                     />
                   </td>
                   <td className={cellClassName}>
-                    {formatMemory(submissionMemory(submission))}
+                    {formatMemoryKb(submissionMemory(submission))}
                   </td>
                   <td className={cellClassName}>
                     {formatTimeMs(submissionTime(submission))}

@@ -28,6 +28,7 @@ import {
 } from '@/domains/submissionScoreboard/status';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
+import { formatMemoryKb } from '@/shared/lib/formatters';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 
@@ -654,7 +655,7 @@ function SubmissionRow({
         {formatDuration(runtime)}
       </td>
       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
-        {formatMemory(memory)}
+        {formatMemoryKb(memory)}
       </td>
       <td className="px-4 py-4 text-center">
         <button
@@ -777,7 +778,7 @@ function SubmissionDetail({
           value={submissionProgressText(progressSubmission) || '-'}
         />
         <DetailCard label="시간" value={formatDuration(runtime)} />
-        <DetailCard label="메모리" value={formatMemory(memory)} />
+        <DetailCard label="메모리" value={formatMemoryKb(memory)} />
         <DetailCard
           label="실패 케이스"
           value={String(submission.failed_testcase_order ?? '-')}
@@ -835,12 +836,6 @@ function shortSubmissionId(submissionId: string) {
 function formatDuration(value?: number | null) {
   if (typeof value !== 'number') return '-';
   return `${value} ms`;
-}
-
-function formatMemory(value?: number | null) {
-  if (typeof value !== 'number') return '-';
-  if (value >= 1024) return `${Math.round(value / 102.4) / 10} MB`;
-  return `${value} KB`;
 }
 
 function DetailCard({ label, value }: { label: string; value: string }) {

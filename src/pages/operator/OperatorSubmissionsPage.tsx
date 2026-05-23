@@ -35,6 +35,7 @@ import {
 } from '@/domains/submissionScoreboard/status';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
+import { formatMemoryKb } from '@/shared/lib/formatters';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 import SubmissionStatusBadge from '@/shared/ui/SubmissionStatusBadge';
@@ -479,11 +480,6 @@ function submissionMemberEmail(submission: Submission) {
   return submission.member_email ?? submission.member?.email ?? '-';
 }
 
-function formatMemory(value?: number | null) {
-  if (value === undefined || value === null) return '-';
-  return `${value.toLocaleString('ko-KR')} KB`;
-}
-
 function formatRuntime(value?: number | null) {
   if (value === undefined || value === null) return '-';
   return `${value.toLocaleString('ko-KR')} ms`;
@@ -586,7 +582,7 @@ function OperatorSubmissionsTable({
                   )}
                 </td>
                 <td className={cellClass}>
-                  {formatMemory(
+                  {formatMemoryKb(
                     submission.memory_kb ??
                       submission.memory_usage_kb ??
                       submission.max_memory_kb,
@@ -886,7 +882,7 @@ function SubmissionDetailModal({
                 />
                 <DetailCard
                   label="메모리"
-                  value={formatMemory(
+                  value={formatMemoryKb(
                     submission.memory_kb ??
                       submission.memory_usage_kb ??
                       submission.max_memory_kb,
