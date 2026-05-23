@@ -222,7 +222,7 @@ export default function ContestSubmissionsTable({
                         </button>
                         {sourceCode ? (
                           <Link
-                            className="text-xs font-black text-zoj-blue transition hover:text-slate-950"
+                            className="text-xs font-black whitespace-nowrap text-zoj-blue transition hover:text-slate-950"
                             to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
                           >
                             수정

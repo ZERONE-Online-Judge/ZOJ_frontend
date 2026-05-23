@@ -32,12 +32,13 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(calc(-1 * var(--zoj-emergency-marquee-distance)));
   }
 }
 
 @layer utilities {
   .animate-emergency-marquee {
-    animation: zoj-emergency-marquee 10s linear infinite;
+    animation: zoj-emergency-marquee var(--zoj-emergency-marquee-duration, 14s)
+      linear infinite;
   }
 }

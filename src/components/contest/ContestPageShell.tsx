@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   useEffect,
   useLayoutEffect,
@@ -63,19 +63,25 @@ function EmergencyNoticeBanner({
   notice: string;
   onDismiss: () => void;
 }) {
-  const textRef = useRef<HTMLSpanElement | null>(null);
+  const marqueeTextRef = useRef<HTMLSpanElement | null>(null);
+  const measureTextRef = useRef<HTMLSpanElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [marqueeDistance, setMarqueeDistance] = useState(0);
+  const [marqueeDuration, setMarqueeDuration] = useState(14);
   const [shouldMarquee, setShouldMarquee] = useState(false);
 
   useLayoutEffect(() => {
-    const textElement = textRef.current;
+    const textElement = measureTextRef.current;
     const viewportElement = viewportRef.current;
     if (!textElement || !viewportElement) return;
 
     function updateOverflow() {
       if (!textElement || !viewportElement) return;
 
-      setShouldMarquee(textElement.scrollWidth > viewportElement.clientWidth);
+      const textWidth = textElement.scrollWidth;
+      setShouldMarquee(textWidth > viewportElement.clientWidth);
+      setMarqueeDistance(textWidth + 40);
+      setMarqueeDuration(Math.max(12, Math.min(32, textWidth / 45)));
     }
 
     updateOverflow();
@@ -93,10 +99,25 @@ function EmergencyNoticeBanner({
       className="flex w-full max-w-full min-w-0 items-center gap-3 overflow-hidden rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-500"
     >
       <SvgIcon name="megaphone" size={20} />
-      <div className="min-w-0 flex-1 overflow-hidden" ref={viewportRef}>
+      <div className="relative min-w-0 flex-1 overflow-hidden" ref={viewportRef}>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none invisible absolute whitespace-nowrap"
+          ref={measureTextRef}
+        >
+          {notice}
+        </span>
         {shouldMarquee ? (
-          <div className="animate-emergency-marquee flex w-max max-w-none gap-10 whitespace-nowrap">
-            <span className="shrink-0" ref={textRef}>
+          <div
+            className="animate-emergency-marquee flex w-max max-w-none gap-10 whitespace-nowrap will-change-transform"
+            style={
+              {
+                '--zoj-emergency-marquee-distance': `${marqueeDistance}px`,
+                '--zoj-emergency-marquee-duration': `${marqueeDuration}s`,
+              } as CSSProperties
+            }
+          >
+            <span className="shrink-0" ref={marqueeTextRef}>
               {notice}
             </span>
             <span aria-hidden="true" className="shrink-0">
@@ -104,7 +125,7 @@ function EmergencyNoticeBanner({
             </span>
           </div>
         ) : (
-          <span className="block whitespace-nowrap" ref={textRef}>
+          <span className="block whitespace-nowrap">
             {notice}
           </span>
         )}
