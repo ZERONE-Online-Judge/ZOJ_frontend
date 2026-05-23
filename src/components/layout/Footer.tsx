@@ -21,7 +21,7 @@ const footerPeople = [
   {
     role: 'Design',
     name: '여 지훈',
-    email: '미공개',
+    email: 'zasc90@hanyang.ac.kr',
   },
   {
     role: 'Frontend',

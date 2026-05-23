@@ -12,7 +12,9 @@ export default function ContestPageNavigation({
   contest,
   contestId,
 }: ContestPageNavigationProps) {
-  const isBeforeStart = contest ? contestAccessPhase(contest) === 'before' : false;
+  const isBeforeStart = contest
+    ? contestAccessPhase(contest) === 'before'
+    : false;
 
   return (
     <nav aria-label={sharedUiText.contestMenuAriaLabel} className="mt-8">
@@ -22,9 +24,7 @@ export default function ContestPageNavigation({
             ? `/contests/${contestId}/${tab.path}`
             : `/contests/${contestId}`;
           const disabled =
-            isBeforeStart &&
-            tab.path !== '' &&
-            tab.path !== 'board';
+            isBeforeStart && tab.path !== '' && tab.path !== 'board';
 
           return (
             <li key={tab.path || 'overview'}>
@@ -41,7 +41,7 @@ export default function ContestPageNavigation({
                 <NavLink
                   className={({ isActive }) =>
                     [
-                      'inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
+                      'zoj-pressable inline-flex h-8 items-center rounded-full border px-5 text-sm font-bold transition',
                       isActive
                         ? 'border-slate-950 bg-slate-950 text-white'
                         : 'border-slate-200 bg-white text-slate-950 hover:border-slate-400',

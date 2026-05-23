@@ -156,11 +156,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const token = generalSession?.operatorSession?.accessToken;
   const canViewParticipants = Boolean(
     contestId &&
-      hasContestPermission(
-        generalSession,
-        contestId,
-        'contest.participant.view',
-      ),
+    hasContestPermission(generalSession, contestId, 'contest.participant.view'),
   );
   const dashboardQuery = useQuery({
     enabled: Boolean(contestId && token && canViewParticipants),
@@ -171,8 +167,8 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const noticesQuery = useQuery({
     enabled: Boolean(
       contestId &&
-        token &&
-        hasContestPermission(generalSession, contestId, 'contest.notice.view'),
+      token &&
+      hasContestPermission(generalSession, contestId, 'contest.notice.view'),
     ),
     queryKey: ['operator', 'notices', contestId ?? null, 'tab-count', token],
     queryFn: () => listOperatorContestNotices(contestId!, token!),
@@ -181,12 +177,12 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const questionsQuery = useQuery({
     enabled: Boolean(
       contestId &&
-        token &&
-        hasContestPermission(
-          generalSession,
-          contestId,
-          'contest.board.question.view',
-        ),
+      token &&
+      hasContestPermission(
+        generalSession,
+        contestId,
+        'contest.board.question.view',
+      ),
     ),
     queryKey: ['operator', 'boards', contestId ?? null, 'tab-count', token],
     queryFn: () => listOperatorContestQuestions(contestId!, token!),
@@ -195,8 +191,8 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const problemsQuery = useQuery({
     enabled: Boolean(
       contestId &&
-        token &&
-        hasContestPermission(generalSession, contestId, 'contest.problem.view'),
+      token &&
+      hasContestPermission(generalSession, contestId, 'contest.problem.view'),
     ),
     queryKey: ['operator', 'problems', contestId ?? null, 'tab-count', token],
     queryFn: () => getOperatorProblems(contestId!, token!),
@@ -237,7 +233,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
             <NavLink
               className={({ isActive }) =>
                 [
-                  'inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
+                  'zoj-pressable inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
                   isActive
                     ? 'border-indigo-900 bg-indigo-950 text-white shadow-sm'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
@@ -283,7 +279,7 @@ export function OperatorPanel({
   title,
 }: OperatorPanelProps) {
   return (
-    <section className="grid gap-5 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="animate-panel-enter zoj-surface grid gap-5 rounded border border-slate-200 bg-white p-6 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid gap-1">
           <h2 className="text-xl font-black text-slate-950">{title}</h2>
@@ -308,7 +304,7 @@ export function OperatorMetricCard({
   value,
 }: OperatorMetricCardProps) {
   return (
-    <article className="grid min-h-32 gap-4 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <article className="animate-panel-enter zoj-surface zoj-surface-hover grid min-h-32 gap-4 rounded border border-slate-200 bg-white p-6 shadow-sm">
       <span
         className={[
           'inline-flex size-10 items-center justify-center rounded border',

@@ -50,7 +50,8 @@ export default function ContestListItem({
   const hasPublicReadableResource = publicResourceLabels.some((label) =>
     label.includes('비로그인 공개'),
   );
-  const canOpenContest = !generalSession || isParticipantContest || isOperatorContest;
+  const canOpenContest =
+    !generalSession || isParticipantContest || isOperatorContest;
   const itemHref = canOpenContest
     ? (href ??
       (isOperatorContest
@@ -137,7 +138,7 @@ export default function ContestListItem({
   return (
     <li
       className={[
-        'relative overflow-hidden rounded border border-slate-200 bg-white transition',
+        'zoj-surface zoj-surface-hover relative overflow-hidden rounded border border-slate-200 bg-white transition',
         itemHref || !canOpenContest || canShowUnavailableMessage
           ? 'hover:border-zoj-blue hover:shadow-sm'
           : 'opacity-70',
@@ -153,14 +154,17 @@ export default function ContestListItem({
         />
       ) : null}
       {itemHref ? (
-        <Link className="block px-8 py-7" to={itemHref}>
+        <Link
+          className="block px-8 py-7 transition-colors duration-200"
+          to={itemHref}
+        >
           {content}
         </Link>
       ) : !canOpenContest ? (
         <>
           <button
             aria-haspopup="dialog"
-            className="block w-full px-8 py-7 text-left"
+            className="zoj-pressable block w-full px-8 py-7 text-left"
             onClick={() => setIsAccessDeniedOpen(true)}
             type="button"
           >
@@ -174,7 +178,7 @@ export default function ContestListItem({
         </>
       ) : canShowUnavailableMessage ? (
         <button
-          className="block w-full px-8 py-7 text-left"
+          className="zoj-pressable block w-full px-8 py-7 text-left"
           onClick={() => setIsUnavailableMessageVisible(true)}
           type="button"
         >

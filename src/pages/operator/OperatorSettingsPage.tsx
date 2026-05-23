@@ -46,6 +46,7 @@ type SettingsForm = {
   status: string;
   submission_access_after_end: ContestResourceAccess;
   board_access_after_end: ContestResourceAccess;
+  board_write_after_end: boolean;
   notice_access_after_end: ContestResourceAccess;
   mock_judging_enabled: boolean;
   title: string;
@@ -108,6 +109,7 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
     status,
     submission_access_after_end: contestResourceAccess(contest, 'submission'),
     board_access_after_end: contestResourceAccess(contest, 'board'),
+    board_write_after_end: Boolean(contest.board_write_after_end),
     notice_access_after_end: contestResourceAccess(contest, 'notice'),
     mock_judging_enabled:
       contestResourceAccess(contest, 'problem') === 'private'
@@ -190,11 +192,14 @@ function OperatorSettingsContent({
       problem_access_after_end: form.problem_access_after_end,
       problem_public_after_end: form.problem_access_after_end === 'public',
       scoreboard_access_after_end: form.scoreboard_access_after_end,
-      scoreboard_public_after_end: form.scoreboard_access_after_end === 'public',
+      scoreboard_public_after_end:
+        form.scoreboard_access_after_end === 'public',
       start_at: dateTimeLocalToIso(form.start_at),
       submission_access_after_end: form.submission_access_after_end,
-      submission_public_after_end: form.submission_access_after_end === 'public',
+      submission_public_after_end:
+        form.submission_access_after_end === 'public',
       board_access_after_end: form.board_access_after_end,
+      board_write_after_end: form.board_write_after_end,
       notice_access_after_end: form.notice_access_after_end,
       mock_judging_enabled:
         form.problem_access_after_end === 'private'
@@ -333,6 +338,7 @@ function OperatorSettingsContent({
         scoreboard_access_after_end: 'public',
         submission_access_after_end: 'public',
         board_access_after_end: 'public',
+        board_write_after_end: true,
         notice_access_after_end: 'public',
       };
       setSettingsDraft({ contestId, form: next });
@@ -515,14 +521,39 @@ function OperatorSettingsContent({
                   label="공지"
                   onChange={(value) =>
                     setSettingsForm((prev) =>
-                      prev
-                        ? { ...prev, notice_access_after_end: value }
-                        : prev,
+                      prev ? { ...prev, notice_access_after_end: value } : prev,
                     )
                   }
                   value={settingsForm.notice_access_after_end}
                 />
               </div>
+
+              <label className="flex items-start gap-3 rounded border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                <input
+                  checked={settingsForm.board_write_after_end}
+                  className="mt-1 size-4 accent-indigo-600"
+                  onChange={(event) =>
+                    setSettingsForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            board_write_after_end: event.target.checked,
+                          }
+                        : prev,
+                    )
+                  }
+                  type="checkbox"
+                />
+                <span className="grid gap-1">
+                  <span className="font-black">
+                    대회 종료 후 게시판 작성 허용
+                  </span>
+                  <span className="font-bold text-slate-500">
+                    켜면 종료 이후에도 참가자가 질문과 댓글을 작성할 수
+                    있습니다. 게시판 공개 범위가 비공개면 작성도 차단됩니다.
+                  </span>
+                </span>
+              </label>
 
               {settingsForm.problem_access_after_end !== 'private' ? (
                 <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">

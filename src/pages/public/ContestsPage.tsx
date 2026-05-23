@@ -104,9 +104,10 @@ export default function ContestsPage() {
   );
   const visibleContests =
     filter === 'mine'
-      ? contests.filter((contest) =>
-          participantContestIds.has(contest.contest_id) ||
-          operatorContestIds.has(contest.contest_id),
+      ? contests.filter(
+          (contest) =>
+            participantContestIds.has(contest.contest_id) ||
+            operatorContestIds.has(contest.contest_id),
         )
       : contests;
   const sections = contestSections.map((section) => ({
@@ -174,7 +175,7 @@ export default function ContestsPage() {
         />
       )}
 
-      <div className="grid gap-8">
+      <div className="zoj-list-stagger grid gap-8">
         {sections.map((section) =>
           section.contests.length > 0 ? (
             <ContestSectionList
@@ -224,7 +225,7 @@ function ContestSectionList({
           {contests.length}개
         </span>
       </header>
-      <ul className="grid grid-cols-1 gap-2.5">
+      <ul className="zoj-list-stagger grid grid-cols-1 gap-2.5">
         {contests.map((contest) => {
           const isOperatorContest = operatorContestIds.has(contest.contest_id);
           return (

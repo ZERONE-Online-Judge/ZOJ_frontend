@@ -1,5 +1,10 @@
 export const contestBoardText = {
-  answerBadge: '운영자 답변',
+  answerBadge: '답변/댓글',
+  answerBodyRequired: '댓글 내용을 입력해 주세요.',
+  answerPlaceholder: '댓글을 입력하세요.',
+  answerSubmitButton: '댓글 등록',
+  answerSubmitError: '댓글 등록에 실패했습니다.',
+  answerSubmitLoginRequired: '댓글을 작성하려면 참가자 로그인이 필요합니다.',
   askButton: '질문하기',
   authorFallback: '참가자',
   bodyPlaceholder: '질문 내용을 입력하세요.',

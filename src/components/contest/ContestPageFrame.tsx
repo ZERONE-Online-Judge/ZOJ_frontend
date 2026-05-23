@@ -5,5 +5,5 @@ type ContestPageFrameProps = {
 };
 
 export default function ContestPageFrame({ children }: ContestPageFrameProps) {
-  return <div className="w-full">{children}</div>;
+  return <div className="animate-page-enter w-full">{children}</div>;
 }

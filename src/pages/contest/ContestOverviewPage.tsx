@@ -16,7 +16,7 @@ import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { getContestNotices } from '@/domains/serviceCommunication/api';
 import type { ContestNotice } from '@/domains/serviceCommunication/types';
-import { formatDateTime, formatTime, timeLeft } from '@/shared/lib/dateTime';
+import { formatDateTime } from '@/shared/lib/dateTime';
 import PageNotice from '@/shared/ui/PageNotice';
 import { SvgIcon } from '@/utils/Icons';
 
@@ -70,7 +70,7 @@ function OverviewIconBadge({ icon }: { icon: OverviewIcon }) {
 
 function OverviewCard({ icon, title, subtitle }: OverviewCardProps) {
   return (
-    <article className="flex h-52 flex-col justify-between rounded-lg border border-slate-200 bg-white px-8 py-7">
+    <article className="animate-panel-enter zoj-surface zoj-surface-hover flex h-52 flex-col justify-between rounded-lg border border-slate-200 bg-white px-8 py-7">
       <OverviewIconBadge icon={icon} />
       <div>
         <h2 className="truncate text-2xl font-black tracking-normal text-slate-950">
@@ -96,15 +96,39 @@ function formatOpenCountdown(startAt: string, now: number) {
   return `${minutes}m ${seconds}s`;
 }
 
-function formatKoreanCountdown(value: string, now: number) {
+function formatCompactCountdown(value: string, now: number) {
   const diff = Math.max(0, new Date(value).getTime() - now);
-  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
   const minutes = Math.floor((diff % 3_600_000) / 60_000);
   const seconds = Math.floor((diff % 60_000) / 1000);
 
-  if (hours > 0) return `${hours}시간 ${minutes}분`;
-  if (minutes > 0) return `${minutes}분 ${seconds}초`;
-  return `${seconds}초`;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function formatOverviewDateTime(value?: string | null) {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'numeric',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+
+  return `${part('year')}. ${part('month')}. ${part('day')}. ${part(
+    'dayPeriod',
+  )} ${part('hour')}:${part('minute')}`;
 }
 
 function getTimerCard(contest: Contest, now: number) {
@@ -125,14 +149,14 @@ function getTimerCard(contest: Contest, now: number) {
 
   if (!Number.isNaN(freezeAt) && now < freezeAt) {
     return {
-      subtitle: `프리즈까지 ${formatKoreanCountdown(contest.freeze_at, now)}`,
-      title: timeLeft(contest.end_at),
+      subtitle: `프리즈까지 ${formatCompactCountdown(contest.freeze_at, now)}`,
+      title: `종료까지 ${formatCompactCountdown(contest.end_at, now)}`,
     };
   }
 
   return {
-    subtitle: `스코어보드 프리즈 중 · 종료 ${formatTime(contest.end_at)}`,
-    title: timeLeft(contest.end_at),
+    subtitle: '스코어보드 프리즈 중',
+    title: `종료까지 ${formatCompactCountdown(contest.end_at, now)}`,
   };
 }
 
@@ -142,10 +166,10 @@ function getFreezeSummary(contest: Contest, now: number) {
 
   if (Number.isNaN(freezeAt)) return '프리즈 시간 미정';
   if (now < freezeAt) {
-    return `프리즈까지 ${formatKoreanCountdown(contest.freeze_at, now)}`;
+    return `프리즈까지 ${formatCompactCountdown(contest.freeze_at, now)}`;
   }
   if (!Number.isNaN(endAt) && now < endAt) {
-    return `프리즈 중 · 종료까지 ${formatKoreanCountdown(contest.end_at, now)}`;
+    return `프리즈 중 · 종료까지 ${formatCompactCountdown(contest.end_at, now)}`;
   }
   return '프리즈 종료';
 }
@@ -321,17 +345,17 @@ function ContestOverviewContent({
         />
       </section>
 
-      <section className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
+      <section className="animate-panel-enter zoj-surface mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
         <div className="grid gap-1">
           <span className="text-xs font-black text-slate-400">시작 시간</span>
           <strong className="text-sm font-black text-slate-950">
-            {formatDateTime(contest.start_at)}
+            {formatOverviewDateTime(contest.start_at)}
           </strong>
         </div>
         <div className="grid gap-1">
           <span className="text-xs font-black text-slate-400">마감 시간</span>
           <strong className="text-sm font-black text-slate-950">
-            {formatDateTime(contest.end_at)}
+            {formatOverviewDateTime(contest.end_at)}
           </strong>
         </div>
         <div className="grid gap-1">
@@ -339,7 +363,8 @@ function ContestOverviewContent({
             스코어보드 프리즈
           </span>
           <strong className="text-sm font-black text-slate-950">
-            {formatTime(contest.freeze_at)} · {getFreezeSummary(contest, now)}
+            {formatOverviewDateTime(contest.freeze_at)} ·{' '}
+            {getFreezeSummary(contest, now)}
           </strong>
         </div>
       </section>

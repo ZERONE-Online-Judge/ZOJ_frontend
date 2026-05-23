@@ -35,7 +35,7 @@ export default function PageNotice({
   return (
     <section
       className={[
-        'flex min-w-0 items-start gap-3 rounded-md border px-4 py-3 text-sm font-medium',
+        'animate-notice-enter flex min-w-0 items-start gap-3 rounded-md border px-4 py-3 text-sm font-medium',
         tone === 'error' ? 'border-red-200 bg-red-50 text-red-800' : '',
         tone === 'info' ? 'border-sky-200 bg-sky-50 text-sky-800' : '',
         tone === 'done'

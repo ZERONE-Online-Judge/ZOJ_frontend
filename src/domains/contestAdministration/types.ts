@@ -44,6 +44,7 @@ export type Contest = {
   submission_public_after_end: boolean;
   submission_access_after_end?: ContestResourceAccess;
   board_access_after_end?: ContestResourceAccess;
+  board_write_after_end?: boolean;
   notice_access_after_end?: ContestResourceAccess;
   scoreboard_freeze_mode?: ScoreboardFreezeMode;
   mock_judging_enabled?: boolean;
@@ -109,6 +110,7 @@ export type ContestSettingsPatch = Partial<
     | 'scoreboard_access_after_end'
     | 'submission_access_after_end'
     | 'board_access_after_end'
+    | 'board_write_after_end'
     | 'notice_access_after_end'
     | 'scoreboard_freeze_mode'
     | 'mock_judging_enabled'

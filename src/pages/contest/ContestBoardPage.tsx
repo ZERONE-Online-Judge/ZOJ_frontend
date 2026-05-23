@@ -16,6 +16,7 @@ import type { Contest } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
+  createContestQuestionAnswer,
   createContestQuestion,
   getContestNotices,
   getContestQuestions,
@@ -78,6 +79,8 @@ function ContestBoardContent({
   const [questionForm, setQuestionForm] =
     useState<QuestionFormState>(emptyQuestionForm);
   const [formError, setFormError] = useState('');
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
 
   const noticesQuery = useQuery({
     enabled: canViewNotices,
@@ -180,6 +183,41 @@ function ContestBoardContent({
       });
     },
   });
+  const createAnswerMutation = useMutation({
+    mutationFn: async ({
+      body,
+      questionId,
+    }: {
+      body: string;
+      questionId: string;
+    }) => {
+      const participantSession = await ensureParticipantSession();
+      const submitToken = participantSession?.accessToken ?? token;
+
+      if (!submitToken) {
+        throw new Error(contestBoardText.answerSubmitLoginRequired);
+      }
+
+      return createContestQuestionAnswer(contestId, questionId, submitToken, {
+        body: body.trim(),
+      });
+    },
+    onSuccess: (_answer, variables) => {
+      setAnswerDrafts((current) => ({
+        ...current,
+        [variables.questionId]: '',
+      }));
+      setAnswerErrors((current) => ({
+        ...current,
+        [variables.questionId]: '',
+      }));
+      setExpandedQuestionId(variables.questionId);
+      setSearchParams({ questionId: variables.questionId });
+      void queryClient.invalidateQueries({
+        queryKey: ['contest-questions', contestId],
+      });
+    },
+  });
 
   function submitQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -195,6 +233,21 @@ function ContestBoardContent({
     }
 
     createQuestionMutation.mutate();
+  }
+
+  function submitAnswer(questionId: string) {
+    const body = answerDrafts[questionId]?.trim() ?? '';
+
+    if (!body) {
+      setAnswerErrors((current) => ({
+        ...current,
+        [questionId]: contestBoardText.answerBodyRequired,
+      }));
+      return;
+    }
+
+    setAnswerErrors((current) => ({ ...current, [questionId]: '' }));
+    createAnswerMutation.mutate({ body, questionId });
   }
 
   function toggleNotice(noticeId: string) {
@@ -254,11 +307,31 @@ function ContestBoardContent({
               isError={questionsQuery.isError}
               isLoading={questionsQuery.isLoading}
               isSubmitting={createQuestionMutation.isPending}
+              isSubmittingAnswer={createAnswerMutation.isPending}
+              submittingAnswerQuestionId={
+                createAnswerMutation.variables?.questionId ?? ''
+              }
               isWriting={isWritingQuestion}
               mutationError={createQuestionMutation.error}
+              answerMutationError={createAnswerMutation.error}
+              answerMutationQuestionId={
+                createAnswerMutation.variables?.questionId ?? ''
+              }
+              answerDrafts={answerDrafts}
+              answerErrors={answerErrors}
               onCancelWrite={() => {
                 setIsWritingQuestion(false);
                 setFormError('');
+              }}
+              onChangeAnswer={(questionId, body) => {
+                setAnswerDrafts((current) => ({
+                  ...current,
+                  [questionId]: body,
+                }));
+                setAnswerErrors((current) => ({
+                  ...current,
+                  [questionId]: '',
+                }));
               }}
               onChangeForm={setQuestionForm}
               expandedQuestionId={activeQuestionId}
@@ -275,6 +348,7 @@ function ContestBoardContent({
                 setFormError('');
               }}
               onSubmit={submitQuestion}
+              onSubmitAnswer={submitAnswer}
               questions={questions}
             />
           ) : (
@@ -439,35 +513,51 @@ function NoticeBadge({
 }
 
 function QuestionPanel({
+  answerDrafts,
+  answerErrors,
+  answerMutationError,
+  answerMutationQuestionId,
   expandedQuestionId,
   form,
   formError,
   isError,
   isLoading,
   isSubmitting,
+  isSubmittingAnswer,
   isWriting,
   mutationError,
   onCancelWrite,
+  onChangeAnswer,
   onChangeForm,
   onToggleQuestion,
   onStartWrite,
   onSubmit,
+  onSubmitAnswer,
   questions,
+  submittingAnswerQuestionId,
 }: {
+  answerDrafts: Record<string, string>;
+  answerErrors: Record<string, string>;
+  answerMutationError: unknown;
+  answerMutationQuestionId: string;
   expandedQuestionId: string;
   form: QuestionFormState;
   formError: string;
   isError: boolean;
   isLoading: boolean;
   isSubmitting: boolean;
+  isSubmittingAnswer: boolean;
   isWriting: boolean;
   mutationError: unknown;
   onCancelWrite: () => void;
+  onChangeAnswer: (questionId: string, body: string) => void;
   onChangeForm: (form: QuestionFormState) => void;
   onToggleQuestion: (questionId: string) => void;
   onStartWrite: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmitAnswer: (questionId: string) => void;
   questions: ContestQuestion[];
+  submittingAnswerQuestionId: string;
 }) {
   return (
     <section className="grid gap-6">
@@ -508,9 +598,17 @@ function QuestionPanel({
       ) : null}
 
       <QuestionList
+        answerDrafts={answerDrafts}
+        answerErrors={answerErrors}
+        answerMutationError={answerMutationError}
+        answerMutationQuestionId={answerMutationQuestionId}
         expandedQuestionId={expandedQuestionId}
+        isSubmittingAnswer={isSubmittingAnswer}
+        onChangeAnswer={onChangeAnswer}
+        onSubmitAnswer={onSubmitAnswer}
         onToggleQuestion={onToggleQuestion}
         questions={questions}
+        submittingAnswerQuestionId={submittingAnswerQuestionId}
       />
 
       {!isLoading && questions.length === 0 ? (
@@ -610,16 +708,32 @@ function QuestionForm({
 }
 
 function QuestionList({
+  answerDrafts,
+  answerErrors,
+  answerMutationError,
+  answerMutationQuestionId,
   expandedQuestionId,
+  isSubmittingAnswer,
+  onChangeAnswer,
+  onSubmitAnswer,
   onToggleQuestion,
   questions,
+  submittingAnswerQuestionId,
 }: {
+  answerDrafts: Record<string, string>;
+  answerErrors: Record<string, string>;
+  answerMutationError: unknown;
+  answerMutationQuestionId: string;
   expandedQuestionId: string;
+  isSubmittingAnswer: boolean;
+  onChangeAnswer: (questionId: string, body: string) => void;
+  onSubmitAnswer: (questionId: string) => void;
   onToggleQuestion: (questionId: string) => void;
   questions: ContestQuestion[];
+  submittingAnswerQuestionId: string;
 }) {
   return (
-    <ul className="divide-y divide-slate-200 border-y border-slate-200">
+    <ul className="zoj-list-stagger zoj-row-motion divide-y divide-slate-200 border-y border-slate-200">
       {questions.map((question) => {
         const isExpanded = expandedQuestionId === question.contest_question_id;
 
@@ -646,7 +760,28 @@ function QuestionList({
                 {formatDateTime(question.created_at)}
               </span>
             </button>
-            {isExpanded ? <QuestionInlineDetail question={question} /> : null}
+            {isExpanded ? (
+              <QuestionInlineDetail
+                answerDraft={answerDrafts[question.contest_question_id] ?? ''}
+                answerError={answerErrors[question.contest_question_id] ?? ''}
+                answerMutationError={
+                  answerMutationQuestionId === question.contest_question_id
+                    ? answerMutationError
+                    : null
+                }
+                isSubmittingAnswer={
+                  isSubmittingAnswer &&
+                  submittingAnswerQuestionId === question.contest_question_id
+                }
+                onChangeAnswer={(body) =>
+                  onChangeAnswer(question.contest_question_id, body)
+                }
+                onSubmitAnswer={() =>
+                  onSubmitAnswer(question.contest_question_id)
+                }
+                question={question}
+              />
+            ) : null}
           </li>
         );
       })}
@@ -654,7 +789,29 @@ function QuestionList({
   );
 }
 
-function QuestionInlineDetail({ question }: { question: ContestQuestion }) {
+function QuestionInlineDetail({
+  answerDraft,
+  answerError,
+  answerMutationError,
+  isSubmittingAnswer,
+  onChangeAnswer,
+  onSubmitAnswer,
+  question,
+}: {
+  answerDraft: string;
+  answerError: string;
+  answerMutationError: unknown;
+  isSubmittingAnswer: boolean;
+  onChangeAnswer: (body: string) => void;
+  onSubmitAnswer: () => void;
+  question: ContestQuestion;
+}) {
+  const answers = [...question.answers].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime() ||
+      a.contest_answer_id.localeCompare(b.contest_answer_id),
+  );
+
   return (
     <article className="grid gap-5 bg-white px-4 pb-6">
       <div className="rounded border border-slate-200 bg-white px-5 py-4">
@@ -669,9 +826,9 @@ function QuestionInlineDetail({ question }: { question: ContestQuestion }) {
         </p>
       </div>
 
-      {question.answers.length > 0 ? (
+      {answers.length > 0 ? (
         <section className="grid gap-3 pl-4 sm:pl-8">
-          {question.answers.map((answer) => (
+          {answers.map((answer) => (
             <article
               className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
               key={answer.contest_answer_id}
@@ -700,6 +857,38 @@ function QuestionInlineDetail({ question }: { question: ContestQuestion }) {
           </p>
         </div>
       )}
+
+      <form
+        className="grid gap-3 pl-4 sm:pl-8"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmitAnswer();
+        }}
+      >
+        <textarea
+          className="min-h-24 resize-y rounded-md border border-slate-200 px-4 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-slate-400"
+          onChange={(event) => onChangeAnswer(event.target.value)}
+          placeholder={contestBoardText.answerPlaceholder}
+          value={answerDraft}
+        />
+        {answerError || answerMutationError ? (
+          <PageNotice
+            message={
+              answerError ||
+              formatUserApiError(
+                answerMutationError,
+                contestBoardText.answerSubmitError,
+              )
+            }
+            status="error"
+          />
+        ) : null}
+        <div className="flex justify-end">
+          <DarkButton disabled={isSubmittingAnswer} type="submit">
+            {contestBoardText.answerSubmitButton}
+          </DarkButton>
+        </div>
+      </form>
     </article>
   );
 }

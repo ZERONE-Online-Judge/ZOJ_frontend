@@ -162,6 +162,22 @@ export function createContestQuestion(
   });
 }
 
+export function createContestQuestionAnswer(
+  contestId: string,
+  questionId: string,
+  token: string,
+  body: Pick<ContestAnswer, 'body'>,
+) {
+  return apiRequest<ContestAnswer>(
+    `/contests/${contestId}/boards/${questionId}/answers`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 export function createContestAnswer(
   contestId: string,
   questionId: string,
@@ -172,4 +188,34 @@ export function createContestAnswer(
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+export function updateContestAnswer(
+  contestId: string,
+  questionId: string,
+  answerId: string,
+  token: string,
+  body: Partial<Pick<ContestAnswer, 'visibility'>>,
+) {
+  return apiRequest<ContestAnswer>(
+    `/operator/contests/${contestId}/boards/${questionId}/answers/${answerId}`,
+    token,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function deleteContestAnswer(
+  contestId: string,
+  questionId: string,
+  answerId: string,
+  token: string,
+) {
+  return apiRequest<{ contest_answer_id: string; deleted: boolean }>(
+    `/operator/contests/${contestId}/boards/${questionId}/answers/${answerId}`,
+    token,
+    { method: 'DELETE' },
+  );
 }

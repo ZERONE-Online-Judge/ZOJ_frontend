@@ -13,11 +13,16 @@ import { getOperatorContestDashboard } from '@/domains/contestAdministration/api
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestAnswer,
+  deleteContestAnswer,
   deleteContestQuestion,
   listOperatorContestQuestions,
+  updateContestAnswer,
   updateContestQuestion,
 } from '@/domains/serviceCommunication/api';
-import type { ContestQuestion } from '@/domains/serviceCommunication/types';
+import type {
+  ContestAnswer,
+  ContestQuestion,
+} from '@/domains/serviceCommunication/types';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 
@@ -154,6 +159,41 @@ function OperatorBoardContent({
       });
     },
   });
+  const updateAnswerMutation = useMutation({
+    mutationFn: ({
+      answerId,
+      questionId,
+      visibility,
+    }: {
+      answerId: string;
+      questionId: string;
+      visibility: ContestAnswer['visibility'];
+    }) =>
+      updateContestAnswer(contestId, questionId, answerId, token, {
+        visibility,
+      }),
+    onSuccess: (_answer, variables) => {
+      setExpandedQuestionId(variables.questionId);
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
+  const deleteAnswerMutation = useMutation({
+    mutationFn: ({
+      answerId,
+      questionId,
+    }: {
+      answerId: string;
+      questionId: string;
+    }) => deleteContestAnswer(contestId, questionId, answerId, token),
+    onSuccess: (_result, variables) => {
+      setExpandedQuestionId(variables.questionId);
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'boards', contestId],
+      });
+    },
+  });
 
   function startAnswer(question: ContestQuestion) {
     setExpandedQuestionId(question.contest_question_id);
@@ -193,6 +233,26 @@ function OperatorBoardContent({
     deleteQuestionMutation.mutate(question.contest_question_id);
   }
 
+  function toggleAnswerVisibility(
+    question: ContestQuestion,
+    answer: ContestAnswer,
+  ) {
+    updateAnswerMutation.mutate({
+      answerId: answer.contest_answer_id,
+      questionId: question.contest_question_id,
+      visibility: answer.visibility === 'public' ? 'questioner' : 'public',
+    });
+  }
+
+  function removeAnswer(question: ContestQuestion, answer: ContestAnswer) {
+    const confirmed = window.confirm('이 댓글/답변을 삭제할까요?');
+    if (!confirmed) return;
+    deleteAnswerMutation.mutate({
+      answerId: answer.contest_answer_id,
+      questionId: question.contest_question_id,
+    });
+  }
+
   function toggleQuestion(questionId: string) {
     setExpandedQuestionId((current) =>
       current === questionId ? '' : questionId,
@@ -221,7 +281,7 @@ function OperatorBoardContent({
         description="답변이 필요한 질문을 우선 표시합니다. 질문을 클릭하면 아래로 상세가 펼쳐집니다."
         title="질문 목록"
       >
-        <ul className="divide-y divide-slate-200 border-y border-slate-200">
+        <ul className="zoj-list-stagger zoj-row-motion divide-y divide-slate-200 border-y border-slate-200">
           {questions.map((question) => {
             const isExpanded =
               expandedQuestionId === question.contest_question_id;
@@ -266,8 +326,21 @@ function OperatorBoardContent({
                     onDelete={() => removeQuestion(question)}
                     onStartAnswer={() => startAnswer(question)}
                     onSubmitAnswer={submitAnswer}
-                    onToggleVisibility={() => toggleQuestionVisibility(question)}
+                    onDeleteAnswer={(answer) => removeAnswer(question, answer)}
+                    onToggleAnswerVisibility={(answer) =>
+                      toggleAnswerVisibility(question, answer)
+                    }
+                    onToggleVisibility={() =>
+                      toggleQuestionVisibility(question)
+                    }
                     question={question}
+                    answerActionError={
+                      updateAnswerMutation.error || deleteAnswerMutation.error
+                    }
+                    answerActionPending={
+                      updateAnswerMutation.isPending ||
+                      deleteAnswerMutation.isPending
+                    }
                     updateError={updateQuestionMutation.error}
                     updatePending={updateQuestionMutation.isPending}
                     deletePending={deleteQuestionMutation.isPending}
@@ -330,6 +403,8 @@ function AnswerCountBadge({ count }: { count: number }) {
 }
 
 function QuestionInlineDetail({
+  answerActionError,
+  answerActionPending,
   answerForm,
   answerMutationError,
   deleteError,
@@ -338,14 +413,18 @@ function QuestionInlineDetail({
   isAnswerSubmitting,
   onAnswerChange,
   onCancelAnswer,
+  onDeleteAnswer,
   onDelete,
   onStartAnswer,
   onSubmitAnswer,
+  onToggleAnswerVisibility,
   onToggleVisibility,
   question,
   updateError,
   updatePending,
 }: {
+  answerActionError: unknown;
+  answerActionPending: boolean;
   answerForm: AnswerForm;
   answerMutationError: unknown;
   deleteError: unknown;
@@ -354,15 +433,18 @@ function QuestionInlineDetail({
   isAnswerSubmitting: boolean;
   onAnswerChange: (form: AnswerForm) => void;
   onCancelAnswer: () => void;
+  onDeleteAnswer: (answer: ContestAnswer) => void;
   onDelete: () => void;
   onStartAnswer: () => void;
   onSubmitAnswer: (event: FormEvent<HTMLFormElement>) => void;
+  onToggleAnswerVisibility: (answer: ContestAnswer) => void;
   onToggleVisibility: () => void;
   question: ContestQuestion;
   updateError: unknown;
   updatePending: boolean;
 }) {
-  const isAnswerFormOpen = answerForm.questionId === question.contest_question_id;
+  const isAnswerFormOpen =
+    answerForm.questionId === question.contest_question_id;
   const forcedPrivateAnswer = question.visibility === 'private';
 
   return (
@@ -432,6 +514,24 @@ function QuestionInlineDetail({
               <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
                 {answer.body}
               </p>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  className="h-8 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                  disabled={answerActionPending}
+                  onClick={() => onToggleAnswerVisibility(answer)}
+                  type="button"
+                >
+                  {answer.visibility === 'public' ? '비공개 전환' : '공개 전환'}
+                </button>
+                <button
+                  className="h-8 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                  disabled={answerActionPending}
+                  onClick={() => onDeleteAnswer(answer)}
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
             </div>
           </article>
         ))}
@@ -439,6 +539,12 @@ function QuestionInlineDetail({
           <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
             아직 등록된 답변이 없습니다.
           </p>
+        ) : null}
+        {answerActionError ? (
+          <ErrorBox
+            error={answerActionError}
+            fallback="댓글/답변 처리에 실패했습니다"
+          />
         ) : null}
       </section>
 

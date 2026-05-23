@@ -78,7 +78,7 @@ export default function PageLayout({
   return (
     <section
       className={[
-        'mx-auto grid w-full min-w-0 gap-8 px-6 py-14 font-sans lg:px-8',
+        'animate-page-enter mx-auto grid w-full min-w-0 gap-8 px-6 py-14 font-sans lg:px-8',
         widthClasses[width],
       ].join(' ')}
     >
