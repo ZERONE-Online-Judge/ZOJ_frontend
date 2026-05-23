@@ -12,8 +12,12 @@ import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedMo
 import { getPublicContest } from '@/domains/contestAdministration/api';
 import {
   canViewContestResource,
+  contestStartAnnouncement,
   contestAccessPhase,
   contestResourceAccess,
+  freezeAnnouncement,
+  isFrozen,
+  scoreboardFreezeEndAnnouncement,
 } from '@/domains/contestAdministration/logic';
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
@@ -150,6 +154,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   const prefetchedKeyRef = useRef<string | null>(null);
   const [dismissedEmergencyNoticeKey, setDismissedEmergencyNoticeKey] =
     useState<string | null>(null);
+  const [, setAnnouncementTick] = useState(0);
   const {
     activeParticipantSession,
     ensureParticipantSession,
@@ -178,6 +183,19 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   const isEmergencyNoticeDismissed =
     isStoredEmergencyNoticeDismissed ||
     dismissedEmergencyNoticeKey === emergencyNoticeKey;
+  const automaticNotice = contest
+    ? contestStartAnnouncement(contest) ||
+      (isFrozen(contest)
+        ? scoreboardFreezeEndAnnouncement(contest)
+        : freezeAnnouncement(contest))
+    : '';
+  const automaticNoticeKey =
+    contestId && automaticNotice
+      ? emergencyNoticeDismissKey(contestId, automaticNotice)
+      : null;
+  const isAutomaticNoticeDismissed =
+    readDismissedEmergencyNotice(automaticNoticeKey) ||
+    dismissedEmergencyNoticeKey === automaticNoticeKey;
   const hasSessionAccess = Boolean(participantContest || activeParticipantSession);
   const hasPublicAfterEndResource = contest
     ? ([
@@ -257,6 +275,14 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     queryClient,
   ]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setAnnouncementTick((value) => value + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (!contestId) {
     return (
       <section className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-14 font-sans lg:px-8">
@@ -311,6 +337,12 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
               onDismiss={() =>
                 dismissEmergencyNotice(contest.emergency_notice!)
               }
+            />
+          ) : null}
+          {automaticNotice && !isAutomaticNoticeDismissed ? (
+            <EmergencyNoticeBanner
+              notice={automaticNotice}
+              onDismiss={() => dismissEmergencyNotice(automaticNotice)}
             />
           ) : null}
 
