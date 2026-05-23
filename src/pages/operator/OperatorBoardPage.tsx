@@ -38,6 +38,22 @@ const emptyAnswerForm: AnswerForm = {
   visibility: 'public',
 };
 
+function normalizedEmail(value?: string | null) {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
+  if (answer.created_by_role === 'operator') return '운영자 답변';
+
+  const name = answer.created_by_name || answer.created_by_email || '참가자';
+  const isQuestionAuthor =
+    normalizedEmail(answer.created_by_email) &&
+    normalizedEmail(answer.created_by_email) ===
+      normalizedEmail(question.author_email);
+
+  return isQuestionAuthor ? `${name} (글쓴이)` : name;
+}
+
 function answerCountLabel(count: number) {
   return count > 0 ? `답변 ${count}건` : '답변 없음';
 }
@@ -501,8 +517,15 @@ function QuestionInlineDetail({
             </span>
             <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-5 py-4">
               <div className="flex flex-wrap gap-2 text-xs font-black text-slate-500">
-                <span className="rounded-full bg-violet-100 px-3 py-1 text-violet-700">
-                  운영자 답변
+                <span
+                  className={[
+                    'rounded-full px-3 py-1',
+                    answer.created_by_role === 'operator'
+                      ? 'bg-violet-100 text-violet-700'
+                      : 'bg-slate-100 text-slate-700',
+                  ].join(' ')}
+                >
+                  {answerAuthorLabel(question, answer)}
                 </span>
                 <span className="rounded-full bg-white px-3 py-1 text-slate-600">
                   {answer.visibility === 'public' ? '공개' : '비공개'}

@@ -36,6 +36,8 @@ export type ContestAnswer = {
   body: string;
   visibility: 'public' | 'questioner';
   created_by_email?: string | null;
+  created_by_name?: string | null;
+  created_by_role?: 'operator' | 'participant' | string | null;
   created_at: string;
 };
 
@@ -46,6 +48,7 @@ export type ContestQuestion = {
   visibility: 'public' | 'private';
   team_name?: string | null;
   author_name?: string | null;
+  author_email?: string | null;
   created_at: string;
   answers: ContestAnswer[];
 };

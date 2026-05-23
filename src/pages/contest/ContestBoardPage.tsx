@@ -22,6 +22,7 @@ import {
   getContestQuestions,
 } from '@/domains/serviceCommunication/api';
 import type {
+  ContestAnswer,
   ContestNotice,
   ContestQuestion,
 } from '@/domains/serviceCommunication/types';
@@ -42,6 +43,25 @@ const emptyQuestionForm: QuestionFormState = {
 };
 
 const NOTICE_PAGE_SIZE = 5;
+
+function normalizedEmail(value?: string | null) {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
+  if (answer.created_by_role === 'operator') return '운영자 답변';
+
+  const name =
+    answer.created_by_name ||
+    answer.created_by_email ||
+    contestBoardText.authorFallback;
+  const isQuestionAuthor =
+    normalizedEmail(answer.created_by_email) &&
+    normalizedEmail(answer.created_by_email) ===
+      normalizedEmail(question.author_email);
+
+  return isQuestionAuthor ? `${name} (글쓴이)` : name;
+}
 
 function ContestBoardContent({
   contest,
@@ -838,8 +858,15 @@ function QuestionInlineDetail({
               </span>
               <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-5 py-4">
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">
-                    {contestBoardText.answerBadge}
+                  <span
+                    className={[
+                      'rounded-full px-3 py-1 text-xs font-black',
+                      answer.created_by_role === 'operator'
+                        ? 'bg-violet-100 text-violet-700'
+                        : 'bg-slate-100 text-slate-700',
+                    ].join(' ')}
+                  >
+                    {answerAuthorLabel(question, answer)}
                   </span>
                   <InfoPill>{formatDateTime(answer.created_at)}</InfoPill>
                 </div>

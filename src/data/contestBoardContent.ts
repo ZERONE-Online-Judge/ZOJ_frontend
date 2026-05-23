@@ -1,5 +1,4 @@
 export const contestBoardText = {
-  answerBadge: '답변/댓글',
   answerBodyRequired: '댓글 내용을 입력해 주세요.',
   answerPlaceholder: '댓글을 입력하세요.',
   answerSubmitButton: '댓글 등록',
