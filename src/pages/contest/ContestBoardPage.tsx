@@ -61,6 +61,7 @@ function ContestBoardContent({
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedNoticeId = searchParams.get('noticeId') ?? '';
+  const requestedQuestionId = searchParams.get('questionId') ?? '';
   const noticeAccess = contestResourceAccess(contest, 'notice');
   const boardAccess = contestResourceAccess(contest, 'board');
   const phase = contestAccessPhase(contest);
@@ -71,7 +72,8 @@ function ContestBoardContent({
     !isEnded || canViewContestResource(contest, hasSessionAccess, boardAccess);
   const [expandedNoticeId, setExpandedNoticeId] = useState(requestedNoticeId);
   const [noticePage, setNoticePage] = useState(1);
-  const [expandedQuestionId, setExpandedQuestionId] = useState('');
+  const [expandedQuestionId, setExpandedQuestionId] =
+    useState(requestedQuestionId);
   const [isWritingQuestion, setIsWritingQuestion] = useState(false);
   const [questionForm, setQuestionForm] =
     useState<QuestionFormState>(emptyQuestionForm);
@@ -126,8 +128,11 @@ function ContestBoardContent({
     [noticesQuery.data],
   );
   const targetNoticeIndex = requestedNoticeId
-    ? notices.findIndex((notice) => notice.contest_notice_id === requestedNoticeId)
+    ? notices.findIndex(
+        (notice) => notice.contest_notice_id === requestedNoticeId,
+      )
     : -1;
+  const activeNoticeId = requestedNoticeId || expandedNoticeId;
   const currentNoticePage =
     targetNoticeIndex >= 0
       ? Math.floor(targetNoticeIndex / NOTICE_PAGE_SIZE) + 1
@@ -148,6 +153,7 @@ function ContestBoardContent({
       ),
     [questionsQuery.data],
   );
+  const activeQuestionId = requestedQuestionId || expandedQuestionId;
 
   const createQuestionMutation = useMutation({
     mutationFn: async () => {
@@ -219,7 +225,7 @@ function ContestBoardContent({
           {canViewNotices ? (
             <NoticePanel
               currentPage={currentNoticePage}
-              expandedNoticeId={expandedNoticeId}
+              expandedNoticeId={activeNoticeId}
               isError={noticesQuery.isError}
               isLoading={noticesQuery.isLoading}
               notices={pagedNotices}
@@ -237,45 +243,47 @@ function ContestBoardContent({
               )}
               status="idle"
             />
-          )
-          }
+          )}
         </section>
 
         <section>
           {canViewQuestions ? (
-          <QuestionPanel
-            form={questionForm}
-            formError={formError}
-            isError={questionsQuery.isError}
-            isLoading={questionsQuery.isLoading}
-            isSubmitting={createQuestionMutation.isPending}
-            isWriting={isWritingQuestion}
-            mutationError={createQuestionMutation.error}
-            onCancelWrite={() => {
-              setIsWritingQuestion(false);
-              setFormError('');
-            }}
-            onChangeForm={setQuestionForm}
-            expandedQuestionId={expandedQuestionId}
-            onToggleQuestion={(questionId) =>
-              setExpandedQuestionId((current) =>
-                current === questionId ? '' : questionId,
-              )
-            }
-            onStartWrite={() => {
-              setIsWritingQuestion(true);
-              setFormError('');
-            }}
-            onSubmit={submitQuestion}
-            questions={questions}
-          />
-        ) : (
-          <PageNotice
-            message={contestResourceAccessMessage(
-              contest,
-              'board',
-              hasSessionAccess,
-            )}
+            <QuestionPanel
+              form={questionForm}
+              formError={formError}
+              isError={questionsQuery.isError}
+              isLoading={questionsQuery.isLoading}
+              isSubmitting={createQuestionMutation.isPending}
+              isWriting={isWritingQuestion}
+              mutationError={createQuestionMutation.error}
+              onCancelWrite={() => {
+                setIsWritingQuestion(false);
+                setFormError('');
+              }}
+              onChangeForm={setQuestionForm}
+              expandedQuestionId={activeQuestionId}
+              onToggleQuestion={(questionId) => {
+                setExpandedQuestionId((current) =>
+                  current === questionId ? '' : questionId,
+                );
+                setSearchParams(
+                  activeQuestionId === questionId ? {} : { questionId },
+                );
+              }}
+              onStartWrite={() => {
+                setIsWritingQuestion(true);
+                setFormError('');
+              }}
+              onSubmit={submitQuestion}
+              questions={questions}
+            />
+          ) : (
+            <PageNotice
+              message={contestResourceAccessMessage(
+                contest,
+                'board',
+                hasSessionAccess,
+              )}
               status="idle"
             />
           )}
@@ -651,7 +659,9 @@ function QuestionInlineDetail({ question }: { question: ContestQuestion }) {
     <article className="grid gap-5 bg-white px-4 pb-6">
       <div className="rounded border border-slate-200 bg-white px-5 py-4">
         <div className="mb-3 flex flex-wrap gap-2">
-          <InfoPill>{question.author_name ?? contestBoardText.authorFallback}</InfoPill>
+          <InfoPill>
+            {question.author_name ?? contestBoardText.authorFallback}
+          </InfoPill>
           <InfoPill>{formatDateTime(question.created_at)}</InfoPill>
         </div>
         <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">

@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import SiteBrand from '@/components/layout/SiteBrand';
 
 export type HeaderNavItem = {
+  activeClassName?: string;
   key: string;
   label: string;
   to: string;
@@ -52,6 +53,7 @@ export default function HeaderShell({
                     [
                       'hover:text-zoj-blue whitespace-nowrap transition',
                       isActive ? 'text-zoj-blue' : 'text-slate-700',
+                      isActive ? (item.activeClassName ?? '') : '',
                     ].join(' ')
                   }
                   end={item.end}

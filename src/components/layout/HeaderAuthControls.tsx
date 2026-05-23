@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import HeaderNotifications from '@/components/layout/HeaderNotifications';
 import { headerText } from '@/data/uiText';
 import { contestAccessPhase } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
@@ -155,6 +156,7 @@ export default function HeaderAuthControls({
           <span>{headerText.admin}</span>
         </Link>
       ) : null}
+      <HeaderNotifications />
       <button
         className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
         onClick={() => setIsAccountPanelOpen(true)}

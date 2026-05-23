@@ -96,9 +96,21 @@ function formatOpenCountdown(startAt: string, now: number) {
   return `${minutes}m ${seconds}s`;
 }
 
+function formatKoreanCountdown(value: string, now: number) {
+  const diff = Math.max(0, new Date(value).getTime() - now);
+  const hours = Math.floor(diff / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+
+  if (hours > 0) return `${hours}시간 ${minutes}분`;
+  if (minutes > 0) return `${minutes}분 ${seconds}초`;
+  return `${seconds}초`;
+}
+
 function getTimerCard(contest: Contest, now: number) {
   const startAt = new Date(contest.start_at).getTime();
   const endAt = new Date(contest.end_at).getTime();
+  const freezeAt = new Date(contest.freeze_at).getTime();
 
   if (Number.isNaN(startAt) || Number.isNaN(endAt)) {
     return { subtitle: '시간 미정', title: '일정 미정' };
@@ -111,10 +123,31 @@ function getTimerCard(contest: Contest, now: number) {
   }
   if (now >= endAt) return { subtitle: '대회 종료', title: '종료됨' };
 
+  if (!Number.isNaN(freezeAt) && now < freezeAt) {
+    return {
+      subtitle: `프리즈까지 ${formatKoreanCountdown(contest.freeze_at, now)}`,
+      title: timeLeft(contest.end_at),
+    };
+  }
+
   return {
-    subtitle: `freeze ${formatTime(contest.freeze_at)}`,
+    subtitle: `스코어보드 프리즈 중 · 종료 ${formatTime(contest.end_at)}`,
     title: timeLeft(contest.end_at),
   };
+}
+
+function getFreezeSummary(contest: Contest, now: number) {
+  const freezeAt = new Date(contest.freeze_at).getTime();
+  const endAt = new Date(contest.end_at).getTime();
+
+  if (Number.isNaN(freezeAt)) return '프리즈 시간 미정';
+  if (now < freezeAt) {
+    return `프리즈까지 ${formatKoreanCountdown(contest.freeze_at, now)}`;
+  }
+  if (!Number.isNaN(endAt) && now < endAt) {
+    return `프리즈 중 · 종료까지 ${formatKoreanCountdown(contest.end_at, now)}`;
+  }
+  return '프리즈 종료';
 }
 
 function sortNotices(notices: ContestNotice[]) {
@@ -176,7 +209,10 @@ function NoticePreview({
               status="error"
             />
           ) : null}
-          {!unavailableMessage && !isLoading && !isError && notices.length === 0 ? (
+          {!unavailableMessage &&
+          !isLoading &&
+          !isError &&
+          notices.length === 0 ? (
             <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
           ) : null}
         </div>
@@ -199,8 +235,7 @@ function ContestOverviewContent({
     participantContest,
     participantSession,
     token,
-  } =
-    useContestParticipantSession(contest.contest_id);
+  } = useContestParticipantSession(contest.contest_id);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -231,7 +266,10 @@ function ContestOverviewContent({
         noticeAccess === 'participants'
           ? await ensureParticipantSession()
           : null;
-      return getContestNotices(contest.contest_id, session?.accessToken ?? token);
+      return getContestNotices(
+        contest.contest_id,
+        session?.accessToken ?? token,
+      );
     },
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
@@ -281,6 +319,29 @@ function ContestOverviewContent({
           subtitle={timerCard.subtitle}
           title={timerCard.title}
         />
+      </section>
+
+      <section className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
+        <div className="grid gap-1">
+          <span className="text-xs font-black text-slate-400">시작 시간</span>
+          <strong className="text-sm font-black text-slate-950">
+            {formatDateTime(contest.start_at)}
+          </strong>
+        </div>
+        <div className="grid gap-1">
+          <span className="text-xs font-black text-slate-400">마감 시간</span>
+          <strong className="text-sm font-black text-slate-950">
+            {formatDateTime(contest.end_at)}
+          </strong>
+        </div>
+        <div className="grid gap-1">
+          <span className="text-xs font-black text-slate-400">
+            스코어보드 프리즈
+          </span>
+          <strong className="text-sm font-black text-slate-950">
+            {formatTime(contest.freeze_at)} · {getFreezeSummary(contest, now)}
+          </strong>
+        </div>
       </section>
 
       <div className="mt-8">
