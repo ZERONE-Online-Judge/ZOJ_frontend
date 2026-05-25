@@ -1,4 +1,6 @@
 import type {
+  AccessLog,
+  AccessLogStats,
   AdminJudgeAgentLog,
   AdminJudgeDashboard,
   AdminJudgeSubmissionEntry,
@@ -79,6 +81,62 @@ export function listOperatorOperationalAuditLogs(
 
   return apiPageRequest<OperationalAuditLog[]>(
     `/operator/contests/${contestId}/audit-logs?${search}`,
+    token,
+  );
+}
+
+export function listAdminAccessLogs(
+  token: string,
+  options: {
+    accountScope?: string;
+    contestId?: string;
+    cursor?: string;
+    email?: string;
+    limit?: number;
+  } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.accountScope) search.set('account_scope', options.accountScope);
+  if (options.contestId) search.set('contest_id', options.contestId);
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.email) search.set('email', options.email);
+  if (options.limit) search.set('limit', String(options.limit));
+
+  return apiPageRequest<AccessLog[]>(`/admin/access-logs?${search}`, token);
+}
+
+export function getAdminAccessLogStats(
+  token: string,
+  options: { contestId?: string } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.contestId) search.set('contest_id', options.contestId);
+  return apiRequest<AccessLogStats>(`/admin/access-log-stats?${search}`, token);
+}
+
+export function listOperatorAccessLogs(
+  contestId: string,
+  token: string,
+  options: {
+    cursor?: string;
+    email?: string;
+    limit?: number;
+  } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.email) search.set('email', options.email);
+  if (options.limit) search.set('limit', String(options.limit));
+
+  return apiPageRequest<AccessLog[]>(
+    `/operator/contests/${contestId}/access-logs?${search}`,
+    token,
+  );
+}
+
+export function getOperatorAccessLogStats(contestId: string, token: string) {
+  return apiRequest<AccessLogStats>(
+    `/operator/contests/${contestId}/access-log-stats`,
     token,
   );
 }

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import AccessLogTable from '@/components/audit/AccessLogTable';
 import OperationalAuditLogTable from '@/components/audit/OperationalAuditLogTable';
 import PageLayout from '@/components/common/PageLayout';
 import {
@@ -9,7 +10,11 @@ import {
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
 import { sharedUiText } from '@/data/uiText';
-import { listOperatorOperationalAuditLogs } from '@/domains/auditMonitoring/api';
+import {
+  getOperatorAccessLogStats,
+  listOperatorAccessLogs,
+  listOperatorOperationalAuditLogs,
+} from '@/domains/auditMonitoring/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
@@ -46,12 +51,17 @@ function OperatorAuditLogsContent({
 }) {
   const isVisible = useDocumentVisibility();
   const queryIdentity = tokenQueryIdentity(token);
+  const [logType, setLogType] = useState<'operations' | 'access'>('operations');
   const [actorDraft, setActorDraft] = useState('');
   const [actorFilter, setActorFilter] = useState('');
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorHistory, setCursorHistory] = useState<Array<string | undefined>>(
     [],
   );
+  const [accessCursor, setAccessCursor] = useState<string | undefined>();
+  const [accessCursorHistory, setAccessCursorHistory] = useState<
+    Array<string | undefined>
+  >([]);
 
   const auditLogsQuery = useQuery({
     queryKey: [
@@ -72,15 +82,48 @@ function OperatorAuditLogsContent({
     placeholderData: keepPreviousData,
   });
 
+  const accessLogsQuery = useQuery({
+    queryKey: [
+      'operator',
+      'access-logs',
+      contestId,
+      actorFilter || 'all-accounts',
+      accessCursor ?? 'first',
+      queryIdentity,
+    ],
+    queryFn: () =>
+      listOperatorAccessLogs(contestId, token, {
+        cursor: accessCursor,
+        email: actorFilter || undefined,
+        limit: AUDIT_LOG_PAGE_SIZE,
+      }),
+    enabled: logType === 'access',
+    refetchInterval: isVisible && logType === 'access' ? 10_000 : false,
+    placeholderData: keepPreviousData,
+  });
+
+  const accessStatsQuery = useQuery({
+    queryKey: ['operator', 'access-log-stats', contestId, queryIdentity],
+    queryFn: () => getOperatorAccessLogStats(contestId, token),
+    enabled: logType === 'access',
+    refetchInterval: isVisible && logType === 'access' ? 10_000 : false,
+  });
+
   const logs = auditLogsQuery.data?.data ?? [];
   const page = auditLogsQuery.data?.page;
   const nextCursor = page?.next_cursor ?? null;
+  const accessLogs = accessLogsQuery.data?.data ?? [];
+  const accessPage = accessLogsQuery.data?.page;
+  const accessNextCursor = accessPage?.next_cursor ?? null;
+  const accessStats = accessStatsQuery.data;
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setActorFilter(actorDraft.trim().toLowerCase());
     setCursor(undefined);
     setCursorHistory([]);
+    setAccessCursor(undefined);
+    setAccessCursorHistory([]);
   }
 
   return (
@@ -91,18 +134,46 @@ function OperatorAuditLogsContent({
     >
       <OperatorTabs contestId={contestId} />
       <OperatorPanel
-        description="대회 설정, 공지, 게시판, 참가팀, 문제, 채점 관련 변경 작업이 기록됩니다."
-        title="대회 작업 기록"
+        description={
+          logType === 'operations'
+            ? '대회 설정, 공지, 게시판, 참가팀, 문제, 채점 관련 변경 작업이 기록됩니다.'
+            : '이 대회 참가자의 로그인, 세션 발급, 세션 유지 흐름을 확인합니다.'
+        }
+        title={logType === 'operations' ? '대회 작업 기록' : '대회 접속 기록'}
         actions={
           <button
             className="rounded border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-            onClick={() => auditLogsQuery.refetch()}
+            onClick={() =>
+              logType === 'operations'
+                ? auditLogsQuery.refetch()
+                : accessLogsQuery.refetch()
+            }
             type="button"
           >
             새로고침
           </button>
         }
       >
+        <div className="inline-flex rounded border border-slate-200 bg-slate-50 p-1">
+          {[
+            ['operations', '작업 로그'],
+            ['access', '접속 로그'],
+          ].map(([value, label]) => (
+            <button
+              className={[
+                'rounded px-4 py-2 text-sm font-black transition',
+                logType === value
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800',
+              ].join(' ')}
+              key={value}
+              onClick={() => setLogType(value as 'operations' | 'access')}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <form
           className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
           onSubmit={applyFilters}
@@ -120,28 +191,77 @@ function OperatorAuditLogsContent({
             필터 적용
           </button>
         </form>
-        {auditLogsQuery.error ? (
+        {logType === 'access' && accessStats ? (
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {[
+              ['최근 24시간', accessStats.total_count],
+              ['성공/유지', accessStats.success_count],
+              ['로그인 실패', accessStats.failed_count],
+              ['중복 세션', accessStats.conflict_count],
+              ['고유 계정', accessStats.unique_account_count],
+              ['활성 세션', accessStats.active_session_count],
+            ].map(([label, value]) => (
+              <div className="rounded border border-slate-200 bg-white px-4 py-3" key={label}>
+                <div className="text-xs font-black text-slate-500">{label}</div>
+                <div className="mt-1 text-xl font-black text-slate-900">
+                  {Number(value).toLocaleString('ko-KR')}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {logType === 'operations' && auditLogsQuery.error ? (
           <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
             {formatApiError(auditLogsQuery.error, '운영 로그를 불러오지 못했습니다')}
           </div>
         ) : null}
-        <OperationalAuditLogTable
-          loading={auditLogsQuery.isFetching}
-          logs={logs}
-        />
+        {logType === 'access' && accessLogsQuery.error ? (
+          <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            {formatApiError(accessLogsQuery.error, '접속 로그를 불러오지 못했습니다')}
+          </div>
+        ) : null}
+        {logType === 'operations' ? (
+          <OperationalAuditLogTable
+            loading={auditLogsQuery.isFetching}
+            logs={logs}
+          />
+        ) : (
+          <AccessLogTable
+            loading={accessLogsQuery.isFetching}
+            logs={accessLogs}
+          />
+        )}
         <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-500">
-          <span>
-            전체 {page?.total_count ?? logs.length}건 중 {logs.length}건 표시
-          </span>
+          {logType === 'operations' ? (
+            <span>
+              전체 {page?.total_count ?? logs.length}건 중 {logs.length}건 표시
+            </span>
+          ) : (
+            <span>
+              전체 {accessPage?.total_count ?? accessLogs.length}건 중{' '}
+              {accessLogs.length}건 표시
+            </span>
+          )}
           <div className="flex gap-2">
             <button
               className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={cursorHistory.length === 0}
+              disabled={
+                logType === 'operations'
+                  ? cursorHistory.length === 0
+                  : accessCursorHistory.length === 0
+              }
               onClick={() => {
-                const previous = [...cursorHistory];
+                if (logType === 'operations') {
+                  const previous = [...cursorHistory];
+                  const next = previous.pop();
+                  setCursor(next);
+                  setCursorHistory(previous);
+                  return;
+                }
+                const previous = [...accessCursorHistory];
                 const next = previous.pop();
-                setCursor(next);
-                setCursorHistory(previous);
+                setAccessCursor(next);
+                setAccessCursorHistory(previous);
               }}
               type="button"
             >
@@ -149,10 +269,15 @@ function OperatorAuditLogsContent({
             </button>
             <button
               className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!nextCursor}
+              disabled={logType === 'operations' ? !nextCursor : !accessNextCursor}
               onClick={() => {
-                setCursorHistory((history) => [...history, cursor]);
-                setCursor(nextCursor ?? undefined);
+                if (logType === 'operations') {
+                  setCursorHistory((history) => [...history, cursor]);
+                  setCursor(nextCursor ?? undefined);
+                  return;
+                }
+                setAccessCursorHistory((history) => [...history, accessCursor]);
+                setAccessCursor(accessNextCursor ?? undefined);
               }}
               type="button"
             >

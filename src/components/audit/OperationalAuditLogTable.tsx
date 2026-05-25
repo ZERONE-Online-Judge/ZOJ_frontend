@@ -143,6 +143,8 @@ function fieldLabel(field: string) {
     board_write_after_end: '대회 종료 후 질문/답변 작성',
     body: '본문',
     content: '내용',
+    contact_inquiry_id: '문의',
+    contest_id: '대회',
     description: '설명',
     display_order: '정렬 순서',
     division_id: '참가 유형',
@@ -155,9 +157,14 @@ function fieldLabel(field: string) {
     mock_judging_enabled: '모의채점',
     mock_judging_progress_visible: '모의채점 진행률 표시',
     name: '이름',
+    notice_id: '공지',
+    operator_email: '운영자',
     participant_progress_visible: '참가자 진행률 표시',
+    participant_team_id: '참가팀',
     problem_access_after_end: '대회 종료 후 문제 공개',
     problem_code: '문제 번호',
+    problem_id: '문제',
+    question_id: '게시글',
     scoreboard_access_after_end: '대회 종료 후 스코어보드 공개',
     scoreboard_freeze_mode: '스코어보드 프리즈 방식',
     source_problem_id: '복사 원본 문제',
@@ -167,12 +174,50 @@ function fieldLabel(field: string) {
     submission_access_after_end: '대회 종료 후 제출 공개',
     target_division_id: '복사 대상 유형',
     team_name: '팀명',
+    team_member_id: '팀원',
     time_limit_ms: '시간 제한',
     title: '제목',
     visibility: '공개 상태',
   };
   return labels[field] ?? field;
 }
+
+const IMPORTANT_AUDIT_FIELDS = new Set([
+  'answer_body',
+  'board_write_after_end',
+  'display_order',
+  'division_id',
+  'email',
+  'end_at',
+  'freeze_at',
+  'is_active',
+  'max_score',
+  'memory_limit_mb',
+  'mock_judging_enabled',
+  'mock_judging_progress_visible',
+  'name',
+  'participant_progress_visible',
+  'problem_code',
+  'source_problem_id',
+  'start_at',
+  'status',
+  'target_division_id',
+  'team_name',
+  'time_limit_ms',
+  'title',
+  'visibility',
+]);
+
+const IMPORTANT_ENTITY_FIELDS = new Set([
+  'contest_id',
+  'problem_id',
+  'notice_id',
+  'question_id',
+  'participant_team_id',
+  'team_member_id',
+  'operator_email',
+  'contact_inquiry_id',
+]);
 
 function valueLabel(value: unknown) {
   if (value === null || value === undefined) return '비어 있음';
@@ -182,6 +227,35 @@ function valueLabel(value: unknown) {
   if (Array.isArray(value)) return `${value.length.toLocaleString('ko-KR')}개 항목`;
   if (typeof value === 'object') return '상세 값';
   return String(value);
+}
+
+function auditEntities(details?: Record<string, unknown>) {
+  const entities = details?.entities;
+  if (!entities || typeof entities !== 'object' || Array.isArray(entities)) {
+    return [];
+  }
+  return Object.entries(entities as Record<string, unknown>).filter(([, value]) =>
+    typeof value === 'string' && value,
+  );
+}
+
+function auditRequestBody(details?: Record<string, unknown>) {
+  const body = details?.body;
+  if (!body || typeof body !== 'object') return '';
+  try {
+    return JSON.stringify(body, null, 2);
+  } catch {
+    return '';
+  }
+}
+
+function auditDetailsJson(details?: Record<string, unknown>) {
+  if (!details || Object.keys(details).length === 0) return '';
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch {
+    return '';
+  }
 }
 
 function auditChanges(details?: Record<string, unknown>) {
@@ -229,7 +303,7 @@ export default function OperationalAuditLogTable({
 
   return (
     <div className="overflow-x-auto rounded border border-slate-200">
-      <table className="min-w-[1120px] divide-y divide-slate-200 text-sm">
+      <table className="min-w-[980px] divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-normal text-slate-500">
           <tr>
             <th className="px-4 py-3">시간</th>
@@ -237,12 +311,45 @@ export default function OperationalAuditLogTable({
             <th className="px-4 py-3">대회</th>
             <th className="px-4 py-3">작업 내용</th>
             <th className="px-4 py-3">결과</th>
-            <th className="px-4 py-3">위치</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {logs.map((log) => {
             const changes = auditChanges(log.details);
+            const entities = auditEntities(log.details);
+            const requestBody = auditRequestBody(log.details);
+            const detailsJson = auditDetailsJson(log.details);
+            const importantChanges = changes.filter((change) =>
+              IMPORTANT_AUDIT_FIELDS.has(change.field),
+            );
+            const fallbackChanges = importantChanges.length
+              ? importantChanges
+              : changes;
+            const visibleChanges = fallbackChanges.slice(0, 5);
+            const hiddenChangeCount = Math.max(
+              0,
+              changes.length - visibleChanges.length,
+            );
+            const importantEntities = entities.filter(([field]) =>
+              IMPORTANT_ENTITY_FIELDS.has(field),
+            );
+            const visibleEntities = (importantEntities.length
+              ? importantEntities
+              : entities
+            ).slice(0, 3);
+            const hiddenEntityCount = Math.max(
+              0,
+              entities.length - visibleEntities.length,
+            );
+            const hasMoreDetails =
+              Boolean(requestBody) ||
+              Boolean(detailsJson) ||
+              hiddenChangeCount > 0 ||
+              hiddenEntityCount > 0 ||
+              Boolean(log.client_ip) ||
+              Boolean(log.user_agent) ||
+              Boolean(log.request_id) ||
+              Boolean(log.details?.query);
             return (
               <tr
                 className="align-top transition hover:bg-slate-50"
@@ -276,11 +383,6 @@ export default function OperationalAuditLogTable({
                     <span className="text-xs font-bold text-slate-500">
                       {scopeLabel(log.scope)}
                     </span>
-                    {log.contest_id ? (
-                      <code className="break-all text-xs font-bold text-slate-400">
-                        {log.contest_id}
-                      </code>
-                    ) : null}
                   </div>
                 </td>
                 <td className="min-w-[360px] px-4 py-4">
@@ -288,9 +390,9 @@ export default function OperationalAuditLogTable({
                     <span className="font-black text-slate-900">
                       {actionLabel(log)}
                     </span>
-                    {changes.length ? (
+                    {visibleChanges.length ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {changes.slice(0, 8).map((change) => (
+                        {visibleChanges.map((change) => (
                           <span
                             className="max-w-full rounded border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-800"
                             key={change.field}
@@ -300,9 +402,25 @@ export default function OperationalAuditLogTable({
                             {valueLabel(change.value)}
                           </span>
                         ))}
-                        {changes.length > 8 ? (
+                        {hiddenChangeCount > 0 ? (
                           <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500">
-                            외 {changes.length - 8}개
+                            외 {hiddenChangeCount}개
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : visibleEntities.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {visibleEntities.map(([field, value]) => (
+                          <span
+                            className="max-w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-600"
+                            key={field}
+                          >
+                            {fieldLabel(field)}: {valueLabel(value)}
+                          </span>
+                        ))}
+                        {hiddenEntityCount > 0 ? (
+                          <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500">
+                            외 {hiddenEntityCount}개
                           </span>
                         ) : null}
                       </div>
@@ -311,14 +429,55 @@ export default function OperationalAuditLogTable({
                         세부 변경값 없음
                       </span>
                     )}
-                    <code className="break-all rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                      {log.method} {log.path}
-                    </code>
-                    {typeof log.details?.query === 'string' &&
-                    log.details.query ? (
-                      <code className="break-all text-xs font-bold text-slate-500">
-                        ?{log.details.query}
-                      </code>
+                    {hasMoreDetails ? (
+                      <details className="rounded border border-slate-200 bg-slate-50">
+                        <summary className="cursor-pointer px-3 py-2 text-xs font-black text-slate-700">
+                          자세히 보기
+                        </summary>
+                        <div className="grid gap-3 border-t border-slate-200 p-3 text-xs font-bold text-slate-600">
+                          <code className="break-all rounded bg-white px-2 py-1">
+                            {log.method} {log.path}
+                          </code>
+                          {typeof log.details?.query === 'string' &&
+                          log.details.query ? (
+                            <code className="break-all text-slate-500">
+                              ?{log.details.query}
+                            </code>
+                          ) : null}
+                          <div className="grid gap-1">
+                            <span>IP: {log.client_ip ?? '-'}</span>
+                            <span className="break-words">
+                              User-Agent: {log.user_agent ?? '없음'}
+                            </span>
+                            {log.request_id ? (
+                              <code className="break-all text-slate-400">
+                                {log.request_id}
+                              </code>
+                            ) : null}
+                          </div>
+                          {changes.length ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {changes.map((change) => (
+                                <span
+                                  className="max-w-full rounded border border-indigo-100 bg-white px-2 py-1 text-indigo-800"
+                                  key={change.field}
+                                >
+                                  {fieldLabel(change.field)}:{' '}
+                                  {change.hasOld
+                                    ? `${valueLabel(change.oldValue)} -> `
+                                    : ''}
+                                  {valueLabel(change.value)}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          {requestBody || detailsJson ? (
+                            <pre className="max-h-80 overflow-auto rounded border border-slate-200 bg-white p-3 font-mono text-[11px] leading-5 whitespace-pre-wrap text-slate-700">
+                              {requestBody || detailsJson}
+                            </pre>
+                          ) : null}
+                        </div>
+                      </details>
                     ) : null}
                   </div>
                 </td>
@@ -331,19 +490,6 @@ export default function OperationalAuditLogTable({
                   >
                     {statusLabel(log.status_code)}
                   </span>
-                </td>
-                <td className="w-72 px-4 py-4">
-                  <div className="grid gap-1 text-xs font-bold text-slate-500">
-                    <span className="break-all">{log.client_ip ?? '-'}</span>
-                    <span className="break-words">
-                      {log.user_agent ?? 'User-Agent 없음'}
-                    </span>
-                    {log.request_id ? (
-                      <code className="break-all text-slate-400">
-                        {log.request_id}
-                      </code>
-                    ) : null}
-                  </div>
                 </td>
               </tr>
             );

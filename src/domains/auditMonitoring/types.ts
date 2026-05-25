@@ -72,6 +72,37 @@ export type OperationalAuditLog = {
   created_at: string;
 };
 
+export type AccessLog = {
+  access_log_id: string;
+  event_type: string;
+  account_scope: string;
+  email?: string | null;
+  display_name?: string | null;
+  contest_id?: string | null;
+  contest_title?: string | null;
+  participant_team_id?: string | null;
+  team_name?: string | null;
+  team_member_id?: string | null;
+  member_name?: string | null;
+  actor_role?: string | null;
+  session_id?: string | null;
+  client_ip?: string | null;
+  user_agent?: string | null;
+  request_id?: string | null;
+  details?: Record<string, unknown>;
+  created_at: string;
+};
+
+export type AccessLogStats = {
+  window_hours: number;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  conflict_count: number;
+  unique_account_count: number;
+  active_session_count: number;
+};
+
 export type AdminJudgeSubmissionEntry = {
   submission: Submission;
   contest?: Pick<Contest, 'contest_id' | 'title'> | null;
