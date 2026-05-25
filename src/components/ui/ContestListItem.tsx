@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { contestLoginPath } from '@/shared/lib/loginRedirect';
 import { SvgIcon } from '@/utils/Icons';
 
 export type ContestListItemData = {
@@ -38,8 +39,8 @@ export default function ContestListItem({
   const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
     useState(false);
   const generalSession = useSessionStore((state) => state.generalSession);
-  const loginHref = `/login?reason=contest&contestId=${encodeURIComponent(contestId)}`;
   const contestHref = `/contests/${encodeURIComponent(contestId)}`;
+  const loginHref = contestLoginPath(contestId, contestHref);
   const isParticipantContest = generalSession?.participantContests.some(
     (item) => item.contest.contest_id === contestId,
   );

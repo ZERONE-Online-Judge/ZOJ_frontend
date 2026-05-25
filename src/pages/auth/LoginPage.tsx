@@ -14,6 +14,7 @@ import {
   isApiClientError,
   readRetryAfterSeconds,
 } from '@/shared/api/errors';
+import { safeLoginRedirectTarget } from '@/shared/lib/loginRedirect';
 import ModalPortal from '@/shared/ui/ModalPortal';
 import PageNotice from '@/shared/ui/PageNotice';
 
@@ -214,7 +215,11 @@ export default function LoginPage() {
       setOtpExpiresAt(0);
       setOtpCode('');
       const contestId = searchParams.get('contestId');
-      navigate(contestId ? `/contests/${encodeURIComponent(contestId)}` : '/');
+      const next = safeLoginRedirectTarget(searchParams.get('next'));
+      navigate(
+        next ?? (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
+        { replace: true },
+      );
     } catch (error) {
       setMessage(formatLoginError(error));
       setMessageStatus('error');

@@ -1,8 +1,10 @@
+import { useLocation } from 'react-router-dom';
 import HeaderAuthControls from '@/components/layout/HeaderAuthControls';
 import HeaderShell, {
   type HeaderNavItem,
 } from '@/components/layout/HeaderShell';
 import { contestHeaderNavText } from '@/data/uiText';
+import { contestLoginPath } from '@/shared/lib/loginRedirect';
 
 type ContestHeaderProps = {
   contestId: string;
@@ -18,12 +20,15 @@ function contestNavItems(contestId: string): HeaderNavItem[] {
 }
 
 export default function ContestHeader({ contestId }: ContestHeaderProps) {
+  const location = useLocation();
+  const currentPath = `${location.pathname}${location.search}`;
+
   return (
     <HeaderShell
       actionClassName="min-w-0 xl:min-w-80"
       actions={
         <HeaderAuthControls
-          loginTo={`/login?reason=contest&contestId=${encodeURIComponent(contestId)}`}
+          loginTo={contestLoginPath(contestId, currentPath)}
         />
       }
       ariaLabel="Contest navigation"

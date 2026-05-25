@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { getPublicContest } from '@/domains/contestAdministration/api';
 import {
@@ -28,6 +28,7 @@ import {
 } from '@/domains/serviceCommunication/api';
 import { sharedUiText } from '@/data/uiText';
 import PageNotice from '@/shared/ui/PageNotice';
+import { contestLoginPath } from '@/shared/lib/loginRedirect';
 import { SvgIcon } from '@/utils/Icons';
 
 type ContestPageShellProps = {
@@ -148,6 +149,7 @@ function EmergencyNoticeBanner({
 
 export default function ContestPageShell({ children }: ContestPageShellProps) {
   const { contestId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const resolvedContestId = contestId ?? '';
   const queryClient = useQueryClient();
@@ -322,6 +324,14 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       !hasContestParticipantAccess &&
       !isRefreshingGeneralSession ? (
         <ContestAccessDeniedModal
+          loginTo={
+            contestId
+              ? contestLoginPath(
+                  contestId,
+                  `${location.pathname}${location.search}`,
+                )
+              : undefined
+          }
           onClose={() => navigate('/contests', { replace: true })}
         />
       ) : null}

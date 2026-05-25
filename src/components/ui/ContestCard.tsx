@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { contestLoginPath } from '@/shared/lib/loginRedirect';
 import { SvgIcon } from '@/utils/Icons';
 
 export type ContestCardData = {
@@ -35,12 +36,13 @@ export default function ContestCard({
   const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
     useState(false);
   const generalSession = useSessionStore((state) => state.generalSession);
-  const loginHref = contestId
-    ? `/login?reason=contest&contestId=${encodeURIComponent(contestId)}`
-    : undefined;
   const contestHref = contestId
     ? `/contests/${encodeURIComponent(contestId)}`
     : undefined;
+  const loginHref =
+    contestId && contestHref
+      ? contestLoginPath(contestId, contestHref)
+      : undefined;
   const isParticipantContest = contestId
     ? generalSession?.participantContests.some(
         (item) => item.contest.contest_id === contestId,

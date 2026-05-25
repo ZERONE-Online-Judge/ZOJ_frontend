@@ -1,12 +1,15 @@
+import { Link } from 'react-router-dom';
 import { accessText, loginPageText } from '@/data/uiText';
 import ModalPortal from '@/shared/ui/ModalPortal';
 import { SvgIcon } from '@/utils/Icons';
 
 type ContestAccessDeniedModalProps = {
+  loginTo?: string;
   onClose: () => void;
 };
 
 export default function ContestAccessDeniedModal({
+  loginTo,
   onClose,
 }: ContestAccessDeniedModalProps) {
   return (
@@ -37,7 +40,7 @@ export default function ContestAccessDeniedModal({
               </p>
             </div>
           </div>
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-2">
             <button
               className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
               onClick={onClose}
@@ -45,6 +48,14 @@ export default function ContestAccessDeniedModal({
             >
               {loginPageText.modalConfirm}
             </button>
+            {loginTo ? (
+              <Link
+                className="bg-zoj-blue flex h-10 items-center rounded px-4 text-sm font-black text-white transition hover:bg-indigo-600"
+                to={loginTo}
+              >
+                로그인
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
