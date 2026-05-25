@@ -16,10 +16,15 @@ import ContestSubmissionResultBadge from '@/components/contest/submissions/Conte
 import {
   getAdminJudgeDashboard,
   getAdminJudgeSubmission,
+  listAdminJudgeNodeLogs,
   listAdminJudgeSubmissions,
   waitAdminJudgeSubmissionStatus,
 } from '@/domains/auditMonitoring/api';
-import type { AdminJudgeSubmissionEntry } from '@/domains/auditMonitoring/types';
+import type {
+  AdminJudgeAgentLog,
+  AdminJudgeNode,
+  AdminJudgeSubmissionEntry,
+} from '@/domains/auditMonitoring/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   parseJudgeDetail,
@@ -84,6 +89,9 @@ function AdminJudgeContent({ token }: { token: string }) {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<
     string | null
   >(null);
+  const [selectedLogNodeId, setSelectedLogNodeId] = useState<string | null>(
+    null,
+  );
   const waitingSubmissionIds = useRef(new Set<string>());
 
   const dashboardQuery = useQuery({
@@ -123,6 +131,19 @@ function AdminJudgeContent({ token }: { token: string }) {
       queryIdentity,
     ],
     queryFn: () => getAdminJudgeSubmission(selectedSubmissionId!, token, true),
+    placeholderData: keepPreviousData,
+  });
+
+  const selectedNode = (dashboardQuery.data?.nodes ?? []).find(
+    (node) => node.judge_node_id === selectedLogNodeId,
+  );
+
+  const nodeLogsQuery = useQuery({
+    enabled: Boolean(selectedLogNodeId),
+    queryKey: ['admin', 'judge-node-logs', selectedLogNodeId, queryIdentity],
+    queryFn: () =>
+      listAdminJudgeNodeLogs(selectedLogNodeId!, token, { limit: 300 }),
+    refetchInterval: selectedLogNodeId && isVisible ? 3_000 : false,
     placeholderData: keepPreviousData,
   });
 
@@ -327,7 +348,7 @@ function AdminJudgeContent({ token }: { token: string }) {
           </summary>
           <div className="border-t border-slate-100 p-6">
             <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[1000px] table-fixed border-collapse text-left text-sm">
+              <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
                     <th className="w-72 border-r border-b border-slate-200 px-4 py-3">
@@ -345,8 +366,11 @@ function AdminJudgeContent({ token }: { token: string }) {
                     <th className="border-r border-b border-slate-200 px-4 py-3">
                       버전
                     </th>
-                    <th className="border-b border-slate-200 px-4 py-3">
+                    <th className="border-r border-b border-slate-200 px-4 py-3">
                       마지막 신호
+                    </th>
+                    <th className="w-24 border-b border-slate-200 px-4 py-3 text-center">
+                      로그
                     </th>
                   </tr>
                 </thead>
@@ -400,8 +424,19 @@ function AdminJudgeContent({ token }: { token: string }) {
                         <td className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-600">
                           {node.agent_version || '-'}
                         </td>
-                        <td className="px-4 py-4 font-bold text-slate-500">
+                        <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-500">
                           {formatRelativeTime(node.last_heartbeat_at)}
+                        </td>
+                        <td className="px-4 py-4 text-center align-top">
+                          <button
+                            className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black whitespace-nowrap text-violet-700 transition hover:bg-violet-50"
+                            onClick={() =>
+                              setSelectedLogNodeId(node.judge_node_id)
+                            }
+                            type="button"
+                          >
+                            로그
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -409,7 +444,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                     <tr>
                       <td
                         className="px-4 py-8 text-center text-sm font-bold text-slate-500"
-                        colSpan={6}
+                        colSpan={7}
                       >
                         등록된 채점 노드가 없습니다.
                       </td>
@@ -549,7 +584,130 @@ function AdminJudgeContent({ token }: { token: string }) {
           onClose={() => setSelectedSubmissionId(null)}
         />
       ) : null}
+
+      {selectedLogNodeId ? (
+        <JudgeNodeLogsModal
+          error={nodeLogsQuery.error}
+          isFetching={nodeLogsQuery.isFetching}
+          logs={nodeLogsQuery.data?.data ?? []}
+          node={selectedNode}
+          onClose={() => setSelectedLogNodeId(null)}
+          onRefresh={() => void nodeLogsQuery.refetch()}
+        />
+      ) : null}
     </PageLayout>
+  );
+}
+
+function JudgeNodeLogsModal({
+  error,
+  isFetching,
+  logs,
+  node,
+  onClose,
+  onRefresh,
+}: {
+  error: unknown;
+  isFetching: boolean;
+  logs: AdminJudgeAgentLog[];
+  node?: AdminJudgeNode;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+    >
+      <section className="grid max-h-[calc(100vh-2rem)] w-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black text-violet-600 uppercase">
+              Judge agent logs
+            </p>
+            <h2
+              className="zoj-break-anywhere text-xl font-black text-slate-950"
+              title={node?.node_name ?? ''}
+            >
+              {node?.node_name ?? '채점기 로그'}
+            </h2>
+            <p
+              className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400"
+              title={node?.judge_node_id ?? ''}
+            >
+              {node?.judge_node_id ?? '노드 정보를 불러오는 중입니다.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:text-slate-300"
+              disabled={isFetching}
+              onClick={onRefresh}
+              type="button"
+            >
+              {isFetching ? '갱신 중' : '새로고침'}
+            </button>
+            <button
+              className="rounded border border-slate-200 px-3 py-2 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+              onClick={onClose}
+              type="button"
+            >
+              닫기
+            </button>
+          </div>
+        </header>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold text-slate-500">
+          <span>최신 로그가 위에 표시됩니다.</span>
+          <span>{logs.length.toLocaleString('ko-KR')}개 표시</span>
+        </div>
+
+        <div className="min-h-0 overflow-auto bg-slate-950 p-4">
+          {error ? (
+            <div className="rounded border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm font-bold text-rose-100">
+              {formatApiError(error, '채점기 로그를 불러오지 못했습니다')}
+            </div>
+          ) : null}
+
+          {!error && logs.length === 0 ? (
+            <div className="rounded border border-slate-800 bg-slate-900 px-4 py-10 text-center text-sm font-bold text-slate-400">
+              아직 수집된 채점기 로그가 없습니다.
+            </div>
+          ) : null}
+
+          {logs.length > 0 ? (
+            <ol className="grid gap-1 font-mono text-xs leading-5">
+              {logs.map((log) => (
+                <li
+                  className="grid gap-2 rounded border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-100 md:grid-cols-[10rem_4rem_minmax(0,1fr)]"
+                  key={log.judge_agent_log_id}
+                >
+                  <time className="font-bold whitespace-nowrap text-slate-500">
+                    {formatDateTime(log.created_at)}
+                  </time>
+                  <span
+                    className={[
+                      'font-black uppercase',
+                      log.level === 'error'
+                        ? 'text-rose-300'
+                        : log.level === 'warning'
+                          ? 'text-amber-300'
+                          : 'text-emerald-300',
+                    ].join(' ')}
+                  >
+                    {log.level}
+                  </span>
+                  <pre className="zoj-break-anywhere m-0 whitespace-pre-wrap text-slate-100">
+                    {log.message}
+                  </pre>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }
 

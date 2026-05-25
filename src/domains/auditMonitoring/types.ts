@@ -43,6 +43,17 @@ export type AdminJudgeDashboard = {
   };
 };
 
+export type AdminJudgeNode = AdminJudgeDashboard['nodes'][number];
+
+export type AdminJudgeAgentLog = {
+  judge_agent_log_id: string;
+  judge_node_id: string;
+  node_name: string;
+  level: string;
+  message: string;
+  created_at: string;
+};
+
 export type AdminJudgeSubmissionEntry = {
   submission: Submission;
   contest?: Pick<Contest, 'contest_id' | 'title'> | null;

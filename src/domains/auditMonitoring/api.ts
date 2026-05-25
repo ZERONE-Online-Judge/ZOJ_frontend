@@ -1,4 +1,5 @@
 import type {
+  AdminJudgeAgentLog,
   AdminJudgeDashboard,
   AdminJudgeSubmissionEntry,
   JudgeStatus,
@@ -22,6 +23,20 @@ export function getAdminDashboard(token: string) {
 
 export function getAdminJudgeDashboard(token: string) {
   return apiRequest<AdminJudgeDashboard>('/admin/judge/dashboard', token);
+}
+
+export function listAdminJudgeNodeLogs(
+  nodeId: string,
+  token: string,
+  options: { cursor?: string; limit?: number } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.limit) search.set('limit', String(options.limit));
+  if (options.cursor) search.set('cursor', options.cursor);
+  return apiPageRequest<AdminJudgeAgentLog[]>(
+    `/admin/judge/nodes/${nodeId}/logs?${search}`,
+    token,
+  );
 }
 
 export function listAdminJudgeSubmissions(
