@@ -41,6 +41,7 @@ import {
 } from '@/domains/submissionScoreboard/languagePreference';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
+import { formatUserApiError } from '@/shared/api/errors';
 import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 import PageNotice from '@/shared/ui/PageNotice';
@@ -550,10 +551,7 @@ function ContestProblemDetailContent({
     },
     onError: (error, { draftKey }: SubmitVariables) => {
       setSubmitFeedback(draftKey, {
-        message:
-          error instanceof Error
-            ? error.message
-            : '제출을 처리하지 못했습니다.',
+        message: formatUserApiError(error, '제출을 처리하지 못했습니다.'),
         status: 'error',
       });
     },
@@ -614,10 +612,7 @@ function ContestProblemDetailContent({
     },
     onError: (error, { draftKey }: SubmitVariables) => {
       setSubmitFeedback(draftKey, {
-        message:
-          error instanceof Error
-            ? error.message
-            : '모의채점을 처리하지 못했습니다.',
+        message: formatUserApiError(error, '모의채점을 처리하지 못했습니다.'),
         status: 'error',
       });
     },

@@ -70,7 +70,7 @@ import type {
   JudgeLanguage,
   Submission,
 } from '@/domains/submissionScoreboard/types';
-import { formatApiError } from '@/shared/api/errors';
+import { formatApiError, formatUserApiError } from '@/shared/api/errors';
 import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 
@@ -897,10 +897,10 @@ function OperatorProblemsContent({
           });
         } catch (error) {
           const result = {
-            error:
-              error instanceof Error
-                ? error.message
-                : '검증 코드 처리에 실패했습니다.',
+            error: formatUserApiError(
+              error,
+              '검증 코드 처리에 실패했습니다.',
+            ),
             expectedStatus,
             filename: file.name,
             stage: 'done' as const,
@@ -989,10 +989,10 @@ function OperatorProblemsContent({
         ...previous,
         [variables.asset.asset_id]: {
           asset: variables.asset,
-          error:
-            error instanceof Error
-              ? error.message
-              : '검증 코드 채점에 실패했습니다.',
+          error: formatUserApiError(
+            error,
+            '검증 코드 채점에 실패했습니다.',
+          ),
           expectedStatus: variables.expectedStatus,
           filename: variables.asset.original_filename,
           stage: 'done',

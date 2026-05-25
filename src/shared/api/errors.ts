@@ -40,8 +40,8 @@ export function toApiError(response: Response, payload: unknown) {
 
 export function formatApiError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) {
-    const requestId = error.requestId ? `, request_id: ${error.requestId}` : '';
-    return `${fallback}: ${error.message} (${error.code}, HTTP ${error.status}${requestId})`;
+    const message = apiErrorUserMessage(error);
+    return message ? `${fallback}: ${message}` : fallback;
   }
 
   if (error instanceof Error) {
@@ -53,27 +53,8 @@ export function formatApiError(error: unknown, fallback: string) {
 
 export function formatUserApiError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) {
-    if (error.status === 401 || error.status === 403) {
-      return `${fallback}: 로그인 상태 또는 접근 권한을 확인해 주세요.`;
-    }
-
-    if (error.status === 404) {
-      return `${fallback}: 요청한 정보를 찾을 수 없습니다.`;
-    }
-
-    if (error.status === 409) {
-      return `${fallback}: 이미 처리된 정보이거나 현재 상태와 충돌합니다.`;
-    }
-
-    if (error.status === 429) {
-      return `${fallback}: 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.`;
-    }
-
-    if (error.status >= 500) {
-      return `${fallback}: 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.`;
-    }
-
-    return fallback;
+    const message = apiErrorUserMessage(error);
+    return message ? `${fallback}: ${message}` : fallback;
   }
 
   if (error instanceof Error) {
@@ -81,6 +62,94 @@ export function formatUserApiError(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function apiErrorUserMessage(error: ApiClientError) {
+  if (error.code === 'contest_locked') {
+    return '대회가 진행 중이라 문제 내용, 제한 시간, 테스트케이스처럼 채점 결과가 바뀔 수 있는 항목은 수정할 수 없습니다. 대회 종료 후 다시 시도해 주세요.';
+  }
+
+  if (error.code === 'validation_error') {
+    return '입력한 값을 다시 확인해 주세요.';
+  }
+
+  if (error.code === 'invalid_credentials') {
+    return '인증 정보가 올바르지 않습니다. 다시 확인해 주세요.';
+  }
+
+  if (error.code === 'authentication_required') {
+    return '로그인이 필요합니다.';
+  }
+
+  if (error.code === 'permission_denied' || error.code === 'scope_denied') {
+    return '이 작업을 수행할 권한이 없습니다.';
+  }
+
+  if (error.code === 'not_found') {
+    return '요청한 정보를 찾을 수 없습니다.';
+  }
+
+  if (error.code === 'last_operator') {
+    return '마지막 대회 운영자는 제거할 수 없습니다.';
+  }
+
+  if (error.code === 'self_remove_denied') {
+    return '현재 로그인한 운영자 자신은 제거할 수 없습니다.';
+  }
+
+  if (error.code === 'participant_has_submission') {
+    return '제출 이력이 있는 참가팀은 삭제할 수 없습니다.';
+  }
+
+  if (error.code === 'participant_has_question') {
+    return '질문 이력이 있는 참가팀은 삭제할 수 없습니다.';
+  }
+
+  if (error.code === 'testcase_pair_missing') {
+    return '입력 파일과 출력 파일 쌍이 맞지 않습니다. .in/.out 파일 구성을 확인해 주세요.';
+  }
+
+  if (error.code === 'archive_file_too_large' || error.code === 'archive_too_large') {
+    return '업로드한 압축 파일 또는 포함된 파일이 너무 큽니다.';
+  }
+
+  if (
+    error.code === 'testcase_verification_failed' ||
+    error.code === 'package_asset_verification_failed' ||
+    error.code === 'package_build_failed'
+  ) {
+    return '채점 보조 파일 또는 테스트케이스 검증에 실패했습니다. 파일 구성을 확인해 주세요.';
+  }
+
+  if (error.status === 401 || error.status === 403) {
+    return '로그인 상태 또는 접근 권한을 확인해 주세요.';
+  }
+
+  if (error.status === 404) {
+    return '요청한 정보를 찾을 수 없습니다.';
+  }
+
+  if (error.status === 409) {
+    return '이미 처리된 정보이거나 현재 상태와 충돌합니다.';
+  }
+
+  if (error.status === 410) {
+    return '더 이상 사용할 수 없는 요청입니다. 화면을 새로고침한 뒤 다시 시도해 주세요.';
+  }
+
+  if (error.status === 422) {
+    return '입력한 값을 다시 확인해 주세요.';
+  }
+
+  if (error.status === 429) {
+    return '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  if (error.status >= 500) {
+    return '서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  return '';
 }
 
 export function readRetryAfterSeconds(error: unknown) {

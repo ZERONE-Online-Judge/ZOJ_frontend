@@ -18,19 +18,29 @@ export function formatParticipantTeamError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) {
     const field = typeof error.details?.field === 'string' ? error.details.field : '';
     if (error.code === 'validation_error' && field === 'email_conflict') {
+      const email = emailFromConflictMessage(error.message);
       if (error.message.startsWith('participant email already registered:')) {
-        return `${error.message} (이미 다른 참가팀의 팀장/팀원으로 등록된 이메일입니다.)`;
+        return email
+          ? `${email}은 이미 다른 참가팀의 팀장/팀원으로 등록된 이메일입니다.`
+          : '이미 다른 참가팀의 팀장/팀원으로 등록된 이메일이 있습니다.';
       }
       if (error.message.startsWith('participant email cannot be operator/staff account:')) {
-        return `${error.message} (운영자/서비스 관리자 계정 이메일은 참가팀으로 등록할 수 없습니다.)`;
+        return email
+          ? `${email}은 운영자 또는 서비스 관리자 계정이라 참가팀으로 등록할 수 없습니다.`
+          : '운영자 또는 서비스 관리자 계정 이메일은 참가팀으로 등록할 수 없습니다.';
       }
-      return `${error.message} (팀장/팀원 이메일 중복 또는 권한 충돌이 있습니다.)`;
+      return '팀장/팀원 이메일 중복 또는 권한 충돌이 있습니다.';
     }
 
     return formatApiError(error, fallback);
   }
 
   return fallback;
+}
+
+function emailFromConflictMessage(message: string) {
+  const [, value = ''] = message.split(':', 2);
+  return value.trim();
 }
 
 function toParticipantSession(contestId: string, data: ParticipantSessionApi): ParticipantSession {
