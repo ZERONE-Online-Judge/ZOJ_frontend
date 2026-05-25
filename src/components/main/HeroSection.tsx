@@ -57,23 +57,26 @@ function HeroTitle({ headline }: { headline: string }) {
   return (
     <h1
       aria-label={headline}
-      className="animate-hero-title text-5xl leading-tight font-semibold text-white sm:text-6xl lg:text-7xl"
+      className="animate-hero-title relative text-5xl leading-none font-semibold text-white sm:text-6xl lg:text-7xl"
     >
+      <span aria-hidden="true" className="block opacity-0">
+        {headline}
+      </span>
       <span
         aria-hidden="true"
-        className="hero-zoj-title inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center"
+        className="hero-zoj-title absolute inset-0 flex items-center justify-center"
       >
-        <span className="hero-zoj-word hero-zoj-word-left justify-self-end">
+        <span className="hero-zoj-word hero-zoj-word-left">
           <span className="hero-zoj-letter">Z</span>
           <span className="hero-zoj-extra">ERONE</span>
         </span>
         <span className="hero-zoj-gap"> </span>
-        <span className="hero-zoj-word hero-zoj-word-center justify-self-center">
+        <span className="hero-zoj-word">
           <span className="hero-zoj-letter">O</span>
           <span className="hero-zoj-extra">NLINE</span>
         </span>
         <span className="hero-zoj-gap"> </span>
-        <span className="hero-zoj-word hero-zoj-word-right justify-self-start">
+        <span className="hero-zoj-word hero-zoj-word-right">
           <span className="hero-zoj-letter">J</span>
           <span className="hero-zoj-extra">UDGE</span>
         </span>

@@ -260,21 +260,17 @@
   }
 
   .hero-zoj-title {
+    align-items: center;
     line-height: 1;
     white-space: nowrap;
   }
 
-  .hero-zoj-word,
-  .hero-zoj-extra,
-  .hero-zoj-gap,
-  .hero-zoj-letter {
-    display: inline-block;
-  }
-
   .hero-zoj-word {
+    align-items: center;
     animation-duration: 12s;
     animation-iteration-count: infinite;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
     line-height: 1;
     will-change: transform;
   }
@@ -289,14 +285,16 @@
 
   .hero-zoj-extra {
     animation: zoj-hero-extra-fold 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    display: inline-block;
     overflow: hidden;
-    vertical-align: baseline;
     white-space: nowrap;
     will-change: max-width, opacity, transform;
   }
 
   .hero-zoj-gap {
     animation: zoj-hero-title-gap 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    display: inline-block;
+    line-height: 1;
     overflow: hidden;
     white-space: pre;
     will-change: width;
@@ -304,6 +302,7 @@
 
   .hero-zoj-letter {
     animation: zoj-hero-letter-glow 12s ease-in-out infinite;
+    display: inline-block;
     line-height: 1;
     will-change: color, text-shadow;
   }
