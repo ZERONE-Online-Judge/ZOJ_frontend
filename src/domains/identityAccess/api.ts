@@ -27,10 +27,19 @@ export async function requestGeneralOtp(email: string) {
   });
 }
 
-export async function verifyGeneralOtp(email: string, otpCode: string, previous?: GeneralSession | null) {
+export async function verifyGeneralOtp(
+  email: string,
+  otpCode: string,
+  previous?: GeneralSession | null,
+  forceNewSession = false,
+) {
   const data = await apiRequest<GeneralSessionApi>('/auth/general/otp/verify', undefined, {
     method: 'POST',
-    body: JSON.stringify({ email, otp_code: otpCode }),
+    body: JSON.stringify({
+      email,
+      force_new_session: forceNewSession,
+      otp_code: otpCode,
+    }),
   });
   const session = mapGeneralSession(data, previous);
   saveGeneralSession(session);

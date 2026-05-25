@@ -10,6 +10,7 @@ import {
 } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import {
+  type ApiClientError,
   formatUserApiError,
   isApiClientError,
   readRetryAfterSeconds,
@@ -26,6 +27,12 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+type PendingSessionReplacement = {
+  activeSessionCount: number;
+  email: string;
+  lastSeenAt?: string | null;
+  otpCode: string;
+} | null;
 
 function formatSeconds(value: number) {
   const minutes = Math.floor(value / 60);
@@ -75,10 +82,35 @@ function isUnregisteredEmailError(error: unknown) {
   );
 }
 
+function isSessionConflictError(error: unknown): error is ApiClientError {
+  return (
+    isApiClientError(error) &&
+    error.status === 409 &&
+    error.code === 'session_conflict'
+  );
+}
+
+function sessionConflictDetails(error: unknown) {
+  if (!isSessionConflictError(error)) {
+    return { activeSessionCount: 1, lastSeenAt: null };
+  }
+
+  const activeSessionCount = error.details?.active_session_count;
+  const lastSeenAt = error.details?.last_seen_at;
+  return {
+    activeSessionCount:
+      typeof activeSessionCount === 'number' ? activeSessionCount : 1,
+    lastSeenAt: typeof lastSeenAt === 'string' ? lastSeenAt : null,
+  };
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const setGeneralSession = useSessionStore((state) => state.setGeneralSession);
+  const setParticipantSession = useSessionStore(
+    (state) => state.setParticipantSession,
+  );
   const generalSession = useSessionStore((state) => state.generalSession);
   const [otpRequested, setOtpRequested] = useState(false);
   const [requestedOtpEmail, setRequestedOtpEmail] = useState('');
@@ -92,6 +124,8 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingSessionReplacement, setPendingSessionReplacement] =
+    useState<PendingSessionReplacement>(null);
   const [now, setNow] = useState(currentTimestamp);
   const otpInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -176,7 +210,10 @@ export default function LoginPage() {
     }
   }
 
-  async function submitLogin(values: LoginFormValues) {
+  async function submitLogin(
+    values: LoginFormValues,
+    forceNewSession = false,
+  ) {
     if (!validateEmail()) return;
 
     if (!otpRequested) {
@@ -205,9 +242,12 @@ export default function LoginPage() {
         requestedOtpEmail || values.email.trim(),
         values.otpCode.trim(),
         generalSession,
+        forceNewSession,
       );
 
+      setPendingSessionReplacement(null);
       setGeneralSession(session);
+      setParticipantSession(null);
       setMessage(loginPageText.loginReady);
       setMessageStatus('ready');
       setOtpRequested(false);
@@ -222,11 +262,40 @@ export default function LoginPage() {
         { replace: true },
       );
     } catch (error) {
+      if (!forceNewSession && isSessionConflictError(error)) {
+        const details = sessionConflictDetails(error);
+        setPendingSessionReplacement({
+          activeSessionCount: details.activeSessionCount,
+          email: requestedOtpEmail || values.email.trim(),
+          lastSeenAt: details.lastSeenAt,
+          otpCode: values.otpCode.trim(),
+        });
+        setMessage('이미 사용 중인 세션이 있습니다. 이 브라우저에서 계속 사용할지 선택해 주세요.');
+        setMessageStatus('error');
+        return;
+      }
       setMessage(formatLoginError(error));
       setMessageStatus('error');
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function cancelSessionReplacement() {
+    setPendingSessionReplacement(null);
+    setMessage('기존 세션을 유지했습니다. 이 브라우저에서는 로그인하지 않았습니다.');
+    setMessageStatus('idle');
+  }
+
+  function confirmSessionReplacement() {
+    if (!pendingSessionReplacement) return;
+    void submitLogin(
+      {
+        email: pendingSessionReplacement.email,
+        otpCode: pendingSessionReplacement.otpCode,
+      },
+      true,
+    );
   }
 
   function closeContestLoginModal() {
@@ -281,6 +350,62 @@ export default function LoginPage() {
                   type="button"
                 >
                   {loginPageText.modalConfirm}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      ) : null}
+
+      {pendingSessionReplacement ? (
+        <ModalPortal>
+          <div
+            aria-labelledby="session-replacement-title"
+            aria-modal="true"
+            className="fixed inset-0 z-[70] flex min-h-dvh items-center justify-center bg-slate-950/50 px-4"
+            role="dialog"
+          >
+            <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+              <div className="grid gap-2">
+                <h2
+                  className="text-xl font-black text-slate-950"
+                  id="session-replacement-title"
+                >
+                  기존 로그인 연결을 끊을까요?
+                </h2>
+                <p className="text-sm leading-6 text-slate-600">
+                  이 계정은 이미 다른 브라우저 또는 기기에서 로그인 중입니다.
+                  이 브라우저에서 계속 사용하면 이전 세션은 로그아웃됩니다.
+                </p>
+                <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                  활성 세션 {pendingSessionReplacement.activeSessionCount}개
+                  {pendingSessionReplacement.lastSeenAt ? (
+                    <>
+                      {' · 마지막 사용 '}
+                      {new Intl.DateTimeFormat('ko-KR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(pendingSessionReplacement.lastSeenAt))}
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-end gap-2">
+                <button
+                  className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+                  disabled={isSubmitting}
+                  onClick={cancelSessionReplacement}
+                  type="button"
+                >
+                  이전 세션 유지
+                </button>
+                <button
+                  className="bg-zoj-blue h-10 rounded px-4 text-sm font-black text-white transition hover:bg-blue-700 disabled:bg-slate-300"
+                  disabled={isSubmitting}
+                  onClick={confirmSessionReplacement}
+                  type="button"
+                >
+                  이 브라우저에서 사용
                 </button>
               </div>
             </div>

@@ -54,13 +54,22 @@ export async function requestParticipantOtp(contestId: string, email: string) {
   );
 }
 
-export async function verifyParticipantOtp(contestId: string, email: string, otpCode: string) {
+export async function verifyParticipantOtp(
+  contestId: string,
+  email: string,
+  otpCode: string,
+  forceNewSession = false,
+) {
   const data = await apiRequest<ParticipantSessionApi>(
     `/contests/${contestId}/participant-login/otp/verify`,
     undefined,
     {
       method: 'POST',
-      body: JSON.stringify({ email, otp_code: otpCode }),
+      body: JSON.stringify({
+        email,
+        force_new_session: forceNewSession,
+        otp_code: otpCode,
+      }),
     },
   );
   const session = toParticipantSession(contestId, data);

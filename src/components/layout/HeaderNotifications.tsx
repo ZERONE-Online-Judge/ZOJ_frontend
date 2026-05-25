@@ -178,9 +178,11 @@ export default function HeaderNotifications() {
     participantContest?.member.name ?? activeParticipantSession?.member.name;
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    if (store.notifications.length === 0) return;
+
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [store.notifications.length]);
 
   useEffect(() => {
     writeStore(store);

@@ -11,11 +11,11 @@ export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
 
 function browserStorage() {
-  return typeof window === 'undefined' ? null : window.sessionStorage;
+  return typeof window === 'undefined' ? null : window.localStorage;
 }
 
 function legacyBrowserStorage() {
-  return typeof window === 'undefined' ? null : window.localStorage;
+  return typeof window === 'undefined' ? null : window.sessionStorage;
 }
 
 function readStoredSessionValue(key: string) {
