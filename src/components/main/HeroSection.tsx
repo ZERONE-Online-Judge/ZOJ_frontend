@@ -24,9 +24,7 @@ export default function HeroSection({
       <div className="animate-hero-image-light absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.12)_34%,rgba(123,97,255,0.16)_48%,transparent_68%)]" />
 
       <div className="absolute inset-0 z-10 mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-6 text-center">
-        <h1 className="animate-hero-title text-5xl leading-tight font-semibold text-white sm:text-6xl lg:text-7xl">
-          {headline}
-        </h1>
+        <HeroTitle headline={headline} />
         <p
           aria-label={description}
           className="text-hero-copy animate-hero-copy mt-10 min-h-20 max-w-7xl text-xl leading-snug font-semibold break-keep sm:mt-14 sm:min-h-24 sm:text-2xl xl:text-[1.7rem]"
@@ -44,6 +42,43 @@ export default function HeroSection({
         </p>
       </div>
     </section>
+  );
+}
+
+function HeroTitle({ headline }: { headline: string }) {
+  if (headline !== 'ZERONE ONLINE JUDGE') {
+    return (
+      <h1 className="animate-hero-title text-5xl leading-tight font-semibold text-white sm:text-6xl lg:text-7xl">
+        {headline}
+      </h1>
+    );
+  }
+
+  return (
+    <h1
+      aria-label={headline}
+      className="animate-hero-title text-5xl leading-tight font-semibold text-white sm:text-6xl lg:text-7xl"
+    >
+      <span
+        aria-hidden="true"
+        className="hero-zoj-title inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-baseline"
+      >
+        <span className="hero-zoj-word hero-zoj-word-left justify-self-end">
+          <span className="hero-zoj-letter">Z</span>
+          <span className="hero-zoj-extra">ERONE</span>
+        </span>
+        <span className="hero-zoj-gap"> </span>
+        <span className="hero-zoj-word hero-zoj-word-center justify-self-center">
+          <span className="hero-zoj-letter">O</span>
+          <span className="hero-zoj-extra">NLINE</span>
+        </span>
+        <span className="hero-zoj-gap"> </span>
+        <span className="hero-zoj-word hero-zoj-word-right justify-self-start">
+          <span className="hero-zoj-letter">J</span>
+          <span className="hero-zoj-extra">UDGE</span>
+        </span>
+      </span>
+    </h1>
   );
 }
 
