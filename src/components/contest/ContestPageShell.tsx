@@ -157,6 +157,8 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   const [dismissedEmergencyNoticeKey, setDismissedEmergencyNoticeKey] =
     useState<string | null>(null);
   const [, setAnnouncementTick] = useState(0);
+  const [checkedParticipantAccessKey, setCheckedParticipantAccessKey] =
+    useState('');
   const {
     activeParticipantSession,
     ensureParticipantSession,
@@ -220,6 +222,49 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     !generalSession ||
     Boolean(participantContest) ||
     (!shouldRequireParticipantAccess && hasPublicAfterEndResource);
+  const shouldCheckParticipantAccess =
+    Boolean(contestId && generalSession && shouldRequireParticipantAccess);
+  const participantAccessCheckKey = [
+    contestId ?? 'no-contest',
+    generalSession?.accessToken ?? 'public',
+    shouldRequireParticipantAccess ? 'required' : 'optional',
+  ].join(':');
+  const hasCheckedParticipantAccess =
+    !shouldCheckParticipantAccess ||
+    Boolean(participantContest || activeParticipantSession) ||
+    checkedParticipantAccessKey === participantAccessCheckKey;
+  const isCheckingParticipantAccess =
+    shouldCheckParticipantAccess &&
+    (!hasCheckedParticipantAccess || isRefreshingGeneralSession);
+
+  useEffect(() => {
+    if (!contestId || !generalSession || !shouldRequireParticipantAccess) return;
+    if (participantContest || activeParticipantSession) return;
+    if (checkedParticipantAccessKey === participantAccessCheckKey) return;
+
+    let cancelled = false;
+    const currentCheckKey = participantAccessCheckKey;
+
+    async function checkParticipantAccess() {
+      await ensureParticipantSession().catch(() => null);
+      if (!cancelled) setCheckedParticipantAccessKey(currentCheckKey);
+    }
+
+    void checkParticipantAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeParticipantSession,
+    checkedParticipantAccessKey,
+    contestId,
+    ensureParticipantSession,
+    generalSession,
+    participantAccessCheckKey,
+    participantContest,
+    shouldRequireParticipantAccess,
+  ]);
 
   useEffect(() => {
     if (!contestId || !detail) return;
@@ -315,14 +360,14 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       {contestQuery.isError && (
         <PageNotice message="대회 정보를 불러오지 못했습니다." status="error" />
       )}
-      {detail && contest && isRefreshingGeneralSession ? (
+      {detail && contest && isCheckingParticipantAccess ? (
         <PageNotice message="참가 권한을 확인하는 중입니다." status="loading" />
       ) : null}
 
       {detail &&
       contest &&
       !hasContestParticipantAccess &&
-      !isRefreshingGeneralSession ? (
+      !isCheckingParticipantAccess ? (
         <ContestAccessDeniedModal
           loginTo={
             contestId

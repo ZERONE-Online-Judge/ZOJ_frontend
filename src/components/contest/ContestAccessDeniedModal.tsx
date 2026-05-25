@@ -20,7 +20,7 @@ export default function ContestAccessDeniedModal({
         className="fixed inset-0 z-[60] flex min-h-dvh items-center justify-center bg-slate-950/50 px-4"
         role="dialog"
       >
-        <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="w-full max-w-lg rounded-md border border-slate-200 bg-white p-6 shadow-xl">
           <div className="flex items-start gap-4">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
               <SvgIcon name="alert" size={20} />
@@ -32,10 +32,10 @@ export default function ContestAccessDeniedModal({
               >
                 {accessText.participantNoAccessTitle}
               </h2>
-              <p className="text-sm leading-6 text-slate-600">
+              <p className="text-sm leading-6 break-keep text-slate-600">
                 {accessText.participantNoAccessDescription}
               </p>
-              <p className="text-sm leading-6 text-slate-600">
+              <p className="text-sm leading-6 break-keep text-slate-600">
                 {accessText.participantNoAccessMessage}
               </p>
             </div>
