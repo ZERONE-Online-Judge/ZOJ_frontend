@@ -12,6 +12,48 @@ type MarkdownPreviewProps = {
   assets?: ProblemAsset[];
 };
 
+function inlineCodeMarkdown(value: string) {
+  const backtickRuns = value.match(/`+/g) ?? [];
+  const fenceLength =
+    Math.max(0, ...backtickRuns.map((item) => item.length)) + 1;
+  const fence = '`'.repeat(fenceLength);
+  const needsPadding =
+    value.startsWith(' ') || value.endsWith(' ') || value.includes(fence);
+
+  return `${fence}${needsPadding ? ' ' : ''}${value}${
+    needsPadding ? ' ' : ''
+  }${fence}`;
+}
+
+function normalizeLatexTextCommands(markdown: string) {
+  return markdown
+    .split(
+      /(\$\$[\s\S]*?\$\$|\$[^$\n]*(?:\\.[^$\n]*)*\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|`+[^`\n]*`+)/g,
+    )
+    .map((part) => {
+      if (
+        part.startsWith('$') ||
+        part.startsWith('\\[') ||
+        part.startsWith('\\(') ||
+        part.startsWith('`')
+      ) {
+        return part;
+      }
+
+      return part
+        .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+        .replace(/\\textit\{([^{}]*)\}/g, '*$1*')
+        .replace(/\\emph\{([^{}]*)\}/g, '*$1*')
+        .replace(/\\texttt\{([^{}]*)\}/g, (_, content: string) =>
+          inlineCodeMarkdown(content),
+        )
+        .replace(/\\text\{([^{}]*)\}/g, '$1')
+        .replace(/\\textrm\{([^{}]*)\}/g, '$1')
+        .replace(/\\underline\{([^{}]*)\}/g, '$1');
+    })
+    .join('');
+}
+
 function normalizeMathDelimiters(markdown: string) {
   const beginEnumerate = /\\begin\s*\{\s*enumerate\s*\}/g;
   const endEnumerate = /\\end\s*\{\s*enumerate\s*\}/g;
@@ -44,7 +86,6 @@ function normalizeMathDelimiters(markdown: string) {
         .replace(endEnumerate, '\n')
         .replace(beginItemize, '\n')
         .replace(endItemize, '\n')
-        .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
         .replace(latexItem, '\n- ')
         .replace(/\\\s+/g, '\n')
         .replace(
@@ -53,6 +94,13 @@ function normalizeMathDelimiters(markdown: string) {
         )
         .replace(/\\\(([\s\S]*?)\\\)/g, (_, math: string) => `$${math}$`);
     })
+    .join('')
+    .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g)
+    .map((part) =>
+      part.startsWith('```') || part.startsWith('~~~')
+        ? part
+        : normalizeLatexTextCommands(part),
+    )
     .join('');
 }
 
