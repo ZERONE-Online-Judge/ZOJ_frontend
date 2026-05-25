@@ -617,10 +617,10 @@ function JudgeNodeLogsModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="grid max-h-[calc(100vh-2rem)] w-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl">
+      <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-black text-violet-600 uppercase">
@@ -857,10 +857,10 @@ function SubmissionDetailModal({
     <div
       aria-labelledby="admin-submission-detail-title"
       aria-modal="true"
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 px-4 py-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <div className="grid max-h-full w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)] rounded border border-slate-200 bg-white shadow-xl">
+      <div className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div className="grid gap-1">
             <h2

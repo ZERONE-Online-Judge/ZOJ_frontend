@@ -2131,10 +2131,10 @@ function TestcaseSetModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="mx-auto grid h-full max-h-[calc(100vh-1.5rem)] w-full max-w-[min(96rem,calc(100vw-1.5rem))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:max-w-[min(96rem,calc(100vw-3rem))]">
+      <section className="zoj-modal-shell grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <p className="text-xs font-black text-indigo-600 uppercase">
@@ -2344,10 +2344,10 @@ function FileContentModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="mx-auto grid h-full max-h-[calc(100vh-1.5rem)] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <section className="zoj-modal-shell grid h-full max-w-4xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-black text-indigo-600 uppercase">
@@ -2401,7 +2401,7 @@ function UploadProgressModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/70 p-4"
+      className="zoj-modal-backdrop z-[80]"
       role="dialog"
     >
       <section className="w-full max-w-md rounded border border-slate-200 bg-white p-6 shadow-2xl">
@@ -2860,10 +2860,10 @@ function ProblemPreviewModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="mx-auto flex h-full max-h-[calc(100vh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <section className="zoj-modal-shell flex h-full max-w-7xl flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <p className="text-xs font-black tracking-normal text-indigo-600 uppercase">

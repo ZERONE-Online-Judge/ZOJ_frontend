@@ -371,6 +371,44 @@
     white-space: nowrap;
   }
 
+  .zoj-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    min-width: 100vw;
+    min-height: 100vh;
+    min-height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgb(2 6 23 / 0.7);
+    padding: 0.75rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .zoj-modal-shell {
+    max-height: calc(100dvh - 1.5rem);
+    width: min(100%, 88rem);
+    overflow: hidden;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.25rem;
+    background: white;
+    box-shadow:
+      0 25px 50px -12px rgb(15 23 42 / 0.35),
+      0 0 0 1px rgb(15 23 42 / 0.04);
+  }
+
+  @media (min-width: 640px) {
+    .zoj-modal-backdrop {
+      padding: 1.5rem;
+    }
+
+    .zoj-modal-shell {
+      max-height: calc(100dvh - 3rem);
+    }
+  }
+
   [aria-modal='true'] {
     animation: zoj-fade-in 140ms ease-out both;
   }

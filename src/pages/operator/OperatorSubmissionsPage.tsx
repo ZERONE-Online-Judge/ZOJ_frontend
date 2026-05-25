@@ -686,10 +686,10 @@ function ProblemPreviewModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="mx-auto grid max-h-[calc(100vh-1.5rem)] w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <p className="text-xs font-black text-indigo-600 uppercase">
@@ -731,10 +731,10 @@ function TeamDetailModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="grid max-h-[86vh] w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl">
+      <section className="zoj-modal-shell grid max-w-2xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-black text-indigo-600 uppercase">
@@ -829,10 +829,10 @@ function SubmissionDetailModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-slate-950/70 p-3 sm:p-6"
+      className="zoj-modal-backdrop"
       role="dialog"
     >
-      <section className="mx-auto grid max-h-[calc(100vh-1.5rem)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <section className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-black text-indigo-600 uppercase">

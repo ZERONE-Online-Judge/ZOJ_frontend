@@ -125,7 +125,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                       {inquiry.answer_body ? (
                         <div className="grid gap-3">
                           <InquiryBlock
-                            label="답변 내용"
+                            label="답변 내역"
                             value={inquiry.answer_body}
                           />
                           <p className="zoj-break-anywhere text-xs font-bold text-slate-500">
