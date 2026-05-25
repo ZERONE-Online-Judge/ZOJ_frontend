@@ -1,7 +1,12 @@
-import type { ProblemExample } from '@/domains/problemManagement/types';
+import type {
+  ProblemAsset,
+  ProblemExample,
+} from '@/domains/problemManagement/types';
+import MarkdownPreview from '@/shared/ui/MarkdownPreview';
 import { SvgIcon } from '@/utils/Icons';
 
 type ProblemExamplesGridProps = {
+  assets?: ProblemAsset[];
   examples: ProblemExample[];
 };
 
@@ -27,6 +32,7 @@ function ExampleBox({ title, value }: { title: string; value: string }) {
 }
 
 export default function ProblemExamplesGrid({
+  assets = [],
   examples,
 }: ProblemExamplesGridProps) {
   if (examples.length === 0) return null;
@@ -37,6 +43,16 @@ export default function ProblemExamplesGrid({
         <div className="contents" key={`${example.input}-${index}`}>
           <ExampleBox title={`예제 입력 ${index + 1}`} value={example.input} />
           <ExampleBox title={`예제 출력 ${index + 1}`} value={example.output} />
+          {example.note?.trim() ? (
+            <section className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+              <h3 className="text-xs font-black text-slate-500">
+                예제 설명 {index + 1}
+              </h3>
+              <div className="mt-2">
+                <MarkdownPreview assets={assets} statement={example.note} />
+              </div>
+            </section>
+          ) : null}
         </div>
       ))}
     </div>

@@ -70,7 +70,7 @@ export default function ProblemStatementPanel({
       ) : null}
 
       <section className="mt-10">
-        <ProblemExamplesGrid examples={document.examples} />
+        <ProblemExamplesGrid assets={assets} examples={document.examples} />
       </section>
     </article>
   );
