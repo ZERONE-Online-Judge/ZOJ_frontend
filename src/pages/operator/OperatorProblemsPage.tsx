@@ -90,6 +90,10 @@ type ProblemForm = {
 };
 
 const TEST_SUBMISSION_MAX_WAIT_ATTEMPTS = 60;
+const LIMIT_BOUNDARIES = {
+  memoryMb: { max: 1024, min: 16 },
+  timeMs: { max: 10000, min: 100 },
+} as const;
 
 function sleep(ms: number) {
   return new Promise((resolve) => {
@@ -229,6 +233,66 @@ function positiveNumberOrFallback(value: string, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function clampInteger(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function limitValueOrFallback(
+  value: string,
+  fallback: number,
+  boundary: { max: number; min: number },
+) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed)
+    ? clampInteger(parsed, boundary.min, boundary.max)
+    : fallback;
+}
+
+function normalizeLimitValue(
+  value: string,
+  label: string,
+  unit: string,
+  boundary: { max: number; min: number },
+) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) {
+    return { message: '', value };
+  }
+  const nextValue = clampInteger(parsed, boundary.min, boundary.max);
+  if (nextValue === parsed) {
+    return { message: '', value };
+  }
+  const message =
+    parsed < boundary.min
+      ? `${label}은 ${boundary.min.toLocaleString('ko-KR')}${unit} 이상으로 설정 가능합니다. ${boundary.min.toLocaleString('ko-KR')}${unit}로 자동 변경했습니다.`
+      : `${label}은 최대 ${boundary.max.toLocaleString('ko-KR')}${unit}까지 설정 가능합니다. ${boundary.max.toLocaleString('ko-KR')}${unit}로 자동 변경했습니다.`;
+  return { message, value: String(nextValue) };
+}
+
+function normalizeProblemLimitForm(form: ProblemForm) {
+  const time = normalizeLimitValue(
+    form.timeLimitMs,
+    '시간 제한',
+    'ms',
+    LIMIT_BOUNDARIES.timeMs,
+  );
+  const memory = normalizeLimitValue(
+    form.memoryLimitMb,
+    '메모리 제한',
+    'MB',
+    LIMIT_BOUNDARIES.memoryMb,
+  );
+
+  return {
+    form: {
+      ...form,
+      memoryLimitMb: memory.value,
+      timeLimitMs: time.value,
+    },
+    messages: [time.message, memory.message].filter(Boolean),
+  };
+}
+
 function previewProblemFromForm(
   form: ProblemForm,
   selectedProblem?: Problem,
@@ -243,9 +307,10 @@ function previewProblemFromForm(
   return {
     display_order: displayOrder,
     division_id: form.divisionId || selectedProblem?.division_id,
-    memory_limit_mb: positiveNumberOrFallback(
+    memory_limit_mb: limitValueOrFallback(
       form.memoryLimitMb,
       selectedProblem?.memory_limit_mb ?? 256,
+      LIMIT_BOUNDARIES.memoryMb,
     ),
     problem_code:
       form.problemCode.trim() || selectedProblem?.problem_code || 'Preview',
@@ -254,9 +319,10 @@ function previewProblemFromForm(
       problemStatementFromForm(form).trim() ||
       selectedProblem?.statement ||
       PROBLEM_STATEMENT_TEMPLATE,
-    time_limit_ms: positiveNumberOrFallback(
+    time_limit_ms: limitValueOrFallback(
       form.timeLimitMs,
       selectedProblem?.time_limit_ms ?? 1000,
+      LIMIT_BOUNDARIES.timeMs,
     ),
     title: form.title.trim() || selectedProblem?.title || '문제 미리보기',
   };
@@ -389,6 +455,7 @@ function OperatorProblemsContent({
   const [uploadProgress, setUploadProgress] = useState('');
   const [uploadProgressValue, setUploadProgressValue] = useState(0);
   const [formError, setFormError] = useState('');
+  const [formNotice, setFormNotice] = useState('');
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -580,21 +647,21 @@ function OperatorProblemsContent({
   });
 
   const saveProblemMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (problemForm: ProblemForm) => {
       const body = {
-        display_order: form.displayOrder
-          ? Number(form.displayOrder)
+        display_order: problemForm.displayOrder
+          ? Number(problemForm.displayOrder)
           : undefined,
-        division_id: form.divisionId,
-        memory_limit_mb: Number(form.memoryLimitMb),
-        problem_code: form.problemCode.trim(),
-        statement: problemStatementFromForm(form),
-        time_limit_ms: Number(form.timeLimitMs),
-        title: form.title.trim(),
+        division_id: problemForm.divisionId,
+        memory_limit_mb: Number(problemForm.memoryLimitMb),
+        problem_code: problemForm.problemCode.trim(),
+        statement: problemStatementFromForm(problemForm),
+        time_limit_ms: Number(problemForm.timeLimitMs),
+        title: problemForm.title.trim(),
       };
 
-      return form.problemId
-        ? updateOperatorProblem(contestId, form.problemId, token, body)
+      return problemForm.problemId
+        ? updateOperatorProblem(contestId, problemForm.problemId, token, body)
         : createOperatorProblem(contestId, token, body);
     },
     onSuccess: (problem) => {
@@ -603,6 +670,7 @@ function OperatorProblemsContent({
       setForm(problemFormFromProblem(problem));
       setTestSubmission(null);
       setFormError('');
+      setFormNotice('');
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'problems', contestId],
       });
@@ -1191,18 +1259,31 @@ function OperatorProblemsContent({
     }));
   }
 
+  function normalizeLimitsInForm() {
+    const normalized = normalizeProblemLimitForm(form);
+    if (normalized.messages.length) {
+      setForm(normalized.form);
+      setFormNotice(normalized.messages.join(' '));
+    } else {
+      setFormNotice('');
+    }
+    return normalized;
+  }
+
   function submitProblem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (editorMode === 'edit' && !form.problemId) {
       setFormError('수정할 문제를 먼저 가져와 주세요.');
       return;
     }
-    const validationMessage = validateProblemForm(form);
+    const normalized = normalizeLimitsInForm();
+    const validationMessage = validateProblemForm(normalized.form);
     if (validationMessage) {
       setFormError(validationMessage);
       return;
     }
-    saveProblemMutation.mutate();
+    setFormError('');
+    saveProblemMutation.mutate(normalized.form);
   }
 
   function handleMatchedFiles(files: File[]) {
@@ -1463,16 +1544,24 @@ function OperatorProblemsContent({
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput
                       label="시간(ms)"
-                      onChange={(value) =>
+                      onBlur={normalizeLimitsInForm}
+                      onChange={(value) => {
+                        setFormNotice('');
                         setForm((prev) => ({ ...prev, timeLimitMs: value }))
-                      }
+                      }}
+                      helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.timeMs.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.timeMs.max.toLocaleString('ko-KR')}ms`}
+                      inputMode="numeric"
                       value={form.timeLimitMs}
                     />
                     <TextInput
                       label="메모리(MB)"
-                      onChange={(value) =>
+                      onBlur={normalizeLimitsInForm}
+                      onChange={(value) => {
+                        setFormNotice('');
                         setForm((prev) => ({ ...prev, memoryLimitMb: value }))
-                      }
+                      }}
+                      helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.memoryMb.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.memoryMb.max.toLocaleString('ko-KR')}MB`}
+                      inputMode="numeric"
                       value={form.memoryLimitMb}
                     />
                   </div>
@@ -1683,6 +1772,11 @@ function OperatorProblemsContent({
                   error={saveProblemMutation.error}
                   fallback={formError || '문제 저장에 실패했습니다'}
                 />
+              ) : null}
+              {formNotice ? (
+                <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                  {formNotice}
+                </p>
               ) : null}
               {authoringTab !== 'tests' ? (
                 <button
@@ -2936,11 +3030,17 @@ function isPackageFileRole(
 }
 
 function TextInput({
+  helperText,
+  inputMode,
   label,
+  onBlur,
   onChange,
   value,
 }: {
+  helperText?: string;
+  inputMode?: 'decimal' | 'email' | 'numeric' | 'search' | 'tel' | 'text' | 'url';
   label: string;
+  onBlur?: () => void;
   onChange: (value: string) => void;
   value: string;
 }) {
@@ -2949,9 +3049,14 @@ function TextInput({
       {label}
       <input
         className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        inputMode={inputMode}
+        onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
+      {helperText ? (
+        <span className="text-xs font-bold text-slate-500">{helperText}</span>
+      ) : null}
     </label>
   );
 }
