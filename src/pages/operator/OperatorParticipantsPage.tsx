@@ -623,22 +623,24 @@ function OperatorParticipantsContent({
           title="참가팀 목록"
         >
           <div className="overflow-x-auto rounded border border-slate-200">
-            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-56 border-r border-b border-slate-200 px-4 py-3">
                     팀
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-32 border-r border-b border-slate-200 px-4 py-3">
                     유형
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-[27rem] border-r border-b border-slate-200 px-4 py-3">
                     팀원
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-40 border-r border-b border-slate-200 px-4 py-3">
                     등록
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">관리</th>
+                  <th className="w-40 border-b border-slate-200 px-4 py-3">
+                    관리
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -648,28 +650,37 @@ function OperatorParticipantsContent({
                       className="hover:bg-indigo-50/40"
                       key={team.participant_team_id}
                     >
-                      <td className="border-r border-slate-100 px-4 py-4">
-                        <strong className="font-black text-slate-950">
+                      <td className="border-r border-slate-100 px-4 py-4 align-top">
+                        <strong
+                          className="zoj-break-anywhere font-black text-slate-950"
+                          title={team.team_name}
+                        >
                           {team.team_name}
                         </strong>
                         <StatusPill status={team.status} />
                       </td>
-                      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+                      <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
                         {divisionById.get(team.division_id)?.name ??
                           team.division?.name ??
                           '-'}
                       </td>
-                      <td className="border-r border-slate-100 px-4 py-4">
+                      <td className="border-r border-slate-100 px-4 py-4 align-top">
                         <div className="grid gap-2">
                           {team.members.map((member) => (
                             <div
-                              className="flex flex-wrap items-center gap-2"
+                              className="flex min-w-0 flex-wrap items-center gap-2"
                               key={member.team_member_id ?? member.email}
                             >
-                              <span className="font-bold text-slate-800">
+                              <span
+                                className="zoj-break-anywhere min-w-0 font-bold text-slate-800"
+                                title={member.name}
+                              >
                                 {member.name}
                               </span>
-                              <span className="text-xs font-bold text-slate-400">
+                              <span
+                                className="zoj-break-anywhere min-w-0 text-xs font-bold text-slate-400"
+                                title={member.email}
+                              >
                                 {member.email}
                               </span>
                               <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
@@ -693,10 +704,10 @@ function OperatorParticipantsContent({
                           ))}
                         </div>
                       </td>
-                      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-500">
+                      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-500">
                         {formatDateTime(team.created_at)}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 align-top">
                         <div className="flex flex-wrap gap-2">
                           <button
                             className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"

@@ -125,7 +125,7 @@ export default function ContestSubmissionsTable({
     problems.map((problem) => [problem.problem_id, problem]),
   );
   const cellClassName =
-    'border-r border-slate-200 px-5 py-4 font-medium text-slate-950 last:border-r-0';
+    'border-r border-slate-200 px-5 py-4 align-top font-medium text-slate-950 last:border-r-0';
   const headerCellClassName =
     'border-r border-slate-200 px-5 py-4 last:border-r-0';
   const [openSubmissionId, setOpenSubmissionId] = useState<string | null>(null);
@@ -133,13 +133,13 @@ export default function ContestSubmissionsTable({
   return (
     <>
       <div className="overflow-x-auto border border-slate-200 bg-white">
-        <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
               <th className={`${headerCellClassName} w-28`}>제출번호</th>
-              <th className={`${headerCellClassName} w-32`}>이름</th>
-              <th className={`${headerCellClassName} w-20`}>문제</th>
-              <th className={headerCellClassName}>결과</th>
+              <th className={`${headerCellClassName} w-40`}>이름</th>
+              <th className={`${headerCellClassName} w-24`}>문제</th>
+              <th className={`${headerCellClassName} w-44`}>결과</th>
               <th className={`${headerCellClassName} w-28`}>메모리</th>
               <th className={`${headerCellClassName} w-24`}>시간</th>
               <th className={`${headerCellClassName} w-36`}>언어</th>
@@ -169,17 +169,19 @@ export default function ContestSubmissionsTable({
                       {displaySubmissionId(submission.submission_id)}
                     </td>
                     <td
-                      className={`${cellClassName} max-w-32 truncate font-bold`}
+                      className={`${cellClassName} font-bold`}
                       title={name}
                     >
-                      {name}
+                      <span className="zoj-truncate-safe max-w-full">
+                        {name}
+                      </span>
                     </td>
                     <td
                       className={`${cellClassName} font-bold`}
                       title={submissionProblemTitle(submission, problemById)}
                     >
                       <Link
-                        className="hover:text-zoj-blue transition"
+                        className="zoj-truncate-safe max-w-full transition hover:text-zoj-blue"
                         to={`/contests/${contestId}/problems/${problemId}`}
                       >
                         {submissionProblem(submission, problemById)}
@@ -199,10 +201,10 @@ export default function ContestSubmissionsTable({
                       {formatTimeMs(submissionTime(submission))}
                     </td>
                     <td className={cellClassName}>
-                      <span className="inline-flex items-center gap-3">
+                      <span className="inline-flex max-w-full items-center gap-3">
                         <button
                           aria-expanded={isOpen}
-                          className="font-bold text-slate-950 transition hover:text-zoj-blue disabled:cursor-not-allowed disabled:text-slate-400"
+                          className="zoj-truncate-safe max-w-full font-bold text-slate-950 transition hover:text-zoj-blue disabled:cursor-not-allowed disabled:text-slate-400"
                           disabled={!sourceCode}
                           onClick={() =>
                             setOpenSubmissionId((current) =>

@@ -844,7 +844,7 @@ function DivisionList({
     <div className="grid gap-2">
       {divisions.map((division) => (
         <button
-          className="rounded border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-indigo-200 hover:bg-indigo-50"
+          className="min-w-0 rounded border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-indigo-200 hover:bg-indigo-50"
           key={division.division_id}
           onClick={() =>
             onEdit({
@@ -855,8 +855,16 @@ function DivisionList({
           }
           type="button"
         >
-          <strong className="font-black text-slate-950">{division.name}</strong>
-          <span className="mt-1 block text-xs font-bold text-slate-500">
+          <strong
+            className="zoj-break-anywhere font-black text-slate-950"
+            title={division.name}
+          >
+            {division.name}
+          </strong>
+          <span
+            className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-500"
+            title={division.code || '코드 없음'}
+          >
             {division.code || '코드 없음'}
           </span>
         </button>
@@ -878,13 +886,19 @@ function OperatorList({
     <div className="grid gap-2">
       {operators.map((operator) => (
         <div
-          className="rounded border border-slate-200 px-3 py-3"
+          className="min-w-0 rounded border border-slate-200 px-3 py-3"
           key={operator.email}
         >
-          <strong className="block font-black text-slate-950">
+          <strong
+            className="zoj-break-anywhere block font-black text-slate-950"
+            title={operator.display_name}
+          >
             {operator.display_name}
           </strong>
-          <span className="block text-xs font-bold text-slate-500">
+          <span
+            className="zoj-break-anywhere block text-xs font-bold text-slate-500"
+            title={operator.email}
+          >
             {operator.email}
           </span>
           <div className="mt-3 flex gap-2">

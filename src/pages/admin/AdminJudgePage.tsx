@@ -327,10 +327,10 @@ function AdminJudgeContent({ token }: { token: string }) {
           </summary>
           <div className="border-t border-slate-100 p-6">
             <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1000px] table-fixed border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
-                    <th className="border-r border-b border-slate-200 px-4 py-3">
+                    <th className="w-72 border-r border-b border-slate-200 px-4 py-3">
                       노드
                     </th>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
@@ -358,10 +358,16 @@ function AdminJudgeContent({ token }: { token: string }) {
                         key={node.judge_node_id}
                       >
                         <td className="border-r border-slate-100 px-4 py-4">
-                          <strong className="font-black text-slate-950">
+                          <strong
+                            className="zoj-truncate-safe max-w-full font-black text-slate-950"
+                            title={node.node_name}
+                          >
                             {node.node_name}
                           </strong>
-                          <p className="text-xs font-bold text-slate-400">
+                          <p
+                            className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400"
+                            title={node.judge_node_id}
+                          >
                             {node.judge_node_id}
                           </p>
                         </td>
@@ -476,31 +482,31 @@ function AdminJudgeContent({ token }: { token: string }) {
             <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
           </div>
           <div className="overflow-x-auto rounded border border-slate-200">
-            <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-28 border-r border-b border-slate-200 px-4 py-3">
                     제출
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-56 border-r border-b border-slate-200 px-4 py-3">
                     대회/유형
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-24 border-r border-b border-slate-200 px-4 py-3">
                     언어
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-48 border-r border-b border-slate-200 px-4 py-3">
                     에이전트
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-52 border-r border-b border-slate-200 px-4 py-3">
                     결과
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-24 border-r border-b border-slate-200 px-4 py-3">
                     시간
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-28 border-r border-b border-slate-200 px-4 py-3">
                     메모리
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-center">
+                  <th className="w-24 border-b border-slate-200 px-4 py-3 text-center">
                     보기
                   </th>
                 </tr>
@@ -612,7 +618,7 @@ function SubmissionRow({
   return (
     <tr className={isSelected ? 'bg-violet-50/70' : 'hover:bg-violet-50/40'}>
       <td
-        className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-700"
+        className="border-r border-slate-100 px-4 py-4 align-top font-mono text-xs font-bold text-slate-700"
         title={`${submission.submission_id} · ${formatDateTime(submission.submitted_at)}`}
       >
         {shortSubmissionId(submission.submission_id)}
@@ -621,45 +627,51 @@ function SubmissionRow({
         </span>
       </td>
       <td
-        className="border-r border-slate-100 px-4 py-4"
+        className="border-r border-slate-100 px-4 py-4 align-top"
         title={`${contestDivision.contest} / ${contestDivision.division}`}
       >
-        <strong className="block max-w-44 truncate font-black text-slate-950">
+        <strong className="zoj-truncate-safe max-w-full font-black text-slate-950">
           {contestDivision.contest}
         </strong>
-        <span className="mt-1 block max-w-44 truncate text-xs font-bold text-slate-400">
+        <span className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400">
           {contestDivision.division}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
         {submission.language}
       </td>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <strong className="block max-w-40 truncate text-xs font-black text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top">
+        <strong
+          className="zoj-truncate-safe max-w-full text-xs font-black text-slate-700"
+          title={entryJudgeNodeLabel(entry)}
+        >
           {entryJudgeNodeLabel(entry)}
         </strong>
-        <span className="mt-1 block max-w-40 truncate font-mono text-[11px] font-bold text-slate-400">
+        <span
+          className="zoj-truncate-safe mt-1 max-w-full font-mono text-[11px] font-bold text-slate-400"
+          title={entry.judge_job?.assigned_node_id ?? '-'}
+        >
           {entry.judge_job?.assigned_node_id ?? '-'}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4">
+      <td className="border-r border-slate-100 px-4 py-4 align-top">
         <ContestSubmissionResultBadge
           submission={progressSubmission}
           status={submission.status}
         />
-        <span className="mt-1 block text-xs font-bold text-slate-500">
+        <span className="zoj-break-anywhere mt-1 block text-xs font-bold text-slate-500">
           {submissionProgressText(progressSubmission) || '-'}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
         {formatDuration(runtime)}
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
         {formatMemoryKb(memory)}
       </td>
-      <td className="px-4 py-4 text-center">
+      <td className="px-4 py-4 text-center align-top">
         <button
-          className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-50"
+          className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black whitespace-nowrap text-violet-700 transition hover:bg-violet-50"
           onClick={onSelect}
           type="button"
         >
@@ -699,7 +711,7 @@ function SubmissionDetailModal({
             >
               제출 상세
             </h2>
-            <p className="text-sm font-bold text-slate-500">
+            <p className="zoj-break-anywhere text-sm font-bold text-slate-500">
               {submissionId ?? '제출 정보를 불러오는 중입니다.'}
             </p>
           </div>
@@ -840,9 +852,9 @@ function formatDuration(value?: number | null) {
 
 function DetailCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+    <div className="grid min-w-0 gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="text-xs font-black text-slate-500">{label}</span>
-      <strong className="text-sm font-black break-words text-slate-950">
+      <strong className="zoj-break-anywhere text-sm font-black text-slate-950">
         {value}
       </strong>
     </div>

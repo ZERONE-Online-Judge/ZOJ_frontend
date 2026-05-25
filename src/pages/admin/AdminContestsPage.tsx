@@ -183,25 +183,25 @@ function AdminContestsContent({ token }: { token: string }) {
           title="대회 목록"
         >
           <div className="max-h-[560px] overflow-auto rounded border border-slate-200">
-            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-72 border-r border-b border-slate-200 px-4 py-3">
                     대회
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-44 border-r border-b border-slate-200 px-4 py-3">
                     주최
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-32 border-r border-b border-slate-200 px-4 py-3">
                     상태
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-40 border-r border-b border-slate-200 px-4 py-3">
                     시작
                   </th>
-                  <th className="border-r border-b border-slate-200 px-4 py-3">
+                  <th className="w-40 border-r border-b border-slate-200 px-4 py-3">
                     종료
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">
+                  <th className="w-28 border-b border-slate-200 px-4 py-3">
                     바로가기
                   </th>
                 </tr>
@@ -403,36 +403,45 @@ function AdminContestsContent({ token }: { token: string }) {
 function ContestRow({ contest }: { contest: Contest }) {
   return (
     <tr className="transition hover:bg-violet-50/40">
-      <td className="border-r border-slate-100 px-4 py-4">
-        <div className="grid gap-1">
-          <strong className="font-black text-slate-950">
+      <td className="border-r border-slate-100 px-4 py-4 align-top">
+        <div className="grid min-w-0 gap-1">
+          <strong
+            className="zoj-truncate-safe max-w-full font-black text-slate-950"
+            title={contest.title || '-'}
+          >
             {contest.title || '-'}
           </strong>
-          <span className="text-xs font-bold text-slate-400">
+          <span
+            className="zoj-truncate-safe max-w-full text-xs font-bold text-slate-400"
+            title={contest.contest_id}
+          >
             {contest.contest_id}
           </span>
         </div>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+      <td
+        className="zoj-break-anywhere border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700"
+        title={contest.organization_name || '-'}
+      >
         {contest.organization_name || '-'}
       </td>
-      <td className="border-r border-slate-100 px-4 py-4">
-        <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top">
+        <span className="inline-flex max-w-full flex-wrap rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
           {statusLabels[contest.status] ?? contest.status}
           {isContestHiddenFromPublic(contest) ? (
             <span className="ml-1 text-violet-400">* 비공개됨</span>
           ) : null}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-600">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-600">
         {formatDateTime(contest.start_at)}
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-600">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-600">
         {formatDateTime(contest.end_at)}
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-4 align-top">
         <Link
-          className="rounded border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+          className="inline-flex whitespace-nowrap rounded border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
           to={`/operator/contests/${contest.contest_id}/settings`}
         >
           운영 설정

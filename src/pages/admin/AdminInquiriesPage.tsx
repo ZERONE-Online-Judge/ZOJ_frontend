@@ -99,14 +99,17 @@ function AdminInquiriesContent({ token }: { token: string }) {
                     }
                     type="button"
                   >
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <StatusBadge status={inquiry.status} />
-                        <strong className="text-base font-black text-slate-950">
+                        <strong
+                          className="zoj-break-anywhere min-w-0 text-base font-black text-slate-950"
+                          title={inquiry.title}
+                        >
                           {inquiry.title}
                         </strong>
                       </span>
-                      <span className="mt-1 block text-sm font-bold text-slate-500">
+                      <span className="zoj-break-anywhere mt-1 block text-sm font-bold text-slate-500">
                         {inquiry.sender_name} · {inquiry.sender_email} ·{' '}
                         {formatDateTime(inquiry.created_at)}
                       </span>
@@ -125,7 +128,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                             label="답변 내용"
                             value={inquiry.answer_body}
                           />
-                          <p className="text-xs font-bold text-slate-500">
+                          <p className="zoj-break-anywhere text-xs font-bold text-slate-500">
                             {inquiry.answered_by_email ?? '-'} ·{' '}
                             {inquiry.answered_at
                               ? formatDateTime(inquiry.answered_at)
@@ -207,9 +210,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function InquiryBlock({ label, value }: { label: string; value: string }) {
   return (
-    <section className="grid gap-2">
+    <section className="grid min-w-0 gap-2">
       <h3 className="text-sm font-black text-slate-700">{label}</h3>
-      <div className="whitespace-pre-wrap rounded border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-bold text-slate-700">
+      <div className="zoj-break-anywhere whitespace-pre-wrap rounded border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-bold text-slate-700">
         {value}
       </div>
     </section>

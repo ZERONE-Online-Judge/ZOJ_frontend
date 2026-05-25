@@ -510,16 +510,17 @@ function OperatorSubmissionsTable({
   submissions: Submission[];
 }) {
   const headerClass = 'border-r border-slate-200 px-4 py-3 last:border-r-0';
-  const cellClass = 'border-r border-slate-100 px-4 py-4 last:border-r-0';
+  const cellClass =
+    'border-r border-slate-100 px-4 py-4 align-top last:border-r-0';
 
   return (
     <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-      <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+      <table className="w-full min-w-[1180px] table-fixed border-collapse text-left text-sm">
         <thead className="bg-slate-50 text-xs font-black text-slate-500">
           <tr>
             <th className={`${headerClass} w-28`}>제출</th>
-            <th className={`${headerClass} w-40`}>팀/계정</th>
-            <th className={headerClass}>문제</th>
+            <th className={`${headerClass} w-44`}>팀/계정</th>
+            <th className={`${headerClass} w-64`}>문제</th>
             <th className={`${headerClass} w-36`}>결과</th>
             <th className={`${headerClass} w-24`}>언어</th>
             <th className={`${headerClass} w-28`}>진행</th>
@@ -545,8 +546,9 @@ function OperatorSubmissionsTable({
                 </td>
                 <td className={`${cellClass} font-bold text-slate-800`}>
                   <button
-                    className="text-left text-indigo-700 hover:text-indigo-950"
+                    className="zoj-truncate-safe max-w-full text-left text-indigo-700 hover:text-indigo-950"
                     onClick={() => onSelectOwner(submission.submission_id)}
+                    title={submissionOwner(submission)}
                     type="button"
                   >
                     {submissionOwner(submission)}
@@ -555,14 +557,20 @@ function OperatorSubmissionsTable({
                 <td className={`${cellClass} font-bold`}>
                   {problem ? (
                     <button
-                      className="text-left text-indigo-700 hover:text-indigo-950"
+                      className="zoj-truncate-safe max-w-full text-left text-indigo-700 hover:text-indigo-950"
                       onClick={() => onSelectProblem(problem.problem_id)}
+                      title={submissionProblemLabel(submission, problemById)}
                       type="button"
                     >
                       {submissionProblemLabel(submission, problemById)}
                     </button>
                   ) : (
-                    submissionProblemLabel(submission, problemById)
+                    <span
+                      className="zoj-truncate-safe max-w-full"
+                      title={submissionProblemLabel(submission, problemById)}
+                    >
+                      {submissionProblemLabel(submission, problemById)}
+                    </span>
                   )}
                 </td>
                 <td className={cellClass}>
@@ -596,7 +604,7 @@ function OperatorSubmissionsTable({
                 </td>
                 <td className={cellClass}>
                   <button
-                    className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50"
+                    className="rounded border border-indigo-200 px-3 py-2 text-xs font-black whitespace-nowrap text-indigo-700 hover:bg-indigo-50"
                     onClick={() => onSelectSubmission(submission.submission_id)}
                     type="button"
                   >
@@ -728,11 +736,11 @@ function TeamDetailModal({
     >
       <section className="grid max-h-[86vh] w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black text-indigo-600 uppercase">
               Team account
             </p>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
               {submissionOwner(submission)}
             </h2>
           </div>
@@ -778,10 +786,10 @@ function TeamDetailModal({
                       className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 px-4 py-3 text-sm"
                       key={member.team_member_id ?? member.email}
                     >
-                      <span className="font-black text-slate-950">
+                      <span className="min-w-0 font-black text-slate-950">
                         {member.name}
                       </span>
-                      <span className="font-bold text-slate-500">
+                      <span className="zoj-break-anywhere min-w-0 font-bold text-slate-500">
                         {member.email}
                       </span>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
@@ -826,11 +834,11 @@ function SubmissionDetailModal({
     >
       <section className="mx-auto grid max-h-[calc(100vh-1.5rem)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black text-indigo-600 uppercase">
               Submission detail
             </p>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
               {submission
                 ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
                 : '제출 상세'}
@@ -928,9 +936,9 @@ function SubmissionDetailModal({
 
 function DetailCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+    <div className="grid min-w-0 gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="text-xs font-black text-slate-500">{label}</span>
-      <strong className="text-sm font-black break-words text-slate-950">
+      <strong className="zoj-break-anywhere text-sm font-black text-slate-950">
         {value}
       </strong>
     </div>

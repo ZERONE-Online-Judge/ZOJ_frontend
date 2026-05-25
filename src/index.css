@@ -357,6 +357,20 @@
       transform 160ms cubic-bezier(0.2, 0, 0, 1);
   }
 
+  .zoj-break-anywhere {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .zoj-truncate-safe {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   [aria-modal='true'] {
     animation: zoj-fade-in 140ms ease-out both;
   }
