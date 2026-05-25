@@ -257,7 +257,7 @@ function AdminJudgeContent({ token }: { token: string }) {
       description="채점 노드, 큐, 최근 제출을 실시간에 가깝게 확인합니다."
       eyebrow="Service Master"
       title="채점 관리"
-      width="7xl"
+      width="full"
     >
       <AdminTabs />
 
@@ -516,7 +516,7 @@ function AdminJudgeContent({ token }: { token: string }) {
             </span>
             <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
           </div>
-          <div className="overflow-x-auto rounded border border-slate-200">
+          <div className="zoj-horizontal-scroll rounded border border-slate-200">
             <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-black text-slate-500">
                 <tr>

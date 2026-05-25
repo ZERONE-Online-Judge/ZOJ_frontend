@@ -355,7 +355,7 @@ function OperatorParticipantsContent({
       description="참가팀, 멤버, 상태, 세션을 관리합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 참가팀`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

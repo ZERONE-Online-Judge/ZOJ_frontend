@@ -375,7 +375,7 @@ function OperatorSettingsContent({
       description="대회 일정, 공개 범위, 참가 유형, 운영자 권한을 조정합니다."
       eyebrow="Operator"
       title={`${contest?.title ?? '대회'} 설정`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

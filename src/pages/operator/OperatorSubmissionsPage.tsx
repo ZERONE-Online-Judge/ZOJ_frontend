@@ -271,7 +271,7 @@ function OperatorSubmissionsContent({
       description="대회 전체 제출과 채점 진행 상태를 운영자 기준으로 확인합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 제출`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 
@@ -514,7 +514,7 @@ function OperatorSubmissionsTable({
     'border-r border-slate-100 px-4 py-4 align-top last:border-r-0';
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+    <div className="zoj-horizontal-scroll rounded border border-slate-200 bg-white">
       <table className="w-full min-w-[1180px] table-fixed border-collapse text-left text-sm">
         <thead className="bg-slate-50 text-xs font-black text-slate-500">
           <tr>

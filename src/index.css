@@ -389,7 +389,7 @@
 
   .zoj-modal-shell {
     max-height: calc(100dvh - 1.5rem);
-    width: min(100%, 88rem);
+    width: min(100%, 112rem);
     overflow: hidden;
     border: 1px solid rgb(226 232 240);
     border-radius: 0.25rem;
@@ -421,6 +421,13 @@
   [aria-modal='true'] > div {
     animation: zoj-pop-in 180ms cubic-bezier(0.2, 0, 0, 1) both;
   }
+
+  .zoj-modal-shell.max-w-2xl,
+  .zoj-modal-shell.max-w-4xl,
+  .zoj-modal-shell.max-w-6xl,
+  .zoj-modal-shell.max-w-7xl {
+    max-width: min(100%, 112rem);
+  }
 }
 
 @media (hover: hover) {
@@ -437,6 +444,32 @@
 
   .zoj-row-motion > *:hover {
     transform: translateX(2px);
+  }
+
+  .zoj-horizontal-scroll {
+    overflow-x: scroll;
+    scrollbar-color: #94a3b8 #f1f5f9;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
+
+  .zoj-horizontal-scroll::-webkit-scrollbar {
+    height: 12px;
+  }
+
+  .zoj-horizontal-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 999px;
+  }
+
+  .zoj-horizontal-scroll::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border: 3px solid #f1f5f9;
+    border-radius: 999px;
+  }
+
+  .zoj-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 }
 

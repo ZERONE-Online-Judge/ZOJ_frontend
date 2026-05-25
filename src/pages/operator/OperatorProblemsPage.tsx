@@ -1311,7 +1311,7 @@ function OperatorProblemsContent({
       description="문제 본문, 예제, 채점 파일, 테스트케이스를 관리합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 문제 관리`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

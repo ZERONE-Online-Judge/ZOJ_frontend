@@ -192,7 +192,7 @@ function OperatorNoticesContent({
       description="대회 참가자에게 보이는 공지와 긴급 공지를 관리합니다."
       eyebrow="Operator"
       title={`${contest?.title ?? '대회'} 공지`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

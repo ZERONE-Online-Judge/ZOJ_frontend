@@ -210,7 +210,7 @@ function OperatorScoreboardContent({
       description="운영자용 내부 순위입니다. 프리즈 이후에도 live view를 확인할 수 있습니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 스코어보드`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

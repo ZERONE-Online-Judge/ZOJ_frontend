@@ -72,7 +72,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
       description="서비스 문의를 최근순으로 확인하고 답변 메일을 발송합니다."
       eyebrow="Service Master"
       title="문의 관리"
-      width="7xl"
+      width="full"
     >
       <AdminTabs />
 

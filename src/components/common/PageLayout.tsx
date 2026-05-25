@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 type PageHeadingVariant = 'page' | 'contest' | 'section';
-type PageWidth = '5xl' | '6xl' | '7xl';
+type PageWidth = '5xl' | '6xl' | '7xl' | 'full';
 
 type PageHeadingProps = {
   className?: string;
@@ -24,6 +24,7 @@ const widthClasses: Record<PageWidth, string> = {
   '5xl': 'max-w-5xl',
   '6xl': 'max-w-6xl',
   '7xl': 'max-w-7xl',
+  full: 'max-w-[112rem]',
 };
 
 const headingClasses: Record<PageHeadingVariant, string> = {

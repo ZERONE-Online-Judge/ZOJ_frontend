@@ -167,7 +167,7 @@ function AdminHomeContent({ token }: { token: string }) {
       description="서비스 공지와 대회, 채점 인프라 상태를 한 곳에서 확인합니다."
       eyebrow="Service Master"
       title="관리자 콘솔"
-      width="7xl"
+      width="full"
     >
       <AdminTabs />
 

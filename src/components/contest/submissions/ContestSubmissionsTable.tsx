@@ -132,7 +132,7 @@ export default function ContestSubmissionsTable({
 
   return (
     <>
-      <div className="overflow-x-auto border border-slate-200 bg-white">
+      <div className="zoj-horizontal-scroll border border-slate-200 bg-white">
         <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">

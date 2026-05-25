@@ -301,7 +301,7 @@ function OperatorBoardContent({
       description="참가자가 남긴 질문을 확인하고 운영자 답변을 등록합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 게시판`}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 

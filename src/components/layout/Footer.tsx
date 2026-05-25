@@ -33,7 +33,7 @@ const footerPeople = [
 export default function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-6 py-0">
+      <div className="mx-auto w-full max-w-[112rem] px-6 py-0">
         <section className="grid gap-12 bg-slate-100 px-6 py-12 md:grid-cols-[minmax(0,1fr)_auto] md:px-8">
           <div className="grid gap-8">
             <div className="flex items-center gap-4">

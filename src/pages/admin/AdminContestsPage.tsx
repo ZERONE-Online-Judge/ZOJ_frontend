@@ -154,7 +154,7 @@ function AdminContestsContent({ token }: { token: string }) {
       description="서비스 마스터가 대회를 만들고 운영자를 배정합니다."
       eyebrow="Service Master"
       title="대회 관리"
-      width="7xl"
+      width="full"
     >
       <AdminTabs />
 

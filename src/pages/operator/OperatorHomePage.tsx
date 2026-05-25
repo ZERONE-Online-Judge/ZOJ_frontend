@@ -61,7 +61,7 @@ function OperatorHomeContent({
       description="운영 권한이 있는 대회의 참가팀, 문제, 제출, 공지를 관리합니다."
       eyebrow="Operator"
       title={contest ? `${contest.title} 운영` : '대회 운영'}
-      width="7xl"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
 
