@@ -61,7 +61,7 @@ function HeroTitle({ headline }: { headline: string }) {
     >
       <span
         aria-hidden="true"
-        className="hero-zoj-title inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-baseline"
+        className="hero-zoj-title inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center"
       >
         <span className="hero-zoj-word hero-zoj-word-left justify-self-end">
           <span className="hero-zoj-letter">Z</span>

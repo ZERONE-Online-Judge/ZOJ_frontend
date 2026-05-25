@@ -137,54 +137,54 @@
 
 @keyframes zoj-hero-title-gap {
   0%,
-  24%,
-  86%,
+  36%,
+  82%,
   100% {
     width: 0.5em;
   }
-  44%,
-  64% {
+  56%,
+  68% {
     width: 0.12em;
   }
 }
 
 @keyframes zoj-hero-word-left {
   0%,
-  24%,
-  86%,
+  36%,
+  82%,
   100% {
     transform: translateX(0);
   }
-  44%,
-  64% {
+  56%,
+  68% {
     transform: translateX(0.28em);
   }
 }
 
 @keyframes zoj-hero-word-right {
   0%,
-  24%,
-  86%,
+  36%,
+  82%,
   100% {
     transform: translateX(0);
   }
-  44%,
-  64% {
+  56%,
+  68% {
     transform: translateX(-0.28em);
   }
 }
 
 @keyframes zoj-hero-extra-fold {
   0%,
-  22%,
-  86%,
+  34%,
+  82%,
   100% {
     max-width: 8em;
     opacity: 1;
     transform: translateX(0);
   }
-  44%,
-  64% {
+  56%,
+  68% {
     max-width: 0;
     opacity: 0;
     transform: translateX(-0.2em);
@@ -193,14 +193,14 @@
 
 @keyframes zoj-hero-letter-glow {
   0%,
-  24%,
-  86%,
+  36%,
+  82%,
   100% {
     color: #ffffff;
     text-shadow: 0 0 0 rgb(123 97 255 / 0);
   }
-  44%,
-  64% {
+  56%,
+  68% {
     color: #a991ff;
     text-shadow:
       0 0 18px rgb(123 97 255 / 0.55),
@@ -260,6 +260,7 @@
   }
 
   .hero-zoj-title {
+    line-height: 1;
     white-space: nowrap;
   }
 
@@ -271,9 +272,10 @@
   }
 
   .hero-zoj-word {
-    animation-duration: 9.5s;
+    animation-duration: 12s;
     animation-iteration-count: infinite;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 1;
     will-change: transform;
   }
 
@@ -286,8 +288,7 @@
   }
 
   .hero-zoj-extra {
-    animation: zoj-hero-extra-fold 9.5s cubic-bezier(0.4, 0, 0.2, 1)
-      infinite;
+    animation: zoj-hero-extra-fold 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     overflow: hidden;
     vertical-align: baseline;
     white-space: nowrap;
@@ -295,15 +296,15 @@
   }
 
   .hero-zoj-gap {
-    animation: zoj-hero-title-gap 9.5s cubic-bezier(0.4, 0, 0.2, 1)
-      infinite;
+    animation: zoj-hero-title-gap 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     overflow: hidden;
     white-space: pre;
     will-change: width;
   }
 
   .hero-zoj-letter {
-    animation: zoj-hero-letter-glow 9.5s ease-in-out infinite;
+    animation: zoj-hero-letter-glow 12s ease-in-out infinite;
+    line-height: 1;
     will-change: color, text-shadow;
   }
 
