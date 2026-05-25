@@ -43,7 +43,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -63,7 +63,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: none;
   }
 }
 
@@ -72,7 +72,7 @@
     transform: translateX(1.5rem);
   }
   to {
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -376,9 +376,9 @@
     inset: 0;
     z-index: 70;
     display: flex;
-    min-width: 100vw;
-    min-height: 100vh;
-    min-height: 100dvh;
+    width: auto;
+    height: auto;
+    min-height: 100%;
     align-items: center;
     justify-content: center;
     overflow: hidden;
