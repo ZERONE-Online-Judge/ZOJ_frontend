@@ -48,7 +48,7 @@ export default function HeroSection({
 function HeroTitle({ headline }: { headline: string }) {
   if (headline !== 'ZERONE ONLINE JUDGE') {
     return (
-      <h1 className="animate-hero-title text-5xl leading-tight font-semibold text-white sm:text-6xl lg:text-7xl">
+      <h1 className="animate-hero-title text-3xl leading-tight font-semibold text-white min-[420px]:text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
         {headline}
       </h1>
     );
@@ -57,7 +57,7 @@ function HeroTitle({ headline }: { headline: string }) {
   return (
     <h1
       aria-label={headline}
-      className="animate-hero-title relative text-5xl leading-none font-semibold text-white sm:text-6xl lg:text-7xl"
+      className="animate-hero-title relative max-w-full text-3xl leading-none font-semibold text-white min-[420px]:text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
     >
       <span aria-hidden="true" className="block opacity-0">
         {headline}

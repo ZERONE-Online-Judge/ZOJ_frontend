@@ -262,6 +262,8 @@
   .hero-zoj-title {
     align-items: center;
     line-height: 1;
+    max-width: 100%;
+    overflow: visible;
     white-space: nowrap;
   }
 

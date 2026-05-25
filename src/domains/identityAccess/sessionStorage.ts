@@ -9,6 +9,12 @@ import type { ParticipantSession } from '@/domains/teamParticipation/types';
 export const PARTICIPANT_SESSION_KEY = 'zoj.participantSession';
 export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
+export const SESSION_EXPIRED_EVENT = 'zoj:session-expired';
+
+export type SessionExpiredEventDetail = {
+  currentPath?: string;
+  requestPath?: string;
+};
 
 function browserStorage() {
   return typeof window === 'undefined' ? null : window.localStorage;

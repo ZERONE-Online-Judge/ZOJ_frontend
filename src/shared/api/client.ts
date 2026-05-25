@@ -12,6 +12,8 @@ import {
   mapStaffSession,
   saveGeneralSession,
   saveParticipantSession,
+  SESSION_EXPIRED_EVENT,
+  type SessionExpiredEventDetail,
 } from '@/domains/identityAccess/sessionStorage';
 import type { GeneralSession } from '@/domains/identityAccess/types';
 import type { ParticipantSession } from '@/domains/teamParticipation/types';
@@ -410,7 +412,17 @@ function clearStoredSessionForFailedToken(token: string, path: string) {
     changed = true;
   }
 
-  if (changed) emitSessionSync();
+  if (changed) {
+    emitSessionSync();
+    if (typeof window !== 'undefined') {
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.dispatchEvent(
+        new CustomEvent<SessionExpiredEventDetail>(SESSION_EXPIRED_EVENT, {
+          detail: { currentPath, requestPath: path },
+        }),
+      );
+    }
+  }
 }
 
 export async function apiRequest<T>(

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { appRoutes } from '@/routes/routeConfig';
+import RouteErrorBoundary from '@/routes/RouteErrorBoundary';
 import PageNotice from '@/shared/ui/PageNotice';
 
 function RouteAccessGuard({
@@ -38,27 +39,31 @@ function RouteAccessGuard({
 }
 
 export default function AppRoutes() {
+  const location = useLocation();
+
   return (
-    <Suspense
-      fallback={
-        <section className="mx-auto w-full max-w-4xl px-6 py-14">
-          <PageNotice message="페이지를 불러오는 중입니다." status="loading" />
-        </section>
-      }
-    >
-      <Routes>
-        {appRoutes.map(({ access, path, Component }) => (
-          <Route
-            element={
-              <RouteAccessGuard access={access}>
-                <Component />
-              </RouteAccessGuard>
-            }
-            key={path}
-            path={path}
-          />
-        ))}
-      </Routes>
-    </Suspense>
+    <RouteErrorBoundary resetKey={location.key}>
+      <Suspense
+        fallback={
+          <section className="mx-auto w-full max-w-4xl px-6 py-14">
+            <PageNotice message="페이지를 불러오는 중입니다." status="loading" />
+          </section>
+        }
+      >
+        <Routes>
+          {appRoutes.map(({ access, path, Component }) => (
+            <Route
+              element={
+                <RouteAccessGuard access={access}>
+                  <Component />
+                </RouteAccessGuard>
+              }
+              key={path}
+              path={path}
+            />
+          ))}
+        </Routes>
+      </Suspense>
+    </RouteErrorBoundary>
   );
 }

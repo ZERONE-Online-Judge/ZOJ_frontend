@@ -116,10 +116,14 @@ export default function LoginPage() {
   const [requestedOtpEmail, setRequestedOtpEmail] = useState('');
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(() =>
+    searchParams.get('reason') === 'session'
+      ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
+      : '',
+  );
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'loading' | 'ready' | 'error'
-  >('idle');
+  >(() => (searchParams.get('reason') === 'session' ? 'error' : 'idle'));
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [emailError, setEmailError] = useState('');
