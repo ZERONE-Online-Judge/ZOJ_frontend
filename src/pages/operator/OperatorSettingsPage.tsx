@@ -49,6 +49,8 @@ type SettingsForm = {
   board_write_after_end: boolean;
   notice_access_after_end: ContestResourceAccess;
   mock_judging_enabled: boolean;
+  participant_progress_visible: boolean;
+  mock_judging_progress_visible: boolean;
   title: string;
 };
 
@@ -115,6 +117,10 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
       contestResourceAccess(contest, 'problem') === 'private'
         ? false
         : Boolean(contest.mock_judging_enabled),
+    participant_progress_visible: contest.participant_progress_visible ?? true,
+    mock_judging_progress_visible: Boolean(
+      contest.mock_judging_progress_visible,
+    ),
     title: contest.title,
   };
 }
@@ -205,6 +211,10 @@ function OperatorSettingsContent({
         form.problem_access_after_end === 'private'
           ? false
           : form.mock_judging_enabled,
+      participant_progress_visible: form.participant_progress_visible,
+      mock_judging_progress_visible: form.participant_progress_visible
+        ? false
+        : form.mock_judging_progress_visible,
     };
 
     if (!operationLocked) {
@@ -526,6 +536,100 @@ function OperatorSettingsContent({
                   }
                   value={settingsForm.notice_access_after_end}
                 />
+              </div>
+
+              <div className="grid gap-3 rounded border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <div className="grid gap-1">
+                  <span className="font-black">참가자 채점 진행률</span>
+                  <span className="font-bold text-slate-500">
+                    가리면 참가자 화면에는 테스트케이스 진행률이나 큐 순번을
+                    보여주지 않고 채점 경과 시간만 표시합니다.
+                  </span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label
+                    className={[
+                      'flex items-center gap-3 rounded border px-4 py-3 font-black transition',
+                      settingsForm.participant_progress_visible
+                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 bg-white text-slate-600',
+                    ].join(' ')}
+                  >
+                    <input
+                      checked={settingsForm.participant_progress_visible}
+                      className="size-4 accent-indigo-600"
+                      name="participant_progress_visible"
+                      onChange={() =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                participant_progress_visible: true,
+                                mock_judging_progress_visible: false,
+                              }
+                            : prev,
+                        )
+                      }
+                      type="radio"
+                    />
+                    보이기
+                  </label>
+                  <label
+                    className={[
+                      'flex items-center gap-3 rounded border px-4 py-3 font-black transition',
+                      !settingsForm.participant_progress_visible
+                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 bg-white text-slate-600',
+                    ].join(' ')}
+                  >
+                    <input
+                      checked={!settingsForm.participant_progress_visible}
+                      className="size-4 accent-indigo-600"
+                      name="participant_progress_visible"
+                      onChange={() =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                participant_progress_visible: false,
+                              }
+                            : prev,
+                        )
+                      }
+                      type="radio"
+                    />
+                    가리기
+                  </label>
+                </div>
+                {!settingsForm.participant_progress_visible ? (
+                  <label className="flex items-start gap-3 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input
+                      checked={settingsForm.mock_judging_progress_visible}
+                      className="mt-1 size-4 accent-indigo-600"
+                      onChange={(event) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                mock_judging_progress_visible:
+                                  event.target.checked,
+                              }
+                            : prev,
+                        )
+                      }
+                      type="checkbox"
+                    />
+                    <span className="grid gap-1">
+                      <span className="font-black">
+                        모의채점 진행률 보이기
+                      </span>
+                      <span className="font-bold text-slate-500">
+                        꺼두면 모의채점도 퍼센트 대신 채점 경과 시간만
+                        표시합니다.
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
               </div>
 
               <label className="flex items-start gap-3 rounded border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">

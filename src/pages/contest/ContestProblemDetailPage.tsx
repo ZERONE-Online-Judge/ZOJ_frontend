@@ -58,7 +58,12 @@ type SubmitVariables = {
 };
 type MockResult = Pick<
   Submission,
-  'status' | 'progress_percent' | 'runtime_ms' | 'memory_kb' | 'queue_position'
+  | 'status'
+  | 'progress_percent'
+  | 'runtime_ms'
+  | 'memory_kb'
+  | 'queue_position'
+  | 'submitted_at'
 > | null;
 
 const emptySubmitFeedback: SubmitFeedback = { message: '', status: 'idle' };
@@ -85,18 +90,32 @@ function MockJudgeResult({
   result: MockResult;
   standalone?: boolean;
 }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    if (!result || !judgingStatuses.has(result.status)) return;
+
+    const updateElapsed = () => {
+      const elapsed = Math.floor(
+        (Date.now() - new Date(result.submitted_at).getTime()) / 1000,
+      );
+      setElapsedSeconds(Math.max(0, elapsed));
+    };
+    updateElapsed();
+    const interval = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(interval);
+  }, [result?.status, result?.submitted_at]);
+
   if (!result) return null;
-  const progress =
-    typeof result.progress_percent === 'number'
-      ? result.progress_percent
-      : judgingStatuses.has(result.status)
-        ? 0
-        : 100;
+  const hasProgress = typeof result.progress_percent === 'number';
+  const progress = hasProgress ? result.progress_percent ?? 0 : 100;
   const queueText =
     result.status === 'waiting' && typeof result.queue_position === 'number'
       ? `큐 ${result.queue_position}번째`
       : '';
   const done = !judgingStatuses.has(result.status);
+  const pendingText =
+    queueText ||
+    (hasProgress ? `${progress}%` : `${statusLabels[result.status] ?? result.status} ${elapsedSeconds}초`);
   return (
     <div className="rounded border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
@@ -116,12 +135,17 @@ function MockJudgeResult({
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
         <div
-          className="h-full rounded-full bg-amber-400 transition-all duration-500"
-          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          className={[
+            'h-full rounded-full bg-amber-400 transition-all duration-500',
+            !done && !hasProgress ? 'animate-pulse' : '',
+          ].join(' ')}
+          style={{
+            width: `${Math.max(0, Math.min(100, done || hasProgress ? progress : 35))}%`,
+          }}
         />
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-bold text-slate-600">
-        <span>{queueText || `${progress}%`}</span>
+        <span>{done ? '완료' : pendingText}</span>
         <span>시간 {result.runtime_ms ?? '-'} ms</span>
         <span>메모리 {formatMemoryKb(result.memory_kb)}</span>
       </div>

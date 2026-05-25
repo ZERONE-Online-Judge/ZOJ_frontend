@@ -54,7 +54,8 @@ export type SubmissionProgressState = Pick<
   | 'progress_total'
   | 'progress_percent'
   | 'queue_position'
->;
+> &
+  Pick<Partial<Submission>, 'submitted_at'>;
 
 export type SubmissionCreateRequest = {
   language: JudgeLanguage;

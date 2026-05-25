@@ -48,6 +48,8 @@ export type Contest = {
   notice_access_after_end?: ContestResourceAccess;
   scoreboard_freeze_mode?: ScoreboardFreezeMode;
   mock_judging_enabled?: boolean;
+  participant_progress_visible?: boolean;
+  mock_judging_progress_visible?: boolean;
   emergency_notice: string | null;
 };
 
@@ -114,6 +116,8 @@ export type ContestSettingsPatch = Partial<
     | 'notice_access_after_end'
     | 'scoreboard_freeze_mode'
     | 'mock_judging_enabled'
+    | 'participant_progress_visible'
+    | 'mock_judging_progress_visible'
     | 'emergency_notice'
   >
 >;

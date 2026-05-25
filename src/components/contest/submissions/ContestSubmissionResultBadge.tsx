@@ -31,7 +31,13 @@ function progressTarget(
   const percent = submissionProgressPercent(submission ?? { status });
   if (percent !== null) return percent;
 
-  return 0;
+  return null;
+}
+
+function elapsedSecondsSince(value?: string | null) {
+  if (!value) return 0;
+  const elapsed = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+  return Math.max(0, elapsed);
 }
 
 export default function ContestSubmissionResultBadge({
@@ -52,13 +58,19 @@ export default function ContestSubmissionResultBadge({
     ],
   );
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() =>
+    elapsedSecondsSince(submission?.submitted_at),
+  );
   const visibleProgress =
     status === 'judging' && targetProgress !== null
       ? Math.max(0, Math.min(99, Math.round(displayProgress)))
       : null;
+  const shouldShowElapsed = isSubmissionPending(status) && visibleProgress === null;
   const displayLabel =
     isSubmissionPending(status) && visibleProgress !== null
       ? `${label} - ${visibleProgress}%`
+      : shouldShowElapsed
+        ? `${label} ${elapsedSeconds}초`
       : label;
 
   useEffect(() => {
@@ -86,6 +98,17 @@ export default function ContestSubmissionResultBadge({
 
     return () => window.clearInterval(interval);
   }, [status, targetProgress]);
+
+  useEffect(() => {
+    if (!isSubmissionPending(status)) return;
+
+    setElapsedSeconds(elapsedSecondsSince(submission?.submitted_at));
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(elapsedSecondsSince(submission?.submitted_at));
+    }, 1_000);
+
+    return () => window.clearInterval(interval);
+  }, [status, submission?.submitted_at]);
 
   return (
     <span className="inline-flex min-w-0 flex-col gap-1">

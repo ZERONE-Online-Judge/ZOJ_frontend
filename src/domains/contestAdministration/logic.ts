@@ -36,6 +36,8 @@ export function emptyContest(contestId?: string): Contest {
     notice_access_after_end: 'public',
     scoreboard_freeze_mode: 'auto',
     mock_judging_enabled: false,
+    participant_progress_visible: true,
+    mock_judging_progress_visible: false,
     emergency_notice: null,
   };
 }
