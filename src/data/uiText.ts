@@ -3,6 +3,7 @@ export const routeText = {
   adminContests: '대회 관리',
   adminHome: '관리 홈',
   adminJudge: '채점 관리',
+  adminAuditLogs: '운영 로그',
   contestBoard: '대회 게시판',
   contestDetail: '표준 대회',
   contestProblem: '대회 문제',
@@ -25,6 +26,7 @@ export const routeText = {
   operatorScoreboard: '대회 운영 스코어보드',
   operatorSettings: '대회 운영 설정',
   operatorSubmissions: '대회 운영 제출',
+  operatorAuditLogs: '대회 운영 로그',
   support: '지원 안내',
 } as const;
 
@@ -79,6 +81,7 @@ export const operatorNavText = {
   scoreboard: '스코어보드',
   settings: '설정',
   submissions: '제출',
+  auditLogs: '운영 로그',
 } as const;
 
 export const publicPageText = {

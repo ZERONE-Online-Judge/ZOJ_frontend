@@ -3,6 +3,9 @@ import { routeText } from '@/data/uiText';
 
 const AdminContestsPage = lazy(() => import('@/pages/admin/AdminContestsPage'));
 const AdminHomePage = lazy(() => import('@/pages/admin/AdminHomePage'));
+const AdminAuditLogsPage = lazy(
+  () => import('@/pages/admin/AdminAuditLogsPage'),
+);
 const AdminInquiriesPage = lazy(
   () => import('@/pages/admin/AdminInquiriesPage'),
 );
@@ -31,6 +34,9 @@ const NotFoundPage = lazy(() => import('@/pages/public/NotFoundPage'));
 const NoticesPage = lazy(() => import('@/pages/public/NoticesPage'));
 const OperatorBoardPage = lazy(
   () => import('@/pages/operator/OperatorBoardPage'),
+);
+const OperatorAuditLogsPage = lazy(
+  () => import('@/pages/operator/OperatorAuditLogsPage'),
 );
 const OperatorHomePage = lazy(
   () => import('@/pages/operator/OperatorHomePage'),
@@ -208,6 +214,13 @@ export const appRoutes: readonly AppRoute[] = [
     showInNavigation: false,
   },
   {
+    access: 'operator',
+    name: routeText.operatorAuditLogs,
+    path: '/operator/contests/:contestId/audit-logs',
+    Component: OperatorAuditLogsPage,
+    showInNavigation: false,
+  },
+  {
     access: 'admin',
     name: routeText.adminContests,
     path: '/admin/contests',
@@ -219,6 +232,13 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.adminJudge,
     path: '/admin/judge',
     Component: AdminJudgePage,
+    showInNavigation: false,
+  },
+  {
+    access: 'admin',
+    name: routeText.adminAuditLogs,
+    path: '/admin/audit-logs',
+    Component: AdminAuditLogsPage,
     showInNavigation: false,
   },
   {

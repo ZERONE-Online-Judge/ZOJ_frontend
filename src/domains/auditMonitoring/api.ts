@@ -3,6 +3,7 @@ import type {
   AdminJudgeDashboard,
   AdminJudgeSubmissionEntry,
   JudgeStatus,
+  OperationalAuditLog,
 } from '@/domains/auditMonitoring/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import { apiPageRequest, apiRequest } from '@/shared/api/client';
@@ -35,6 +36,49 @@ export function listAdminJudgeNodeLogs(
   if (options.cursor) search.set('cursor', options.cursor);
   return apiPageRequest<AdminJudgeAgentLog[]>(
     `/admin/judge/nodes/${nodeId}/logs?${search}`,
+    token,
+  );
+}
+
+export function listAdminOperationalAuditLogs(
+  token: string,
+  options: {
+    actorEmail?: string;
+    contestId?: string;
+    cursor?: string;
+    limit?: number;
+    scope?: string;
+  } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.actorEmail) search.set('actor_email', options.actorEmail);
+  if (options.contestId) search.set('contest_id', options.contestId);
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.limit) search.set('limit', String(options.limit));
+  if (options.scope) search.set('scope', options.scope);
+
+  return apiPageRequest<OperationalAuditLog[]>(
+    `/admin/audit-logs?${search}`,
+    token,
+  );
+}
+
+export function listOperatorOperationalAuditLogs(
+  contestId: string,
+  token: string,
+  options: {
+    actorEmail?: string;
+    cursor?: string;
+    limit?: number;
+  } = {},
+) {
+  const search = new URLSearchParams();
+  if (options.actorEmail) search.set('actor_email', options.actorEmail);
+  if (options.cursor) search.set('cursor', options.cursor);
+  if (options.limit) search.set('limit', String(options.limit));
+
+  return apiPageRequest<OperationalAuditLog[]>(
+    `/operator/contests/${contestId}/audit-logs?${search}`,
     token,
   );
 }

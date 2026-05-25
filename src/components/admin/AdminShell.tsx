@@ -38,6 +38,7 @@ const adminTabs = [
     icon: ContestIcon,
   },
   { label: routeText.adminJudge, path: '/admin/judge', icon: JudgeIcon },
+  { label: routeText.adminAuditLogs, path: '/admin/audit-logs', icon: NoticeIcon },
   { label: '문의', path: '/admin/inquiries', icon: NoticeIcon },
 ] as const;
 

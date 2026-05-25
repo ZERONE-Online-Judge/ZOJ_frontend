@@ -54,6 +54,24 @@ export type AdminJudgeAgentLog = {
   created_at: string;
 };
 
+export type OperationalAuditLog = {
+  operational_audit_log_id: string;
+  scope: 'admin' | 'operator' | string;
+  action: string;
+  method: string;
+  path: string;
+  status_code: number;
+  actor_email?: string | null;
+  actor_name?: string | null;
+  actor_role?: string | null;
+  contest_id?: string | null;
+  client_ip?: string | null;
+  user_agent?: string | null;
+  request_id?: string | null;
+  details?: Record<string, unknown>;
+  created_at: string;
+};
+
 export type AdminJudgeSubmissionEntry = {
   submission: Submission;
   contest?: Pick<Contest, 'contest_id' | 'title'> | null;

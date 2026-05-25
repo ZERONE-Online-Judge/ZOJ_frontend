@@ -99,6 +99,12 @@ const operatorTabs = [
     icon: ScoreboardIcon,
     permission: 'contest.scoreboard.view',
   },
+  {
+    label: operatorNavText.auditLogs,
+    path: 'audit-logs',
+    icon: NoticeIcon,
+    permission: 'contest.view',
+  },
 ] as const;
 
 function countLabel(count: number, unit = '건') {
