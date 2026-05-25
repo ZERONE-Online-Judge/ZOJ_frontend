@@ -14,7 +14,7 @@ import {
   isApiClientError,
   readRetryAfterSeconds,
 } from '@/shared/api/errors';
-import { safeLoginRedirectTarget } from '@/shared/lib/loginRedirect';
+import { readLoginRedirectTarget } from '@/shared/lib/loginRedirect';
 import ModalPortal from '@/shared/ui/ModalPortal';
 import PageNotice from '@/shared/ui/PageNotice';
 
@@ -215,9 +215,10 @@ export default function LoginPage() {
       setOtpExpiresAt(0);
       setOtpCode('');
       const contestId = searchParams.get('contestId');
-      const next = safeLoginRedirectTarget(searchParams.get('next'));
+      const moveTo = readLoginRedirectTarget(searchParams);
       navigate(
-        next ?? (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
+        moveTo ??
+          (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
         { replace: true },
       );
     } catch (error) {
@@ -226,6 +227,12 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function closeContestLoginModal() {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('reason');
+    setSearchParams(nextParams, { replace: true });
   }
 
   return (
@@ -270,7 +277,7 @@ export default function LoginPage() {
               <div className="mt-6 flex justify-end gap-2">
                 <button
                   className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
-                  onClick={() => setSearchParams({}, { replace: true })}
+                  onClick={closeContestLoginModal}
                   type="button"
                 >
                   {loginPageText.modalConfirm}

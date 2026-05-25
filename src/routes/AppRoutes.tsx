@@ -20,7 +20,7 @@ function RouteAccessGuard({
   if (!generalSession?.operatorSession) {
     const next = `${location.pathname}${location.search}`;
 
-    return <Navigate replace to={`/login?next=${encodeURIComponent(next)}`} />;
+    return <Navigate replace to={`/login?moveTo=${encodeURIComponent(next)}`} />;
   }
 
   if (access === 'admin' && !isServiceMaster(generalSession)) {

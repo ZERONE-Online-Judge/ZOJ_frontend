@@ -12,7 +12,14 @@ export function contestLoginPath(contestId: string, nextPath?: string) {
     contestId,
   });
   const safeNext = safeLoginRedirectTarget(nextPath ?? null);
-  if (safeNext) search.set('next', safeNext);
+  if (safeNext) search.set('moveTo', safeNext);
 
   return `/login?${search.toString()}`;
+}
+
+export function readLoginRedirectTarget(searchParams: URLSearchParams) {
+  return (
+    safeLoginRedirectTarget(searchParams.get('moveTo')) ??
+    safeLoginRedirectTarget(searchParams.get('next'))
+  );
 }
