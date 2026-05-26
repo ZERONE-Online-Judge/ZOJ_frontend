@@ -23,6 +23,7 @@ import {
   deleteProblemTestcaseSet,
   copyOperatorProblem,
   createOperatorProblem,
+  deleteOperatorProblem,
   getStorageObjectText,
   getOperatorProblems,
   getProblemAssets,
@@ -742,6 +743,30 @@ function OperatorProblemsContent({
     },
   });
 
+  const deleteProblemMutation = useMutation({
+    mutationFn: (problem: Problem) =>
+      deleteOperatorProblem(contestId, problem.problem_id, token),
+    onSuccess: (_deleted, problem) => {
+      setEditorMode('create');
+      setAuthoringTab('settings');
+      setSelectedProblemId('');
+      setForm({
+        ...emptyProblemForm,
+        displayOrder: activeDivisionId
+          ? String(nextProblemDisplayOrder(problems, activeDivisionId))
+          : '',
+        divisionId: activeDivisionId,
+      });
+      setTestSubmission(null);
+      setVerificationResults({});
+      setFormError('');
+      setFormNotice(`${problem.problem_code}. ${problem.title} 문제가 삭제되었습니다.`);
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'problems', contestId],
+      });
+    },
+  });
+
   const copyProblemMutation = useMutation({
     mutationFn: () => {
       const sourceProblem = problems.find(
@@ -1371,6 +1396,17 @@ function OperatorProblemsContent({
     saveProblemMutation.mutate(normalized.form);
   }
 
+  function handleDeleteProblem() {
+    if (!selectedProblem || deleteProblemMutation.isPending) return;
+
+    const confirmed = window.confirm(
+      `${selectedProblem.problem_code}. ${selectedProblem.title} 문제를 삭제할까요?\n\n채점 파일, 테스트케이스, 제출 기록도 함께 삭제됩니다.`,
+    );
+    if (!confirmed) return;
+
+    deleteProblemMutation.mutate(selectedProblem);
+  }
+
   function handleMatchedFiles(files: File[]) {
     if (
       !effectiveSelectedProblemId ||
@@ -1881,10 +1917,19 @@ function OperatorProblemsContent({
                   관리합니다.
                 </p>
               ) : null}
-              {formError || saveProblemMutation.error ? (
+              {formError ||
+              saveProblemMutation.error ||
+              deleteProblemMutation.error ? (
                 <ErrorBox
-                  error={saveProblemMutation.error}
-                  fallback={formError || '문제 저장에 실패했습니다'}
+                  error={
+                    saveProblemMutation.error || deleteProblemMutation.error
+                  }
+                  fallback={
+                    formError ||
+                    (deleteProblemMutation.error
+                      ? '문제 삭제에 실패했습니다'
+                      : '문제 저장에 실패했습니다')
+                  }
                 />
               ) : null}
               {formNotice ? (
@@ -1893,14 +1938,29 @@ function OperatorProblemsContent({
                 </p>
               ) : null}
               {authoringTab !== 'tests' ? (
+                <div className="flex flex-wrap items-center gap-2">
                 <button
                   className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
-                  disabled={editorMode === 'edit' && !form.problemId}
+                  disabled={
+                    (editorMode === 'edit' && !form.problemId) ||
+                    saveProblemMutation.isPending
+                  }
                   type="submit"
                 >
                   <ProblemIcon />
                   {editorMode === 'edit' ? '문제 수정' : '문제 생성'}
                 </button>
+                  {editorMode === 'edit' && selectedProblem ? (
+                    <button
+                      className="inline-flex h-11 items-center justify-center rounded border border-rose-200 bg-white px-5 text-sm font-black text-rose-700 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
+                      disabled={deleteProblemMutation.isPending}
+                      onClick={handleDeleteProblem}
+                      type="button"
+                    >
+                      {deleteProblemMutation.isPending ? '삭제 중' : '문제 삭제'}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </form>
           </OperatorPanel>

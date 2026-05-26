@@ -107,6 +107,20 @@ export function updateOperatorProblem(
   );
 }
 
+export function deleteOperatorProblem(
+  contestId: string,
+  problemId: string,
+  token: string,
+) {
+  return apiRequest<Problem>(
+    `/operator/contests/${contestId}/problems/${problemId}`,
+    token,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
 export function requestPresignedUpload(
   contestId: string,
   token: string,
