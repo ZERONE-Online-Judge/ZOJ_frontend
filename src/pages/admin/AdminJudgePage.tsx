@@ -13,7 +13,10 @@ import {
 } from '@/components/admin/AdminShell';
 import PageLayout from '@/components/common/PageLayout';
 import ContestSubmissionResultBadge from '@/components/contest/submissions/ContestSubmissionResultBadge';
-import { getAdminContests } from '@/domains/contestAdministration/api';
+import {
+  getAdminContestDivisions,
+  getAdminContests,
+} from '@/domains/contestAdministration/api';
 import {
   getAdminJudgeDashboard,
   getAdminJudgeSubmission,
@@ -108,6 +111,18 @@ function AdminJudgeContent({ token }: { token: string }) {
     placeholderData: keepPreviousData,
   });
 
+  const divisionsQuery = useQuery({
+    enabled: Boolean(contestFilter),
+    queryKey: [
+      'admin',
+      'contest-divisions',
+      contestFilter || 'none',
+      queryIdentity,
+    ],
+    queryFn: () => getAdminContestDivisions(contestFilter, token),
+    placeholderData: keepPreviousData,
+  });
+
   const submissionsQuery = useQuery({
     queryKey: [
       'admin',
@@ -172,6 +187,17 @@ function AdminJudgeContent({ token }: { token: string }) {
   }, [contestFilter, contestsQuery.data, divisionFilter]);
 
   useEffect(() => {
+    const divisions = divisionsQuery.data ?? [];
+    if (!contestFilter || !divisionFilter || !divisions.length) return;
+
+    if (
+      !divisions.some((division) => division.division_id === divisionFilter)
+    ) {
+      updateDivisionFilter('');
+    }
+  }, [contestFilter, divisionFilter, divisionsQuery.data]);
+
+  useEffect(() => {
     if (!isVisible) return;
 
     const pendingIds =
@@ -222,18 +248,7 @@ function AdminJudgeContent({ token }: { token: string }) {
   const page = submissionsQuery.data?.page;
   const nextCursor = submissionsQuery.data?.page.next_cursor ?? null;
   const contestOptions = contestsQuery.data ?? [];
-  const divisionOptions = Array.from(
-    new Map(
-      submissions
-        .filter(
-          (entry) =>
-            !contestFilter || entry.contest?.contest_id === contestFilter,
-        )
-        .map((entry) => entry.division)
-        .filter(Boolean)
-        .map((division) => [division!.division_id, division!]),
-    ).values(),
-  );
+  const divisionOptions = divisionsQuery.data ?? [];
 
   function goNextPage() {
     if (!nextCursor) return;
@@ -278,10 +293,16 @@ function AdminJudgeContent({ token }: { token: string }) {
     >
       <AdminTabs />
 
-      {dashboardQuery.error || contestsQuery.error || submissionsQuery.error ? (
+      {dashboardQuery.error ||
+      contestsQuery.error ||
+      divisionsQuery.error ||
+      submissionsQuery.error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
           {formatApiError(
-            dashboardQuery.error || contestsQuery.error || submissionsQuery.error,
+            dashboardQuery.error ||
+              contestsQuery.error ||
+              divisionsQuery.error ||
+              submissionsQuery.error,
             '채점 관리자 데이터를 불러오지 못했습니다',
           )}
         </div>
@@ -489,11 +510,14 @@ function AdminJudgeContent({ token }: { token: string }) {
                 ))}
               </select>
               <select
-                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                disabled={!contestFilter}
                 onChange={(event) => updateDivisionFilter(event.target.value)}
                 value={divisionFilter}
               >
-                <option value="">전체 유형</option>
+                <option value="">
+                  {contestFilter ? '전체 유형' : '대회 선택 후 유형'}
+                </option>
                 {divisionOptions.map((division) => (
                   <option
                     key={division.division_id}

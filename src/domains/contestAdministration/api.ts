@@ -132,6 +132,13 @@ export function getAdminContests(token: string) {
   return apiRequest<Contest[]>('/admin/contests', token);
 }
 
+export function getAdminContestDivisions(contestId: string, token: string) {
+  return apiRequest<Division[]>(
+    `/admin/contests/${contestId}/divisions`,
+    token,
+  );
+}
+
 export function assignAdminContestOperator(
   contestId: string,
   token: string,
