@@ -2153,11 +2153,7 @@ function OperatorProblemsContent({
               : testSubmissionMutation.isPending && testSubmission
                 ? `채점 중: ${submissionStatusLabel(testSubmission.status)}`
               : testSubmission
-                ? `결과: ${submissionStatusLabel(testSubmission.status)}${
-                    testSubmission.awarded_score !== null
-                      ? ` / ${testSubmission.awarded_score}`
-                      : ''
-                  }`
+                ? `결과: ${submissionStatusLabel(testSubmission.status)}`
                 : testSubmissionMutation.error
                   ? formatApiError(
                       testSubmissionMutation.error,

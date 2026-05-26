@@ -7,7 +7,6 @@ export type Problem = {
   time_limit_ms: number;
   memory_limit_mb: number;
   display_order?: number;
-  max_score?: number;
 };
 
 export type ProblemAsset = {

@@ -17,8 +17,6 @@ function scoreboardProblems(rows: ScoreboardRow[], problems: Problem[]) {
     problemMap.set(problem.problem_code, {
       problem_id: problem.problem_id,
       problem_code: problem.problem_code,
-      score: 0,
-      max_score: problem.max_score,
       attempts: 0,
       wrong_attempts: 0,
       solved: false,
@@ -42,7 +40,7 @@ function scoreboardProblems(rows: ScoreboardRow[], problems: Problem[]) {
 }
 
 function totalPenalty(row: ScoreboardRow) {
-  const value = row.penalty ?? row.score;
+  const value = row.penalty;
   if (value === undefined || value === null) return '-';
 
   return value.toLocaleString('ko-KR');

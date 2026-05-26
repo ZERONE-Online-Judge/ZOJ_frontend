@@ -35,13 +35,10 @@ export type Contest = {
   freeze_at: string;
   format?: ContestFormatType | null;
   format_type?: ContestFormatType | null;
-  problem_public_after_end: boolean;
   problem_access_after_end?: ContestResourceAccess;
   scoring_mode?: ContestFormatType | null;
   scoring_type?: ContestFormatType | null;
-  scoreboard_public_after_end: boolean;
   scoreboard_access_after_end?: ContestResourceAccess;
-  submission_public_after_end: boolean;
   submission_access_after_end?: ContestResourceAccess;
   board_access_after_end?: ContestResourceAccess;
   board_write_after_end?: boolean;
@@ -105,9 +102,6 @@ export type ContestSettingsPatch = Partial<
     | 'start_at'
     | 'end_at'
     | 'freeze_at'
-    | 'problem_public_after_end'
-    | 'scoreboard_public_after_end'
-    | 'submission_public_after_end'
     | 'problem_access_after_end'
     | 'scoreboard_access_after_end'
     | 'submission_access_after_end'

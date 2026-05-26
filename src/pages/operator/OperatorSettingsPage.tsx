@@ -196,14 +196,9 @@ function OperatorSettingsContent({
       end_at: dateTimeLocalToIso(form.end_at),
       freeze_at: dateTimeLocalToIso(form.freeze_at),
       problem_access_after_end: form.problem_access_after_end,
-      problem_public_after_end: form.problem_access_after_end === 'public',
       scoreboard_access_after_end: form.scoreboard_access_after_end,
-      scoreboard_public_after_end:
-        form.scoreboard_access_after_end === 'public',
       start_at: dateTimeLocalToIso(form.start_at),
       submission_access_after_end: form.submission_access_after_end,
-      submission_public_after_end:
-        form.submission_access_after_end === 'public',
       board_access_after_end: form.board_access_after_end,
       board_write_after_end: form.board_write_after_end,
       notice_access_after_end: form.notice_access_after_end,

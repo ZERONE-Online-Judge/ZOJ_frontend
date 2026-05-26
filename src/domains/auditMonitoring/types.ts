@@ -113,7 +113,6 @@ export type AdminJudgeSubmissionEntry = {
     title: string;
     time_limit_ms: number;
     memory_limit_mb: number;
-    max_score: number;
   } | null;
   team?: Pick<ParticipantTeam, 'participant_team_id' | 'team_name'> | null;
   member?: Pick<TeamMember, 'team_member_id' | 'name' | 'email'> | null;

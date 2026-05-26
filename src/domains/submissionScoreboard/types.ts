@@ -10,7 +10,6 @@ export type Submission = {
   division_id?: string;
   language: JudgeLanguage | string;
   status: string;
-  awarded_score: number | null;
   submitted_at: string;
   memory_kb?: number | null;
   memory_usage_kb?: number | null;
@@ -65,8 +64,6 @@ export type SubmissionCreateRequest = {
 export type ScoreboardProblemScore = {
   problem_id?: string;
   problem_code: string;
-  score?: number;
-  max_score?: number;
   attempts: number;
   wrong_attempts: number;
   solved: boolean;
@@ -84,7 +81,6 @@ export type ScoreboardRow = {
   division: string | null;
   division_id?: string;
   solved: number;
-  score?: number;
   penalty?: number | null;
   submission_count: number;
   last_improved_at?: string | null;

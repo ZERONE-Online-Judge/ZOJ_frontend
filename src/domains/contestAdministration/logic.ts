@@ -26,11 +26,8 @@ export function emptyContest(contestId?: string): Contest {
     start_at: now,
     end_at: now,
     freeze_at: now,
-    problem_public_after_end: false,
     problem_access_after_end: 'private',
-    scoreboard_public_after_end: false,
     scoreboard_access_after_end: 'private',
-    submission_public_after_end: false,
     submission_access_after_end: 'private',
     board_access_after_end: 'participants',
     notice_access_after_end: 'public',
@@ -164,22 +161,13 @@ export function contestResourceAccess(
   resource: 'problem' | 'scoreboard' | 'submission' | 'board' | 'notice',
 ): ContestResourceAccess {
   if (resource === 'problem') {
-    return (
-      contest.problem_access_after_end ??
-      (contest.problem_public_after_end ? 'public' : 'private')
-    );
+    return contest.problem_access_after_end ?? 'private';
   }
   if (resource === 'scoreboard') {
-    return (
-      contest.scoreboard_access_after_end ??
-      (contest.scoreboard_public_after_end ? 'public' : 'private')
-    );
+    return contest.scoreboard_access_after_end ?? 'private';
   }
   if (resource === 'submission') {
-    return (
-      contest.submission_access_after_end ??
-      (contest.submission_public_after_end ? 'public' : 'private')
-    );
+    return contest.submission_access_after_end ?? 'private';
   }
   if (resource === 'board')
     return contest.board_access_after_end ?? 'participants';
