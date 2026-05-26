@@ -371,21 +371,7 @@ export async function refreshActiveAccessTokens() {
   if (!general?.accessToken) return false;
 
   const refreshedGeneral = await refreshGeneralAccessToken(general.accessToken);
-  const latestGeneral = loadStoredGeneralSession();
-  const staffToken = latestGeneral?.operatorSession?.accessToken;
-  const refreshedStaff = staffToken
-    ? await refreshStaffAccessToken(staffToken)
-    : null;
-
-  const participant = loadStoredParticipantSession();
-  const refreshedParticipant = participant?.accessToken
-    ? await refreshParticipantAccessToken(
-        participant.accessToken,
-        participant.contestId ? `/contests/${participant.contestId}` : '',
-      )
-    : null;
-
-  return Boolean(refreshedGeneral || refreshedStaff || refreshedParticipant);
+  return Boolean(refreshedGeneral);
 }
 
 function clearStoredSessionForFailedToken(token: string, path: string) {
