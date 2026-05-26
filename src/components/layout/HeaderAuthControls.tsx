@@ -126,10 +126,11 @@ export default function HeaderAuthControls({
     } finally {
       setIsAccountPanelOpen(false);
       setIsLogoutConfirmOpen(false);
-      clearSessions();
+      await queryClient.cancelQueries();
       queryClient.clear();
+      navigate('/', { replace: true });
+      clearSessions();
       setIsLoggingOut(false);
-      navigate('/');
     }
   }
 

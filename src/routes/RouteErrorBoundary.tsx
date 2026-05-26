@@ -55,12 +55,14 @@ export default class RouteErrorBoundary extends Component<
         <div className="flex flex-wrap gap-3">
           <Link
             className="rounded bg-violet-950 px-5 py-3 text-sm font-black text-white transition hover:bg-violet-800"
+            reloadDocument
             to={loginPath}
           >
             다시 로그인
           </Link>
           <Link
             className="rounded border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+            reloadDocument
             to="/"
           >
             홈으로 이동

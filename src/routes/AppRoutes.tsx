@@ -40,9 +40,10 @@ function RouteAccessGuard({
 
 export default function AppRoutes() {
   const location = useLocation();
+  const routeResetKey = `${location.pathname}${location.search}${location.hash}:${location.key}`;
 
   return (
-    <RouteErrorBoundary resetKey={location.key}>
+    <RouteErrorBoundary resetKey={routeResetKey}>
       <Suspense
         fallback={
           <section className="mx-auto w-full max-w-4xl px-6 py-14">
