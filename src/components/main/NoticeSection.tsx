@@ -5,6 +5,7 @@ import PreviewSection from '@/components/main/PreviewSection';
 type NoticeSectionProps = {
   children?: ReactNode;
   compact?: boolean;
+  isLoading?: boolean;
   titleSize?: 'default' | 'small';
   title: string;
   titleHref?: string;
@@ -14,6 +15,7 @@ type NoticeSectionProps = {
 export default function NoticeSection({
   children,
   compact = false,
+  isLoading = false,
   titleSize = 'default',
   title,
   titleHref,
@@ -26,7 +28,9 @@ export default function NoticeSection({
       titleHref={titleHref}
       titleSize={titleSize}
     >
-      {notices.length > 0 ? (
+      {isLoading ? (
+        children
+      ) : notices.length > 0 ? (
         <ul className="divide-y divide-slate-200 border-y border-slate-200">
           {notices.slice(0, 5).map((notice, index) => (
             <NoticeItem

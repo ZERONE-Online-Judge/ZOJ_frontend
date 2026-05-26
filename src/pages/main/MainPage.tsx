@@ -7,6 +7,7 @@ import { mainPageText } from '@/data/uiText';
 import { getPublicContests } from '@/domains/contestAdministration/api';
 import { getPublicServiceNotices } from '@/domains/serviceCommunication/api';
 import { formatDateTime } from '@/shared/lib/dateTime';
+import PageNotice from '@/shared/ui/PageNotice';
 
 export default function MainPage() {
   const { hero } = mainPageContent;
@@ -36,10 +37,25 @@ export default function MainPage() {
       <HeroSection {...hero} />
       <div className="mx-auto my-28 flex w-full max-w-7xl flex-col gap-28 px-6 lg:px-8">
         <NoticeSection
+          isLoading={noticesQuery.isPending}
           notices={noticeItems}
           title={mainPageText.noticeSectionTitle}
           titleHref="/notices"
-        />
+        >
+          <div className="border-y border-slate-200">
+            {noticesQuery.isPending ? (
+              <PageNotice message="공지사항을 불러오는 중입니다." status="loading" />
+            ) : null}
+            {noticesQuery.isError ? (
+              <PageNotice message="공지사항을 불러오지 못했습니다." status="error" />
+            ) : null}
+            {!noticesQuery.isPending &&
+            !noticesQuery.isError &&
+            noticeItems.length === 0 ? (
+              <PageNotice message="표시할 공지사항이 없습니다." status="idle" />
+            ) : null}
+          </div>
+        </NoticeSection>
         <ContestListSection
           contests={contestItems}
           title={mainPageText.contestSectionTitle}

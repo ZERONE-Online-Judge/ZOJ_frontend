@@ -319,7 +319,7 @@ function ContestBoardContent({
               currentPage={currentNoticePage}
               expandedNoticeId={activeNoticeId}
               isError={noticesQuery.isError}
-              isLoading={noticesQuery.isLoading}
+              isLoading={noticesQuery.isPending}
               notices={pagedNotices}
               onChangePage={changeNoticePage}
               onToggle={toggleNotice}

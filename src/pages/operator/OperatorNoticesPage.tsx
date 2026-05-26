@@ -23,6 +23,7 @@ import {
 import type { ContestNotice } from '@/domains/serviceCommunication/types';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
+import PageNotice from '@/shared/ui/PageNotice';
 
 type NoticeForm = {
   body: string;
@@ -91,9 +92,12 @@ function OperatorNoticesContent({
     queryFn: () => listOperatorContestNotices(contestId, token),
     refetchInterval: 15_000,
   });
+  const noticesQueryKey = ['operator', 'notices', contestId, queryIdentity] as const;
 
   const contest = dashboardQuery.data?.contest;
   const notices = noticesQuery.data ?? [];
+  const isNoticeListLoading =
+    noticesQuery.isPending || (noticesQuery.isFetching && !noticesQuery.data);
   const totalNoticePages = Math.max(1, Math.ceil(notices.length / NOTICE_PAGE_SIZE));
   const pagedNotices = notices.slice(
     (noticePage - 1) * NOTICE_PAGE_SIZE,
@@ -117,9 +121,28 @@ function OperatorNoticesContent({
             title: form.title.trim(),
             visibility: form.visibility,
           }),
-    onSuccess: () => {
+    onSuccess: (notice) => {
       setForm(emptyNoticeForm);
       setFormError('');
+      queryClient.setQueryData<ContestNotice[]>(noticesQueryKey, (current) => {
+        const items = current ?? [];
+        const exists = items.some(
+          (item) => item.contest_notice_id === notice.contest_notice_id,
+        );
+        const next = exists
+          ? items.map((item) =>
+              item.contest_notice_id === notice.contest_notice_id
+                ? notice
+                : item,
+            )
+          : [notice, ...items];
+        return next.sort(
+          (a, b) =>
+            Number(b.pinned) - Number(a.pinned) ||
+            new Date(b.published_at).getTime() -
+              new Date(a.published_at).getTime(),
+        );
+      });
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'notices', contestId],
       });
@@ -147,6 +170,9 @@ function OperatorNoticesContent({
         setForm(emptyNoticeForm);
         setFormError('');
       }
+      queryClient.setQueryData<ContestNotice[]>(noticesQueryKey, (current) =>
+        (current ?? []).filter((notice) => notice.contest_notice_id !== noticeId),
+      );
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'notices', contestId],
       });
@@ -355,7 +381,11 @@ function OperatorNoticesContent({
           title="공지 목록"
         >
           <div className="divide-y divide-slate-100 rounded border border-slate-200">
-            {notices.length > 0 ? (
+            {isNoticeListLoading ? (
+              <div className="px-4 py-6">
+                <PageNotice message="공지 목록을 불러오는 중입니다." status="loading" />
+              </div>
+            ) : notices.length > 0 ? (
               pagedNotices.map((notice) => (
                 <article
                   className="grid gap-3 px-4 py-4"

@@ -21,16 +21,15 @@ export default function NoticesPage() {
     refetchInterval: 15_000,
   });
 
-  const notices = noticesQuery.data ?? [];
   const orderedNotices = useMemo(
     () =>
-      [...notices].sort(
+      [...(noticesQuery.data ?? [])].sort(
         (a, b) =>
           Number(b.emergency) - Number(a.emergency) ||
           new Date(b.published_at).getTime() -
             new Date(a.published_at).getTime(),
       ),
-    [notices],
+    [noticesQuery.data],
   );
   const targetNoticeIndex = requestedNoticeId
     ? orderedNotices.findIndex(
@@ -65,7 +64,7 @@ export default function NoticesPage() {
       eyebrow={publicPageText.notices.eyebrow}
       title={publicPageText.notices.title}
     >
-      {noticesQuery.isLoading && (
+      {noticesQuery.isPending && (
         <PageNotice message={publicPageText.notices.loading} status="loading" />
       )}
       {noticesQuery.isError && (
@@ -86,7 +85,7 @@ export default function NoticesPage() {
         />
       ) : null}
 
-      {!noticesQuery.isLoading && notices.length === 0 && (
+      {!noticesQuery.isPending && orderedNotices.length === 0 && (
         <PageNotice message={publicPageText.notices.empty} status="idle" />
       )}
     </PageLayout>

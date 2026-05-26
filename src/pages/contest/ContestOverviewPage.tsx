@@ -373,7 +373,7 @@ function ContestOverviewContent({
         <NoticePreview
           contestId={contest.contest_id}
           isError={noticesQuery.isError}
-          isLoading={noticesQuery.isLoading}
+          isLoading={canViewNotices && noticesQuery.isPending}
           notices={notices}
           unavailableMessage={
             canViewNotices
