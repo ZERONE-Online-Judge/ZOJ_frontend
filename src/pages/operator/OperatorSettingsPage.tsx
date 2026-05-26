@@ -962,9 +962,15 @@ function DivisionList({
           </strong>
           <span
             className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-500"
+            title={division.description || '설명 없음'}
+          >
+            {division.description || '설명 없음'}
+          </span>
+          <span
+            className="mt-2 inline-flex w-fit rounded bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500"
             title={division.code || '코드 없음'}
           >
-            {division.code || '코드 없음'}
+            코드 {division.code || '-'}
           </span>
         </button>
       ))}

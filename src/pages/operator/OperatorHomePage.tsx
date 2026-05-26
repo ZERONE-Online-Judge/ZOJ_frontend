@@ -161,11 +161,14 @@ function OperatorHomeContent({
               </div>
             ) : null}
             <div className="overflow-x-auto rounded border border-slate-200">
-              <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
                       유형
+                    </th>
+                    <th className="border-r border-b border-slate-200 px-4 py-3">
+                      설명
                     </th>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
                       코드
@@ -183,6 +186,9 @@ function OperatorHomeContent({
                     >
                       <td className="border-r border-slate-100 px-4 py-4 font-black text-slate-950">
                         {division.name}
+                      </td>
+                      <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-4 font-bold text-slate-600">
+                        {division.description || '-'}
                       </td>
                       <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-600">
                         {division.code || '-'}
