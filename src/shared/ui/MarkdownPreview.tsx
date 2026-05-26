@@ -42,6 +42,7 @@ function normalizeLatexTextCommands(markdown: string) {
 
       return part
         .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+        .replace(/\\bf\s*\{([^{}]*)\}/g, '**$1**')
         .replace(/\\textit\{([^{}]*)\}/g, '*$1*')
         .replace(/\\emph\{([^{}]*)\}/g, '*$1*')
         .replace(/\\texttt\{([^{}]*)\}/g, (_, content: string) =>
