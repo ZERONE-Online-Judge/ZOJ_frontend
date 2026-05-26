@@ -98,8 +98,27 @@ function ScoreboardFreezeControl({
   onChange: (mode: ScoreboardFreezeMode) => void;
   publicFrozen: boolean;
 }) {
-  const effectiveMode: ScoreboardFreezeMode =
-    mode === 'auto' ? (publicFrozen ? 'frozen' : 'live') : mode;
+  const options: {
+    description: string;
+    label: string;
+    value: ScoreboardFreezeMode;
+  }[] = [
+    {
+      description: '프리즈 시간이 지나면 공개 스코어보드를 자동으로 멈춤',
+      label: '오토',
+      value: 'auto',
+    },
+    {
+      description: '프리즈 시간 이후에도 공개 스코어보드를 실시간 유지',
+      label: '라이브',
+      value: 'live',
+    },
+    {
+      description: '지금 기준으로 공개 스코어보드를 프리즈 상태로 유지',
+      label: '프리즈',
+      value: 'frozen',
+    },
+  ];
 
   return (
     <section className="grid gap-3 rounded border border-slate-200 bg-white px-4 py-4">
@@ -112,33 +131,48 @@ function ScoreboardFreezeControl({
             공개 스코어보드 표시
           </h2>
         </div>
-        <div className="inline-flex rounded border border-slate-200 bg-slate-100 p-1">
-          {[
-            ['live', '실시간'],
-            ['frozen', '프리즈'],
-          ].map(([value, label]) => (
+        <div className="grid gap-1 rounded border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:grid-cols-3">
+          {options.map((option) => (
             <button
               className={[
-                'h-9 rounded px-5 text-sm font-black transition disabled:cursor-not-allowed',
-                effectiveMode === value
+                'h-10 rounded px-5 text-sm font-black transition disabled:cursor-not-allowed',
+                mode === option.value
                   ? 'bg-slate-950 text-white shadow-sm'
                   : 'text-slate-500 hover:bg-white hover:text-slate-950',
               ].join(' ')}
               disabled={disabled}
-              key={value}
-              onClick={() => onChange(value as ScoreboardFreezeMode)}
+              key={option.value}
+              onClick={() => onChange(option.value)}
               type="button"
+              title={option.description}
             >
-              {label}
+              {option.label}
             </button>
           ))}
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-500">
-          설정의 프리즈 시각 이후 공개 스코어보드가 멈춥니다.
+          기본 운용은 프리즈 시간 자동 적용입니다. 라이브와 프리즈는 수동
+          유지 모드입니다.
         </p>
+        <span
+          className={[
+            'rounded-full border px-3 py-1 text-xs font-black',
+            publicFrozen
+              ? 'border-amber-200 bg-amber-50 text-amber-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          ].join(' ')}
+        >
+          공개 화면: {publicFrozen ? '프리즈 적용 중' : '라이브'}
+        </span>
       </div>
+      {mode !== 'auto' ? (
+        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+          현재 공개 스코어보드가 오토가 아닙니다. 프리즈 시각 기준으로
+          자동 전환하려면 오토로 변경해 주세요.
+        </p>
+      ) : null}
       {error ? (
         <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
           {formatApiError(error, '스코어보드 공개 상태를 변경하지 못했습니다')}
