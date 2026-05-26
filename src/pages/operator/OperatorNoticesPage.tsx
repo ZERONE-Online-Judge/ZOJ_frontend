@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -82,9 +82,15 @@ function OperatorNoticesContent({
   const [editorMode, setEditorMode] = useState<NoticeEditorMode>('notice');
   const [expandedNoticeId, setExpandedNoticeId] = useState('');
   const [noticePage, setNoticePage] = useState(1);
+  const dashboardQueryKey = [
+    'operator',
+    'dashboard',
+    contestId,
+    queryIdentity,
+  ] as const;
 
   const dashboardQuery = useQuery({
-    queryKey: ['operator', 'dashboard', contestId, queryIdentity],
+    queryKey: dashboardQueryKey,
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const noticesQuery = useQuery({
@@ -103,6 +109,10 @@ function OperatorNoticesContent({
     (noticePage - 1) * NOTICE_PAGE_SIZE,
     noticePage * NOTICE_PAGE_SIZE,
   );
+
+  useEffect(() => {
+    setEmergencyNotice(contest?.emergency_notice ?? '');
+  }, [contest?.emergency_notice]);
 
   const saveNoticeMutation = useMutation({
     mutationFn: () =>
@@ -146,16 +156,19 @@ function OperatorNoticesContent({
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'notices', contestId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'dashboard', contestId],
+      });
     },
   });
 
   const saveEmergencyMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (notice: string | null) =>
       updateContestSettings(contestId, token, {
-        emergency_notice: emergencyNotice.trim() || null,
+        emergency_notice: notice?.trim() || null,
       }),
-    onSuccess: () => {
-      setEmergencyNotice('');
+    onSuccess: (updatedContest) => {
+      setEmergencyNotice(updatedContest.emergency_notice ?? '');
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
       });
@@ -175,6 +188,9 @@ function OperatorNoticesContent({
       );
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'notices', contestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'dashboard', contestId],
       });
     },
   });
@@ -255,16 +271,16 @@ function OperatorNoticesContent({
                 onClick={() => setEditorMode('emergency')}
                 type="button"
               >
-                긴급 문구
+                긴급공지 관리
               </button>
             </div>
           }
           description={
             editorMode === 'notice'
               ? '새 공지를 작성하거나 기존 공지를 수정합니다.'
-              : '대회 페이지 헤더 아래에 짧게 노출되는 긴급 문구입니다.'
+              : '전광판에 표시되는 현재 긴급공지 문구를 따로 관리합니다.'
           }
-          title={editorMode === 'notice' ? '공지 작성' : '긴급 문구'}
+          title={editorMode === 'notice' ? '공지 작성' : '긴급공지 관리'}
         >
           {editorMode === 'notice' ? (
             <form className="grid gap-4" onSubmit={handleSubmit}>
@@ -340,35 +356,74 @@ function OperatorNoticesContent({
           ) : (
             <div className="grid gap-4">
               {contest?.emergency_notice ? (
-                <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                  {contest.emergency_notice}
+                <div className="grid gap-2 rounded border border-rose-200 bg-rose-50 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-black text-rose-600 uppercase">
+                      현재 표시 중
+                    </span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-rose-600">
+                      전광판 노출
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm leading-6 font-bold text-rose-700">
+                    {contest.emergency_notice}
+                  </p>
+                </div>
+              ) : (
+                <p className="rounded border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-bold text-slate-500">
+                  현재 표시 중인 긴급공지 문구가 없습니다.
                 </p>
-              ) : null}
+              )}
+              <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 font-bold text-slate-500">
+                일반 공지를 긴급 공지로 저장하면 이 문구가 해당 공지
+                본문으로 자동 교체됩니다. 이후 문구 수정과 내리기는 이
+                관리 창에서 따로 처리할 수 있습니다.
+              </p>
               <form
                 className="grid gap-4"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  saveEmergencyMutation.mutate();
+                  saveEmergencyMutation.mutate(emergencyNotice);
                 }}
               >
-                <TextInput
-                  label="긴급 문구"
-                  onChange={setEmergencyNotice}
-                  value={emergencyNotice}
-                />
+                <label className="grid gap-2 text-sm font-black text-slate-700">
+                  긴급공지 문구
+                  <textarea
+                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                    onChange={(event) =>
+                      setEmergencyNotice(event.target.value)
+                    }
+                    placeholder="전광판에 표시할 긴급공지 문구를 입력하세요."
+                    value={emergencyNotice}
+                  />
+                </label>
                 {saveEmergencyMutation.error ? (
                   <ErrorBox
                     error={saveEmergencyMutation.error}
-                    fallback="긴급 문구 저장에 실패했습니다"
+                    fallback="긴급공지 저장에 실패했습니다"
                   />
                 ) : null}
-                <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    className="h-10 rounded border border-rose-200 bg-white px-4 text-sm font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                    disabled={
+                      saveEmergencyMutation.isPending ||
+                      !contest?.emergency_notice
+                    }
+                    onClick={() => saveEmergencyMutation.mutate(null)}
+                    type="button"
+                  >
+                    긴급공지 내리기
+                  </button>
                   <button
                     className="h-10 rounded bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700 disabled:bg-slate-300"
-                    disabled={saveEmergencyMutation.isPending}
+                    disabled={
+                      saveEmergencyMutation.isPending ||
+                      !emergencyNotice.trim()
+                    }
                     type="submit"
                   >
-                    긴급 문구 저장
+                    긴급공지 띄우기/수정
                   </button>
                 </div>
               </form>
