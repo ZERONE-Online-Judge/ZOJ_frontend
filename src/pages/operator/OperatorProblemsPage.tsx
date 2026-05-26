@@ -360,6 +360,67 @@ function uniqueProblemCode(baseCode: string, existingCodes: Set<string>) {
   return candidate;
 }
 
+function problemsInDivision(problems: Problem[], divisionId: string) {
+  return problems
+    .filter((problem) => problem.division_id === divisionId)
+    .sort(
+      (a, b) =>
+        (a.display_order ?? 0) - (b.display_order ?? 0) ||
+        a.problem_code.localeCompare(b.problem_code, 'ko-KR', {
+          numeric: true,
+        }),
+    );
+}
+
+function nextProblemDisplayOrder(problems: Problem[], divisionId: string) {
+  const divisionProblems = problemsInDivision(problems, divisionId);
+  return (
+    Math.max(
+      0,
+      ...divisionProblems.map((problem) => problem.display_order ?? 0),
+    ) + 1
+  );
+}
+
+function problemOrderOptions(
+  problems: Problem[],
+  divisionId: string,
+  currentDisplayOrder: string,
+) {
+  if (!divisionId) return [];
+
+  const divisionProblems = problemsInDivision(problems, divisionId);
+  const nextOrder = nextProblemDisplayOrder(problems, divisionId);
+  const currentOrder = Number(currentDisplayOrder);
+  const maxOrder = Math.max(
+    nextOrder,
+    Number.isInteger(currentOrder) ? currentOrder : 0,
+  );
+  const problemByOrder = new Map<number, Problem>();
+
+  divisionProblems.forEach((problem) => {
+    const order = problem.display_order ?? 0;
+    if (order > 0 && !problemByOrder.has(order)) {
+      problemByOrder.set(order, problem);
+    }
+  });
+
+  return Array.from({ length: maxOrder }, (_, index) => {
+    const order = index + 1;
+    const problem = problemByOrder.get(order);
+    const suffix = problem
+      ? `${problem.problem_code}. ${problem.title}`
+      : order === nextOrder
+        ? '마지막에 추가'
+        : '빈 순서';
+
+    return {
+      label: `${order}번 · ${suffix}`,
+      value: String(order),
+    };
+  });
+}
+
 function storageFileName(storageKey: string) {
   return decodeURIComponent(storageKey.split('/').pop() ?? storageKey);
 }
@@ -486,6 +547,10 @@ function OperatorProblemsContent({
   const filteredProblems = activeDivisionId
     ? problems.filter((problem) => problem.division_id === activeDivisionId)
     : problems;
+  const displayOrderOptions = useMemo(
+    () => problemOrderOptions(problems, form.divisionId, form.displayOrder),
+    [form.displayOrder, form.divisionId, problems],
+  );
   const copyableProblems = activeDivisionId
     ? problems.filter((problem) => problem.division_id !== activeDivisionId)
     : [];
@@ -1195,6 +1260,22 @@ function OperatorProblemsContent({
     return () => window.clearTimeout(timer);
   }, [testDraftKey, testDraftScope]);
 
+  useEffect(() => {
+    if (editorMode !== 'create' || !activeDivisionId) return;
+
+    setForm((prev) => {
+      if (prev.divisionId && prev.displayOrder) return prev;
+
+      const divisionId = prev.divisionId || activeDivisionId;
+      return {
+        ...prev,
+        displayOrder:
+          prev.displayOrder || String(nextProblemDisplayOrder(problems, divisionId)),
+        divisionId,
+      };
+    });
+  }, [activeDivisionId, editorMode, problems]);
+
   function handleTestLanguageChange(language: JudgeLanguage) {
     setTestLanguage(language);
     saveLastJudgeLanguage(language);
@@ -1220,12 +1301,16 @@ function OperatorProblemsContent({
   }
 
   function startCreateMode() {
+    const divisionId = activeDivisionId;
     setEditorMode('create');
     setAuthoringTab('settings');
     setSelectedProblemId('');
     setForm({
       ...emptyProblemForm,
-      divisionId: activeDivisionId,
+      displayOrder: divisionId
+        ? String(nextProblemDisplayOrder(problems, divisionId))
+        : '',
+      divisionId,
     });
     setTestSubmission(null);
     setFormError('');
@@ -1509,6 +1594,15 @@ function OperatorProblemsContent({
                       onChange={(event) =>
                         setForm((prev) => ({
                           ...prev,
+                          displayOrder:
+                            editorMode === 'create' && event.target.value
+                              ? String(
+                                  nextProblemDisplayOrder(
+                                    problems,
+                                    event.target.value,
+                                  ),
+                                )
+                              : prev.displayOrder,
                           divisionId: event.target.value,
                         }))
                       }
@@ -1565,13 +1659,33 @@ function OperatorProblemsContent({
                       value={form.memoryLimitMb}
                     />
                   </div>
-                  <TextInput
-                    label="정렬 순서"
-                    onChange={(value) =>
-                      setForm((prev) => ({ ...prev, displayOrder: value }))
-                    }
-                    value={form.displayOrder}
-                  />
+                  <label className="grid gap-2 text-sm font-black text-slate-700">
+                    정렬 순서
+                    <select
+                      className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                      disabled={!form.divisionId}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          displayOrder: event.target.value,
+                        }))
+                      }
+                      value={form.displayOrder}
+                    >
+                      {!form.divisionId ? (
+                        <option value="">유형을 먼저 선택해 주세요</option>
+                      ) : null}
+                      {displayOrderOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs font-bold text-slate-500">
+                      문제 생성 시 선택한 유형의 마지막 순서가 자동으로
+                      채워집니다.
+                    </span>
+                  </label>
                 </>
               ) : null}
               {authoringTab === 'statement' ? (
