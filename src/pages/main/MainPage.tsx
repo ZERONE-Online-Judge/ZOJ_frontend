@@ -22,14 +22,25 @@ export default function MainPage() {
     refetchInterval: 15_000,
   });
   const noticeItems =
-    noticesQuery.data?.slice(0, 5).map((notice) => ({
-      label: notice.emergency
-        ? mainPageText.emergencyNoticeLabel
-        : mainPageText.noticeLabel,
-      title: notice.title,
-      date: formatDateTime(notice.published_at),
-      href: `/notices?noticeId=${encodeURIComponent(notice.service_notice_id)}`,
-    })) ?? [];
+    noticesQuery.data
+      ? [...noticesQuery.data]
+          .sort(
+            (a, b) =>
+              Number(b.emergency) - Number(a.emergency) ||
+              new Date(b.published_at).getTime() -
+                new Date(a.published_at).getTime(),
+          )
+          .slice(0, 5)
+          .map((notice) => ({
+            label: notice.emergency
+              ? mainPageText.emergencyNoticeLabel
+              : mainPageText.noticeLabel,
+            title: notice.title,
+            date: formatDateTime(notice.published_at),
+            href: `/notices?noticeId=${encodeURIComponent(notice.service_notice_id)}`,
+            tone: notice.emergency ? 'emergency' as const : 'default' as const,
+          }))
+      : [];
   const contestItems = contestsQuery.data ?? [];
 
   return (

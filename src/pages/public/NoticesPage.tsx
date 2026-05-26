@@ -119,7 +119,7 @@ function ServiceNoticeList({
             <button
               aria-expanded={isExpanded}
               className={[
-                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-5 text-left transition',
+                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-5 text-left transition',
                 isExpanded
                   ? 'bg-amber-50'
                   : 'bg-white hover:bg-slate-50',
@@ -152,15 +152,6 @@ function ServiceNoticeList({
               <time className="shrink-0 text-xs font-medium text-slate-500">
                 {formatDateTime(notice.published_at)}
               </time>
-              <span
-                aria-hidden="true"
-                className={[
-                  'flex size-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-black text-slate-500 transition',
-                  isExpanded ? 'rotate-180 text-amber-700' : '',
-                ].join(' ')}
-              >
-                ˅
-              </span>
             </button>
             {isExpanded ? (
               <article className="grid gap-4 border-t border-amber-100 bg-white px-5 py-5">
