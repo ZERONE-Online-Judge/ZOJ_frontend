@@ -46,6 +46,21 @@ function writeStoredValue(key: string, value: string) {
   }
 }
 
+function openPresentationPopup(contestId: string) {
+  const url = `/operator/contests/${contestId}/scoreboard/presentation`;
+  const popup = window.open(
+    url,
+    `zoj-scoreboard-presentation-${contestId}`,
+    'popup=yes,width=1600,height=1000,menubar=no,toolbar=no,location=no,status=no',
+  );
+
+  if (!popup) {
+    window.location.assign(url);
+    return;
+  }
+  popup.focus();
+}
+
 export default function OperatorScoreboardPage() {
   const { contestId } = useParams();
 
@@ -235,23 +250,36 @@ function OperatorScoreboardContent({
 
       <OperatorPanel
         actions={
-          <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
-            <ScoreboardIcon />
-            <select
-              className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              onChange={(event) => {
-                setDivisionId(event.target.value);
-                writeStoredValue(divisionStorageKey, event.target.value);
-              }}
-              value={divisionId}
+          <>
+            <button
+              className="zoj-pressable inline-flex h-10 items-center gap-2 rounded border border-indigo-200 bg-indigo-600 px-4 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700"
+              onClick={() => openPresentationPopup(contestId)}
+              type="button"
             >
-              {divisions.map((division) => (
-                <option key={division.division_id} value={division.division_id}>
-                  {division.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <ScoreboardIcon />
+              프레젠테이션 팝업
+            </button>
+            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+              <ScoreboardIcon />
+              <select
+                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => {
+                  setDivisionId(event.target.value);
+                  writeStoredValue(divisionStorageKey, event.target.value);
+                }}
+                value={divisionId}
+              >
+                {divisions.map((division) => (
+                  <option
+                    key={division.division_id}
+                    value={division.division_id}
+                  >
+                    {division.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         }
         description="유형별 스코어보드를 확인합니다."
         title="순위표"

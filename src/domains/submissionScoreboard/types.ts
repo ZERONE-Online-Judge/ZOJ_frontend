@@ -100,6 +100,31 @@ export type OperatorScoreboardResponse = {
   rows: (ScoreboardRow & { visible_to_team?: boolean })[];
 };
 
+export type OperatorPresentationScoreboardSection = {
+  division: Division;
+  frozen: boolean;
+  problems: {
+    problem_id: string;
+    division_id?: string;
+    problem_code: string;
+    title: string;
+    display_order?: number;
+  }[];
+  rows: ScoreboardRow[];
+};
+
+export type OperatorPresentationScoreboardResponse = {
+  contest: {
+    contest_id: string;
+    title: string;
+    start_at: string;
+    end_at: string;
+    freeze_at: string;
+    scoreboard_freeze_mode?: string | null;
+  };
+  sections: OperatorPresentationScoreboardSection[];
+};
+
 export type JudgeDetail = {
   caseFiles: string;
   inputText: string;

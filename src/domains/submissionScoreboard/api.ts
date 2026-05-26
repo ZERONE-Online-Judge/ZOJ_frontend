@@ -1,5 +1,6 @@
 import type {
   OperatorScoreboardResponse,
+  OperatorPresentationScoreboardResponse,
   ScoreboardResponse,
   Submission,
   SubmissionCreateRequest,
@@ -241,6 +242,16 @@ export function getOperatorDivisionScoreboard(
 ) {
   return apiRequest<OperatorScoreboardResponse>(
     `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/internal`,
+    token,
+  );
+}
+
+export function getOperatorPresentationScoreboard(
+  contestId: string,
+  token: string,
+) {
+  return apiRequest<OperatorPresentationScoreboardResponse>(
+    `/operator/contests/${contestId}/scoreboard/presentation`,
     token,
   );
 }
