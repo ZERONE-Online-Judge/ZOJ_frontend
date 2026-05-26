@@ -125,6 +125,7 @@ function OperatorSubmissionsContent({
     queryFn: () => getOperatorProblems(contestId, token),
   });
   const submissionsQuery = useQuery({
+    enabled: Boolean(divisionId),
     queryKey: [
       'operator',
       'submissions',
@@ -137,7 +138,7 @@ function OperatorSubmissionsContent({
     queryFn: () =>
       listOperatorSubmissionsPage(contestId, token, {
         cursor: currentCursor,
-        divisionId: divisionId || undefined,
+        divisionId,
         limit: SUBMISSIONS_PAGE_SIZE,
         problemId: problemId || undefined,
       }),
@@ -168,11 +169,12 @@ function OperatorSubmissionsContent({
   useEffect(() => {
     if (!divisions.length) return;
     if (
-      divisionId &&
+      !divisionId ||
       !divisions.some((division) => division.division_id === divisionId)
     ) {
-      setDivisionId('');
-      writeStoredValue(divisionStorageKey, '');
+      const nextDivisionId = divisions[0].division_id;
+      setDivisionId(nextDivisionId);
+      writeStoredValue(divisionStorageKey, nextDivisionId);
       setCursorStack([]);
     }
   }, [divisionId, divisionStorageKey, divisions]);
@@ -331,7 +333,6 @@ function OperatorSubmissionsContent({
                 }}
                 value={divisionId}
               >
-                <option value="">전체 유형</option>
                 {divisions.map((division) => (
                   <option
                     key={division.division_id}

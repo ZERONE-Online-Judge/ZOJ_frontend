@@ -13,6 +13,7 @@ import {
 } from '@/components/admin/AdminShell';
 import PageLayout from '@/components/common/PageLayout';
 import ContestSubmissionResultBadge from '@/components/contest/submissions/ContestSubmissionResultBadge';
+import { getAdminContests } from '@/domains/contestAdministration/api';
 import {
   getAdminJudgeDashboard,
   getAdminJudgeSubmission,
@@ -101,6 +102,12 @@ function AdminJudgeContent({ token }: { token: string }) {
     placeholderData: keepPreviousData,
   });
 
+  const contestsQuery = useQuery({
+    queryKey: ['admin', 'contests', queryIdentity],
+    queryFn: () => getAdminContests(token),
+    placeholderData: keepPreviousData,
+  });
+
   const submissionsQuery = useQuery({
     queryKey: [
       'admin',
@@ -146,6 +153,23 @@ function AdminJudgeContent({ token }: { token: string }) {
     refetchInterval: selectedLogNodeId && isVisible ? 3_000 : false,
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    const contests = contestsQuery.data ?? [];
+    if (!contests.length) return;
+
+    if (
+      contestFilter &&
+      !contests.some((contest) => contest.contest_id === contestFilter)
+    ) {
+      updateContestFilter('');
+      return;
+    }
+
+    if (!contestFilter && divisionFilter) {
+      updateDivisionFilter('');
+    }
+  }, [contestFilter, contestsQuery.data, divisionFilter]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -197,14 +221,7 @@ function AdminJudgeContent({ token }: { token: string }) {
   const submissions = submissionsQuery.data?.data ?? [];
   const page = submissionsQuery.data?.page;
   const nextCursor = submissionsQuery.data?.page.next_cursor ?? null;
-  const contestOptions = Array.from(
-    new Map(
-      submissions
-        .map((entry) => entry.contest)
-        .filter(Boolean)
-        .map((contest) => [contest!.contest_id, contest!]),
-    ).values(),
-  );
+  const contestOptions = contestsQuery.data ?? [];
   const divisionOptions = Array.from(
     new Map(
       submissions
@@ -261,10 +278,10 @@ function AdminJudgeContent({ token }: { token: string }) {
     >
       <AdminTabs />
 
-      {dashboardQuery.error || submissionsQuery.error ? (
+      {dashboardQuery.error || contestsQuery.error || submissionsQuery.error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
           {formatApiError(
-            dashboardQuery.error || submissionsQuery.error,
+            dashboardQuery.error || contestsQuery.error || submissionsQuery.error,
             '채점 관리자 데이터를 불러오지 못했습니다',
           )}
         </div>
