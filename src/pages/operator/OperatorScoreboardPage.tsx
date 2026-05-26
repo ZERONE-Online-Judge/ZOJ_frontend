@@ -24,6 +24,7 @@ import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
 import { formatApiError } from '@/shared/api/errors';
+import { formatDateTime } from '@/shared/lib/dateTime';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 
 function operatorScoreboardDivisionStorageKey(contestId: string) {
@@ -61,6 +62,22 @@ function openPresentationPopup(contestId: string) {
   popup.focus();
 }
 
+function freezeRemainingLabel(freezeAt?: string | null) {
+  if (!freezeAt) return '-';
+
+  const diffMs = new Date(freezeAt).getTime() - Date.now();
+  if (diffMs <= 0) return '프리즈 시각이 지났습니다';
+
+  const totalMinutes = Math.ceil(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}일 ${hours}시간 ${minutes}분 남음`;
+  if (hours > 0) return `${hours}시간 ${minutes}분 남음`;
+  return `${minutes}분 남음`;
+}
+
 export default function OperatorScoreboardPage() {
   const { contestId } = useParams();
 
@@ -88,12 +105,14 @@ export default function OperatorScoreboardPage() {
 function ScoreboardFreezeControl({
   disabled,
   error,
+  freezeAt,
   mode,
   onChange,
   publicFrozen,
 }: {
   disabled: boolean;
   error: unknown;
+  freezeAt?: string | null;
   mode: ScoreboardFreezeMode;
   onChange: (mode: ScoreboardFreezeMode) => void;
   publicFrozen: boolean;
@@ -166,6 +185,17 @@ function ScoreboardFreezeControl({
         >
           공개 화면: {publicFrozen ? '프리즈 적용 중' : '라이브'}
         </span>
+      </div>
+      <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+        <div>
+          <p className="text-xs font-black text-slate-500">프리즈 기준 시각</p>
+          <p className="mt-1 font-black text-slate-950">
+            {formatDateTime(freezeAt ?? undefined)}
+          </p>
+        </div>
+        <p className="rounded-full border border-indigo-100 bg-white px-3 py-1 text-xs font-black text-indigo-700">
+          {freezeRemainingLabel(freezeAt)}
+        </p>
       </div>
       {mode !== 'auto' ? (
         <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
@@ -266,6 +296,7 @@ function OperatorScoreboardContent({
       <ScoreboardFreezeControl
         disabled={freezeModeMutation.isPending}
         error={freezeModeMutation.error}
+        freezeAt={contest?.freeze_at}
         mode={freezeMode}
         onChange={(mode) => freezeModeMutation.mutate(mode)}
         publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
