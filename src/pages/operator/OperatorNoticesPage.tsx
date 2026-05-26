@@ -13,6 +13,7 @@ import {
   getOperatorContestDashboard,
   updateContestSettings,
 } from '@/domains/contestAdministration/api';
+import type { OperatorDashboard } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   createContestNotice,
@@ -169,6 +170,16 @@ function OperatorNoticesContent({
       }),
     onSuccess: (updatedContest) => {
       setEmergencyNotice(updatedContest.emergency_notice ?? '');
+      queryClient.setQueryData<OperatorDashboard>(
+        dashboardQueryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                contest: updatedContest,
+              }
+            : current,
+      );
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
       });
