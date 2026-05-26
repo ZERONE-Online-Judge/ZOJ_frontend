@@ -102,45 +102,92 @@ function ServiceNoticeList({
   onToggle: (noticeId: string) => void;
 }) {
   return (
-    <ul className="divide-y divide-slate-200 border-y border-slate-200">
+    <ul className="grid gap-3">
       {notices.map((notice) => {
         const isExpanded = expandedNoticeId === notice.service_notice_id;
 
         return (
-          <li key={notice.service_notice_id}>
+          <li
+            className={[
+              'overflow-hidden rounded border bg-white shadow-sm transition',
+              isExpanded
+                ? 'border-amber-200 shadow-md shadow-amber-100/60'
+                : 'border-slate-200 hover:border-amber-200',
+            ].join(' ')}
+            key={notice.service_notice_id}
+          >
             <button
               aria-expanded={isExpanded}
               className={[
-                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-amber-50',
-                isExpanded ? 'bg-amber-50' : '',
+                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-5 text-left transition',
+                isExpanded
+                  ? 'bg-amber-50'
+                  : 'bg-white hover:bg-slate-50',
               ].join(' ')}
               onClick={() => onToggle(notice.service_notice_id)}
               type="button"
             >
-              <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
+              <span
+                className={[
+                  'rounded-full px-3 py-1 text-xs font-black',
+                  notice.emergency
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'bg-slate-950 text-white',
+                ].join(' ')}
+              >
                 {notice.emergency
                   ? publicPageText.notices.emergencyLabel
                   : publicPageText.notices.label}
               </span>
-              <strong className="min-w-0 text-lg font-bold break-keep text-slate-950 sm:truncate">
-                {notice.title}
-              </strong>
+              <span className="grid min-w-0 gap-1">
+                <strong className="min-w-0 text-lg font-black break-keep text-slate-950 sm:truncate">
+                  {notice.title}
+                </strong>
+                {notice.summary ? (
+                  <span className="min-w-0 text-sm font-medium text-slate-500 sm:truncate">
+                    {notice.summary}
+                  </span>
+                ) : null}
+              </span>
               <time className="shrink-0 text-xs font-medium text-slate-500">
                 {formatDateTime(notice.published_at)}
               </time>
+              <span
+                aria-hidden="true"
+                className={[
+                  'flex size-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-black text-slate-500 transition',
+                  isExpanded ? 'rotate-180 text-amber-700' : '',
+                ].join(' ')}
+              >
+                ˅
+              </span>
             </button>
             {isExpanded ? (
-              <article className="grid gap-3 bg-white px-4 pb-6">
+              <article className="grid gap-4 border-t border-amber-100 bg-white px-5 py-5">
                 {notice.summary ? (
-                  <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-                    {notice.summary}
-                  </p>
+                  <section className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+                    <span className="text-xs font-black text-slate-400">
+                      요약
+                    </span>
+                    <p className="text-sm leading-6 font-bold break-keep text-slate-700">
+                      {notice.summary}
+                    </p>
+                  </section>
                 ) : null}
                 {notice.body ? (
-                  <p className="text-sm leading-7 whitespace-pre-wrap text-slate-800">
-                    {notice.body}
-                  </p>
-                ) : null}
+                  <section className="grid gap-2 rounded border border-slate-200 bg-white px-4 py-4">
+                    <span className="text-xs font-black text-slate-400">
+                      본문
+                    </span>
+                    <p className="text-sm leading-7 whitespace-pre-wrap text-slate-800">
+                      {notice.body}
+                    </p>
+                  </section>
+                ) : (
+                  <section className="rounded border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500">
+                    등록된 본문이 없습니다.
+                  </section>
+                )}
               </article>
             ) : null}
           </li>
