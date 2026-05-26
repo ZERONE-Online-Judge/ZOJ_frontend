@@ -668,38 +668,63 @@ function OperatorParticipantsContent({
                         <div className="grid gap-2">
                           {team.members.map((member) => (
                             <div
-                              className="flex min-w-0 flex-wrap items-center gap-2"
+                              className="grid min-w-0 gap-1 rounded border border-slate-100 bg-slate-50 px-3 py-2"
                               key={member.team_member_id ?? member.email}
                             >
-                              <span
-                                className="zoj-break-anywhere min-w-0 font-bold text-slate-800"
-                                title={member.name}
-                              >
-                                {member.name}
-                              </span>
-                              <span
-                                className="zoj-break-anywhere min-w-0 text-xs font-bold text-slate-400"
-                                title={member.email}
-                              >
-                                {member.email}
-                              </span>
-                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                                {member.role === 'leader' ? '팀장' : '팀원'}
-                              </span>
-                              {member.team_member_id ? (
-                                <button
-                                  className="rounded border border-amber-200 px-2 py-1 text-xs font-black text-amber-700"
-                                  onClick={() =>
-                                    revokeSessionMutation.mutate({
-                                      memberId: member.team_member_id!,
-                                      teamId: team.participant_team_id,
-                                    })
-                                  }
-                                  type="button"
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <span
+                                  className="zoj-break-anywhere min-w-0 font-bold text-slate-800"
+                                  title={member.name}
                                 >
-                                  세션 해제
-                                </button>
-                              ) : null}
+                                  {member.name}
+                                </span>
+                                <span
+                                  className="zoj-break-anywhere min-w-0 text-xs font-bold text-slate-400"
+                                  title={member.email}
+                                >
+                                  {member.email}
+                                </span>
+                                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600">
+                                  {member.role === 'leader' ? '팀장' : '팀원'}
+                                </span>
+                              </div>
+                              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                                <span
+                                  className={[
+                                    'rounded-full px-2 py-1 font-black',
+                                    (member.active_sessions ?? 0) > 0
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-slate-100 text-slate-500',
+                                  ].join(' ')}
+                                >
+                                  {(member.active_sessions ?? 0) > 0
+                                    ? `세션 ${member.active_sessions}개`
+                                    : '세션 없음'}
+                                </span>
+                                <span>
+                                  마지막 사용{' '}
+                                  {member.last_session_seen_at
+                                    ? formatDateTime(member.last_session_seen_at)
+                                    : member.last_login_at
+                                      ? formatDateTime(member.last_login_at)
+                                      : '-'}
+                                </span>
+                                {member.team_member_id &&
+                                (member.active_sessions ?? 0) > 0 ? (
+                                  <button
+                                    className="rounded border border-amber-200 bg-white px-2 py-1 text-xs font-black text-amber-700 transition hover:bg-amber-50"
+                                    onClick={() =>
+                                      revokeSessionMutation.mutate({
+                                        memberId: member.team_member_id!,
+                                        teamId: team.participant_team_id,
+                                      })
+                                    }
+                                    type="button"
+                                  >
+                                    세션 해제
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           ))}
                         </div>

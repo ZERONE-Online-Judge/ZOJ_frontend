@@ -9,6 +9,7 @@ export type TeamMember = {
   email: string;
   active_sessions?: number;
   last_login_at?: string | null;
+  last_session_seen_at?: string | null;
 };
 
 export type TeamMemberDraft = {
@@ -73,4 +74,3 @@ export type TeamImportRow = {
   };
   members: TeamMemberDraft[];
 };
-
