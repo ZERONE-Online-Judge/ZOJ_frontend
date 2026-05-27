@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useLocation,
@@ -224,6 +224,7 @@ function ContestProblemDetailContent({
   const [mockResultByKey, setMockResultByKey] = useState<
     Record<string, MockResult>
   >({});
+  const hydratedSubmissionDraftRef = useRef<string | null>(null);
 
   const problemQuery = useQuery({
     enabled: canViewProblem && Boolean(problemId),
@@ -351,8 +352,7 @@ function ContestProblemDetailContent({
     enabled:
       canViewProblem &&
       effectiveView === 'submit' &&
-      Boolean(selectedSubmissionId) &&
-      !canMockJudge,
+      Boolean(selectedSubmissionId),
     queryKey: contestQueryKeys.submissionDetail(
       contestId,
       selectedSubmissionId,
@@ -363,9 +363,7 @@ function ContestProblemDetailContent({
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope
-        ? await ensureParticipantSession()
-        : null;
+      const session = await ensureParticipantSession();
       if (!session?.accessToken) {
         throw new Error('제출 코드를 보려면 대회 참가 로그인이 필요합니다.');
       }
@@ -388,7 +386,9 @@ function ContestProblemDetailContent({
     ? `submission:${selectedSubmissionId}`
     : `problem:${problemId}`;
   const activeDraftScope = `contest:${contestId}`;
-  const persistedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
+  const persistedDraft = selectedSubmissionId
+    ? null
+    : loadCodeDraft(activeDraftScope, activeDraftKey);
   const fallbackLanguage = isJudgeLanguage(selectedSubmission?.language)
     ? selectedSubmission.language
     : lastJudgeLanguage;
@@ -426,6 +426,8 @@ function ContestProblemDetailContent({
   const submitPanelButtonLabel = canMockJudge ? '모의채점 실행' : '제출하기';
 
   useEffect(() => {
+    if (selectedSubmissionId) return;
+
     const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
     const savedSourceCode = savedDraft?.sourceCode;
     const savedLanguage = savedDraft?.language;
@@ -443,34 +445,41 @@ function ContestProblemDetailContent({
           : previous,
       );
     }
-  }, [activeDraftKey, activeDraftScope]);
+  }, [activeDraftKey, activeDraftScope, selectedSubmissionId]);
 
   useEffect(() => {
-    if (!selectedSubmission?.source_code) return;
+    if (!selectedSubmissionId || !selectedSubmission) return;
+    if (typeof selectedSubmission.source_code !== 'string') return;
 
     const submissionSourceCode = selectedSubmission.source_code;
-    setDraftSourceCodes((previous) => {
-      if (previous[activeDraftKey] !== undefined) return previous;
-      const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
-      if (savedDraft?.sourceCode !== undefined) return previous;
-      saveCodeDraft(activeDraftScope, activeDraftKey, {
-        sourceCode: submissionSourceCode,
-      });
-      return { ...previous, [activeDraftKey]: submissionSourceCode };
+    const hydrationKey = [
+      activeDraftScope,
+      activeDraftKey,
+      selectedSubmission.submission_id,
+      submissionSourceCode,
+    ].join(':');
+    if (hydratedSubmissionDraftRef.current === hydrationKey) return;
+    hydratedSubmissionDraftRef.current = hydrationKey;
+
+    saveCodeDraft(activeDraftScope, activeDraftKey, {
+      sourceCode: submissionSourceCode,
     });
+    setDraftSourceCodes((previous) => ({
+      ...previous,
+      [activeDraftKey]: submissionSourceCode,
+    }));
+
     const submissionLanguage = selectedSubmission.language;
     if (isJudgeLanguage(submissionLanguage)) {
-      setDraftLanguages((previous) => {
-        if (previous[activeDraftKey] !== undefined) return previous;
-        const savedDraft = loadCodeDraft(activeDraftScope, activeDraftKey);
-        if (savedDraft?.language) return previous;
-        saveCodeDraft(activeDraftScope, activeDraftKey, {
-          language: submissionLanguage,
-        });
-        return { ...previous, [activeDraftKey]: submissionLanguage };
+      saveCodeDraft(activeDraftScope, activeDraftKey, {
+        language: submissionLanguage,
       });
+      setDraftLanguages((previous) => ({
+        ...previous,
+        [activeDraftKey]: submissionLanguage,
+      }));
     }
-  }, [activeDraftKey, activeDraftScope, selectedSubmission]);
+  }, [activeDraftKey, activeDraftScope, selectedSubmission, selectedSubmissionId]);
 
   function handleLanguageChange(nextLanguage: JudgeLanguage) {
     setLastJudgeLanguage(nextLanguage);
