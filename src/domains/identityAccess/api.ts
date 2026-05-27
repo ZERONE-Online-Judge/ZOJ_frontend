@@ -1,4 +1,5 @@
 import {
+  loadStoredGeneralSession,
   mapGeneralSession,
   mapStaffSession,
   saveGeneralSession,
@@ -70,7 +71,10 @@ export async function verifyGeneralPasswordOtp(
 
 export async function getGeneralMe(token: string, previous?: GeneralSession | null) {
   const data = await apiRequest<GeneralSessionApi>('/auth/general/me', token);
-  const session = mapGeneralSession(data, previous);
+  const session = mapGeneralSession(
+    data,
+    loadStoredGeneralSession() ?? previous,
+  );
   saveGeneralSession(session);
   return session;
 }
