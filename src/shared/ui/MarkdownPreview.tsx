@@ -55,6 +55,22 @@ function normalizeLatexTextCommands(markdown: string) {
     .join('');
 }
 
+function normalizeParagraphBreaks(markdown: string) {
+  return markdown
+    .replace(/\r\n?/g, '\n')
+    .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g)
+    .map((part) => {
+      if (part.startsWith('```') || part.startsWith('~~~')) return part;
+
+      return part
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n[ \t]+\n/g, '\n\n')
+        .replace(/(^|[^\w\\])\\par\b[ \t]*/g, '$1\n\n')
+        .replace(/\n{3,}/g, '\n\n');
+    })
+    .join('');
+}
+
 function normalizeMathDelimiters(markdown: string) {
   const beginEnumerate = /\\begin\s*\{\s*enumerate\s*\}/g;
   const endEnumerate = /\\end\s*\{\s*enumerate\s*\}/g;
@@ -109,7 +125,9 @@ export default function MarkdownPreview({
   statement,
   assets = [],
 }: MarkdownPreviewProps) {
-  const normalizedStatement = normalizeMathDelimiters(statement);
+  const normalizedStatement = normalizeMathDelimiters(
+    normalizeParagraphBreaks(statement),
+  );
   const renderImage = (src = '', alt = '') => {
     const resolvedSrc = src ? resolveAssetSource(src, assets) : '';
     if (!resolvedSrc) return null;
@@ -142,6 +160,11 @@ export default function MarkdownPreview({
             <li className="pl-1 marker:font-black marker:text-slate-500">
               {children}
             </li>
+          ),
+          p: ({ children }) => (
+            <p className="my-5 leading-8 tracking-normal text-slate-800">
+              {children}
+            </p>
           ),
           pre: ({ children }) => (
             <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-4 text-sm text-slate-50">
