@@ -18,7 +18,12 @@ function RouteAccessGuard({
 
   if (!access || access === 'public') return children;
 
-  if (!generalSession?.operatorSession) {
+  const canUseOperatorArea =
+    Boolean(generalSession?.operatorSession) ||
+    Boolean(generalSession?.operatorContests.length) ||
+    Boolean(generalSession && isServiceMaster(generalSession));
+
+  if (!generalSession || !canUseOperatorArea) {
     const next = `${location.pathname}${location.search}`;
 
     return <Navigate replace to={`/login?moveTo=${encodeURIComponent(next)}`} />;

@@ -9,6 +9,7 @@ import {
   verifyGeneralOtp,
 } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import type { GeneralSession } from '@/domains/identityAccess/types';
 import {
   type ApiClientError,
   formatUserApiError,
@@ -104,6 +105,36 @@ function sessionConflictDetails(error: unknown) {
   };
 }
 
+function contestIdFromParticipantPath(path: string | null) {
+  const match = path?.match(/^\/contests\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function postLoginRedirectPath(
+  session: GeneralSession,
+  searchParams: URLSearchParams,
+) {
+  const contestId = searchParams.get('contestId');
+  const moveTo = readLoginRedirectTarget(searchParams);
+  const fallback = contestId
+    ? `/contests/${encodeURIComponent(contestId)}`
+    : '/';
+  const target = moveTo ?? fallback;
+  const targetContestId = contestIdFromParticipantPath(target) ?? contestId;
+  const isParticipantContest = session.participantContests.some(
+    (item) => item.contest.contest_id === targetContestId,
+  );
+  const isOperatorContest = session.operatorContests.some(
+    (item) => item.contest.contest_id === targetContestId,
+  );
+
+  if (targetContestId && isOperatorContest && !isParticipantContest) {
+    return `/operator/contests/${encodeURIComponent(targetContestId)}`;
+  }
+
+  return target;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -153,13 +184,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (!generalSession || isSubmitting || pendingSessionReplacement) return;
 
-    const contestId = searchParams.get('contestId');
-    const moveTo = readLoginRedirectTarget(searchParams);
-    navigate(
-      moveTo ??
-        (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
-      { replace: true },
-    );
+    navigate(postLoginRedirectPath(generalSession, searchParams), {
+      replace: true,
+    });
   }, [
     generalSession,
     isSubmitting,
@@ -276,13 +303,7 @@ export default function LoginPage() {
       setRequestedOtpEmail('');
       setOtpExpiresAt(0);
       setOtpCode('');
-      const contestId = searchParams.get('contestId');
-      const moveTo = readLoginRedirectTarget(searchParams);
-      navigate(
-        moveTo ??
-          (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
-        { replace: true },
-      );
+      navigate(postLoginRedirectPath(session, searchParams), { replace: true });
     } catch (error) {
       if (!forceNewSession && isSessionConflictError(error)) {
         const details = sessionConflictDetails(error);

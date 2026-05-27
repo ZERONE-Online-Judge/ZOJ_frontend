@@ -5,9 +5,13 @@ import PageLayout from '@/components/common/PageLayout';
 import { accessText, operatorNavText } from '@/data/uiText';
 import {
   hasContestPermission,
+  isServiceMaster,
   type ContestPermissionCode,
 } from '@/domains/identityAccess/permissions';
-import type { StaffSession } from '@/domains/identityAccess/types';
+import type {
+  GeneralSession,
+  StaffSession,
+} from '@/domains/identityAccess/types';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
@@ -111,13 +115,38 @@ function countLabel(count: number, unit = '건') {
   return count > 0 ? `${count}${unit}` : '';
 }
 
+function staffSessionFromGeneralSession(
+  session: GeneralSession | null,
+): StaffSession | null {
+  if (!session) return null;
+  if (session.operatorSession) return session.operatorSession;
+  if (!session.operatorContests.length && !isServiceMaster(session)) return null;
+
+  return {
+    accessToken: session.accessToken,
+    defaultRedirect: '/operator',
+    refreshToken: session.refreshToken,
+    staff: {
+      contest_scopes: Object.fromEntries(
+        session.operatorContests.map((entry) => [
+          entry.contest.contest_id,
+          entry.scopes,
+        ]),
+      ),
+      display_name: session.account.display_name,
+      email: session.account.email,
+      is_service_master: isServiceMaster(session),
+    },
+  };
+}
+
 export function OperatorAccessGate({
   children,
   contestId,
   permission,
 }: OperatorAccessGateProps) {
   const generalSession = useSessionStore((state) => state.generalSession);
-  const staffSession = generalSession?.operatorSession;
+  const staffSession = staffSessionFromGeneralSession(generalSession);
 
   if (!staffSession) {
     return (
@@ -159,7 +188,7 @@ export function OperatorAccessGate({
 
 export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const generalSession = useSessionStore((state) => state.generalSession);
-  const token = generalSession?.operatorSession?.accessToken;
+  const token = staffSessionFromGeneralSession(generalSession)?.accessToken;
   const canViewParticipants = Boolean(
     contestId &&
     hasContestPermission(generalSession, contestId, 'contest.participant.view'),

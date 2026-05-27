@@ -692,7 +692,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'combined' && canShowSubmit ? (
-        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white lg:grid-cols-[15rem_minmax(0,1fr)_20rem]">
+        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1.45fr)_minmax(24rem,0.95fr)] 2xl:grid-cols-[14rem_minmax(0,1.55fr)_minmax(26rem,0.9fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -725,7 +725,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canShowSubmit)) ? (
-        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}

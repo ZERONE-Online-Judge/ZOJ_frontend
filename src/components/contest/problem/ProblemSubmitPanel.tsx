@@ -56,7 +56,7 @@ export default function ProblemSubmitPanel({
   const panelClassName =
     layout === 'standalone'
       ? 'bg-slate-50 px-7 py-7'
-      : 'border-l border-slate-200 bg-slate-50 px-5 py-7';
+      : 'border-t border-slate-200 bg-slate-50 px-5 py-7 xl:border-t-0 xl:border-l';
   const headingProblemLabel =
     problemCode || problemTitle
       ? ` - ${problemCode ? `${problemCode}. ` : ''}${problemTitle ?? ''}`
