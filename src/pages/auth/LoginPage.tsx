@@ -150,6 +150,24 @@ export default function LoginPage() {
     otpInputRef.current?.focus();
   }, [otpRequested]);
 
+  useEffect(() => {
+    if (!generalSession || isSubmitting || pendingSessionReplacement) return;
+
+    const contestId = searchParams.get('contestId');
+    const moveTo = readLoginRedirectTarget(searchParams);
+    navigate(
+      moveTo ??
+        (contestId ? `/contests/${encodeURIComponent(contestId)}` : '/'),
+      { replace: true },
+    );
+  }, [
+    generalSession,
+    isSubmitting,
+    navigate,
+    pendingSessionReplacement,
+    searchParams,
+  ]);
+
   function validateEmail() {
     const parsed = loginSchema.safeParse({ email, otpCode });
     if (parsed.success) {
