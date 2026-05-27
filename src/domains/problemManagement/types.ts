@@ -6,6 +6,15 @@ export type Problem = {
   statement: string;
   time_limit_ms: number;
   memory_limit_mb: number;
+  language_resource_limits?: Partial<
+    Record<
+      string,
+      {
+        time_limit_ms?: number | null;
+        memory_limit_mb?: number | null;
+      }
+    >
+  >;
   display_order?: number;
 };
 

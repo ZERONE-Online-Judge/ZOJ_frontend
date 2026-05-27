@@ -64,6 +64,7 @@ import {
 } from '@/domains/submissionScoreboard/status';
 import {
   isJudgeLanguage,
+  judgeLanguages,
   loadLastJudgeLanguage,
   saveLastJudgeLanguage,
 } from '@/domains/submissionScoreboard/languagePreference';
@@ -80,6 +81,9 @@ type ProblemForm = {
   divisionId: string;
   examples: { input: string; note?: string; output: string }[];
   inputDescription: string;
+  languageResourceLimits: Partial<
+    Record<JudgeLanguage, { memoryLimitMb: string; timeLimitMs: string }>
+  >;
   memoryLimitMb: string;
   note: string;
   outputDescription: string;
@@ -95,6 +99,12 @@ const LIMIT_BOUNDARIES = {
   memoryMb: { max: 1024, min: 16 },
   timeMs: { max: 10000, min: 100 },
 } as const;
+const LANGUAGE_LABELS: Record<JudgeLanguage, string> = {
+  c99: 'C99',
+  cpp17: 'C++17',
+  java8: 'Java 8',
+  python313: 'Python 3.13',
+};
 
 function sleep(ms: number) {
   return new Promise((resolve) => {
@@ -188,6 +198,7 @@ const emptyProblemForm: ProblemForm = {
   divisionId: '',
   examples: [],
   inputDescription: '',
+  languageResourceLimits: {},
   memoryLimitMb: '256',
   note: '',
   outputDescription: '',
@@ -200,12 +211,35 @@ const emptyProblemForm: ProblemForm = {
 
 function problemFormFromProblem(problem: Problem): ProblemForm {
   const document = parseProblemDocument(problem.statement);
+  const languageResourceLimits = Object.fromEntries(
+    judgeLanguages
+      .map((language) => {
+        const limit = problem.language_resource_limits?.[language];
+        if (!limit) return null;
+        return [
+          language,
+          {
+            memoryLimitMb:
+              limit.memory_limit_mb === undefined ||
+              limit.memory_limit_mb === null
+                ? ''
+                : String(limit.memory_limit_mb),
+            timeLimitMs:
+              limit.time_limit_ms === undefined || limit.time_limit_ms === null
+                ? ''
+                : String(limit.time_limit_ms),
+          },
+        ];
+      })
+      .filter(Boolean) as [JudgeLanguage, { memoryLimitMb: string; timeLimitMs: string }][],
+  );
 
   return {
     displayOrder: String(problem.display_order ?? ''),
     divisionId: problem.division_id ?? '',
     examples: document.examples,
     inputDescription: document.inputDescription,
+    languageResourceLimits,
     memoryLimitMb: String(problem.memory_limit_mb),
     note: document.note,
     outputDescription: document.outputDescription,
@@ -227,6 +261,39 @@ function problemStatementFromForm(form: ProblemForm) {
     outputDescription: form.outputDescription,
     statement: form.statement,
   });
+}
+
+function languageResourceLimitsFromForm(form: ProblemForm) {
+  return Object.fromEntries(
+    judgeLanguages
+      .map((language) => {
+        const limit = form.languageResourceLimits[language];
+        if (!limit) return null;
+        const timeLimitMs = limit.timeLimitMs.trim();
+        const memoryLimitMb = limit.memoryLimitMb.trim();
+        const payload: { memory_limit_mb?: number; time_limit_ms?: number } = {};
+        if (timeLimitMs) payload.time_limit_ms = Number(timeLimitMs);
+        if (memoryLimitMb) payload.memory_limit_mb = Number(memoryLimitMb);
+        return Object.keys(payload).length ? [language, payload] : null;
+      })
+      .filter(Boolean) as [
+      JudgeLanguage,
+      { memory_limit_mb?: number; time_limit_ms?: number },
+    ][],
+  );
+}
+
+function languageResourceLimitSummary(problem: Problem) {
+  const items = judgeLanguages
+    .map((language) => {
+      const limit = problem.language_resource_limits?.[language];
+      if (!limit?.time_limit_ms && !limit?.memory_limit_mb) return '';
+      const time = limit.time_limit_ms ? `${limit.time_limit_ms}ms` : '기본 시간';
+      const memory = limit.memory_limit_mb ? `${limit.memory_limit_mb}MB` : '기본 메모리';
+      return `${LANGUAGE_LABELS[language]} ${time}/${memory}`;
+    })
+    .filter(Boolean);
+  return items.join(' · ');
 }
 
 function positiveNumberOrFallback(value: string, fallback: number) {
@@ -270,6 +337,16 @@ function normalizeLimitValue(
   return { message, value: String(nextValue) };
 }
 
+function normalizeOptionalLimitValue(
+  value: string,
+  label: string,
+  unit: string,
+  boundary: { max: number; min: number },
+) {
+  if (!value.trim()) return { message: '', value };
+  return normalizeLimitValue(value, label, unit, boundary);
+}
+
 function normalizeProblemLimitForm(form: ProblemForm) {
   const time = normalizeLimitValue(
     form.timeLimitMs,
@@ -283,14 +360,39 @@ function normalizeProblemLimitForm(form: ProblemForm) {
     'MB',
     LIMIT_BOUNDARIES.memoryMb,
   );
+  const normalizedLanguageLimits = { ...form.languageResourceLimits };
+  const languageMessages: string[] = [];
+  for (const language of judgeLanguages) {
+    const limit = form.languageResourceLimits[language];
+    if (!limit) continue;
+    const label = LANGUAGE_LABELS[language];
+    const languageTime = normalizeOptionalLimitValue(
+      limit.timeLimitMs,
+      `${label} 시간 제한`,
+      'ms',
+      LIMIT_BOUNDARIES.timeMs,
+    );
+    const languageMemory = normalizeOptionalLimitValue(
+      limit.memoryLimitMb,
+      `${label} 메모리 제한`,
+      'MB',
+      LIMIT_BOUNDARIES.memoryMb,
+    );
+    languageMessages.push(languageTime.message, languageMemory.message);
+    normalizedLanguageLimits[language] = {
+      memoryLimitMb: languageMemory.value,
+      timeLimitMs: languageTime.value,
+    };
+  }
 
   return {
     form: {
       ...form,
+      languageResourceLimits: normalizedLanguageLimits,
       memoryLimitMb: memory.value,
       timeLimitMs: time.value,
     },
-    messages: [time.message, memory.message].filter(Boolean),
+    messages: [time.message, memory.message, ...languageMessages].filter(Boolean),
   };
 }
 
@@ -308,6 +410,7 @@ function previewProblemFromForm(
   return {
     display_order: displayOrder,
     division_id: form.divisionId || selectedProblem?.division_id,
+    language_resource_limits: languageResourceLimitsFromForm(form),
     memory_limit_mb: limitValueOrFallback(
       form.memoryLimitMb,
       selectedProblem?.memory_limit_mb ?? 256,
@@ -337,14 +440,32 @@ function positiveInteger(value: string, label: string) {
   return '';
 }
 
+function positiveOptionalInteger(value: string, label: string) {
+  if (!value.trim()) return '';
+  return positiveInteger(value, label);
+}
+
 function validateProblemForm(form: ProblemForm) {
   if (!form.divisionId || !form.problemCode.trim() || !form.title.trim()) {
     return '유형, 문제 번호, 제목은 반드시 입력해야 합니다.';
   }
 
+  const languageLimitError = judgeLanguages
+    .map((language) => {
+      const limit = form.languageResourceLimits[language];
+      if (!limit) return '';
+      const label = LANGUAGE_LABELS[language];
+      return (
+        positiveOptionalInteger(limit.timeLimitMs, `${label} 시간 제한`) ||
+        positiveOptionalInteger(limit.memoryLimitMb, `${label} 메모리 제한`)
+      );
+    })
+    .find(Boolean);
+
   return (
     positiveInteger(form.timeLimitMs, '시간 제한') ||
     positiveInteger(form.memoryLimitMb, '메모리 제한') ||
+    languageLimitError ||
     (form.displayOrder ? positiveInteger(form.displayOrder, '정렬 순서') : '')
   );
 }
@@ -719,6 +840,7 @@ function OperatorProblemsContent({
           ? Number(problemForm.displayOrder)
           : undefined,
         division_id: problemForm.divisionId,
+        language_resource_limits: languageResourceLimitsFromForm(problemForm),
         memory_limit_mb: Number(problemForm.memoryLimitMb),
         problem_code: problemForm.problemCode.trim(),
         statement: problemStatementFromForm(problemForm),
@@ -1569,6 +1691,11 @@ function OperatorProblemsContent({
                 <span className="text-xs font-bold text-slate-500">
                   {problem.time_limit_ms}ms / {problem.memory_limit_mb}MB
                 </span>
+                {languageResourceLimitSummary(problem) ? (
+                  <span className="truncate text-[11px] font-bold text-indigo-600">
+                    {languageResourceLimitSummary(problem)}
+                  </span>
+                ) : null}
               </button>
             ))}
             {!filteredProblems.length ? (
@@ -1694,6 +1821,85 @@ function OperatorProblemsContent({
                       inputMode="numeric"
                       value={form.memoryLimitMb}
                     />
+                  </div>
+                  <div className="rounded border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          언어별 리소스 제한
+                        </h3>
+                        <p className="mt-1 text-xs font-bold text-slate-500">
+                          비워두면 기본 시간/메모리 제한을 그대로 사용합니다.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-3">
+                      {judgeLanguages.map((language) => {
+                        const limit = form.languageResourceLimits[language] ?? {
+                          memoryLimitMb: '',
+                          timeLimitMs: '',
+                        };
+                        return (
+                          <div
+                            className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
+                            key={language}
+                          >
+                            <div>
+                              <p className="text-xs font-black tracking-normal text-slate-500 uppercase">
+                                Language
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-950">
+                                {LANGUAGE_LABELS[language]}
+                              </p>
+                            </div>
+                            <TextInput
+                              label="시간(ms)"
+                              onBlur={normalizeLimitsInForm}
+                              onChange={(value) => {
+                                setFormNotice('');
+                                setForm((prev) => ({
+                                  ...prev,
+                                  languageResourceLimits: {
+                                    ...prev.languageResourceLimits,
+                                    [language]: {
+                                      memoryLimitMb:
+                                        prev.languageResourceLimits[language]
+                                          ?.memoryLimitMb ?? '',
+                                      timeLimitMs: value,
+                                    },
+                                  },
+                                }));
+                              }}
+                              placeholder={form.timeLimitMs}
+                              inputMode="numeric"
+                              value={limit.timeLimitMs}
+                            />
+                            <TextInput
+                              label="메모리(MB)"
+                              onBlur={normalizeLimitsInForm}
+                              onChange={(value) => {
+                                setFormNotice('');
+                                setForm((prev) => ({
+                                  ...prev,
+                                  languageResourceLimits: {
+                                    ...prev.languageResourceLimits,
+                                    [language]: {
+                                      memoryLimitMb: value,
+                                      timeLimitMs:
+                                        prev.languageResourceLimits[language]
+                                          ?.timeLimitMs ?? '',
+                                    },
+                                  },
+                                }));
+                              }}
+                              placeholder={form.memoryLimitMb}
+                              inputMode="numeric"
+                              value={limit.memoryLimitMb}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <label className="grid gap-2 text-sm font-black text-slate-700">
                     정렬 순서
@@ -3205,6 +3411,7 @@ function TextInput({
   label,
   onBlur,
   onChange,
+  placeholder,
   value,
 }: {
   helperText?: string;
@@ -3212,6 +3419,7 @@ function TextInput({
   label: string;
   onBlur?: () => void;
   onChange: (value: string) => void;
+  placeholder?: string;
   value: string;
 }) {
   return (
@@ -3222,6 +3430,7 @@ function TextInput({
         inputMode={inputMode}
         onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
         value={value}
       />
       {helperText ? (
