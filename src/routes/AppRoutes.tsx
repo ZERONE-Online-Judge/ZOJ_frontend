@@ -2,9 +2,49 @@ import { type ReactNode, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import type { GeneralSession } from '@/domains/identityAccess/types';
+import type { ParticipantSession } from '@/domains/teamParticipation/types';
 import { appRoutes } from '@/routes/routeConfig';
 import RouteErrorBoundary from '@/routes/RouteErrorBoundary';
 import PageNotice from '@/shared/ui/PageNotice';
+
+function operatorContestRoute(pathname: string) {
+  const match = pathname.match(/^\/operator\/contests\/([^/]+)(?:\/([^/]+))?/);
+  if (!match) return null;
+  return {
+    contestId: decodeURIComponent(match[1]),
+    section: match[2] ?? '',
+  };
+}
+
+function participantRedirectPath(
+  pathname: string,
+  generalSession: GeneralSession | null,
+  participantSession: ParticipantSession | null,
+) {
+  const operatorRoute = operatorContestRoute(pathname);
+  if (!operatorRoute) return '/';
+
+  const canParticipate =
+    participantSession?.contestId === operatorRoute.contestId ||
+    generalSession?.participantContests.some(
+      (entry) => entry.contest.contest_id === operatorRoute.contestId,
+    );
+  if (!canParticipate) return '/';
+
+  const sectionPath: Record<string, string> = {
+    board: 'board',
+    notices: 'board',
+    problems: 'problems',
+    scoreboard: 'scoreboard',
+    submissions: 'submissions',
+  };
+  const nextSection = sectionPath[operatorRoute.section];
+  const contestPath = encodeURIComponent(operatorRoute.contestId);
+  return nextSection
+    ? `/contests/${contestPath}/${nextSection}`
+    : `/contests/${contestPath}`;
+}
 
 function RouteAccessGuard({
   access,
@@ -15,6 +55,9 @@ function RouteAccessGuard({
 }) {
   const location = useLocation();
   const generalSession = useSessionStore((state) => state.generalSession);
+  const participantSession = useSessionStore(
+    (state) => state.participantSession,
+  );
 
   if (!access || access === 'public') return children;
 
@@ -23,10 +66,39 @@ function RouteAccessGuard({
     Boolean(generalSession?.operatorContests.length) ||
     Boolean(generalSession && isServiceMaster(generalSession));
 
-  if (!generalSession || !canUseOperatorArea) {
+  if (!generalSession) {
+    if (access === 'operator' && participantSession) {
+      return (
+        <Navigate
+          replace
+          to={participantRedirectPath(
+            location.pathname,
+            null,
+            participantSession,
+          )}
+        />
+      );
+    }
     const next = `${location.pathname}${location.search}`;
 
     return <Navigate replace to={`/login?moveTo=${encodeURIComponent(next)}`} />;
+  }
+
+  if (!canUseOperatorArea) {
+    return (
+      <Navigate
+        replace
+        to={
+          access === 'operator'
+            ? participantRedirectPath(
+                location.pathname,
+                generalSession,
+                participantSession,
+              )
+            : '/'
+        }
+      />
+    );
   }
 
   if (access === 'admin' && !isServiceMaster(generalSession)) {
