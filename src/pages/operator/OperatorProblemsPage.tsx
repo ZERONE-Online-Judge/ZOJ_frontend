@@ -52,6 +52,10 @@ import {
   TESTCASE_SUPPORT_FILE_ROLES,
 } from '@/domains/problemManagement/types';
 import {
+  problemMemoryLimitLabel,
+  problemTimeLimitLabel,
+} from '@/domains/problemManagement/resourceLimits';
+import {
   createOperatorTestSubmission,
   waitOperatorTestSubmissionStatus,
 } from '@/domains/submissionScoreboard/api';
@@ -281,19 +285,6 @@ function languageResourceLimitsFromForm(form: ProblemForm) {
       { memory_limit_mb?: number; time_limit_ms?: number },
     ][],
   );
-}
-
-function languageResourceLimitSummary(problem: Problem) {
-  const items = judgeLanguages
-    .map((language) => {
-      const limit = problem.language_resource_limits?.[language];
-      if (!limit?.time_limit_ms && !limit?.memory_limit_mb) return '';
-      const time = limit.time_limit_ms ? `${limit.time_limit_ms}ms` : '기본 시간';
-      const memory = limit.memory_limit_mb ? `${limit.memory_limit_mb}MB` : '기본 메모리';
-      return `${LANGUAGE_LABELS[language]} ${time}/${memory}`;
-    })
-    .filter(Boolean);
-  return items.join(' · ');
 }
 
 function positiveNumberOrFallback(value: string, fallback: number) {
@@ -1689,13 +1680,11 @@ function OperatorProblemsContent({
                   {problem.problem_code}. {problem.title}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  {problem.time_limit_ms}ms / {problem.memory_limit_mb}MB
+                  시간 {problemTimeLimitLabel(problem)}
                 </span>
-                {languageResourceLimitSummary(problem) ? (
-                  <span className="truncate text-[11px] font-bold text-indigo-600">
-                    {languageResourceLimitSummary(problem)}
-                  </span>
-                ) : null}
+                <span className="text-xs font-bold text-slate-500">
+                  메모리 {problemMemoryLimitLabel(problem)}
+                </span>
               </button>
             ))}
             {!filteredProblems.length ? (

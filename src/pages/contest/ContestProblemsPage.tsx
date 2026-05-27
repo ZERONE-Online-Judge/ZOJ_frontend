@@ -19,6 +19,10 @@ import {
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
 import {
+  problemMemoryLimitLabel,
+  problemTimeLimitLabel,
+} from '@/domains/problemManagement/resourceLimits';
+import {
   getDivisionScoreboard,
   getScoreboard,
 } from '@/domains/submissionScoreboard/api';
@@ -276,8 +280,8 @@ function ContestProblemsContent({
                   <th className="w-24 px-6 py-4">문제 번호</th>
                   <th className="px-6 py-4">제목</th>
                   <th className="w-36 px-6 py-4">정보</th>
-                  <th className="w-32 px-6 py-4">제한 시간</th>
-                  <th className="w-36 px-6 py-4">제한 메모리</th>
+                  <th className="min-w-40 px-6 py-4">제한 시간</th>
+                  <th className="min-w-48 px-6 py-4">제한 메모리</th>
                 </tr>
               </thead>
               <tbody>
@@ -304,10 +308,10 @@ function ContestProblemsContent({
                         <ProblemStatusBadge status={problemStatus(score)} />
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-950">
-                        {problem.time_limit_ms / 1000}초
+                        {problemTimeLimitLabel(problem)}
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-950">
-                        {problem.memory_limit_mb} MB
+                        {problemMemoryLimitLabel(problem)}
                       </td>
                     </tr>
                   );
