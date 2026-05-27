@@ -39,6 +39,17 @@ function timeLeftLabel(target?: string | null, now = Date.now()) {
   return `${seconds}s`;
 }
 
+function splitContestTitle(title?: string | null) {
+  const fallback = '스코어보드';
+  const normalized = (title || fallback).trim();
+  const [first = fallback, ...rest] = normalized.split(/\s+/);
+
+  return {
+    primary: first,
+    secondary: rest.join(' '),
+  };
+}
+
 function sortedProblemCodes(section: OperatorPresentationScoreboardSection) {
   const codes = new Set<string>();
   section.problems.forEach((problem) => codes.add(problem.problem_code));
@@ -58,7 +69,7 @@ function problemScoreByCode(row: ScoreboardRow) {
 function solvedLabel(score?: ScoreboardProblemScore) {
   if (!score) return '';
   if (score.solved) {
-    return score.wrong_attempts > 0 ? `+${score.wrong_attempts}` : '+';
+    return score.wrong_attempts > 0 ? `+${score.wrong_attempts}` : '✓';
   }
   if (score.attempts > 0) return `-${score.attempts}`;
   return '';
@@ -71,19 +82,20 @@ function penaltyLabel(value?: number | null) {
 
 function PresentationScoreCell({ score }: { score?: ScoreboardProblemScore }) {
   const label = solvedLabel(score);
+  if (!label) {
+    return <span className="text-white/20">-</span>;
+  }
 
   return (
     <span
       className={[
-        'inline-flex h-8 min-w-9 items-center justify-center rounded border px-2 text-sm font-black',
+        'inline-flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-xs font-black',
         score?.solved
-          ? 'border-emerald-400 bg-emerald-400 text-slate-950'
-          : score && score.attempts > 0
-            ? 'border-rose-400/70 bg-rose-500/15 text-rose-100'
-            : 'border-white/10 bg-white/[0.03] text-white/30',
+          ? 'bg-emerald-300 text-slate-950'
+          : 'bg-rose-500/15 text-rose-200 ring-1 ring-rose-300/30',
       ].join(' ')}
     >
-      {label || '-'}
+      {label}
     </span>
   );
 }
@@ -94,43 +106,48 @@ function PresentationDivisionBoard({
   section: OperatorPresentationScoreboardSection;
 }) {
   const problemCodes = useMemo(() => sortedProblemCodes(section), [section]);
+  const gridMinWidth = Math.max(620, 430 + problemCodes.length * 56);
 
   return (
-    <section className="min-w-0 overflow-hidden rounded border border-white/10 bg-white/[0.06] shadow-2xl shadow-black/20">
-      <header className="flex items-center justify-between gap-4 border-b border-white/10 bg-white/[0.05] px-5 py-4">
+    <section className="min-w-0 overflow-hidden rounded-[1rem] border border-indigo-300/15 bg-slate-950/55 p-[clamp(1rem,2vw,1.75rem)] shadow-[0_1.25rem_4rem_rgba(0,0,0,0.28)] backdrop-blur">
+      <header className="flex items-end justify-between gap-4 pb-5">
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-indigo-200">
+          <p className="text-[0.68rem] font-black tracking-[0.32em] text-violet-300 uppercase">
             Division
           </p>
-          <h2 className="truncate text-[clamp(1.35rem,2vw,2rem)] font-black text-white">
+          <h2 className="truncate text-[clamp(1.65rem,3vw,3.25rem)] leading-none font-black tracking-normal text-white">
             {section.division.name}
           </h2>
         </div>
         <span
           className={[
-            'shrink-0 rounded-full border px-3 py-1 text-sm font-black',
+            'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black',
             section.frozen
-              ? 'border-amber-300 bg-amber-300 text-slate-950'
-              : 'border-emerald-300/40 bg-emerald-300/15 text-emerald-100',
+              ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+              : 'border-violet-300/25 bg-violet-300/10 text-violet-100',
           ].join(' ')}
         >
+          <span className="size-2 rounded-full bg-current" />
           {section.frozen ? '프리즈' : '라이브'}
         </span>
       </header>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse text-left">
+        <table
+          className="w-full border-collapse text-left"
+          style={{ minWidth: `${gridMinWidth}px` }}
+        >
           <thead>
-            <tr className="border-b border-white/10 text-xs font-black uppercase tracking-[0.12em] text-white/55">
-              <th className="w-16 px-4 py-3">Rank</th>
-              <th className="min-w-48 px-4 py-3">Team</th>
-              <th className="w-20 px-3 py-3 text-center">Solved</th>
+            <tr className="border-y border-white/10 text-[0.68rem] font-black tracking-normal text-white/85 uppercase">
+              <th className="w-20 px-4 py-4">Rank</th>
+              <th className="min-w-56 px-4 py-4">Team</th>
+              <th className="w-20 px-3 py-4 text-center">Solved</th>
               {problemCodes.map((code) => (
-                <th className="w-12 px-1 py-3 text-center" key={code}>
+                <th className="w-14 px-1 py-4 text-center" key={code}>
                   {code}
                 </th>
               ))}
-              <th className="w-24 px-4 py-3 text-right">Time</th>
+              <th className="w-24 px-4 py-4 text-center">Time</th>
             </tr>
           </thead>
           <tbody>
@@ -139,18 +156,18 @@ function PresentationDivisionBoard({
 
               return (
                 <tr
-                  className="border-b border-white/10 last:border-b-0 odd:bg-white/[0.025]"
+                  className="border-b border-white/5 last:border-b-0 odd:bg-white/[0.035]"
                   key={`${section.division.division_id}-${row.team_id ?? row.team_name}`}
                 >
-                  <td className="px-4 py-3 text-lg font-black text-indigo-100">
+                  <td className="px-4 py-3 text-[clamp(1rem,1.6vw,1.45rem)] font-black text-violet-300">
                     {row.rank}
                   </td>
                   <td className="max-w-72 px-4 py-3">
-                    <span className="block truncate text-base font-black text-white">
+                    <span className="block truncate text-[clamp(0.9rem,1.2vw,1.05rem)] font-bold text-white">
                       {row.team_name}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center text-lg font-black text-white">
+                  <td className="px-3 py-3 text-center text-[clamp(1rem,1.4vw,1.25rem)] font-black text-white/65">
                     {row.solved}
                   </td>
                   {problemCodes.map((code) => (
@@ -158,7 +175,7 @@ function PresentationDivisionBoard({
                       <PresentationScoreCell score={scores.get(code)} />
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-right text-base font-black text-white/80">
+                  <td className="px-4 py-3 text-center text-[clamp(1rem,1.4vw,1.25rem)] font-black text-white/65">
                     {penaltyLabel(row.penalty)}
                   </td>
                 </tr>
@@ -217,6 +234,7 @@ function OperatorScoreboardPresentationContent({
   });
   const contest = presentationQuery.data?.contest;
   const sections = presentationQuery.data?.sections ?? [];
+  const titleParts = splitContestTitle(contest?.title);
 
   useEffect(() => {
     if (contest?.title) {
@@ -225,36 +243,46 @@ function OperatorScoreboardPresentationContent({
   }, [contest?.title]);
 
   return (
-    <section className="fixed inset-0 z-[100] overflow-auto bg-slate-950 px-6 py-6 text-white">
-      <div className="mx-auto grid w-full max-w-[1800px] gap-5">
-        <header className="grid gap-4 rounded border border-white/10 bg-white/[0.06] px-6 py-5 shadow-2xl shadow-black/30 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="min-w-0">
-            <p className="text-sm font-black uppercase tracking-[0.32em] text-indigo-200">
+    <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,2vw,2rem)] text-white">
+      <div className="mx-auto grid w-full max-w-[118rem] gap-[clamp(1rem,2vw,2rem)]">
+        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1.5rem,3vw,3rem)] py-[clamp(2rem,4vw,4rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
+          <div className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem]" />
+          <div className="grid gap-[clamp(1.5rem,3vw,3rem)] xl:grid-cols-[minmax(20rem,1fr)_minmax(36rem,0.95fr)] xl:items-center">
+            <div className="min-w-0">
+              <p className="text-[clamp(0.68rem,0.9vw,0.95rem)] font-black tracking-[0.34em] text-violet-300 uppercase">
               ZOJ Presentation Scoreboard
-            </p>
-            <h1 className="mt-2 truncate text-[clamp(2rem,4vw,4.8rem)] font-black leading-none tracking-normal">
-              {contest?.title ?? '스코어보드'}
-            </h1>
-          </div>
-          <div className="grid gap-2 text-sm font-bold text-white/75 sm:grid-cols-2 lg:min-w-[560px]">
-            <TimePanel
-              label="스코어보드 프리즈"
-              time={formatDateTime(contest?.freeze_at)}
-              value={
-                contest && new Date(contest.freeze_at).getTime() <= now
-                  ? '프리즈 적용 중'
-                  : `프리즈까지 ${timeLeftLabel(contest?.freeze_at, now)}`
-              }
-            />
-            <TimePanel
-              label="대회 종료"
-              time={formatDateTime(contest?.end_at)}
-              value={
-                contest && new Date(contest.end_at).getTime() <= now
-                  ? '대회 종료'
-                  : `종료까지 ${timeLeftLabel(contest?.end_at, now)}`
-              }
-            />
+              </p>
+              <h1 className="mt-5 grid gap-1 text-[clamp(3rem,7.8vw,8.25rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
+                <span className="zoj-truncate-safe whitespace-nowrap">
+                  {titleParts.primary}
+                </span>
+                {titleParts.secondary ? (
+                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(1.5rem,5vw,4rem)] text-transparent">
+                    {titleParts.secondary}
+                  </span>
+                ) : null}
+              </h1>
+            </div>
+            <div className="grid gap-[clamp(1rem,2vw,2rem)] md:grid-cols-2">
+              <TimePanel
+                label="스코어보드 프리즈"
+                time={formatDateTime(contest?.freeze_at)}
+                value={
+                  contest && new Date(contest.freeze_at).getTime() <= now
+                    ? '프리즈 적용 중'
+                    : timeLeftLabel(contest?.freeze_at, now)
+                }
+              />
+              <TimePanel
+                label="대회 종료"
+                time={formatDateTime(contest?.end_at)}
+                value={
+                  contest && new Date(contest.end_at).getTime() <= now
+                    ? '대회 종료'
+                    : timeLeftLabel(contest?.end_at, now)
+                }
+              />
+            </div>
           </div>
         </header>
 
@@ -273,7 +301,7 @@ function OperatorScoreboardPresentationContent({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,560px),1fr))] gap-5">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,38rem),1fr))] gap-[clamp(1rem,2vw,2rem)]">
           {sections.map((section) => (
             <PresentationDivisionBoard
               key={section.division.division_id}
@@ -302,12 +330,16 @@ function TimePanel({
   value: string;
 }) {
   return (
-    <div className="rounded border border-white/10 bg-slate-950/50 px-4 py-3">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">
+    <div className="grid min-h-[clamp(8rem,14vw,13rem)] content-center border border-white/10 bg-white/[0.07] px-[clamp(1.25rem,2.5vw,2rem)] py-[clamp(1.25rem,2.5vw,2rem)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <p className="text-center text-[clamp(0.9rem,1.4vw,1.45rem)] font-black tracking-normal text-white/55">
         {label}
       </p>
-      <p className="mt-1 text-sm font-bold text-white/70">{time}</p>
-      <p className="mt-2 text-xl font-black text-white">{value}</p>
+      <p className="mt-3 text-center text-[clamp(0.85rem,1.15vw,1.15rem)] font-bold text-white/75">
+        {time}
+      </p>
+      <p className="mt-3 text-center text-[clamp(2.3rem,5vw,5rem)] leading-none font-black tracking-normal text-violet-500">
+        {value}
+      </p>
     </div>
   );
 }
