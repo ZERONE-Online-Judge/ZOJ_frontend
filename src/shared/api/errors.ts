@@ -26,6 +26,16 @@ export function isApiClientError(error: unknown): error is ApiClientError {
   return error instanceof ApiClientError;
 }
 
+export function isSessionAuthError(error: unknown) {
+  return (
+    error instanceof ApiClientError &&
+    (error.status === 401 ||
+      error.code === 'authentication_required' ||
+      error.code === 'invalid_token' ||
+      error.code === 'session_revoked')
+  );
+}
+
 export function toApiError(response: Response, payload: unknown) {
   const body = payload as ApiErrorBody | null;
 

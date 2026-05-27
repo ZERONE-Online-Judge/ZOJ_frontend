@@ -210,7 +210,12 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
             : {}),
         },
       );
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          clearStoredSessionForFailedToken(token, '/auth/staff/refresh');
+        }
+        return null;
+      }
 
       const data = (
         payload as DataEnvelope<Partial<Parameters<typeof mapStaffSession>[0]>>
@@ -257,7 +262,12 @@ async function refreshGeneralAccessToken(
             : {}),
         },
       );
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          clearStoredSessionForFailedToken(token, '/auth/general/refresh');
+        }
+        return null;
+      }
 
       const next = mapGeneralSession(
         (payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>)
@@ -299,7 +309,13 @@ async function refreshParticipantAccessToken(
 
       if (sessionResponse.response.status === 401) {
         const refreshedGeneral = await refreshGeneralAccessToken(generalToken);
-        if (!refreshedGeneral) return null;
+        if (!refreshedGeneral) {
+          clearStoredSessionForFailedToken(
+            token,
+            `/auth/general/contests/${contestId}/participant-session`,
+          );
+          return null;
+        }
 
         generalToken = refreshedGeneral;
         sessionResponse = await apiFetchRaw(
@@ -309,7 +325,18 @@ async function refreshParticipantAccessToken(
         );
       }
 
-      if (!sessionResponse.response.ok) return null;
+      if (!sessionResponse.response.ok) {
+        if (
+          sessionResponse.response.status === 401 ||
+          sessionResponse.response.status === 403
+        ) {
+          clearStoredSessionForFailedToken(
+            token,
+            `/auth/general/contests/${contestId}/participant-session`,
+          );
+        }
+        return null;
+      }
 
       const data = (
         sessionResponse.payload as DataEnvelope<{
