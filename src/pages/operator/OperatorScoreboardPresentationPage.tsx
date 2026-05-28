@@ -245,25 +245,25 @@ function OperatorScoreboardPresentationContent({
   return (
     <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,2vw,2rem)] text-white">
       <div className="mx-auto grid w-full max-w-[118rem] gap-[clamp(1rem,2vw,2rem)]">
-        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1.5rem,3vw,3rem)] py-[clamp(2rem,4vw,4rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
+        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1.25rem,2.5vw,2.5rem)] py-[clamp(1.25rem,2.5vw,2.75rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem]" />
-          <div className="grid gap-[clamp(1.5rem,3vw,3rem)] xl:grid-cols-[minmax(20rem,1fr)_minmax(36rem,0.95fr)] xl:items-center">
+          <div className="grid gap-[clamp(1rem,2vw,2.25rem)] xl:grid-cols-[minmax(20rem,1fr)_minmax(32rem,0.85fr)] xl:items-center">
             <div className="min-w-0">
-              <p className="text-[clamp(0.68rem,0.9vw,0.95rem)] font-black tracking-[0.34em] text-violet-300 uppercase">
+              <p className="text-[clamp(0.62rem,0.75vw,0.82rem)] font-black tracking-[0.3em] text-violet-300 uppercase">
               ZOJ Presentation Scoreboard
               </p>
-              <h1 className="mt-5 grid gap-1 text-[clamp(3rem,7.8vw,8.25rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
+              <h1 className="mt-3 grid gap-1 text-[clamp(2.5rem,5.8vw,6rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
                 <span className="zoj-truncate-safe whitespace-nowrap">
                   {titleParts.primary}
                 </span>
                 {titleParts.secondary ? (
-                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(1.5rem,5vw,4rem)] text-transparent">
+                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(1rem,3.5vw,3rem)] text-transparent">
                     {titleParts.secondary}
                   </span>
                 ) : null}
               </h1>
             </div>
-            <div className="grid gap-[clamp(1rem,2vw,2rem)] md:grid-cols-2">
+            <div className="grid gap-[clamp(0.75rem,1.5vw,1.5rem)] md:grid-cols-2">
               <TimePanel
                 label="스코어보드 프리즈"
                 time={formatDateTime(contest?.freeze_at)}
@@ -330,14 +330,14 @@ function TimePanel({
   value: string;
 }) {
   return (
-    <div className="grid min-h-[clamp(8rem,14vw,13rem)] content-center border border-white/10 bg-white/[0.07] px-[clamp(1.25rem,2.5vw,2rem)] py-[clamp(1.25rem,2.5vw,2rem)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-      <p className="text-center text-[clamp(0.9rem,1.4vw,1.45rem)] font-black tracking-normal text-white/55">
+    <div className="grid min-h-[clamp(6.5rem,10vw,9rem)] content-center border border-white/10 bg-white/[0.07] px-[clamp(1rem,2vw,1.5rem)] py-[clamp(1rem,2vw,1.5rem)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <p className="text-center text-[clamp(0.78rem,1vw,1.05rem)] font-black tracking-normal text-white/55">
         {label}
       </p>
-      <p className="mt-3 text-center text-[clamp(0.85rem,1.15vw,1.15rem)] font-bold text-white/75">
+      <p className="mt-2 text-center text-[clamp(0.75rem,0.9vw,0.95rem)] font-bold text-white/75">
         {time}
       </p>
-      <p className="mt-3 text-center text-[clamp(2.3rem,5vw,5rem)] leading-none font-black tracking-normal text-violet-500">
+      <p className="mt-2 text-center text-[clamp(1.75rem,3.4vw,3.5rem)] leading-none font-black tracking-normal text-violet-500">
         {value}
       </p>
     </div>
