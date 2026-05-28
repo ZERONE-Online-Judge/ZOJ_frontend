@@ -6,6 +6,7 @@ import type {
 } from '@/domains/submissionScoreboard/types';
 
 type ContestScoreboardTableProps = {
+  onSelectPenaltyBreakdown?: (row: ScoreboardRow) => void;
   problems?: Problem[];
   rows: ScoreboardRow[];
 };
@@ -51,6 +52,7 @@ function submissionCount(row: ScoreboardRow) {
 }
 
 export default function ContestScoreboardTable({
+  onSelectPenaltyBreakdown,
   problems = [],
   rows,
 }: ContestScoreboardTableProps) {
@@ -112,7 +114,20 @@ export default function ContestScoreboardTable({
                   </td>
                 );
               })}
-              <td className={bodyCellClassName}>{totalPenalty(row)}</td>
+              <td className={bodyCellClassName}>
+                {onSelectPenaltyBreakdown ? (
+                  <button
+                    className="font-black text-indigo-700 underline-offset-4 hover:text-indigo-950 hover:underline"
+                    onClick={() => onSelectPenaltyBreakdown(row)}
+                    title="패널티 계산 상세 보기"
+                    type="button"
+                  >
+                    {totalPenalty(row)}
+                  </button>
+                ) : (
+                  totalPenalty(row)
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

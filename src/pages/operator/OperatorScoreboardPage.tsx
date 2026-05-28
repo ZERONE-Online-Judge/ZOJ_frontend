@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   keepPreviousData,
@@ -22,7 +22,12 @@ import {
 import type { ScoreboardFreezeMode } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
+import type { Problem } from '@/domains/problemManagement/types';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
+import type {
+  ScoreboardProblemScore,
+  ScoreboardRow,
+} from '@/domains/submissionScoreboard/types';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
@@ -76,6 +81,144 @@ function freezeRemainingLabel(freezeAt?: string | null) {
   if (days > 0) return `${days}일 ${hours}시간 ${minutes}분 남음`;
   if (hours > 0) return `${hours}시간 ${minutes}분 남음`;
   return `${minutes}분 남음`;
+}
+
+function formatPenalty(value?: number | null) {
+  if (value === undefined || value === null) return '-';
+  return value.toLocaleString('ko-KR');
+}
+
+function problemLabel(
+  score: ScoreboardProblemScore,
+  problemById: Map<string, Problem>,
+) {
+  const problem = score.problem_id ? problemById.get(score.problem_id) : null;
+  if (!problem) return score.problem_code;
+  return `${problem.problem_code}. ${problem.title}`;
+}
+
+function elapsedMinutes(
+  score: ScoreboardProblemScore,
+  contestStartAt?: string | null,
+) {
+  if (contestStartAt && score.solved_at) {
+    const diff = new Date(score.solved_at).getTime() - new Date(contestStartAt).getTime();
+    if (Number.isFinite(diff)) return Math.max(0, Math.floor(diff / 60_000));
+  }
+
+  if (score.penalty === undefined || score.penalty === null) return null;
+  return Math.max(0, score.penalty - score.wrong_attempts * 20);
+}
+
+function PenaltyBreakdownModal({
+  contestStartAt,
+  onClose,
+  problemById,
+  row,
+}: {
+  contestStartAt?: string | null;
+  onClose: () => void;
+  problemById: Map<string, Problem>;
+  row: ScoreboardRow;
+}) {
+  const solvedScores = row.problem_scores.filter((score) => score.solved);
+  const unsolvedAttemptCount = row.problem_scores
+    .filter((score) => !score.solved)
+    .reduce((sum, score) => sum + score.attempts, 0);
+
+  return (
+    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
+      <section className="zoj-modal-shell grid max-w-4xl grid-rows-[auto_minmax(0,1fr)]">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black text-indigo-600 uppercase">
+              Penalty breakdown
+            </p>
+            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
+              {row.team_name} · 총시간 {formatPenalty(row.penalty)}
+            </h2>
+          </div>
+          <button
+            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            닫기
+          </button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-5">
+          <div className="grid gap-4">
+            <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50 px-4 py-4 text-sm font-bold text-indigo-900">
+              <p>
+                총시간은 스코어보드 응답의 <code>row.penalty</code> 값입니다.
+                문제별로 <code>problem_scores[].penalty</code>가 더해집니다.
+              </p>
+              <p className="text-indigo-700">
+                문제별 계산: 정답 제출까지 걸린 분 + 정답 전 실패 횟수 × 20분
+              </p>
+            </div>
+
+            {solvedScores.length ? (
+              <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                    <tr>
+                      <th className="border-r border-slate-200 px-4 py-3">문제</th>
+                      <th className="border-r border-slate-200 px-4 py-3">정답 시각</th>
+                      <th className="border-r border-slate-200 px-4 py-3 text-right">기본 시간</th>
+                      <th className="border-r border-slate-200 px-4 py-3 text-right">실패</th>
+                      <th className="px-4 py-3 text-right">문제별 패널티</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {solvedScores.map((score) => {
+                      const elapsed = elapsedMinutes(score, contestStartAt);
+                      const wrongPenalty = score.wrong_attempts * 20;
+                      return (
+                        <tr key={score.problem_id ?? score.problem_code}>
+                          <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                            {problemLabel(score, problemById)}
+                          </td>
+                          <td className="border-r border-slate-100 px-4 py-3 font-bold text-slate-500">
+                            {formatDateTime(score.solved_at ?? undefined)}
+                          </td>
+                          <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                            {elapsed === null ? '-' : `${elapsed.toLocaleString('ko-KR')}분`}
+                          </td>
+                          <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                            {score.wrong_attempts.toLocaleString('ko-KR')}회 × 20 =
+                            {' '}
+                            {wrongPenalty.toLocaleString('ko-KR')}분
+                          </td>
+                          <td className="px-4 py-3 text-right font-black text-indigo-700">
+                            {formatPenalty(score.penalty)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                해결한 문제가 없어 총시간은 0입니다.
+              </p>
+            )}
+
+            <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+              <p>
+                합계: {solvedScores.length}개 해결, 총시간 {formatPenalty(row.penalty)}
+              </p>
+              <p>
+                미해결 문제의 실패 시도 {unsolvedAttemptCount.toLocaleString('ko-KR')}회는
+                총시간에 더하지 않고, 동점 정렬용 시도 수로만 사용됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export default function OperatorScoreboardPage() {
@@ -226,6 +369,8 @@ function OperatorScoreboardContent({
   const [divisionId, setDivisionId] = useState(() =>
     readStoredValue(divisionStorageKey),
   );
+  const [selectedPenaltyRow, setSelectedPenaltyRow] =
+    useState<ScoreboardRow | null>(null);
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -265,6 +410,13 @@ function OperatorScoreboardContent({
   const freezeMode = contest?.scoreboard_freeze_mode ?? 'auto';
   const problems = (problemsQuery.data ?? []).filter((problem) =>
     divisionId ? problem.division_id === divisionId : true,
+  );
+  const problemById = useMemo(
+    () =>
+      new Map(
+        problems.map((problem) => [problem.problem_id, problem]),
+      ),
+    [problems],
   );
 
   const rows = scoreboardQuery.data?.rows ?? [];
@@ -355,13 +507,25 @@ function OperatorScoreboardContent({
             view입니다.
           </p>
         ) : null}
-        <ContestScoreboardTable problems={problems} rows={rows} />
+        <ContestScoreboardTable
+          onSelectPenaltyBreakdown={setSelectedPenaltyRow}
+          problems={problems}
+          rows={rows}
+        />
         {!scoreboardQuery.isLoading && rows.length === 0 ? (
           <p className="mt-4 rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
             표시할 스코어보드가 없습니다.
           </p>
         ) : null}
       </OperatorPanel>
+      {selectedPenaltyRow ? (
+        <PenaltyBreakdownModal
+          contestStartAt={contest?.start_at}
+          onClose={() => setSelectedPenaltyRow(null)}
+          problemById={problemById}
+          row={selectedPenaltyRow}
+        />
+      ) : null}
     </PageLayout>
   );
 }
