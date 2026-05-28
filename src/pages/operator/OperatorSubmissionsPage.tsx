@@ -50,6 +50,10 @@ function operatorSubmissionProblemStorageKey(contestId: string) {
   return `zoj.operator.submissions.problem.${contestId}`;
 }
 
+function operatorSubmissionTeamStorageKey(contestId: string) {
+  return `zoj.operator.submissions.team.${contestId}`;
+}
+
 function readStoredValue(key: string) {
   try {
     return window.localStorage.getItem(key) ?? '';
@@ -103,12 +107,14 @@ function OperatorSubmissionsContent({
   const waitingIds = useRef(new Set<string>());
   const divisionStorageKey = operatorSubmissionDivisionStorageKey(contestId);
   const problemStorageKey = operatorSubmissionProblemStorageKey(contestId);
+  const teamStorageKey = operatorSubmissionTeamStorageKey(contestId);
   const [divisionId, setDivisionId] = useState(() =>
     readStoredValue(divisionStorageKey),
   );
   const [problemId, setProblemId] = useState(() =>
     readStoredValue(problemStorageKey),
   );
+  const [teamId, setTeamId] = useState(() => readStoredValue(teamStorageKey));
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const currentCursor = cursorStack.at(-1);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState('');
@@ -132,6 +138,7 @@ function OperatorSubmissionsContent({
       contestId,
       divisionId,
       problemId || null,
+      teamId || null,
       currentCursor ?? null,
       queryIdentity,
     ],
@@ -141,6 +148,7 @@ function OperatorSubmissionsContent({
         divisionId,
         limit: SUBMISSIONS_PAGE_SIZE,
         problemId: problemId || undefined,
+        teamId: teamId || undefined,
       }),
     placeholderData: keepPreviousData,
     refetchInterval: (query) => {
@@ -165,6 +173,9 @@ function OperatorSubmissionsContent({
   const filteredProblems = divisionId
     ? problems.filter((problem) => problem.division_id === divisionId)
     : problems;
+  const filteredTeams = divisionId
+    ? (teamsQuery.data ?? []).filter((team) => team.division_id === divisionId)
+    : (teamsQuery.data ?? []);
 
   useEffect(() => {
     if (!divisions.length) return;
@@ -189,6 +200,17 @@ function OperatorSubmissionsContent({
       setCursorStack([]);
     }
   }, [filteredProblems, problemId, problemStorageKey]);
+
+  useEffect(() => {
+    if (
+      teamId &&
+      !filteredTeams.some((team) => team.participant_team_id === teamId)
+    ) {
+      setTeamId('');
+      writeStoredValue(teamStorageKey, '');
+      setCursorStack([]);
+    }
+  }, [filteredTeams, teamId, teamStorageKey]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -327,8 +349,10 @@ function OperatorSubmissionsContent({
                   const nextDivisionId = event.target.value;
                   setDivisionId(nextDivisionId);
                   setProblemId('');
+                  setTeamId('');
                   writeStoredValue(divisionStorageKey, nextDivisionId);
                   writeStoredValue(problemStorageKey, '');
+                  writeStoredValue(teamStorageKey, '');
                   setCursorStack([]);
                 }}
                 value={divisionId}
@@ -359,6 +383,29 @@ function OperatorSubmissionsContent({
                 {filteredProblems.map((problem) => (
                   <option key={problem.problem_id} value={problem.problem_id}>
                     {problem.problem_code}. {problem.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+              팀
+              <select
+                className="h-10 min-w-52 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => {
+                  const nextTeamId = event.target.value;
+                  setTeamId(nextTeamId);
+                  writeStoredValue(teamStorageKey, nextTeamId);
+                  setCursorStack([]);
+                }}
+                value={teamId}
+              >
+                <option value="">전체</option>
+                {filteredTeams.map((team) => (
+                  <option
+                    key={team.participant_team_id}
+                    value={team.participant_team_id}
+                  >
+                    {team.team_name}
                   </option>
                 ))}
               </select>
@@ -463,13 +510,10 @@ function submissionProblemLabel(
 
 function submissionOwner(submission: Submission) {
   if (isOperatorTestSubmission(submission)) return '운영자 테스트';
-  return (
-    submission.team_name ??
-    submission.team?.team_name ??
-    submission.member_name ??
-    submission.member?.name ??
-    '-'
-  );
+  const teamName = submission.team_name ?? submission.team?.team_name ?? '';
+  const memberName = submission.member_name ?? submission.member?.name ?? '';
+  if (teamName && memberName) return `${teamName}(${memberName})`;
+  return teamName || memberName || '-';
 }
 
 function submissionMemberName(submission: Submission) {
@@ -866,6 +910,10 @@ function SubmissionDetailModal({
           {submission ? (
             <div className="grid gap-5">
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+                <DetailCard
+                  label="팀/계정"
+                  value={submissionOwner(submission)}
+                />
                 <DetailCard
                   label="문제"
                   value={submissionProblemLabel(submission, problemById)}

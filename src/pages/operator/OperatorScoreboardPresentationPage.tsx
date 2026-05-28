@@ -251,6 +251,9 @@ function OperatorScoreboardPresentationContent({
   const titleParts = splitContestTitle(contest?.title);
   const startsAt = contest?.start_at ? new Date(contest.start_at).getTime() : 0;
   const isBeforeContestStart = Boolean(startsAt && startsAt > now);
+  const shellClassName = isBeforeContestStart
+    ? 'mx-auto grid min-h-[calc(100vh-clamp(1.5rem,2.8vw,2.8rem))] w-full max-w-[118rem] content-center gap-[clamp(1rem,2vw,2rem)]'
+    : 'mx-auto grid w-full max-w-[118rem] gap-[clamp(0.75rem,1.3vw,1.35rem)]';
 
   useEffect(() => {
     if (contest?.title) {
@@ -260,61 +263,88 @@ function OperatorScoreboardPresentationContent({
 
   return (
     <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(0.75rem,1.4vw,1.4rem)] py-[clamp(0.75rem,1.4vw,1.4rem)] text-white">
-      <div className="mx-auto grid w-full max-w-[118rem] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
-        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,1.8vw,2rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
+      <div className={shellClassName}>
+        <header
+          className={[
+            'relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]',
+            isBeforeContestStart
+              ? 'px-[clamp(1.5rem,4vw,5rem)] py-[clamp(2rem,5vw,6rem)]'
+              : 'px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,1.8vw,2rem)]',
+          ].join(' ')}
+        >
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem]" />
-          <div className="grid gap-[clamp(0.85rem,1.6vw,1.8rem)] xl:grid-cols-[minmax(18rem,1fr)_minmax(30rem,0.78fr)] xl:items-center">
+          <div
+            className={
+              isBeforeContestStart
+                ? 'grid justify-items-center gap-[clamp(1rem,2vw,2rem)] text-center'
+                : 'grid gap-[clamp(0.85rem,1.6vw,1.8rem)] xl:grid-cols-[minmax(18rem,1fr)_minmax(30rem,0.78fr)] xl:items-center'
+            }
+          >
             <div className="min-w-0">
-              <p className="text-[clamp(0.58rem,0.65vw,0.72rem)] font-black tracking-[0.28em] text-violet-300 uppercase">
+              <p
+                className={[
+                  'font-black text-violet-300 uppercase',
+                  isBeforeContestStart
+                    ? 'text-[clamp(0.8rem,1.3vw,1.2rem)] tracking-[0.34em]'
+                    : 'text-[clamp(0.58rem,0.65vw,0.72rem)] tracking-[0.28em]',
+                ].join(' ')}
+              >
               ZOJ Presentation Scoreboard
               </p>
-              <h1 className="mt-2 grid gap-1 text-[clamp(2.15rem,4.8vw,5rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
+              <h1
+                className={[
+                  'grid gap-1 leading-[0.92] font-black tracking-normal text-white uppercase',
+                  isBeforeContestStart
+                    ? 'mt-5 text-[clamp(4rem,11vw,12rem)]'
+                    : 'mt-2 text-[clamp(2.15rem,4.8vw,5rem)]',
+                ].join(' ')}
+              >
                 <span className="zoj-truncate-safe whitespace-nowrap">
                   {titleParts.primary}
                 </span>
                 {titleParts.secondary ? (
-                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(0.75rem,2.8vw,2.25rem)] text-transparent">
+                  <span
+                    className={[
+                      'zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text text-transparent',
+                      isBeforeContestStart
+                        ? 'pl-0'
+                        : 'pl-[clamp(0.75rem,2.8vw,2.25rem)]',
+                    ].join(' ')}
+                  >
                     {titleParts.secondary}
                   </span>
                 ) : null}
               </h1>
             </div>
-            <div className="grid gap-[clamp(0.65rem,1.2vw,1.2rem)] md:grid-cols-2">
-              <TimePanel
-                label="스코어보드 프리즈"
-                time={formatDateTime(contest?.freeze_at)}
-                value={
-                  contest && new Date(contest.freeze_at).getTime() <= now
-                    ? '프리즈 적용 중'
-                    : timeLeftLabel(contest?.freeze_at, now)
-                }
+            {isBeforeContestStart ? (
+              <PreStartCountdown
+                startAt={contest?.start_at}
+                value={largeCountdownLabel(contest?.start_at, now)}
               />
-              <TimePanel
-                label="대회 종료"
-                time={formatDateTime(contest?.end_at)}
-                value={
-                  contest && new Date(contest.end_at).getTime() <= now
-                    ? '대회 종료'
-                    : timeLeftLabel(contest?.end_at, now)
-                }
-              />
-            </div>
+            ) : (
+              <div className="grid gap-[clamp(0.65rem,1.2vw,1.2rem)] md:grid-cols-2">
+                <TimePanel
+                  label="스코어보드 프리즈"
+                  time={formatDateTime(contest?.freeze_at)}
+                  value={
+                    contest && new Date(contest.freeze_at).getTime() <= now
+                      ? '프리즈 적용 중'
+                      : timeLeftLabel(contest?.freeze_at, now)
+                  }
+                />
+                <TimePanel
+                  label="대회 종료"
+                  time={formatDateTime(contest?.end_at)}
+                  value={
+                    contest && new Date(contest.end_at).getTime() <= now
+                      ? '대회 종료'
+                      : timeLeftLabel(contest?.end_at, now)
+                  }
+                />
+              </div>
+            )}
           </div>
         </header>
-
-        {isBeforeContestStart ? (
-          <div className="rounded-[1rem] border border-violet-300/20 bg-violet-500/10 px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,2vw,1.75rem)] text-center shadow-[0_1rem_3rem_rgba(0,0,0,0.2)]">
-            <p className="text-[clamp(0.72rem,1vw,0.95rem)] font-black tracking-[0.28em] text-violet-200 uppercase">
-              Contest Starts In
-            </p>
-            <p className="mt-2 text-[clamp(2.4rem,6vw,6rem)] leading-none font-black tracking-normal text-white">
-              {largeCountdownLabel(contest?.start_at, now)}
-            </p>
-            <p className="mt-2 text-[clamp(0.8rem,1.2vw,1rem)] font-bold text-white/70">
-              시작 시각 {formatDateTime(contest?.start_at)}
-            </p>
-          </div>
-        ) : null}
 
         {presentationQuery.error ? (
           <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">
@@ -325,28 +355,52 @@ function OperatorScoreboardPresentationContent({
           </div>
         ) : null}
 
-        {presentationQuery.isLoading ? (
+        {presentationQuery.isLoading && !isBeforeContestStart ? (
           <div className="rounded border border-white/10 bg-white/[0.06] px-5 py-16 text-center text-lg font-black text-white/70">
             스코어보드를 불러오는 중입니다.
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,34rem),1fr))] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
-          {sections.map((section) => (
-            <PresentationDivisionBoard
-              key={section.division.division_id}
-              section={section}
-            />
-          ))}
-        </div>
+        {!isBeforeContestStart ? (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,34rem),1fr))] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
+            {sections.map((section) => (
+              <PresentationDivisionBoard
+                key={section.division.division_id}
+                section={section}
+              />
+            ))}
+          </div>
+        ) : null}
 
-        {!presentationQuery.isLoading && sections.length === 0 ? (
+        {!presentationQuery.isLoading && !isBeforeContestStart && sections.length === 0 ? (
           <div className="rounded border border-white/10 bg-white/[0.06] px-5 py-16 text-center text-lg font-black text-white/70">
             표시할 유형이 없습니다.
           </div>
         ) : null}
       </div>
     </section>
+  );
+}
+
+function PreStartCountdown({
+  startAt,
+  value,
+}: {
+  startAt?: string | null;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1rem] border border-violet-300/20 bg-violet-500/10 px-[clamp(1rem,3vw,3rem)] py-[clamp(1rem,2.5vw,2.5rem)] text-center shadow-[0_1rem_3rem_rgba(0,0,0,0.2)]">
+      <p className="text-[clamp(0.85rem,1.4vw,1.25rem)] font-black tracking-[0.3em] text-violet-200 uppercase">
+        Contest Starts In
+      </p>
+      <p className="mt-3 text-[clamp(3rem,8vw,8rem)] leading-none font-black tracking-normal text-white">
+        {value}
+      </p>
+      <p className="mt-3 text-[clamp(0.9rem,1.5vw,1.25rem)] font-bold text-white/70">
+        시작 시각 {formatDateTime(startAt ?? undefined)}
+      </p>
+    </div>
   );
 }
 
