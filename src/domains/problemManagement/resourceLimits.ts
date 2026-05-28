@@ -32,48 +32,83 @@ function formatMemory(memoryMb: number) {
   return `${memoryMb}MB`;
 }
 
-function effectiveTimeLimitMs(problem: Problem, language: JudgeLanguage) {
+type LimitLabelOptions = {
+  includeAutomaticAdjustments?: boolean;
+  markAutomaticAdjustments?: boolean;
+};
+
+type LimitValue = {
+  value: number;
+  source: 'base' | 'automatic' | 'override';
+};
+
+function effectiveTimeLimit(problem: Problem, language: JudgeLanguage): LimitValue {
   const override = problem.language_resource_limits?.[language]?.time_limit_ms;
-  if (override) return override;
+  if (override) return { value: override, source: 'override' };
   const adjustment = LANGUAGE_TIME_ADJUSTMENTS[language];
-  if (!adjustment) return problem.time_limit_ms;
-  return problem.time_limit_ms * adjustment.multiplier + adjustment.bonusMs;
+  if (!adjustment) return { value: problem.time_limit_ms, source: 'base' };
+  return {
+    value: problem.time_limit_ms * adjustment.multiplier + adjustment.bonusMs,
+    source: 'automatic',
+  };
 }
 
-function effectiveMemoryLimitMb(problem: Problem, language: JudgeLanguage) {
+function effectiveMemoryLimit(problem: Problem, language: JudgeLanguage): LimitValue {
   const override = problem.language_resource_limits?.[language]?.memory_limit_mb;
-  if (override) return override;
+  if (override) return { value: override, source: 'override' };
   const adjustment = LANGUAGE_MEMORY_ADJUSTMENTS[language];
-  if (!adjustment) return problem.memory_limit_mb;
-  return problem.memory_limit_mb * adjustment.multiplier + adjustment.bonusMb;
+  if (!adjustment) return { value: problem.memory_limit_mb, source: 'base' };
+  return {
+    value: problem.memory_limit_mb * adjustment.multiplier + adjustment.bonusMb,
+    source: 'automatic',
+  };
 }
 
 function limitSummary(
   problem: Problem,
   kind: 'memory_limit_mb' | 'time_limit_ms',
   formatter: (value: number) => string,
+  options: LimitLabelOptions = {},
 ) {
   return LANGUAGE_ORDER.flatMap((language) => {
-    const value =
+    const limit =
       kind === 'time_limit_ms'
-        ? effectiveTimeLimitMs(problem, language)
-        : effectiveMemoryLimitMb(problem, language);
+        ? effectiveTimeLimit(problem, language)
+        : effectiveMemoryLimit(problem, language);
     const base =
       kind === 'time_limit_ms' ? problem.time_limit_ms : problem.memory_limit_mb;
-    if (value === base) return [];
-    return `${LANGUAGE_LABELS[language]} : ${formatter(value)}`;
+    if (limit.value === base) return [];
+    if (limit.source === 'automatic' && !options.includeAutomaticAdjustments) {
+      return [];
+    }
+    const sourceLabel =
+      limit.source === 'automatic' && options.markAutomaticAdjustments
+        ? ' 자동 보정'
+        : '';
+    return `${LANGUAGE_LABELS[language]} : ${formatter(limit.value)}${sourceLabel}`;
   }).join(', ');
 }
 
-export function problemTimeLimitLabel(problem: Problem) {
-  const overrides = limitSummary(problem, 'time_limit_ms', formatTime);
+export function problemTimeLimitLabel(
+  problem: Problem,
+  options: LimitLabelOptions = {},
+) {
+  const overrides = limitSummary(problem, 'time_limit_ms', formatTime, options);
   return overrides
     ? `${formatTime(problem.time_limit_ms)} ( ${overrides} )`
     : formatTime(problem.time_limit_ms);
 }
 
-export function problemMemoryLimitLabel(problem: Problem) {
-  const overrides = limitSummary(problem, 'memory_limit_mb', formatMemory);
+export function problemMemoryLimitLabel(
+  problem: Problem,
+  options: LimitLabelOptions = {},
+) {
+  const overrides = limitSummary(
+    problem,
+    'memory_limit_mb',
+    formatMemory,
+    options,
+  );
   return overrides
     ? `${formatMemory(problem.memory_limit_mb)} ( ${overrides} )`
     : formatMemory(problem.memory_limit_mb);

@@ -109,6 +109,30 @@ const LANGUAGE_LABELS: Record<JudgeLanguage, string> = {
   java8: 'Java 8',
   python313: 'Python 3.13',
 };
+const AUTOMATIC_LANGUAGE_ADJUSTMENTS: Partial<
+  Record<
+    JudgeLanguage,
+    {
+      memoryBonusMb: number;
+      memoryMultiplier: number;
+      timeBonusMs: number;
+      timeMultiplier: number;
+    }
+  >
+> = {
+  java8: {
+    memoryBonusMb: 16,
+    memoryMultiplier: 2,
+    timeBonusMs: 1000,
+    timeMultiplier: 2,
+  },
+  python313: {
+    memoryBonusMb: 32,
+    memoryMultiplier: 2,
+    timeBonusMs: 2000,
+    timeMultiplier: 3,
+  },
+};
 
 function sleep(ms: number) {
   return new Promise((resolve) => {
@@ -385,6 +409,32 @@ function normalizeProblemLimitForm(form: ProblemForm) {
     },
     messages: [time.message, memory.message, ...languageMessages].filter(Boolean),
   };
+}
+
+function automaticLanguageLimitText(form: ProblemForm, language: JudgeLanguage) {
+  const adjustment = AUTOMATIC_LANGUAGE_ADJUSTMENTS[language];
+  if (!adjustment) return '';
+  const limit = form.languageResourceLimits[language];
+  if (limit?.timeLimitMs.trim() || limit?.memoryLimitMb.trim()) return '';
+  const baseTimeMs = limitValueOrFallback(
+    form.timeLimitMs,
+    1000,
+    LIMIT_BOUNDARIES.timeMs,
+  );
+  const baseMemoryMb = limitValueOrFallback(
+    form.memoryLimitMb,
+    256,
+    LIMIT_BOUNDARIES.memoryMb,
+  );
+  const adjustedTimeMs =
+    baseTimeMs * adjustment.timeMultiplier + adjustment.timeBonusMs;
+  const adjustedMemoryMb =
+    baseMemoryMb * adjustment.memoryMultiplier + adjustment.memoryBonusMb;
+  return [
+    '자동 보정 중',
+    `시간: 기본 ${baseTimeMs.toLocaleString('ko-KR')}ms x ${adjustment.timeMultiplier} + ${adjustment.timeBonusMs.toLocaleString('ko-KR')}ms = ${adjustedTimeMs.toLocaleString('ko-KR')}ms`,
+    `메모리: 기본 ${baseMemoryMb.toLocaleString('ko-KR')}MB x ${adjustment.memoryMultiplier} + ${adjustment.memoryBonusMb.toLocaleString('ko-KR')}MB = ${adjustedMemoryMb.toLocaleString('ko-KR')}MB`,
+  ].join(' / ');
 }
 
 function previewProblemFromForm(
@@ -1557,7 +1607,7 @@ function OperatorProblemsContent({
       ) : null}
 
       <div className="grid items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="grid content-start gap-4 rounded border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
+        <aside className="flex min-h-0 flex-col gap-4 rounded border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black text-indigo-600 uppercase">
@@ -1663,7 +1713,7 @@ function OperatorProblemsContent({
               ) : null}
             </div>
           ) : null}
-          <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
+          <div className="grid min-h-0 gap-2 overflow-y-auto pr-1 xl:flex-1">
             {filteredProblems.map((problem) => (
               <button
                 className={[
@@ -1680,10 +1730,18 @@ function OperatorProblemsContent({
                   {problem.problem_code}. {problem.title}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  시간 {problemTimeLimitLabel(problem)}
+                  시간{' '}
+                  {problemTimeLimitLabel(problem, {
+                    includeAutomaticAdjustments: true,
+                    markAutomaticAdjustments: true,
+                  })}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  메모리 {problemMemoryLimitLabel(problem)}
+                  메모리{' '}
+                  {problemMemoryLimitLabel(problem, {
+                    includeAutomaticAdjustments: true,
+                    markAutomaticAdjustments: true,
+                  })}
                 </span>
               </button>
             ))}
@@ -1828,6 +1886,10 @@ function OperatorProblemsContent({
                           memoryLimitMb: '',
                           timeLimitMs: '',
                         };
+                        const automaticLimitText = automaticLanguageLimitText(
+                          form,
+                          language,
+                        );
                         return (
                           <div
                             className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
@@ -1885,6 +1947,11 @@ function OperatorProblemsContent({
                               inputMode="numeric"
                               value={limit.memoryLimitMb}
                             />
+                            {automaticLimitText ? (
+                              <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-800 md:col-span-3">
+                                {automaticLimitText}
+                              </p>
+                            ) : null}
                           </div>
                         );
                       })}
