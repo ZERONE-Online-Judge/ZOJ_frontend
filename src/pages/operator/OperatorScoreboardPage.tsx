@@ -261,6 +261,7 @@ function ProblemStatsBlock({
           total_submissions: 0,
           accepted_submissions: 0,
           accepted_team_count: 0,
+          total_team_count: 0,
           acceptance_rate: null,
           first_accepted_team_id: null,
           first_accepted_team_name: null,
@@ -300,7 +301,7 @@ function ProblemStatsBlock({
               <th className="border-r border-slate-200 px-4 py-3">문제</th>
               <th className="border-r border-slate-200 px-4 py-3 text-right">총 제출</th>
               <th className="border-r border-slate-200 px-4 py-3 text-right">정답률</th>
-              <th className="border-r border-slate-200 px-4 py-3 text-right">정답 제출</th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">정답 팀</th>
               <th className="border-r border-slate-200 px-4 py-3">첫 정답 팀</th>
               <th className="px-4 py-3">첫 정답 시간</th>
             </tr>
@@ -320,9 +321,9 @@ function ProblemStatsBlock({
                   {formatAcceptanceRate(stat.acceptance_rate)}
                 </td>
                 <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
-                  {stat.accepted_submissions.toLocaleString('ko-KR')}
+                  {stat.accepted_team_count.toLocaleString('ko-KR')}
                   <span className="ml-1 text-xs font-bold text-slate-400">
-                    / {stat.accepted_team_count.toLocaleString('ko-KR')}팀
+                    / {(stat.total_team_count ?? 0).toLocaleString('ko-KR')}팀
                   </span>
                 </td>
                 <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-3 font-bold text-slate-700">
