@@ -25,6 +25,7 @@ import { getOperatorProblems } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
 import type {
+  ScoreboardProblemStat,
   ScoreboardProblemScore,
   ScoreboardRow,
 } from '@/domains/submissionScoreboard/types';
@@ -86,6 +87,23 @@ function freezeRemainingLabel(freezeAt?: string | null) {
 function formatPenalty(value?: number | null) {
   if (value === undefined || value === null) return '-';
   return value.toLocaleString('ko-KR');
+}
+
+function formatAcceptanceRate(value?: number | null) {
+  if (value === undefined || value === null) return '-';
+  return `${value.toLocaleString('ko-KR', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+  })}%`;
+}
+
+function formatElapsedMinuteLabel(value?: number | null) {
+  if (value === undefined || value === null) return '-';
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  if (hours <= 0) return `${minutes.toLocaleString('ko-KR')}분`;
+  if (minutes === 0) return `${hours.toLocaleString('ko-KR')}시간`;
+  return `${hours.toLocaleString('ko-KR')}시간 ${minutes}분`;
 }
 
 function problemLabel(
@@ -218,6 +236,120 @@ function PenaltyBreakdownModal({
         </div>
       </section>
     </div>
+  );
+}
+
+function ProblemStatsBlock({
+  problemStats,
+  problems,
+}: {
+  problemStats: ScoreboardProblemStat[];
+  problems: Problem[];
+}) {
+  const rows = useMemo(() => {
+    const statsByProblemId = new Map(
+      problemStats.map((stat) => [stat.problem_id, stat]),
+    );
+    const problemIds = new Set(problems.map((problem) => problem.problem_id));
+    const problemRows = problems.map((problem) => ({
+      problem,
+      stat:
+        statsByProblemId.get(problem.problem_id) ??
+        ({
+          problem_id: problem.problem_id,
+          problem_code: problem.problem_code,
+          total_submissions: 0,
+          accepted_submissions: 0,
+          accepted_team_count: 0,
+          acceptance_rate: null,
+          first_accepted_team_id: null,
+          first_accepted_team_name: null,
+          first_accepted_at: null,
+          first_accepted_elapsed_minutes: null,
+        } satisfies ScoreboardProblemStat),
+    }));
+    const orphanRows = problemStats
+      .filter((stat) => !problemIds.has(stat.problem_id))
+      .map((stat) => ({ problem: null, stat }));
+
+    return [...problemRows, ...orphanRows];
+  }, [problemStats, problems]);
+
+  if (!rows.length) return null;
+
+  return (
+    <section className="mt-5 grid gap-3 border-t border-slate-200 pt-5">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-xs font-black text-indigo-600 uppercase">
+            Problem statistics
+          </p>
+          <h3 className="text-base font-black text-slate-950">
+            문제별 제출 통계
+          </h3>
+        </div>
+        <p className="text-xs font-bold text-slate-500">
+          정답률은 정답 제출 수 / 총 제출 수 기준입니다.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+        <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-black text-slate-500">
+            <tr>
+              <th className="border-r border-slate-200 px-4 py-3">문제</th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">총 제출</th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">정답률</th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">정답 제출</th>
+              <th className="border-r border-slate-200 px-4 py-3">첫 정답 팀</th>
+              <th className="px-4 py-3">첫 정답 시간</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map(({ problem, stat }) => (
+              <tr key={stat.problem_id}>
+                <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                  {problem
+                    ? `${problem.problem_code}. ${problem.title}`
+                    : stat.problem_code}
+                </td>
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                  {stat.total_submissions.toLocaleString('ko-KR')}
+                </td>
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-black text-indigo-700">
+                  {formatAcceptanceRate(stat.acceptance_rate)}
+                </td>
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                  {stat.accepted_submissions.toLocaleString('ko-KR')}
+                  <span className="ml-1 text-xs font-bold text-slate-400">
+                    / {stat.accepted_team_count.toLocaleString('ko-KR')}팀
+                  </span>
+                </td>
+                <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-3 font-bold text-slate-700">
+                  {stat.first_accepted_team_name ?? '아직 없음'}
+                </td>
+                <td className="px-4 py-3 font-bold text-slate-600">
+                  {stat.first_accepted_at ? (
+                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-black text-slate-950">
+                        {formatElapsedMinuteLabel(
+                          stat.first_accepted_elapsed_minutes,
+                        )}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {formatDateTime(stat.first_accepted_at)}
+                      </span>
+                    </span>
+                  ) : (
+                    '-'
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -420,6 +552,7 @@ function OperatorScoreboardContent({
   );
 
   const rows = scoreboardQuery.data?.rows ?? [];
+  const problemStats = scoreboardQuery.data?.problem_stats ?? [];
 
   useEffect(() => {
     if (!divisions.length) {
@@ -512,6 +645,12 @@ function OperatorScoreboardContent({
           problems={problems}
           rows={rows}
         />
+        {scoreboardQuery.data ? (
+          <ProblemStatsBlock
+            problemStats={problemStats}
+            problems={problems}
+          />
+        ) : null}
         {!scoreboardQuery.isLoading && rows.length === 0 ? (
           <p className="mt-4 rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
             표시할 스코어보드가 없습니다.

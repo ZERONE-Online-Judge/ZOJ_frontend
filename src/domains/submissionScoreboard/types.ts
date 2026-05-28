@@ -74,6 +74,19 @@ export type ScoreboardProblemScore = {
   best_status: string | null;
 };
 
+export type ScoreboardProblemStat = {
+  problem_id: string;
+  problem_code: string;
+  total_submissions: number;
+  accepted_submissions: number;
+  accepted_team_count: number;
+  acceptance_rate: number | null;
+  first_accepted_team_id?: string | null;
+  first_accepted_team_name?: string | null;
+  first_accepted_at?: string | null;
+  first_accepted_elapsed_minutes?: number | null;
+};
+
 export type ScoreboardRow = {
   rank: number;
   team_id?: string;
@@ -91,12 +104,14 @@ export type ScoreboardRow = {
 export type ScoreboardResponse = {
   division: Division;
   frozen: boolean;
+  problem_stats?: ScoreboardProblemStat[];
   rows: ScoreboardRow[];
 };
 
 export type OperatorScoreboardResponse = {
   frozen_public_view: boolean;
   operator_live_view: boolean;
+  problem_stats?: ScoreboardProblemStat[];
   rows: (ScoreboardRow & { visible_to_team?: boolean })[];
 };
 
