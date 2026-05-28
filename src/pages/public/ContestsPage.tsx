@@ -13,6 +13,7 @@ import {
 } from '@/domains/contestAdministration/logic';
 import { toContestCardData } from '@/domains/contestAdministration/presentation';
 import type { Contest } from '@/domains/contestAdministration/types';
+import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
@@ -102,13 +103,18 @@ export default function ContestsPage() {
   const operatorContestIds = new Set(
     operatorContests.map((contest) => contest.contest_id),
   );
+  const canOperateAllContests = Boolean(
+    generalSession && isServiceMaster(generalSession),
+  );
   const visibleContests =
     filter === 'mine'
-      ? contests.filter(
-          (contest) =>
-            participantContestIds.has(contest.contest_id) ||
-            operatorContestIds.has(contest.contest_id),
-        )
+      ? canOperateAllContests
+        ? contests
+        : contests.filter(
+            (contest) =>
+              participantContestIds.has(contest.contest_id) ||
+              operatorContestIds.has(contest.contest_id),
+          )
       : contests;
   const sections = contestSections.map((section) => ({
     ...section,
@@ -182,6 +188,7 @@ export default function ContestsPage() {
               contests={section.contests}
               description={section.description}
               key={section.key}
+              canOperateAllContests={canOperateAllContests}
               operatorContestIds={operatorContestIds}
               title={section.title}
             />
@@ -204,11 +211,13 @@ export default function ContestsPage() {
 }
 
 function ContestSectionList({
+  canOperateAllContests,
   contests,
   description,
   operatorContestIds,
   title,
 }: {
+  canOperateAllContests: boolean;
   contests: Contest[];
   description: string;
   operatorContestIds: Set<string>;
@@ -227,7 +236,8 @@ function ContestSectionList({
       </header>
       <ul className="zoj-list-stagger grid grid-cols-1 gap-2.5">
         {contests.map((contest) => {
-          const isOperatorContest = operatorContestIds.has(contest.contest_id);
+          const isOperatorContest =
+            canOperateAllContests || operatorContestIds.has(contest.contest_id);
           return (
             <ContestListItem
               href={

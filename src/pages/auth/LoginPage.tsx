@@ -8,6 +8,7 @@ import {
   requestGeneralOtp,
   verifyGeneralOtp,
 } from '@/domains/identityAccess/api';
+import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import type { GeneralSession } from '@/domains/identityAccess/types';
 import {
@@ -128,7 +129,11 @@ function postLoginRedirectPath(
     (item) => item.contest.contest_id === targetContestId,
   );
 
-  if (targetContestId && isOperatorContest && !isParticipantContest) {
+  if (
+    targetContestId &&
+    !isParticipantContest &&
+    (isOperatorContest || isServiceMaster(session))
+  ) {
     return `/operator/contests/${encodeURIComponent(targetContestId)}`;
   }
 

@@ -261,6 +261,29 @@ function OperatorScoreboardPresentationContent({
     }
   }, [contest?.title]);
 
+  if (!contest && presentationQuery.isLoading) {
+    return (
+      <section className="fixed inset-0 z-[100] grid place-items-center bg-[#090b14] px-6 py-6 text-white">
+        <div className="rounded border border-white/10 bg-white/[0.06] px-5 py-16 text-center text-lg font-black text-white/70">
+          스코어보드를 불러오는 중입니다.
+        </div>
+      </section>
+    );
+  }
+
+  if (!contest && presentationQuery.error) {
+    return (
+      <section className="fixed inset-0 z-[100] grid place-items-center bg-[#090b14] px-6 py-6 text-white">
+        <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">
+          {formatApiError(
+            presentationQuery.error,
+            '프레젠테이션 스코어보드를 불러오지 못했습니다',
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(0.75rem,1.4vw,1.4rem)] py-[clamp(0.75rem,1.4vw,1.4rem)] text-white">
       <div className={shellClassName}>
@@ -346,7 +369,7 @@ function OperatorScoreboardPresentationContent({
           </div>
         </header>
 
-        {presentationQuery.error ? (
+        {presentationQuery.error && contest ? (
           <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">
             {formatApiError(
               presentationQuery.error,

@@ -173,9 +173,15 @@ function OperatorSubmissionsContent({
   const filteredProblems = divisionId
     ? problems.filter((problem) => problem.division_id === divisionId)
     : problems;
-  const filteredTeams = divisionId
-    ? (teamsQuery.data ?? []).filter((team) => team.division_id === divisionId)
-    : (teamsQuery.data ?? []);
+  const filteredTeams = useMemo(
+    () =>
+      divisionId
+        ? (teamsQuery.data ?? []).filter(
+            (team) => team.division_id === divisionId,
+          )
+        : (teamsQuery.data ?? []),
+    [divisionId, teamsQuery.data],
+  );
 
   useEffect(() => {
     if (!divisions.length) return;
