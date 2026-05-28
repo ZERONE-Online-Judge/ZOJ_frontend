@@ -485,11 +485,16 @@ function OperatorSubmissionsContent({
 }
 
 function isOperatorTestSubmission(submission: Submission) {
+  if (submission.submission_kind === 'operator_test') return true;
   return (
     submission.team_name?.startsWith('__operator_test__:') ||
     submission.team?.team_name?.startsWith('__operator_test__:') ||
     submission.participant_team_id?.startsWith('__operator_test__:')
   );
+}
+
+function isMockJudgingSubmission(submission: Submission) {
+  return submission.submission_kind === 'mock_judging';
 }
 
 function displaySubmissionId(submissionId: string) {
@@ -515,7 +520,11 @@ function submissionProblemLabel(
 }
 
 function submissionOwner(submission: Submission) {
-  if (isOperatorTestSubmission(submission)) return '운영자 테스트';
+  if (isMockJudgingSubmission(submission)) return '모의채점';
+  if (isOperatorTestSubmission(submission)) {
+    const name = submission.submitted_by_name?.trim();
+    return name ? `운영자(${name})` : '운영자';
+  }
   const teamName = submission.team_name ?? submission.team?.team_name ?? '';
   const memberName = submission.member_name ?? submission.member?.name ?? '';
   if (teamName && memberName) return `${teamName}(${memberName})`;
@@ -775,6 +784,7 @@ function TeamDetailModal({
   team?: ParticipantTeam;
 }) {
   const isOperatorTest = isOperatorTestSubmission(submission);
+  const isMockJudging = isMockJudgingSubmission(submission);
   const members = team?.members ?? [];
   const leader = members.find((member) => member.role === 'leader');
 
@@ -803,9 +813,11 @@ function TeamDetailModal({
           </button>
         </header>
         <div className="min-h-0 overflow-y-auto p-5">
-          {isOperatorTest ? (
+          {isOperatorTest || isMockJudging ? (
             <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-bold text-indigo-700">
-              운영자가 문제 검증을 위해 생성한 테스트 제출입니다.
+              {isMockJudging
+                ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
+                : '운영자가 문제 검증을 위해 생성한 테스트 제출입니다.'}
             </p>
           ) : (
             <div className="grid gap-5">

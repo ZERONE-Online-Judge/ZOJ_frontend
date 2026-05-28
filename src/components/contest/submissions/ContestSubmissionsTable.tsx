@@ -36,6 +36,7 @@ function displaySubmissionId(submissionId: string) {
 }
 
 function isOperatorTestSubmission(submission: Submission) {
+  if (submission.submission_kind === 'operator_test') return true;
   return (
     submission.team_name?.startsWith('__operator_test__:') ||
     submission.team?.team_name?.startsWith('__operator_test__:') ||
@@ -66,7 +67,11 @@ function submissionName(
   fallbackTeamName?: string,
   fallbackMemberName?: string,
 ) {
-  if (isOperatorTestSubmission(submission)) return '운영자 테스트';
+  if (submission.submission_kind === 'mock_judging') return '모의채점';
+  if (isOperatorTestSubmission(submission)) {
+    const name = submission.submitted_by_name?.trim();
+    return name ? `운영자(${name})` : '운영자';
+  }
 
   return (
     submission.team_name ??

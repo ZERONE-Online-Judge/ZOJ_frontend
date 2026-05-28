@@ -753,6 +753,11 @@ function JudgeNodeLogsModal({
 }
 
 function entryOwner(entry: AdminJudgeSubmissionEntry) {
+  if (entry.submission.submission_kind === 'mock_judging') return '모의채점';
+  if (entry.submission.submission_kind === 'operator_test') {
+    const name = entry.submission.submitted_by_name?.trim();
+    return name ? `운영자(${name})` : '운영자';
+  }
   return (
     entry.team?.team_name ??
     entry.submission.team_name ??
@@ -763,6 +768,7 @@ function entryOwner(entry: AdminJudgeSubmissionEntry) {
 }
 
 function entryOwnerDetail(entry: AdminJudgeSubmissionEntry) {
+  if (entry.submission.submitted_by_email) return entry.submission.submitted_by_email;
   return (
     entry.member?.email ??
     entry.submission.member_email ??
