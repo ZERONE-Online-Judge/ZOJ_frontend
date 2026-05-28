@@ -106,7 +106,7 @@ function PresentationScoreCell({ score }: { score?: ScoreboardProblemScore }) {
         'inline-flex h-6 min-w-8 items-center justify-center rounded-full px-1.5 text-[0.68rem] font-black',
         score?.solved
           ? 'bg-emerald-300 text-slate-950'
-          : 'bg-slate-300 text-slate-950 ring-1 ring-slate-100/25',
+          : 'bg-rose-300 text-slate-950 ring-1 ring-rose-100/35',
       ].join(' ')}
     >
       {label}
