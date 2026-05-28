@@ -22,18 +22,13 @@ import {
   problemMemoryLimitLabel,
   problemTimeLimitLabel,
 } from '@/domains/problemManagement/resourceLimits';
-import {
-  getDivisionScoreboard,
-  getScoreboard,
-} from '@/domains/submissionScoreboard/api';
-import type { ScoreboardProblemScore } from '@/domains/submissionScoreboard/types';
 import PageNotice from '@/shared/ui/PageNotice';
 
 type ProblemStatus = 'success' | 'failed' | 'pending';
 
-function problemStatus(score?: ScoreboardProblemScore): ProblemStatus {
-  if (score?.solved) return 'success';
-  if (score && score.attempts > 0) return 'failed';
+function problemStatus(solveStatus?: string | null): ProblemStatus {
+  if (solveStatus === 'accepted') return 'success';
+  if (solveStatus === 'wrong') return 'failed';
 
   return 'pending';
 }
@@ -81,7 +76,6 @@ function ContestProblemsContent({
     participantContest || activeParticipantSession,
   );
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const phase = contestAccessPhase(contest);
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
@@ -94,7 +88,7 @@ function ContestProblemsContent({
   const shouldUseParticipantAuth =
     isEnded &&
     hasSessionAccess &&
-    (problemAccess === 'participants' || scoreboardAccess === 'participants');
+    problemAccess !== 'private';
   const shouldShowDivisionSelect =
     !shouldUseParticipantScope && divisions.length > 1;
   const effectiveDivisionId = shouldUseParticipantScope
@@ -104,11 +98,6 @@ function ContestProblemsContent({
     contest,
     hasSessionAccess,
     problemAccess,
-  ) && !isBeforeStart;
-  const canViewScoreboard = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    scoreboardAccess,
   ) && !isBeforeStart;
 
   useEffect(() => {
@@ -164,65 +153,7 @@ function ContestProblemsContent({
     refetchInterval: 15_000,
   });
 
-  const scoreboardQuery = useQuery({
-    enabled: canViewProblems && canViewScoreboard,
-    queryKey: contestQueryKeys.scoreboard(
-      contestId,
-      generalSession?.accessToken,
-      shouldUseParticipantScope
-        ? activeParticipantSession?.contestId
-        : undefined,
-      shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id
-        : effectiveDivisionId,
-      shouldUseParticipantScope
-        ? activeParticipantSession?.accessToken
-        : shouldUseParticipantAuth
-          ? activeParticipantSession?.accessToken
-        : undefined,
-    ),
-    queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
-      if (session && shouldUseParticipantScope) {
-        return getDivisionScoreboard(
-          contestId,
-          session.division.division_id,
-          session.accessToken,
-        );
-      }
-      if (effectiveDivisionId) {
-        return getDivisionScoreboard(
-          contestId,
-          effectiveDivisionId,
-          session?.accessToken ?? generalSession?.accessToken,
-        );
-      }
-
-      return getScoreboard(
-        contestId,
-        session?.accessToken ?? generalSession?.accessToken,
-      );
-    },
-    refetchInterval: 10_000,
-  });
-
   const problems = problemsQuery.data ?? [];
-  const teamName =
-    participantContest?.team.team_name ??
-    (activeParticipantSession?.contestId === contestId
-      ? activeParticipantSession.team.team_name
-      : null);
-  const myScoreboardRow = scoreboardQuery.data?.rows.find((row) =>
-    teamName ? row.team_name === teamName : false,
-  );
-  const scoreByProblemCode = new Map(
-    (myScoreboardRow?.problem_scores ?? []).map((score) => [
-      score.problem_code,
-      score,
-    ]),
-  );
   const problemDetailSearch =
     !shouldUseParticipantScope && selectedPublicDivisionId
       ? `?divisionId=${encodeURIComponent(selectedPublicDivisionId)}`
@@ -286,8 +217,6 @@ function ContestProblemsContent({
               </thead>
               <tbody>
                 {problems.map((problem) => {
-                  const score = scoreByProblemCode.get(problem.problem_code);
-
                   return (
                     <tr
                       className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
@@ -305,7 +234,9 @@ function ContestProblemsContent({
                         </Link>
                       </td>
                       <td className="px-6 py-4">
-                        <ProblemStatusBadge status={problemStatus(score)} />
+                        <ProblemStatusBadge
+                          status={problemStatus(problem.solve_status)}
+                        />
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-950">
                         {problemTimeLimitLabel(problem)}
