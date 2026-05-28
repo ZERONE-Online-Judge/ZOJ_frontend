@@ -1640,7 +1640,7 @@ function OperatorProblemsContent({
               </button>
             </div>
           </div>
-          <div className="flex gap-1 overflow-x-auto rounded-full bg-slate-100 p-1">
+          <div className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-slate-100 p-1">
             {divisions.map((division) => (
               <button
                 className={[
@@ -1730,18 +1730,10 @@ function OperatorProblemsContent({
                   {problem.problem_code}. {problem.title}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  시간{' '}
-                  {problemTimeLimitLabel(problem, {
-                    includeAutomaticAdjustments: true,
-                    markAutomaticAdjustments: true,
-                  })}
+                  시간 {problemTimeLimitLabel(problem)}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  메모리{' '}
-                  {problemMemoryLimitLabel(problem, {
-                    includeAutomaticAdjustments: true,
-                    markAutomaticAdjustments: true,
-                  })}
+                  메모리 {problemMemoryLimitLabel(problem)}
                 </span>
               </button>
             ))}
