@@ -22,7 +22,11 @@ import {
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import {
+  contestQueryKeys,
+  generalSessionQueryIdentity,
+  participantSessionQueryIdentity,
+} from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   getContestProblemAssets,
@@ -223,6 +227,11 @@ function ContestProblemDetailContent({
       : view === 'editorial' && !canViewEditorial
         ? 'problem'
         : view;
+  const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
+  const participantQueryIdentity = participantSessionQueryIdentity(
+    activeParticipantSession,
+    participantContest,
+  );
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -245,9 +254,9 @@ function ContestProblemDetailContent({
     queryKey: contestQueryKeys.problemDetail(
       contestId,
       problemId,
-      generalSession?.accessToken,
-      activeParticipantSession?.contestId,
-      activeParticipantSession?.accessToken,
+      generalQueryIdentity,
+      activeParticipantSession?.contestId ?? participantContest?.contest.contest_id,
+      participantQueryIdentity,
     ),
     queryFn: async () => {
       const session = shouldUseParticipantScope || shouldUseParticipantAuth
@@ -269,10 +278,12 @@ function ContestProblemDetailContent({
     queryKey: contestQueryKeys.problemAssets(
       contestId,
       problemId,
-      generalSession?.accessToken,
-      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      generalQueryIdentity,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        : undefined,
       shouldUseParticipantScope || shouldUseParticipantAuth
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {
@@ -304,11 +315,13 @@ function ContestProblemDetailContent({
       (shouldUseParticipantScope || Boolean(selectedDivisionId)),
     queryKey: contestQueryKeys.problems(
       contestId,
-      generalSession?.accessToken,
-      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
-      shouldUseParticipantScope ? selectedDivisionId : selectedDivisionId,
+      generalQueryIdentity,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        : undefined,
+      selectedDivisionId,
       shouldUseParticipantScope || shouldUseParticipantAuth
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {
@@ -396,10 +409,12 @@ function ContestProblemDetailContent({
     queryKey: contestQueryKeys.submissionDetail(
       contestId,
       selectedSubmissionId,
-      generalSession?.accessToken,
-      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      generalQueryIdentity,
+      shouldUseParticipantScope
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        : undefined,
       shouldUseParticipantScope || shouldUseParticipantAuth
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {

@@ -13,7 +13,11 @@ import {
   contestResourceAccess,
 } from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import {
+  contestQueryKeys,
+  generalSessionQueryIdentity,
+  participantSessionQueryIdentity,
+} from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   getContestProblems,
@@ -90,6 +94,11 @@ function ContestSubmissionsContent({
     hasSessionAccess,
     problemAccess,
   ) && !isBeforeStart;
+  const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
+  const participantQueryIdentity = participantSessionQueryIdentity(
+    activeParticipantSession,
+    participantContest,
+  );
 
   useEffect(() => {
     if (
@@ -111,17 +120,17 @@ function ContestSubmissionsContent({
     enabled: canViewSubmissions && canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
-      generalSession?.accessToken,
+      generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id
+        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
         : effectiveDivisionId,
       shouldUseParticipantScope
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : shouldUseParticipantAuth
-          ? activeParticipantSession?.accessToken
+          ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {
@@ -155,17 +164,17 @@ function ContestSubmissionsContent({
     enabled: canViewSubmissions,
     queryKey: contestQueryKeys.submissions(
       contestId,
-      generalSession?.accessToken,
+      generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id
+        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
         : effectiveDivisionId,
       shouldUseParticipantScope
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : shouldUseParticipantAuth
-          ? activeParticipantSession?.accessToken
+          ? participantQueryIdentity
         : undefined,
       currentCursor ?? undefined,
       selectedProblemId || undefined,

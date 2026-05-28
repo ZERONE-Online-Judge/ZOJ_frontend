@@ -5,7 +5,11 @@ import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import {
+  contestQueryKeys,
+  generalSessionQueryIdentity,
+  participantSessionQueryIdentity,
+} from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   canViewContestResource,
@@ -94,6 +98,11 @@ function ContestProblemsContent({
   const effectiveDivisionId = shouldUseParticipantScope
     ? activeParticipantSession?.division.division_id
     : selectedPublicDivisionId;
+  const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
+  const participantQueryIdentity = participantSessionQueryIdentity(
+    activeParticipantSession,
+    participantContest,
+  );
   const canViewProblems = canViewContestResource(
     contest,
     hasSessionAccess,
@@ -113,17 +122,17 @@ function ContestProblemsContent({
     enabled: canViewProblems,
     queryKey: contestQueryKeys.problems(
       contestId,
-      generalSession?.accessToken,
+      generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId
+        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id
+        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
         : effectiveDivisionId,
       shouldUseParticipantScope
-        ? activeParticipantSession?.accessToken
+        ? participantQueryIdentity
         : shouldUseParticipantAuth
-          ? activeParticipantSession?.accessToken
+          ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {

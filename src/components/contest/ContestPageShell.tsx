@@ -158,7 +158,6 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     activeParticipantSession,
     ensureParticipantSession,
     generalSession,
-    isRefreshingGeneralSession,
     participantContest,
   } = useContestParticipantSession(resolvedContestId);
   const contestQuery = useQuery({
@@ -209,7 +208,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     Boolean(contestId && generalSession && shouldRequireParticipantAccess);
   const participantAccessCheckKey = [
     contestId ?? 'no-contest',
-    generalSession?.accessToken ?? 'public',
+    generalSession?.account.email ?? 'public',
     shouldRequireParticipantAccess ? 'required' : 'optional',
   ].join(':');
   const hasCheckedParticipantAccess =
@@ -218,7 +217,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
     checkedParticipantAccessKey === participantAccessCheckKey;
   const isCheckingParticipantAccess =
     shouldCheckParticipantAccess &&
-    (!hasCheckedParticipantAccess || isRefreshingGeneralSession);
+    !hasCheckedParticipantAccess;
 
   useEffect(() => {
     if (!contestId || !generalSession || !shouldRequireParticipantAccess) return;
@@ -259,6 +258,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
 
     async function prefetchContestPageData() {
       const generalToken = generalSession?.accessToken;
+      const generalIdentity = generalSession?.account.email ?? 'public';
       const shouldUseParticipantScope =
         contestAccessPhase(currentDetail.contest) !== 'ended';
       const currentParticipantSession = shouldUseParticipantScope
@@ -267,11 +267,18 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       if (cancelled) return;
 
       const participantToken = currentParticipantSession?.accessToken;
+      const participantIdentity = currentParticipantSession
+        ? [
+            currentParticipantSession.contestId,
+            currentParticipantSession.member.email,
+            currentParticipantSession.division.division_id,
+          ].join(':')
+        : undefined;
       const token = participantToken ?? generalToken;
       const prefetchKey = [
         currentContestId,
-        generalToken ?? 'public',
-        participantToken ?? 'no-participant-token',
+        generalIdentity,
+        participantIdentity ?? 'no-participant',
       ].join(':');
 
       if (prefetchedKeyRef.current === prefetchKey) return;
@@ -279,11 +286,21 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
 
       await Promise.allSettled([
         queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.notices(currentContestId, token),
+          queryKey: contestQueryKeys.notices(
+            currentContestId,
+            generalIdentity,
+            currentParticipantSession?.contestId,
+            participantIdentity,
+          ),
           queryFn: () => getContestNotices(currentContestId, token),
         }),
         queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.questions(currentContestId, token),
+          queryKey: contestQueryKeys.questions(
+            currentContestId,
+            generalIdentity,
+            currentParticipantSession?.contestId,
+            participantIdentity,
+          ),
           queryFn: () => getContestQuestions(currentContestId, token),
         }),
       ]);
@@ -359,7 +376,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
       {detail &&
       contest &&
       hasContestParticipantAccess &&
-      !isRefreshingGeneralSession ? (
+      !isCheckingParticipantAccess ? (
         <>
           {visibleEmergencyNotice && !isEmergencyNoticeDismissed ? (
             <EmergencyNoticeBanner

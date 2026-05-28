@@ -13,7 +13,11 @@ import {
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import {
+  contestQueryKeys,
+  generalSessionQueryIdentity,
+  participantSessionQueryIdentity,
+} from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
   createContestQuestionAnswer,
@@ -93,6 +97,7 @@ function ContestBoardContent({
   const {
     activeParticipantSession,
     ensureParticipantSession,
+    generalSession,
     participantContest,
     token,
   } = useContestParticipantSession(contestId);
@@ -120,14 +125,19 @@ function ContestBoardContent({
   const [formError, setFormError] = useState('');
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
   const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
+  const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
+  const participantQueryIdentity = participantSessionQueryIdentity(
+    activeParticipantSession,
+    participantContest,
+  );
 
   const noticesQuery = useQuery({
     enabled: canViewNotices,
     queryKey: contestQueryKeys.notices(
       contestId,
-      token,
+      generalQueryIdentity,
       participantContest?.contest.contest_id,
-      activeParticipantSession?.accessToken,
+      participantQueryIdentity,
     ),
     queryFn: async () => {
       const session =
@@ -144,9 +154,9 @@ function ContestBoardContent({
     enabled: canViewQuestions,
     queryKey: contestQueryKeys.questions(
       contestId,
-      token,
+      generalQueryIdentity,
       participantContest?.contest.contest_id,
-      activeParticipantSession?.accessToken,
+      participantQueryIdentity,
     ),
     queryFn: async () => {
       const session =

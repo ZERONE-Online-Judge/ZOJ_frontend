@@ -12,7 +12,11 @@ import {
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
 import type { Contest, Division } from '@/domains/contestAdministration/types';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
+import {
+  contestQueryKeys,
+  generalSessionQueryIdentity,
+  participantSessionQueryIdentity,
+} from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { getContestNotices } from '@/domains/serviceCommunication/api';
 import type { ContestNotice } from '@/domains/serviceCommunication/types';
@@ -272,6 +276,11 @@ function ContestOverviewContent({
   const hasParticipantAccess = Boolean(
     participantContest || activeParticipantSession,
   );
+  const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
+  const participantQueryIdentity = participantSessionQueryIdentity(
+    activeParticipantSession,
+    participantContest,
+  );
   const canViewNotices =
     contestAccessPhase(contest) !== 'ended' ||
     canViewContestResource(contest, hasParticipantAccess, noticeAccess);
@@ -279,9 +288,9 @@ function ContestOverviewContent({
     enabled: canViewNotices,
     queryKey: contestQueryKeys.notices(
       contest.contest_id,
-      token,
+      generalQueryIdentity,
       participantContest?.contest.contest_id,
-      activeParticipantSession?.accessToken,
+      participantQueryIdentity,
     ),
     queryFn: async () => {
       const session =
