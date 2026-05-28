@@ -39,6 +39,20 @@ function timeLeftLabel(target?: string | null, now = Date.now()) {
   return `${seconds}s`;
 }
 
+function largeCountdownLabel(target?: string | null, now = Date.now()) {
+  if (!target) return '-';
+
+  const diff = new Date(target).getTime() - now;
+  if (diff <= 0) return '0시간 0분 0초';
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${hours}시간 ${minutes}분 ${seconds}초`;
+}
+
 function splitContestTitle(title?: string | null) {
   const fallback = '스코어보드';
   const normalized = (title || fallback).trim();
@@ -235,6 +249,8 @@ function OperatorScoreboardPresentationContent({
   const contest = presentationQuery.data?.contest;
   const sections = presentationQuery.data?.sections ?? [];
   const titleParts = splitContestTitle(contest?.title);
+  const startsAt = contest?.start_at ? new Date(contest.start_at).getTime() : 0;
+  const isBeforeContestStart = Boolean(startsAt && startsAt > now);
 
   useEffect(() => {
     if (contest?.title) {
@@ -285,6 +301,20 @@ function OperatorScoreboardPresentationContent({
             </div>
           </div>
         </header>
+
+        {isBeforeContestStart ? (
+          <div className="rounded-[1rem] border border-violet-300/20 bg-violet-500/10 px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,2vw,1.75rem)] text-center shadow-[0_1rem_3rem_rgba(0,0,0,0.2)]">
+            <p className="text-[clamp(0.72rem,1vw,0.95rem)] font-black tracking-[0.28em] text-violet-200 uppercase">
+              Contest Starts In
+            </p>
+            <p className="mt-2 text-[clamp(2.4rem,6vw,6rem)] leading-none font-black tracking-normal text-white">
+              {largeCountdownLabel(contest?.start_at, now)}
+            </p>
+            <p className="mt-2 text-[clamp(0.8rem,1.2vw,1rem)] font-bold text-white/70">
+              시작 시각 {formatDateTime(contest?.start_at)}
+            </p>
+          </div>
+        ) : null}
 
         {presentationQuery.error ? (
           <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">
