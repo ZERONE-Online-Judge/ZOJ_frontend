@@ -107,6 +107,10 @@ function apiErrorUserMessage(error: ApiClientError) {
     return '현재 로그인한 운영자 자신은 제거할 수 없습니다.';
   }
 
+  if (error.code === 'service_master_operator_immutable') {
+    return '서비스 마스터는 모든 대회 권한을 자동으로 가지므로 대회 운영자 목록에서 관리할 수 없습니다.';
+  }
+
   if (error.code === 'participant_has_submission') {
     return '제출 이력이 있는 참가팀은 삭제할 수 없습니다.';
   }

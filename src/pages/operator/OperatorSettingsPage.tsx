@@ -180,7 +180,9 @@ function OperatorSettingsContent({
 
   const contest = dashboardQuery.data?.contest;
   const divisions = dashboardQuery.data?.divisions ?? [];
-  const operators = operatorsQuery.data ?? [];
+  const operators = (operatorsQuery.data ?? []).filter(
+    (operator) => !operator.is_service_master,
+  );
   const settingsForm =
     settingsDraft?.contestId === contestId
       ? settingsDraft.form
@@ -778,7 +780,7 @@ function OperatorSettingsContent({
           </OperatorPanel>
 
           <OperatorPanel
-            description="대회 운영 권한을 함께 관리할 계정을 등록합니다."
+            description="대회별 운영 계정을 등록합니다. 서비스 마스터는 전역 권한으로 자동 적용되며 목록에 표시되지 않습니다."
             title="운영자"
           >
             <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
