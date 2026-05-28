@@ -140,11 +140,22 @@ export default function MarkdownPreview({
       />
     );
   };
+  const resolveLink = (href = '') => resolveAssetSource(href, assets) || href;
 
   return (
     <div className="prose prose-slate max-w-none text-slate-800">
       <ReactMarkdown
         components={{
+          a: ({ href = '', children }) => (
+            <a
+              className="font-bold text-indigo-700 underline underline-offset-4 hover:text-indigo-900"
+              href={resolveLink(href)}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
           img: ({ src = '', alt = '' }) => renderImage(src, alt),
           ul: ({ children }) => (
             <ul className="my-4 list-disc space-y-2 pl-6 leading-7">

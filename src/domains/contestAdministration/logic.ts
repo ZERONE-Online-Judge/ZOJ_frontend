@@ -31,6 +31,7 @@ export function emptyContest(contestId?: string): Contest {
     submission_access_after_end: 'private',
     board_access_after_end: 'participants',
     notice_access_after_end: 'public',
+    editorial_access_after_end: 'private',
     scoreboard_freeze_mode: 'auto',
     mock_judging_enabled: false,
     participant_progress_visible: true,
@@ -158,7 +159,13 @@ export function contestPublicVisibility(contest: Contest) {
 
 export function contestResourceAccess(
   contest: Contest,
-  resource: 'problem' | 'scoreboard' | 'submission' | 'board' | 'notice',
+  resource:
+    | 'problem'
+    | 'scoreboard'
+    | 'submission'
+    | 'board'
+    | 'notice'
+    | 'editorial',
 ): ContestResourceAccess {
   if (resource === 'problem') {
     return contest.problem_access_after_end ?? 'private';
@@ -171,12 +178,21 @@ export function contestResourceAccess(
   }
   if (resource === 'board')
     return contest.board_access_after_end ?? 'participants';
+  if (resource === 'editorial') {
+    return contest.editorial_access_after_end ?? 'private';
+  }
   return contest.notice_access_after_end ?? 'public';
 }
 
 export function contestResourceAccessMessage(
   contest: Contest,
-  resource: 'problem' | 'scoreboard' | 'submission' | 'board' | 'notice',
+  resource:
+    | 'problem'
+    | 'scoreboard'
+    | 'submission'
+    | 'board'
+    | 'notice'
+    | 'editorial',
   hasSessionAccess: boolean,
 ) {
   const labels = {
@@ -185,6 +201,7 @@ export function contestResourceAccessMessage(
     problem: '문제집',
     scoreboard: '스코어보드',
     submission: '채점현황',
+    editorial: '해설',
   };
   const phase = contestAccessPhase(contest);
   const access = contestResourceAccess(contest, resource);

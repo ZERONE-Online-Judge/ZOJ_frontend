@@ -47,6 +47,7 @@ type SettingsForm = {
   submission_access_after_end: ContestResourceAccess;
   board_access_after_end: ContestResourceAccess;
   board_write_after_end: boolean;
+  editorial_access_after_end: ContestResourceAccess;
   notice_access_after_end: ContestResourceAccess;
   mock_judging_enabled: boolean;
   participant_progress_visible: boolean;
@@ -112,6 +113,10 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
     submission_access_after_end: contestResourceAccess(contest, 'submission'),
     board_access_after_end: contestResourceAccess(contest, 'board'),
     board_write_after_end: Boolean(contest.board_write_after_end),
+    editorial_access_after_end:
+      contestResourceAccess(contest, 'problem') === 'private'
+        ? 'private'
+        : contestResourceAccess(contest, 'editorial'),
     notice_access_after_end: contestResourceAccess(contest, 'notice'),
     mock_judging_enabled:
       contestResourceAccess(contest, 'problem') === 'private'
@@ -201,6 +206,10 @@ function OperatorSettingsContent({
       submission_access_after_end: form.submission_access_after_end,
       board_access_after_end: form.board_access_after_end,
       board_write_after_end: form.board_write_after_end,
+      editorial_access_after_end:
+        form.problem_access_after_end === 'private'
+          ? 'private'
+          : form.editorial_access_after_end,
       notice_access_after_end: form.notice_access_after_end,
       mock_judging_enabled:
         form.problem_access_after_end === 'private'
@@ -344,6 +353,7 @@ function OperatorSettingsContent({
         submission_access_after_end: 'public',
         board_access_after_end: 'public',
         board_write_after_end: true,
+        editorial_access_after_end: 'public',
         notice_access_after_end: 'public',
       };
       setSettingsDraft({ contestId, form: next });
@@ -481,6 +491,10 @@ function OperatorSettingsContent({
                         ? {
                             ...prev,
                             problem_access_after_end: value,
+                            editorial_access_after_end:
+                              value === 'private'
+                                ? 'private'
+                                : prev.editorial_access_after_end,
                             mock_judging_enabled:
                               value === 'private'
                                 ? false
@@ -521,6 +535,23 @@ function OperatorSettingsContent({
                     )
                   }
                   value={settingsForm.board_access_after_end}
+                />
+                <AccessSelect
+                  disabled={settingsForm.problem_access_after_end === 'private'}
+                  helperText={
+                    settingsForm.problem_access_after_end === 'private'
+                      ? '문제집 종료 후 공개가 켜져야 해설 공개 범위를 설정할 수 있습니다.'
+                      : '해설은 대회 종료 후에만 공개됩니다.'
+                  }
+                  label="해설"
+                  onChange={(value) =>
+                    setSettingsForm((prev) =>
+                      prev
+                        ? { ...prev, editorial_access_after_end: value }
+                        : prev,
+                    )
+                  }
+                  value={settingsForm.editorial_access_after_end}
                 />
                 <AccessSelect
                   label="공지"
@@ -852,10 +883,14 @@ function DateInput({
 }
 
 function AccessSelect({
+  disabled,
+  helperText,
   label,
   onChange,
   value,
 }: {
+  disabled?: boolean;
+  helperText?: string;
   label: string;
   onChange: (value: ContestResourceAccess) => void;
   value: ContestResourceAccess;
@@ -864,7 +899,8 @@ function AccessSelect({
     <label className="grid gap-2 text-sm font-black text-slate-700">
       {label}
       <select
-        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
+        disabled={disabled}
         onChange={(event) =>
           onChange(event.target.value as ContestResourceAccess)
         }
@@ -876,6 +912,9 @@ function AccessSelect({
           </option>
         ))}
       </select>
+      {helperText ? (
+        <span className="text-xs font-bold text-slate-500">{helperText}</span>
+      ) : null}
     </label>
   );
 }

@@ -63,6 +63,7 @@ export const problemDetailNavText = [
   { key: 'combined', label: '문제 + 제출', path: '' },
   { key: 'problem', label: '문제', path: 'statement' },
   { key: 'submit', label: '제출', path: 'submit' },
+  { key: 'editorial', label: '해설', path: 'editorial' },
 ] as const;
 
 export const mainPageText = {

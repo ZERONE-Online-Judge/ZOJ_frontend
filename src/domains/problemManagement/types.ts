@@ -4,6 +4,7 @@ export type Problem = {
   problem_code: string;
   title: string;
   statement: string;
+  editorial?: string;
   solve_status?: 'accepted' | 'wrong' | 'unsolved';
   time_limit_ms: number;
   memory_limit_mb: number;

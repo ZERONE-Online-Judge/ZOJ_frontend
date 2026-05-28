@@ -9,7 +9,7 @@ type ProblemSidebarProps = {
   divisions?: Division[];
   selectedDivisionId?: string;
   onDivisionChange?: (divisionId: string) => void;
-  targetView?: 'combined' | 'problem';
+  targetView?: 'combined' | 'problem' | 'editorial';
   search?: string;
 };
 
@@ -79,7 +79,9 @@ export default function ProblemSidebar({
                 to={
                   targetView === 'problem'
                     ? `/contests/${contestId}/problems/${problem.problem_id}/statement${suffix}`
-                    : `/contests/${contestId}/problems/${problem.problem_id}${suffix}`
+                    : targetView === 'editorial'
+                      ? `/contests/${contestId}/problems/${problem.problem_id}/editorial${suffix}`
+                      : `/contests/${contestId}/problems/${problem.problem_id}${suffix}`
                 }
               >
                 {problem.problem_code} {problem.title}

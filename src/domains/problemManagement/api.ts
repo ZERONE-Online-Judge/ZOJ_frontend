@@ -41,6 +41,17 @@ export function getContestProblem(
   );
 }
 
+export function getContestProblemAssets(
+  contestId: string,
+  problemId: string,
+  token?: string,
+) {
+  return apiRequest<ProblemAsset[]>(
+    `/contests/${contestId}/problems/${problemId}/assets`,
+    token,
+  );
+}
+
 export function getOperatorProblems(contestId: string, token: string) {
   return apiRequest<Problem[]>(
     `/operator/contests/${contestId}/problems`,

@@ -10,6 +10,7 @@ import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
 import ContestPageNavigation from '@/components/contest/ContestPageNavigation';
 import ContestPageShell from '@/components/contest/ContestPageShell';
+import ProblemEditorialPanel from '@/components/contest/problem/ProblemEditorialPanel';
 import ProblemNavigationPills from '@/components/contest/problem/ProblemNavigationPills';
 import ProblemSidebar from '@/components/contest/problem/ProblemSidebar';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
@@ -24,6 +25,7 @@ import type { Contest, Division } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import {
+  getContestProblemAssets,
   getContestProblem,
   getContestProblems,
   getDivisionProblems,
@@ -46,7 +48,7 @@ import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 import PageNotice from '@/shared/ui/PageNotice';
 
-type ProblemView = 'combined' | 'problem' | 'submit';
+type ProblemView = 'combined' | 'problem' | 'submit' | 'editorial';
 type SubmitFeedbackStatus = 'idle' | 'loading' | 'ready' | 'error';
 type SubmitFeedback = {
   message: string;
@@ -157,6 +159,7 @@ function MockJudgeResult({
 function problemViewFromParam(value?: string): ProblemView {
   if (value === 'statement') return 'problem';
   if (value === 'submit') return 'submit';
+  if (value === 'editorial') return 'editorial';
 
   return 'combined';
 }
@@ -187,6 +190,7 @@ function ContestProblemDetailContent({
   } =
     useContestParticipantSession(contestId);
   const problemAccess = contestResourceAccess(contest, 'problem');
+  const editorialAccess = contestResourceAccess(contest, 'editorial');
   const accessPhase = contestAccessPhase(contest);
   const hasSessionAccess = Boolean(
     participantContest || activeParticipantSession,
@@ -201,14 +205,24 @@ function ContestProblemDetailContent({
   const shouldUseParticipantAuth =
     hasSessionAccess &&
     accessPhase === 'ended' &&
-    problemAccess === 'participants';
+    (problemAccess === 'participants' ||
+      (view === 'editorial' && editorialAccess === 'participants'));
+  const canViewEditorial =
+    accessPhase === 'ended' &&
+    problemAccess !== 'private' &&
+    canViewContestResource(contest, hasSessionAccess, editorialAccess);
   const canMockJudge =
     accessPhase === 'ended' &&
     Boolean(contest.mock_judging_enabled) &&
     problemAccess !== 'private' &&
     canViewProblem;
   const canShowSubmit = canMockJudge || accessPhase !== 'ended';
-  const effectiveView = canShowSubmit || view === 'problem' ? view : 'problem';
+  const effectiveView =
+    view === 'submit' && !canShowSubmit
+      ? 'problem'
+      : view === 'editorial' && !canViewEditorial
+        ? 'problem'
+        : view;
   const [lastJudgeLanguage, setLastJudgeLanguage] = useState<JudgeLanguage>(
     () => loadLastJudgeLanguage(),
   );
@@ -250,6 +264,30 @@ function ContestProblemDetailContent({
 
   const problem = problemQuery.data;
   const activeProblemId = problem?.problem_id ?? problemId;
+  const problemAssetsQuery = useQuery({
+    enabled: canViewProblem && Boolean(problemId) && effectiveView !== 'submit',
+    queryKey: contestQueryKeys.problemAssets(
+      contestId,
+      problemId,
+      generalSession?.accessToken,
+      shouldUseParticipantScope ? activeParticipantSession?.contestId : undefined,
+      shouldUseParticipantScope || shouldUseParticipantAuth
+        ? activeParticipantSession?.accessToken
+        : undefined,
+    ),
+    queryFn: async () => {
+      const session = shouldUseParticipantScope || shouldUseParticipantAuth
+        ? await ensureParticipantSession()
+        : null;
+
+      return getContestProblemAssets(
+        contestId,
+        problemId,
+        session?.accessToken ?? generalSession?.accessToken,
+      );
+    },
+  });
+  const problemAssets = problemAssetsQuery.data ?? [];
   const selectedDivisionId = shouldUseParticipantScope
     ? activeParticipantSession?.division.division_id ?? ''
     : searchParams.get('divisionId') ??
@@ -310,6 +348,9 @@ function ContestProblemDetailContent({
     }
     if (effectiveView === 'submit') {
       return `/contests/${contestId}/problems/${nextProblemId}/submit${search}`;
+    }
+    if (effectiveView === 'editorial') {
+      return `/contests/${contestId}/problems/${nextProblemId}/editorial${search}`;
     }
     return `/contests/${contestId}/problems/${nextProblemId}${search}`;
   }
@@ -663,6 +704,7 @@ function ContestProblemDetailContent({
         <span className="text-sm font-black text-slate-700">보기 설정</span>
         <ProblemNavigationPills
           active={effectiveView}
+          allowEditorial={canViewEditorial}
           allowSubmit={canShowSubmit}
           contestId={contestId}
           problemId={problemId}
@@ -672,7 +714,8 @@ function ContestProblemDetailContent({
 
       {problemQuery.isLoading ||
       problemsQuery.isLoading ||
-      selectedSubmissionQuery.isLoading ? (
+      selectedSubmissionQuery.isLoading ||
+      (effectiveView === 'editorial' && problemAssetsQuery.isLoading) ? (
         <PageNotice message="문제를 불러오는 중입니다." status="loading" />
       ) : null}
       {!canViewProblem ? (
@@ -687,7 +730,8 @@ function ContestProblemDetailContent({
       ) : null}
       {problemQuery.isError ||
       problemsQuery.isError ||
-      selectedSubmissionQuery.isError ? (
+      selectedSubmissionQuery.isError ||
+      problemAssetsQuery.isError ? (
         <PageNotice message="문제를 불러오지 못했습니다." status="error" />
       ) : null}
 
@@ -704,7 +748,7 @@ function ContestProblemDetailContent({
             selectedDivisionId={selectedDivisionId}
             search={location.search}
           />
-          <ProblemStatementPanel problem={problem} />
+          <ProblemStatementPanel assets={problemAssets} problem={problem} />
           <ProblemSubmitPanel
             isSubmitting={submitMutation.isPending || mockSubmitMutation.isPending}
             language={activeLanguage}
@@ -738,7 +782,25 @@ function ContestProblemDetailContent({
             targetView="problem"
             search={location.search}
           />
-          <ProblemStatementPanel problem={problem} />
+          <ProblemStatementPanel assets={problemAssets} problem={problem} />
+        </section>
+      ) : null}
+
+      {problem && effectiveView === 'editorial' && canViewEditorial ? (
+        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1fr)]">
+          <ProblemSidebar
+            activeProblemId={activeProblemId}
+            contestId={contestId}
+            divisions={divisions}
+            onDivisionChange={
+              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+            }
+            problems={problems}
+            selectedDivisionId={selectedDivisionId}
+            targetView="editorial"
+            search={location.search}
+          />
+          <ProblemEditorialPanel assets={problemAssets} problem={problem} />
         </section>
       ) : null}
 

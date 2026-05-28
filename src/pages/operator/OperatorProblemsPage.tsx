@@ -38,6 +38,7 @@ import {
   serializeProblemDocument,
 } from '@/domains/problemManagement/document';
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
+import ProblemEditorialPanel from '@/components/contest/problem/ProblemEditorialPanel';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import type {
   PackageFileRole,
@@ -83,6 +84,7 @@ import { formatMemoryKb } from '@/shared/lib/formatters';
 type ProblemForm = {
   displayOrder: string;
   divisionId: string;
+  editorial: string;
   examples: { input: string; note?: string; output: string }[];
   inputDescription: string;
   languageResourceLimits: Partial<
@@ -224,6 +226,7 @@ type ProblemEditorMode = 'create' | 'edit';
 const emptyProblemForm: ProblemForm = {
   displayOrder: '',
   divisionId: '',
+  editorial: '',
   examples: [],
   inputDescription: '',
   languageResourceLimits: {},
@@ -265,6 +268,7 @@ function problemFormFromProblem(problem: Problem): ProblemForm {
   return {
     displayOrder: String(problem.display_order ?? ''),
     divisionId: problem.division_id ?? '',
+    editorial: problem.editorial ?? '',
     examples: document.examples,
     inputDescription: document.inputDescription,
     languageResourceLimits,
@@ -451,6 +455,7 @@ function previewProblemFromForm(
   return {
     display_order: displayOrder,
     division_id: form.divisionId || selectedProblem?.division_id,
+    editorial: form.editorial || selectedProblem?.editorial || '',
     language_resource_limits: languageResourceLimitsFromForm(form),
     memory_limit_mb: limitValueOrFallback(
       form.memoryLimitMb,
@@ -650,7 +655,7 @@ function OperatorProblemsContent({
   const queryClient = useQueryClient();
   const [editorMode, setEditorMode] = useState<ProblemEditorMode>('create');
   const [authoringTab, setAuthoringTab] = useState<
-    'settings' | 'statement' | 'tests' | 'preview'
+    'settings' | 'statement' | 'editorial' | 'tests' | 'preview'
   >('settings');
   const [form, setForm] = useState(emptyProblemForm);
   const [selectedProblemId, setSelectedProblemId] = useState('');
@@ -734,6 +739,7 @@ function OperatorProblemsContent({
     enabled:
       Boolean(effectiveSelectedProblemId) &&
       (authoringTab === 'statement' ||
+        authoringTab === 'editorial' ||
         authoringTab === 'tests' ||
         isPreviewOpen),
     queryKey: [
@@ -782,8 +788,16 @@ function OperatorProblemsContent({
     () =>
       (assetsQuery.data ?? []).filter(
         (asset) =>
-          asset.mime_type.startsWith('image/') ||
-          asset.storage_key.includes('/assets/'),
+          !asset.storage_key.includes('/editorial-assets/') &&
+          (asset.mime_type.startsWith('image/') ||
+            asset.storage_key.includes('/assets/')),
+      ),
+    [assetsQuery.data],
+  );
+  const editorialAssets = useMemo(
+    () =>
+      (assetsQuery.data ?? []).filter((asset) =>
+        asset.storage_key.includes('/editorial-assets/'),
       ),
     [assetsQuery.data],
   );
@@ -881,6 +895,7 @@ function OperatorProblemsContent({
           ? Number(problemForm.displayOrder)
           : undefined,
         division_id: problemForm.divisionId,
+        editorial: problemForm.editorial,
         language_resource_limits: languageResourceLimitsFromForm(problemForm),
         memory_limit_mb: Number(problemForm.memoryLimitMb),
         problem_code: problemForm.problemCode.trim(),
@@ -990,6 +1005,27 @@ function OperatorProblemsContent({
         queryKey: [
           'operator',
           'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
+
+  const uploadEditorialAssetMutation = useMutation({
+    mutationFn: (file: File) =>
+      uploadProblemAsset(
+        contestId,
+        effectiveSelectedProblemId,
+        token,
+        file,
+        `problems/${effectiveSelectedProblemId}/editorial-assets`,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-assets',
           contestId,
           effectiveSelectedProblemId,
         ],
@@ -1758,10 +1794,11 @@ function OperatorProblemsContent({
                 수정할 문제를 목록에서 가져와 주세요.
               </p>
             ) : null}
-            <div className="grid items-start gap-2 md:grid-cols-4">
+            <div className="grid items-start gap-2 md:grid-cols-5">
               {[
                 ['settings', '기본 정보'],
                 ['statement', '문제/예제'],
+                ['editorial', '해설'],
                 ['tests', '테스트케이스'],
                 ['preview', '전체 미리보기'],
               ].map(([value, label]) => (
@@ -2162,6 +2199,104 @@ function OperatorProblemsContent({
                         fallback="이미지 업로드에 실패했습니다"
                       />
                     ) : null}
+                  </div>
+                </>
+              ) : null}
+              {authoringTab === 'editorial' ? (
+                <>
+                  <label className="grid gap-2 text-sm font-black text-slate-700">
+                    해설 본문
+                    <textarea
+                      className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          editorial: event.target.value,
+                        }))
+                      }
+                      value={form.editorial}
+                    />
+                    <span className="text-xs font-bold text-slate-500">
+                      문제 본문과 동일한 Markdown, LaTeX, 이미지 문법을
+                      사용할 수 있습니다.
+                    </span>
+                  </label>
+                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                    <div className="grid gap-1">
+                      <p className="text-sm font-black text-indigo-800">
+                        해설 PDF / 이미지
+                      </p>
+                      <p className="text-xs font-bold text-slate-600">
+                        해설집 PDF나 본문에 넣을 이미지를 업로드합니다.
+                        본문에는 아래 asset 문법을 붙여 넣어 사용할 수
+                        있습니다.
+                      </p>
+                    </div>
+                    <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                      파일 선택
+                      <input
+                        accept="application/pdf,image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        disabled={
+                          !effectiveSelectedProblemId ||
+                          uploadEditorialAssetMutation.isPending
+                        }
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) uploadEditorialAssetMutation.mutate(file);
+                          event.currentTarget.value = '';
+                        }}
+                        type="file"
+                      />
+                    </label>
+                    <div className="grid gap-2">
+                      {editorialAssets.map((asset) => {
+                        const isImage = asset.mime_type.startsWith('image/');
+                        const snippet = isImage
+                          ? `![${asset.original_filename}](asset://${asset.asset_id})`
+                          : `[${asset.original_filename}](asset://${asset.asset_id})`;
+                        return (
+                          <div
+                            className="grid gap-2 rounded border border-indigo-100 bg-white px-3 py-3 text-xs font-bold text-slate-600"
+                            key={asset.asset_id}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span>{asset.original_filename}</span>
+                              <button
+                                className="rounded border border-rose-200 px-2 py-1 text-[11px] font-black text-rose-600"
+                                disabled={deleteAssetMutation.isPending}
+                                onClick={() => deleteAssetMutation.mutate(asset)}
+                                type="button"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                            <code className="zoj-break-anywhere rounded bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
+                              {snippet}
+                            </code>
+                          </div>
+                        );
+                      })}
+                      {effectiveSelectedProblemId &&
+                      !assetsQuery.isLoading &&
+                      !editorialAssets.length ? (
+                        <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                          업로드된 해설 파일이 없습니다.
+                        </p>
+                      ) : null}
+                    </div>
+                    {uploadEditorialAssetMutation.error ? (
+                      <ErrorBox
+                        error={uploadEditorialAssetMutation.error}
+                        fallback="해설 파일 업로드에 실패했습니다"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="overflow-hidden rounded border border-slate-200">
+                    <ProblemEditorialPanel
+                      assets={assetsQuery.data ?? []}
+                      problem={previewProblem}
+                    />
                   </div>
                 </>
               ) : null}
@@ -2572,7 +2707,7 @@ function OperatorProblemsContent({
 
       {isPreviewOpen ? (
         <ProblemPreviewModal
-          assets={imageAssets}
+          assets={assetsQuery.data ?? []}
           canSubmit={Boolean(form.problemId)}
           isSubmitting={testSubmissionMutation.isPending}
           message={
@@ -3403,6 +3538,11 @@ function ProblemPreviewModal({
         <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_28rem]">
           <div className="min-h-0 overflow-y-auto">
             <ProblemStatementPanel assets={assets} problem={problem} />
+            {problem.editorial?.trim() ? (
+              <div className="border-t border-slate-200">
+                <ProblemEditorialPanel assets={assets} problem={problem} />
+              </div>
+            ) : null}
           </div>
           <div className="min-h-0 overflow-y-auto border-t border-slate-200 lg:border-t-0 lg:border-l">
             <ProblemSubmitPanel

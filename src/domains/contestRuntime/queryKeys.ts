@@ -92,6 +92,21 @@ export const contestQueryKeys = {
       participantContestId ?? null,
       participantToken ?? null,
     ] as const,
+  problemAssets: (
+    contestId: string,
+    problemId: string,
+    generalToken?: string,
+    participantContestId?: string,
+    participantToken?: string,
+  ) =>
+    [
+      'contest-problem-assets',
+      contestId,
+      problemId,
+      generalToken ?? null,
+      participantContestId ?? null,
+      participantToken ?? null,
+    ] as const,
   submissionDetail: (
     contestId: string,
     submissionId: string | null,

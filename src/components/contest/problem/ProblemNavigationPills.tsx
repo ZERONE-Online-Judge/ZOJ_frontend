@@ -4,7 +4,8 @@ import { problemDetailNavText, sharedUiText } from '@/data/uiText';
 type ProblemNavigationPillsProps = {
   contestId: string;
   problemId: string;
-  active: 'combined' | 'problem' | 'submit';
+  active: 'combined' | 'problem' | 'submit' | 'editorial';
+  allowEditorial?: boolean;
   allowSubmit?: boolean;
   search?: string;
 };
@@ -13,6 +14,7 @@ export default function ProblemNavigationPills({
   contestId,
   problemId,
   active,
+  allowEditorial = false,
   allowSubmit = true,
   search = '',
 }: ProblemNavigationPillsProps) {
@@ -22,7 +24,11 @@ export default function ProblemNavigationPills({
     <nav aria-label={sharedUiText.problemDetailMenuAriaLabel}>
       <ul className="flex flex-wrap items-center gap-3">
         {problemDetailNavText
-          .filter((tab) => allowSubmit || tab.key === 'problem')
+          .filter((tab) => {
+            if (!allowSubmit && (tab.key === 'submit' || tab.key === 'combined')) return false;
+            if (!allowEditorial && tab.key === 'editorial') return false;
+            return true;
+          })
           .map((tab) => {
             const to = tab.path
               ? `/contests/${contestId}/problems/${problemId}/${tab.path}${suffix}`
