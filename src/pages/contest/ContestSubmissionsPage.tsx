@@ -252,6 +252,9 @@ function ContestSubmissionsContent({
             void queryClient.invalidateQueries({
               queryKey: ['contest-scoreboard', contestId],
             });
+            void queryClient.invalidateQueries({
+              queryKey: ['contest-problems', contestId],
+            });
           })
           .catch(() => undefined)
           .finally(() => {

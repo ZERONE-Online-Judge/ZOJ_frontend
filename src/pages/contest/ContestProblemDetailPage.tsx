@@ -335,7 +335,6 @@ function ContestProblemDetailContent({
         session?.accessToken ?? generalSession?.accessToken,
       );
     },
-    refetchInterval: 15_000,
   });
   const problems = problemsQuery.data ?? [];
 
