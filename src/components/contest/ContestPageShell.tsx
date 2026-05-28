@@ -324,7 +324,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
 
   if (!contestId) {
     return (
-      <section className="mx-auto grid w-full max-w-[96rem] gap-8 px-4 py-12 font-sans sm:px-5 lg:px-6 2xl:max-w-[104rem]">
+      <section className="mx-auto grid w-full max-w-[96rem] gap-6 px-3 py-8 font-sans sm:gap-8 sm:px-5 sm:py-10 lg:px-6 lg:py-12 2xl:max-w-[104rem]">
         <PageNotice message="대회 정보를 찾을 수 없습니다." status="error" />
       </section>
     );
@@ -345,7 +345,7 @@ export default function ContestPageShell({ children }: ContestPageShellProps) {
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[96rem] gap-8 px-4 py-12 font-sans sm:px-5 lg:px-6 2xl:max-w-[104rem]">
+    <section className="mx-auto grid w-full max-w-[96rem] gap-6 px-3 py-8 font-sans sm:gap-8 sm:px-5 sm:py-10 lg:px-6 lg:py-12 2xl:max-w-[104rem]">
       {contestQuery.isLoading && (
         <PageNotice message="대회 정보를 불러오는 중입니다." status="loading" />
       )}

@@ -251,7 +251,10 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
       : '';
 
   return (
-    <nav aria-label="운영자 메뉴" className="flex flex-wrap gap-2">
+    <nav
+      aria-label="운영자 메뉴"
+      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+    >
       {operatorTabs
         .filter((tab) =>
           hasContestPermission(
@@ -269,6 +272,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
               className={({ isActive }) =>
                 [
                   'zoj-pressable inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
+                  'shrink-0 whitespace-nowrap',
                   isActive
                     ? 'border-indigo-900 bg-indigo-950 text-white shadow-sm'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',

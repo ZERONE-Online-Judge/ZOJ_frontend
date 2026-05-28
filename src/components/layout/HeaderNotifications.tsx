@@ -427,7 +427,7 @@ export default function HeaderNotifications() {
     <>
       <button
         aria-label="알림"
-        className="relative flex size-11 items-center justify-center rounded border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+        className="relative flex size-10 items-center justify-center rounded border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:size-11"
         onClick={() => setIsPanelOpen(true)}
         type="button"
       >

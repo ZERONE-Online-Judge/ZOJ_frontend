@@ -27,8 +27,16 @@ export default function ProblemSidebar({
   const showDivisionSelect = divisions.length > 1 && onDivisionChange;
 
   return (
-    <aside className="border-r border-slate-200 bg-white">
+    <aside className="min-w-0 border-b border-slate-200 bg-slate-50 xl:border-r xl:border-b-0 xl:bg-white">
       <nav aria-label="문제 목록" className="grid gap-3 p-3">
+        <div className="flex items-center justify-between gap-3 px-1 xl:block">
+          <span className="text-xs font-black tracking-wide text-slate-500 uppercase">
+            빠른 문제 전환
+          </span>
+          <span className="text-xs font-bold text-slate-400 xl:hidden">
+            좌우로 이동
+          </span>
+        </div>
         {showDivisionSelect ? (
           <label className="grid gap-2 px-1 text-xs font-black text-slate-500">
             유형
@@ -64,16 +72,16 @@ export default function ProblemSidebar({
             </span>
           </label>
         ) : null}
-        <ul className="grid gap-1">
+        <ul className="-mx-1 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1 xl:mx-0 xl:grid xl:gap-1 xl:overflow-visible xl:px-0 xl:pb-0">
           {problems.map((problem) => (
-            <li key={problem.problem_id}>
+            <li className="shrink-0 xl:shrink" key={problem.problem_id}>
               <NavLink
                 className={({ isActive }) =>
                   [
-                    'block truncate rounded px-4 py-3 text-sm font-bold transition',
+                    'flex h-10 max-w-[16rem] items-center rounded border px-3 text-sm font-bold whitespace-nowrap transition xl:block xl:h-auto xl:max-w-none xl:truncate xl:border-0 xl:px-4 xl:py-3 xl:whitespace-normal',
                     isActive || problem.problem_id === activeProblemId
-                      ? 'bg-slate-950 text-white'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950',
+                      ? 'border-slate-950 bg-slate-950 text-white'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-950 xl:bg-transparent',
                   ].join(' ')
                 }
                 to={

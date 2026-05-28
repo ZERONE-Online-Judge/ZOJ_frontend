@@ -55,8 +55,8 @@ export default function ProblemSubmitPanel({
     useState(initialEditorHeight);
   const panelClassName =
     layout === 'standalone'
-      ? 'bg-slate-50 px-7 py-7'
-      : 'border-t border-slate-200 bg-slate-50 px-5 py-7 xl:border-t-0 xl:border-l';
+      ? 'bg-slate-50 px-4 py-5 sm:px-7 sm:py-7'
+      : 'border-t border-slate-200 bg-slate-50 px-4 py-5 sm:px-5 sm:py-7 xl:border-t-0 xl:border-l';
   const headingProblemLabel =
     problemCode || problemTitle
       ? ` - ${problemCode ? `${problemCode}. ` : ''}${problemTitle ?? ''}`
@@ -64,7 +64,7 @@ export default function ProblemSubmitPanel({
 
   return (
     <aside className={panelClassName}>
-      <h2 className="text-2xl font-black tracking-normal break-keep text-slate-950">
+      <h2 className="text-xl font-black tracking-normal break-keep text-slate-950 sm:text-2xl">
         {title}
         {headingProblemLabel}
       </h2>

@@ -28,14 +28,14 @@ const widthClasses: Record<PageWidth, string> = {
 };
 
 const headingClasses: Record<PageHeadingVariant, string> = {
-  page: 'break-keep text-3xl font-black tracking-normal text-slate-950',
-  contest: 'break-keep text-4xl font-black tracking-normal text-slate-950',
-  section: 'break-keep text-2xl font-black text-slate-950',
+  page: 'break-keep text-2xl font-black tracking-normal text-slate-950 sm:text-3xl',
+  contest: 'break-keep text-3xl font-black tracking-normal text-slate-950 sm:text-4xl',
+  section: 'break-keep text-xl font-black text-slate-950 sm:text-2xl',
 };
 
 const descriptionClasses: Record<PageHeadingVariant, string> = {
-  page: 'text-base leading-7 text-slate-600',
-  contest: 'text-base font-medium text-slate-400',
+  page: 'text-sm leading-6 text-slate-600 sm:text-base sm:leading-7',
+  contest: 'text-sm leading-6 font-medium text-slate-400 sm:text-base',
   section: 'text-sm leading-6 text-slate-600',
 };
 
@@ -79,7 +79,7 @@ export default function PageLayout({
   return (
     <section
       className={[
-        'animate-page-enter mx-auto grid w-full min-w-0 gap-8 px-6 py-14 font-sans lg:px-8',
+        'animate-page-enter mx-auto grid w-full min-w-0 gap-6 px-4 py-10 font-sans sm:gap-8 sm:px-6 sm:py-14 lg:px-8',
         widthClasses[width],
       ].join(' ')}
     >

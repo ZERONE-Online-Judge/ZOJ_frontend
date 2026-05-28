@@ -137,11 +137,12 @@ export default function HeaderAuthControls({
   if (!generalSession) {
     return (
       <Link
-        className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50"
+        aria-label={headerText.login}
+        className="flex h-10 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 sm:h-11 sm:px-5 sm:text-base"
         to={loginTo}
       >
         <LoginIcon />
-        <span>{headerText.login}</span>
+        <span className="hidden sm:inline">{headerText.login}</span>
       </Link>
     );
   }
@@ -150,21 +151,23 @@ export default function HeaderAuthControls({
     <>
       {isServiceMaster(generalSession) ? (
         <Link
-          className="flex h-11 items-center gap-2 rounded border border-violet-200 bg-violet-50 px-4 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
+          aria-label={headerText.admin}
+          className="flex h-10 items-center gap-2 rounded border border-violet-200 bg-violet-50 px-3 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100 sm:h-11 sm:px-4"
           to="/admin"
         >
           <AdminIcon />
-          <span>{headerText.admin}</span>
+          <span className="hidden sm:inline">{headerText.admin}</span>
         </Link>
       ) : null}
       <HeaderNotifications />
       <button
-        className="flex h-11 items-center gap-2 rounded border border-slate-200 bg-white px-5 text-base font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+        aria-label="내 정보"
+        className="flex h-10 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:h-11 sm:px-5 sm:text-base"
         onClick={() => setIsAccountPanelOpen(true)}
         type="button"
       >
         <LoginIcon />
-        <span>내 정보</span>
+        <span className="hidden sm:inline">내 정보</span>
       </button>
       {isAccountPanelOpen ? (
         <div

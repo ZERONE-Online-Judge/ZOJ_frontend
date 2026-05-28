@@ -714,8 +714,13 @@ function ContestProblemDetailContent({
 
       <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <div className="mb-7 mt-7 grid gap-3">
-        <span className="text-sm font-black text-slate-700">보기 설정</span>
+      <section className="mb-5 mt-6 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:mb-7 sm:mt-7 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-black text-slate-800">문제 보기</span>
+          <span className="text-xs font-bold text-slate-400">
+            본문, 제출, 해설 화면을 전환합니다
+          </span>
+        </div>
         <ProblemNavigationPills
           active={effectiveView}
           allowEditorial={canViewEditorial}
@@ -724,7 +729,7 @@ function ContestProblemDetailContent({
           problemId={problemId}
           search={location.search}
         />
-      </div>
+      </section>
 
       {problemQuery.isLoading ||
       problemsQuery.isLoading ||
@@ -750,7 +755,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'combined' && canShowSubmit ? (
-        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1.45fr)_minmax(24rem,0.95fr)] 2xl:grid-cols-[14rem_minmax(0,1.55fr)_minmax(26rem,0.9fr)]">
+        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1.45fr)_minmax(24rem,0.95fr)] 2xl:grid-cols-[14rem_minmax(0,1.55fr)_minmax(26rem,0.9fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -783,7 +788,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canShowSubmit)) ? (
-        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -801,7 +806,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'editorial' && canViewEditorial ? (
-        <section className="grid min-h-[760px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -819,7 +824,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'submit' && canShowSubmit ? (
-        <section className="min-h-[760px] min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <section className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px]">
           <ProblemSubmitPanel
             canSubmit={canSubmitActiveDraft}
             editorHeight={560}
