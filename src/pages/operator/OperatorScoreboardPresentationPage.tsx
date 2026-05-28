@@ -89,7 +89,7 @@ function PresentationScoreCell({ score }: { score?: ScoreboardProblemScore }) {
   return (
     <span
       className={[
-        'inline-flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-xs font-black',
+        'inline-flex h-6 min-w-8 items-center justify-center rounded-full px-1.5 text-[0.68rem] font-black',
         score?.solved
           ? 'bg-emerald-300 text-slate-950'
           : 'bg-rose-500/15 text-rose-200 ring-1 ring-rose-300/30',
@@ -106,22 +106,22 @@ function PresentationDivisionBoard({
   section: OperatorPresentationScoreboardSection;
 }) {
   const problemCodes = useMemo(() => sortedProblemCodes(section), [section]);
-  const gridMinWidth = Math.max(620, 430 + problemCodes.length * 56);
+  const gridMinWidth = Math.max(560, 380 + problemCodes.length * 48);
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-[1rem] border border-indigo-300/15 bg-slate-950/55 p-[clamp(1rem,2vw,1.75rem)] shadow-[0_1.25rem_4rem_rgba(0,0,0,0.28)] backdrop-blur">
-      <header className="flex items-end justify-between gap-4 pb-5">
+    <section className="min-w-0 overflow-hidden rounded-[0.85rem] border border-indigo-300/15 bg-slate-950/55 p-[clamp(0.8rem,1.4vw,1.2rem)] shadow-[0_1.25rem_4rem_rgba(0,0,0,0.28)] backdrop-blur">
+      <header className="flex items-end justify-between gap-3 pb-3">
         <div className="min-w-0">
-          <p className="text-[0.68rem] font-black tracking-[0.32em] text-violet-300 uppercase">
+          <p className="text-[0.6rem] font-black tracking-[0.28em] text-violet-300 uppercase">
             Division
           </p>
-          <h2 className="truncate text-[clamp(1.65rem,3vw,3.25rem)] leading-none font-black tracking-normal text-white">
+          <h2 className="truncate text-[clamp(1.35rem,2.4vw,2.45rem)] leading-none font-black tracking-normal text-white">
             {section.division.name}
           </h2>
         </div>
         <span
           className={[
-            'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black',
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black',
             section.frozen
               ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
               : 'border-violet-300/25 bg-violet-300/10 text-violet-100',
@@ -138,16 +138,16 @@ function PresentationDivisionBoard({
           style={{ minWidth: `${gridMinWidth}px` }}
         >
           <thead>
-            <tr className="border-y border-white/10 text-[0.68rem] font-black tracking-normal text-white/85 uppercase">
-              <th className="w-20 px-4 py-4">Rank</th>
-              <th className="min-w-56 px-4 py-4">Team</th>
-              <th className="w-20 px-3 py-4 text-center">Solved</th>
+            <tr className="border-y border-white/10 text-[0.62rem] font-black tracking-normal text-white/85 uppercase">
+              <th className="w-16 px-3 py-3">Rank</th>
+              <th className="min-w-48 px-3 py-3">Team</th>
+              <th className="w-16 px-2 py-3 text-center">Solved</th>
               {problemCodes.map((code) => (
-                <th className="w-14 px-1 py-4 text-center" key={code}>
+                <th className="w-12 px-1 py-3 text-center" key={code}>
                   {code}
                 </th>
               ))}
-              <th className="w-24 px-4 py-4 text-center">Time</th>
+              <th className="w-20 px-3 py-3 text-center">Time</th>
             </tr>
           </thead>
           <tbody>
@@ -159,23 +159,23 @@ function PresentationDivisionBoard({
                   className="border-b border-white/5 last:border-b-0 odd:bg-white/[0.035]"
                   key={`${section.division.division_id}-${row.team_id ?? row.team_name}`}
                 >
-                  <td className="px-4 py-3 text-[clamp(1rem,1.6vw,1.45rem)] font-black text-violet-300">
+                  <td className="px-3 py-2.5 text-[clamp(0.9rem,1.3vw,1.15rem)] font-black text-violet-300">
                     {row.rank}
                   </td>
-                  <td className="max-w-72 px-4 py-3">
-                    <span className="block truncate text-[clamp(0.9rem,1.2vw,1.05rem)] font-bold text-white">
+                  <td className="max-w-64 px-3 py-2.5">
+                    <span className="block truncate text-[clamp(0.8rem,1vw,0.92rem)] font-semibold text-white">
                       {row.team_name}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center text-[clamp(1rem,1.4vw,1.25rem)] font-black text-white/65">
+                  <td className="px-2 py-2.5 text-center text-[clamp(0.9rem,1.15vw,1.05rem)] font-black text-white/65">
                     {row.solved}
                   </td>
                   {problemCodes.map((code) => (
-                    <td className="px-1 py-2 text-center" key={code}>
+                    <td className="px-1 py-1.5 text-center" key={code}>
                       <PresentationScoreCell score={scores.get(code)} />
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-center text-[clamp(1rem,1.4vw,1.25rem)] font-black text-white/65">
+                  <td className="px-3 py-2.5 text-center text-[clamp(0.9rem,1.15vw,1.05rem)] font-black text-white/65">
                     {penaltyLabel(row.penalty)}
                   </td>
                 </tr>
@@ -243,27 +243,27 @@ function OperatorScoreboardPresentationContent({
   }, [contest?.title]);
 
   return (
-    <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,2vw,2rem)] text-white">
-      <div className="mx-auto grid w-full max-w-[118rem] gap-[clamp(1rem,2vw,2rem)]">
-        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1.25rem,2.5vw,2.5rem)] py-[clamp(1.25rem,2.5vw,2.75rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
+    <section className="fixed inset-0 z-[100] overflow-auto bg-[#090b14] px-[clamp(0.75rem,1.4vw,1.4rem)] py-[clamp(0.75rem,1.4vw,1.4rem)] text-white">
+      <div className="mx-auto grid w-full max-w-[118rem] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
+        <header className="relative isolate overflow-hidden rounded-[1.25rem] border border-indigo-300/10 bg-[radial-gradient(circle_at_50%_100%,rgba(59,56,255,0.42),transparent_42%),linear-gradient(115deg,#070914_0%,#11154b_54%,#0d1848_100%)] px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,1.8vw,2rem)] shadow-[0_1.5rem_5rem_rgba(0,0,0,0.38)]">
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem]" />
-          <div className="grid gap-[clamp(1rem,2vw,2.25rem)] xl:grid-cols-[minmax(20rem,1fr)_minmax(32rem,0.85fr)] xl:items-center">
+          <div className="grid gap-[clamp(0.85rem,1.6vw,1.8rem)] xl:grid-cols-[minmax(18rem,1fr)_minmax(30rem,0.78fr)] xl:items-center">
             <div className="min-w-0">
-              <p className="text-[clamp(0.62rem,0.75vw,0.82rem)] font-black tracking-[0.3em] text-violet-300 uppercase">
+              <p className="text-[clamp(0.58rem,0.65vw,0.72rem)] font-black tracking-[0.28em] text-violet-300 uppercase">
               ZOJ Presentation Scoreboard
               </p>
-              <h1 className="mt-3 grid gap-1 text-[clamp(2.5rem,5.8vw,6rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
+              <h1 className="mt-2 grid gap-1 text-[clamp(2.15rem,4.8vw,5rem)] leading-[0.92] font-black tracking-normal text-white uppercase">
                 <span className="zoj-truncate-safe whitespace-nowrap">
                   {titleParts.primary}
                 </span>
                 {titleParts.secondary ? (
-                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(1rem,3.5vw,3rem)] text-transparent">
+                  <span className="zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text pl-[clamp(0.75rem,2.8vw,2.25rem)] text-transparent">
                     {titleParts.secondary}
                   </span>
                 ) : null}
               </h1>
             </div>
-            <div className="grid gap-[clamp(0.75rem,1.5vw,1.5rem)] md:grid-cols-2">
+            <div className="grid gap-[clamp(0.65rem,1.2vw,1.2rem)] md:grid-cols-2">
               <TimePanel
                 label="스코어보드 프리즈"
                 time={formatDateTime(contest?.freeze_at)}
@@ -301,7 +301,7 @@ function OperatorScoreboardPresentationContent({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,38rem),1fr))] gap-[clamp(1rem,2vw,2rem)]">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,34rem),1fr))] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
           {sections.map((section) => (
             <PresentationDivisionBoard
               key={section.division.division_id}
@@ -330,14 +330,14 @@ function TimePanel({
   value: string;
 }) {
   return (
-    <div className="grid min-h-[clamp(6.5rem,10vw,9rem)] content-center border border-white/10 bg-white/[0.07] px-[clamp(1rem,2vw,1.5rem)] py-[clamp(1rem,2vw,1.5rem)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-      <p className="text-center text-[clamp(0.78rem,1vw,1.05rem)] font-black tracking-normal text-white/55">
+    <div className="grid min-h-[clamp(5.4rem,8vw,7.25rem)] content-center border border-white/10 bg-white/[0.07] px-[clamp(0.8rem,1.5vw,1.15rem)] py-[clamp(0.8rem,1.5vw,1.15rem)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <p className="text-center text-[clamp(0.7rem,0.85vw,0.9rem)] font-black tracking-normal text-white/55">
         {label}
       </p>
-      <p className="mt-2 text-center text-[clamp(0.75rem,0.9vw,0.95rem)] font-bold text-white/75">
+      <p className="mt-1.5 text-center text-[clamp(0.68rem,0.78vw,0.82rem)] font-bold text-white/75">
         {time}
       </p>
-      <p className="mt-2 text-center text-[clamp(1.75rem,3.4vw,3.5rem)] leading-none font-black tracking-normal text-violet-500">
+      <p className="mt-1.5 text-center text-[clamp(1.4rem,2.65vw,2.8rem)] leading-none font-black tracking-normal text-violet-500">
         {value}
       </p>
     </div>
