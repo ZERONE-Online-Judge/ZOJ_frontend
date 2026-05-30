@@ -64,9 +64,9 @@ export default function ContestListItem({
   const canShowUnavailableMessage = canOpenContest && !itemHref;
 
   const content = (
-    <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
-      <div className="grid min-w-0 gap-4">
-        <div className="flex flex-wrap items-center gap-2.5">
+    <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="grid min-w-0 gap-3 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           {isParticipantContest ? (
             <span className="inline-flex h-7 items-center gap-2 rounded-full bg-sky-50 px-3 text-xs font-black text-sky-700">
               <span className="size-2 rounded-full bg-sky-500" />
@@ -92,11 +92,11 @@ export default function ContestListItem({
               <span className="text-slate-400">* 비공개됨</span>
             ) : null}
           </span>
-          <span className="min-w-0 text-sm font-bold break-keep text-slate-400">
+          <span className="min-w-0 text-xs font-bold break-keep text-slate-400 sm:text-sm">
             {organization}
           </span>
         </div>
-        <h2 className="text-xl leading-7 font-black break-keep text-slate-950">
+        <h2 className="text-lg leading-6 font-black break-keep text-slate-950 sm:text-xl sm:leading-7">
           {title}
         </h2>
         {publicResourceLabels.length > 0 ? (
@@ -113,21 +113,21 @@ export default function ContestListItem({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+      <div className="flex w-full shrink-0 flex-wrap gap-2 md:w-auto md:justify-end">
         {countdownLabel ? (
-          <span className="inline-flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 text-sm font-black text-amber-700">
+          <span className="inline-flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 text-xs font-black text-amber-700 sm:px-3 sm:text-sm">
             <SvgIcon name="timer" size={14} />
             {countdownLabel}
           </span>
         ) : null}
         {period ? (
-          <span className="bg-zoj-blue/15 text-zoj-blue inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold">
+          <span className="bg-zoj-blue/15 text-zoj-blue inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold sm:px-3 sm:text-sm">
             <SvgIcon name="timer" size={14} />
             {contestListItemText.periodPrefix}: {period}
           </span>
         ) : null}
         {registrationDeadline ? (
-          <span className="bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600">
+          <span className="bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 sm:px-3 sm:text-sm">
             {contestListItemText.registrationDeadlinePrefix}:{' '}
             {registrationDeadline}
           </span>
@@ -156,7 +156,7 @@ export default function ContestListItem({
       ) : null}
       {itemHref ? (
         <Link
-          className="block px-8 py-7 transition-colors duration-200"
+          className="block px-4 py-5 transition-colors duration-200 sm:px-6 sm:py-6 lg:px-8 lg:py-7"
           to={itemHref}
         >
           {content}
@@ -165,7 +165,7 @@ export default function ContestListItem({
         <>
           <button
             aria-haspopup="dialog"
-            className="zoj-pressable block w-full px-8 py-7 text-left"
+            className="zoj-pressable block w-full px-4 py-5 text-left sm:px-6 sm:py-6 lg:px-8 lg:py-7"
             onClick={() => setIsAccessDeniedOpen(true)}
             type="button"
           >
@@ -179,7 +179,7 @@ export default function ContestListItem({
         </>
       ) : canShowUnavailableMessage ? (
         <button
-          className="zoj-pressable block w-full px-8 py-7 text-left"
+          className="zoj-pressable block w-full px-4 py-5 text-left sm:px-6 sm:py-6 lg:px-8 lg:py-7"
           onClick={() => setIsUnavailableMessageVisible(true)}
           type="button"
         >
@@ -194,7 +194,7 @@ export default function ContestListItem({
           ) : null}
         </button>
       ) : (
-        <div className="px-8 py-7">{content}</div>
+        <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">{content}</div>
       )}
     </li>
   );

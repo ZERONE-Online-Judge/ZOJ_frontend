@@ -46,7 +46,7 @@ export default function MainPage() {
   return (
     <>
       <HeroSection {...hero} />
-      <div className="mx-auto my-28 flex w-full max-w-7xl flex-col gap-28 px-6 lg:px-8">
+      <div className="mx-auto my-12 flex w-full max-w-7xl flex-col gap-14 px-4 sm:my-16 sm:gap-18 sm:px-6 lg:my-24 lg:gap-24 lg:px-8">
         <NoticeSection
           isLoading={noticesQuery.isPending}
           notices={noticeItems}

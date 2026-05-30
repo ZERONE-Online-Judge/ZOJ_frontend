@@ -14,20 +14,20 @@ export default function HeroSection({
   const displayDescription = keepHeroCopyPhrasesTogether(typedDescription);
 
   return (
-    <section className="relative w-full overflow-hidden">
+    <section className="relative min-h-[26rem] w-full overflow-hidden sm:min-h-[30rem] lg:min-h-[38rem]">
       <img
         alt={imageAlt}
-        className="animate-hero-image block h-auto w-full scale-[1.03]"
+        className="animate-hero-image absolute inset-0 h-full w-full scale-[1.03] object-cover"
         src={imageSrc}
       />
       <div className="absolute inset-0 bg-black/35" />
       <div className="animate-hero-image-light absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.12)_34%,rgba(123,97,255,0.16)_48%,transparent_68%)]" />
 
-      <div className="absolute inset-0 z-10 mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-6 text-center">
+      <div className="absolute inset-0 z-10 mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-4 text-center sm:px-6">
         <HeroTitle headline={headline} />
         <p
           aria-label={description}
-          className="text-hero-copy animate-hero-copy mt-10 min-h-20 max-w-7xl text-xl leading-snug font-semibold break-keep sm:mt-14 sm:min-h-24 sm:text-2xl xl:text-[1.7rem]"
+          className="text-hero-copy animate-hero-copy mt-6 min-h-16 max-w-[42rem] text-sm leading-7 font-semibold break-keep sm:mt-10 sm:min-h-20 sm:text-xl sm:leading-snug lg:max-w-5xl xl:text-[1.55rem]"
         >
           <span aria-hidden="true">{displayDescription}</span>
           <span
@@ -48,7 +48,7 @@ export default function HeroSection({
 function HeroTitle({ headline }: { headline: string }) {
   if (headline !== 'ZERONE ONLINE JUDGE') {
     return (
-      <h1 className="animate-hero-title text-3xl leading-tight font-semibold text-white min-[420px]:text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
+      <h1 className="animate-hero-title text-[clamp(1.75rem,8vw,4.5rem)] leading-tight font-semibold text-white lg:text-7xl">
         {headline}
       </h1>
     );
@@ -57,11 +57,8 @@ function HeroTitle({ headline }: { headline: string }) {
   return (
     <h1
       aria-label={headline}
-      className="animate-hero-title relative max-w-full text-3xl leading-none font-semibold text-white min-[420px]:text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
+      className="animate-hero-title relative h-[1em] w-full max-w-full overflow-visible text-[clamp(1.45rem,7vw,4.5rem)] leading-none font-semibold text-white lg:text-7xl"
     >
-      <span aria-hidden="true" className="block opacity-0">
-        {headline}
-      </span>
       <span
         aria-hidden="true"
         className="hero-zoj-title absolute inset-0 flex items-center justify-center"

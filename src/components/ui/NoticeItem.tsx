@@ -28,7 +28,7 @@ export default function NoticeItem({
         'flex flex-col transition hover:bg-amber-50 sm:flex-row sm:items-center sm:justify-between',
         compact
           ? 'min-h-9 gap-1.5 px-2.5 py-1.5 sm:gap-3 sm:px-3'
-          : 'min-h-16 gap-3 px-4 py-4 sm:gap-10 sm:px-6',
+          : 'min-h-14 gap-3 px-3 py-3 sm:min-h-16 sm:gap-10 sm:px-6 sm:py-4',
       ].join(' ')}
     >
       <div
@@ -43,7 +43,7 @@ export default function NoticeItem({
             tone === 'emergency' || tone === 'pinned'
               ? 'bg-red-600'
               : 'bg-slate-950',
-            compact ? 'px-2 py-0.5 text-[11px]' : 'px-4 py-1.5 text-sm',
+            compact ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs sm:px-4 sm:py-1.5 sm:text-sm',
           ].join(' ')}
         >
           <SvgIcon name="megaphone" size={compact ? 11 : 14} />
@@ -52,7 +52,7 @@ export default function NoticeItem({
         <span
           className={[
             'min-w-0 font-semibold break-keep text-slate-950 sm:truncate',
-            compact ? 'text-xs' : 'text-lg',
+            compact ? 'text-xs' : 'text-base sm:text-lg',
           ].join(' ')}
         >
           {title}

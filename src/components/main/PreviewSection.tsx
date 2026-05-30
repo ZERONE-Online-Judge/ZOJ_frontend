@@ -26,12 +26,12 @@ export default function PreviewSection({
             ? 'text-xl sm:text-2xl'
             : compact
               ? 'text-xl sm:text-2xl'
-              : 'text-3xl sm:text-4xl',
+              : 'text-2xl sm:text-3xl lg:text-4xl',
         ].join(' ')}
       >
         {title}
       </h2>
-      <SvgIcon name="arrow" size={compact ? 22 : 30} color="#000000" />
+      <SvgIcon name="arrow" size={compact ? 20 : 24} color="#000000" />
     </>
   );
 
