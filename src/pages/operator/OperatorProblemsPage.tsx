@@ -815,6 +815,10 @@ function OperatorProblemsContent({
     ],
     queryFn: () =>
       getProblemPackageStatus(contestId, effectiveSelectedProblemId, token),
+    refetchInterval: (query) => {
+      const status = query.state.data?.judge_bundle?.status;
+      return status === 'pending' || status === 'running' ? 1000 : false;
+    },
   });
   const latestTestcaseSet = useMemo(() => {
     const sets = testcaseSetsQuery.data ?? [];
@@ -906,14 +910,23 @@ function OperatorProblemsContent({
   const warmJudgeBundleMutation = useMutation({
     mutationFn: () =>
       warmProblemJudgeBundle(contestId, effectiveSelectedProblemId, token),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: [
-          'operator',
-          'problem-package-status',
-          contestId,
-          effectiveSelectedProblemId,
-        ],
+    onSuccess: (judgeBundle) => {
+      const packageStatusKey = [
+        'operator',
+        'problem-package-status',
+        contestId,
+        effectiveSelectedProblemId,
+        queryIdentity,
+      ];
+      queryClient.setQueryData(packageStatusKey, (current) => {
+        if (!current || typeof current !== 'object') return current;
+        return {
+          ...current,
+          judge_bundle: judgeBundle,
+        };
+      });
+      void queryClient.refetchQueries({
+        queryKey: packageStatusKey,
       });
     },
   });
