@@ -32,6 +32,7 @@ import {
   uploadAndCreateMatchedTestcaseSet,
   updateOperatorProblem,
   uploadProblemAsset,
+  warmProblemJudgeBundle,
 } from '@/domains/problemManagement/api';
 import {
   parseProblemDocument,
@@ -902,6 +903,20 @@ function OperatorProblemsContent({
       };
     });
   }, [packageStatusQuery.data?.support_files]);
+  const warmJudgeBundleMutation = useMutation({
+    mutationFn: () =>
+      warmProblemJudgeBundle(contestId, effectiveSelectedProblemId, token),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'operator',
+          'problem-package-status',
+          contestId,
+          effectiveSelectedProblemId,
+        ],
+      });
+    },
+  });
   const testcaseFileStorageKey = testcaseFilePreview?.storageKey ?? '';
   const testcaseFileQuery = useQuery({
     enabled: Boolean(testcaseFileStorageKey),
@@ -2573,6 +2588,23 @@ function OperatorProblemsContent({
                               packageStatusQuery.data?.judge_bundle,
                             )}
                           </span>
+                          <button
+                            className="h-7 rounded border border-indigo-200 px-2 text-[11px] font-black text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
+                            disabled={
+                              !effectiveSelectedProblemId ||
+                              warmJudgeBundleMutation.isPending ||
+                              packageStatusQuery.data?.judge_bundle?.status ===
+                                'pending' ||
+                              packageStatusQuery.data?.judge_bundle?.status ===
+                                'running'
+                            }
+                            onClick={() => warmJudgeBundleMutation.mutate()}
+                            type="button"
+                          >
+                            {warmJudgeBundleMutation.isPending
+                              ? '예약 중'
+                              : '번들 재생성'}
+                          </button>
                           <span className="min-w-0 truncate text-xs font-bold text-slate-400">
                             {judgeBundleStatusDetail(
                               packageStatusQuery.data?.judge_bundle,

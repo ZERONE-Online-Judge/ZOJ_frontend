@@ -525,6 +525,18 @@ export function getProblemPackageStatus(
   );
 }
 
+export function warmProblemJudgeBundle(
+  contestId: string,
+  problemId: string,
+  token: string,
+) {
+  return apiRequest<ProblemPackageStatus['judge_bundle']>(
+    `/operator/contests/${contestId}/problems/${problemId}/judge-bundle:warm`,
+    token,
+    { method: 'POST' },
+  );
+}
+
 export function buildProblemPackageRecipe(
   contestId: string,
   problemId: string,
