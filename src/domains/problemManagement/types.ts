@@ -84,6 +84,29 @@ export type PackageSupportFileStatus = {
   status: 'ready' | 'missing';
 };
 
+export type JudgeBundleStatus = {
+  ready: boolean;
+  status:
+    | 'ready'
+    | 'pending'
+    | 'running'
+    | 'failed'
+    | 'missing'
+    | 'no_active_testcase_set';
+  storage_key?: string | null;
+  size_bytes?: number | null;
+  testcase_set_id?: string | null;
+  version_hash?: string | null;
+  queue?: {
+    status: string;
+    attempts: number;
+    last_error?: string | null;
+    created_at?: string | null;
+    started_at?: string | null;
+    completed_at?: string | null;
+  } | null;
+};
+
 export type ProblemPackageStatus = {
   ready: boolean;
   warnings: string[];
@@ -91,6 +114,7 @@ export type ProblemPackageStatus = {
   active_testcase_set?: TestcaseSet | null;
   active_testcase_count: number;
   testcase_set_count: number;
+  judge_bundle?: JudgeBundleStatus | null;
 };
 
 export type ProblemPackageBuildResult = {

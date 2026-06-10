@@ -42,6 +42,7 @@ import ProblemEditorialPanel from '@/components/contest/problem/ProblemEditorial
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
 import type {
   PackageFileRole,
+  JudgeBundleStatus,
   PackageSupportFileStatus,
   Problem,
   ProblemAsset,
@@ -208,6 +209,44 @@ function languageFromFilename(filename: string): JudgeLanguage | null {
 function formatRuntime(value?: number | null) {
   if (value === undefined || value === null) return '-';
   return `${value.toLocaleString('ko-KR')} ms`;
+}
+
+function judgeBundleStatusLabel(status?: JudgeBundleStatus | null) {
+  if (!status) return '번들 확인 중';
+  if (status.ready) return '번들 준비됨';
+  if (status.status === 'pending') return '번들 대기중';
+  if (status.status === 'running') return '번들 준비중';
+  if (status.status === 'failed') return '번들 실패';
+  if (status.status === 'no_active_testcase_set') return '활성 세트 없음';
+  return '번들 미생성';
+}
+
+function judgeBundleStatusClassName(status?: JudgeBundleStatus | null) {
+  if (!status) return 'border-slate-200 bg-slate-50 text-slate-500';
+  if (status.ready) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status.status === 'running' || status.status === 'pending') {
+    return 'border-sky-200 bg-sky-50 text-sky-700';
+  }
+  if (status.status === 'failed') {
+    return 'border-rose-200 bg-rose-50 text-rose-700';
+  }
+  return 'border-amber-200 bg-amber-50 text-amber-700';
+}
+
+function judgeBundleStatusDetail(status?: JudgeBundleStatus | null) {
+  if (!status) return '상태를 불러오는 중입니다.';
+  if (status.ready && status.size_bytes) {
+    return `${status.size_bytes.toLocaleString('ko-KR')} B`;
+  }
+  if (status.status === 'running') return '채점 번들을 생성하고 있습니다.';
+  if (status.status === 'pending') return '생성 작업이 큐에서 대기 중입니다.';
+  if (status.status === 'failed') {
+    return status.queue?.last_error || '생성 작업이 실패했습니다.';
+  }
+  if (status.status === 'no_active_testcase_set') {
+    return '활성 테스트케이스 세트가 필요합니다.';
+  }
+  return '다음 채점은 개별 파일 경로로 fallback됩니다.';
 }
 
 function codeLength(submission: Submission) {
@@ -2518,9 +2557,28 @@ function OperatorProblemsContent({
                           현재 테스트케이스{' '}
                           {latestTestcaseSet.testcases?.length ?? 0}개 보기
                         </button>
-                        <span className="text-xs font-bold text-slate-400">
-                          개별 케이스는 목록에서 삭제합니다.
-                        </span>
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                          <span
+                            className={[
+                              'inline-flex h-7 max-w-full items-center rounded border px-2 text-[11px] font-black',
+                              judgeBundleStatusClassName(
+                                packageStatusQuery.data?.judge_bundle,
+                              ),
+                            ].join(' ')}
+                            title={judgeBundleStatusDetail(
+                              packageStatusQuery.data?.judge_bundle,
+                            )}
+                          >
+                            {judgeBundleStatusLabel(
+                              packageStatusQuery.data?.judge_bundle,
+                            )}
+                          </span>
+                          <span className="min-w-0 truncate text-xs font-bold text-slate-400">
+                            {judgeBundleStatusDetail(
+                              packageStatusQuery.data?.judge_bundle,
+                            )}
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
