@@ -92,6 +92,7 @@ export type ScoreboardProblemStat = {
 };
 
 export type ScoreboardRow = {
+  is_revealed?: boolean;
   rank: number;
   team_id?: string;
   team_name: string;
@@ -106,6 +107,7 @@ export type ScoreboardRow = {
 };
 
 export type ScoreboardResponse = {
+  release?: ScoreboardRelease;
   division: Division;
   frozen: boolean;
   problem_stats?: ScoreboardProblemStat[];
@@ -120,6 +122,7 @@ export type OperatorScoreboardResponse = {
 };
 
 export type OperatorPresentationScoreboardSection = {
+  release?: ScoreboardRelease | null;
   division: Division;
   frozen: boolean;
   problems: {
@@ -134,6 +137,7 @@ export type OperatorPresentationScoreboardSection = {
 
 export type OperatorPresentationScoreboardResponse = {
   contest: {
+    status?: string;
     contest_id: string;
     title: string;
     start_at: string;
@@ -142,6 +146,13 @@ export type OperatorPresentationScoreboardResponse = {
     scoreboard_freeze_mode?: string | null;
   };
   sections: OperatorPresentationScoreboardSection[];
+};
+
+export type ScoreboardRelease = {
+  mode: 'not_started' | 'partial' | 'all';
+  ranks: { rank: number; team_count: number; revealed: boolean }[];
+  revealed_count: number;
+  total_count: number;
 };
 
 export type JudgeDetail = {

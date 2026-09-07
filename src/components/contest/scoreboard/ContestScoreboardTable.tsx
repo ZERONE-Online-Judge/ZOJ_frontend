@@ -87,49 +87,66 @@ export default function ContestScoreboardTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
-              key={`${row.rank}-${row.team_id ?? row.team_name}`}
-            >
-              <td className={`${bodyCellClassName} font-bold`}>{row.rank}위</td>
-              <td className={`${bodyCellClassName} font-bold`}>
-                {row.team_name}
-              </td>
-              <td className={`${bodyCellClassName} font-bold`}>
-                {row.solved}개
-              </td>
-              <td className={bodyCellClassName}>{submissionCount(row)}</td>
-              {scoreboardProblemScores.map((problem) => {
-                const score = row.problem_scores.find(
-                  (item) => item.problem_code === problem.problem_code,
-                );
+          {rows.map((row) =>
+            row.is_revealed === false ? (
+              <tr
+                key={row.team_id}
+                className="border-b border-slate-200 bg-slate-100/70"
+              >
+                <td className={bodyCellClassName}>{row.rank}위</td>
+                <td
+                  colSpan={4 + scoreboardProblemScores.length}
+                  className="px-5 py-5 text-sm font-bold text-slate-400"
+                >
+                  아직 공개되지 않은 순위
+                </td>
+              </tr>
+            ) : (
+              <tr
+                className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
+                key={`${row.rank}-${row.team_id ?? row.team_name}`}
+              >
+                <td className={`${bodyCellClassName} font-bold`}>
+                  {row.rank}위
+                </td>
+                <td className={`${bodyCellClassName} font-bold`}>
+                  {row.team_name}
+                </td>
+                <td className={`${bodyCellClassName} font-bold`}>
+                  {row.solved}개
+                </td>
+                <td className={bodyCellClassName}>{submissionCount(row)}</td>
+                {scoreboardProblemScores.map((problem) => {
+                  const score = row.problem_scores.find(
+                    (item) => item.problem_code === problem.problem_code,
+                  );
 
-                return (
-                  <td
-                    className={problemBodyCellClassName}
-                    key={problem.problem_code}
-                  >
-                    <ContestScoreboardProblemCell score={score} />
-                  </td>
-                );
-              })}
-              <td className={bodyCellClassName}>
-                {onSelectPenaltyBreakdown ? (
-                  <button
-                    className="font-black text-indigo-700 underline-offset-4 hover:text-indigo-950 hover:underline"
-                    onClick={() => onSelectPenaltyBreakdown(row)}
-                    title="패널티 계산 상세 보기"
-                    type="button"
-                  >
-                    {totalPenalty(row)}
-                  </button>
-                ) : (
-                  totalPenalty(row)
-                )}
-              </td>
-            </tr>
-          ))}
+                  return (
+                    <td
+                      className={problemBodyCellClassName}
+                      key={problem.problem_code}
+                    >
+                      <ContestScoreboardProblemCell score={score} />
+                    </td>
+                  );
+                })}
+                <td className={bodyCellClassName}>
+                  {onSelectPenaltyBreakdown ? (
+                    <button
+                      className="font-black text-indigo-700 underline-offset-4 hover:text-indigo-950 hover:underline"
+                      onClick={() => onSelectPenaltyBreakdown(row)}
+                      title="패널티 계산 상세 보기"
+                      type="button"
+                    >
+                      {totalPenalty(row)}
+                    </button>
+                  ) : (
+                    totalPenalty(row)
+                  )}
+                </td>
+              </tr>
+            ),
+          )}
         </tbody>
       </table>
     </div>

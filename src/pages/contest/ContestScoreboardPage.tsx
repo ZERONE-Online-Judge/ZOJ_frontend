@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
@@ -57,11 +57,12 @@ function ContestScoreboardContent({
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
-  const selectedPublicDivisionId =
-    publicDivisionId || divisions[0]?.division_id || '';
-  const shouldUseParticipantScope =
-    hasSessionAccess &&
-    !isEnded;
+  const selectedPublicDivisionId = divisions.some(
+    (division) => division.division_id === publicDivisionId,
+  )
+    ? publicDivisionId
+    : (divisions[0]?.division_id ?? '');
+  const shouldUseParticipantScope = hasSessionAccess && !isEnded;
   const shouldUseParticipantAuth =
     isEnded &&
     hasSessionAccess &&
@@ -71,30 +72,17 @@ function ContestScoreboardContent({
   const effectiveDivisionId = shouldUseParticipantScope
     ? activeParticipantSession?.division.division_id
     : selectedPublicDivisionId;
-  const canViewScoreboard = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    scoreboardAccess,
-  ) && !isBeforeStart;
-  const canViewProblems = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    problemAccess,
-  ) && !isBeforeStart;
+  const canViewScoreboard =
+    canViewContestResource(contest, hasSessionAccess, scoreboardAccess) &&
+    !isBeforeStart;
+  const canViewProblems =
+    canViewContestResource(contest, hasSessionAccess, problemAccess) &&
+    !isBeforeStart;
   const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
   const participantQueryIdentity = participantSessionQueryIdentity(
     activeParticipantSession,
     participantContest,
   );
-
-  useEffect(() => {
-    if (
-      publicDivisionId &&
-      !divisions.some((division) => division.division_id === publicDivisionId)
-    ) {
-      setPublicDivisionId('');
-    }
-  }, [divisions, publicDivisionId]);
 
   const problemsQuery = useQuery({
     enabled: canViewScoreboard && canViewProblems,
@@ -102,21 +90,24 @@ function ContestScoreboardContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
+        ? (activeParticipantSession?.division.division_id ??
+            participantContest?.division.division_id)
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? participantQueryIdentity
         : shouldUseParticipantAuth
           ? participantQueryIdentity
-        : undefined,
+          : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
@@ -145,21 +136,24 @@ function ContestScoreboardContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
+        ? (activeParticipantSession?.division.division_id ??
+            participantContest?.division.division_id)
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? participantQueryIdentity
         : shouldUseParticipantAuth
           ? participantQueryIdentity
-        : undefined,
+          : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return getDivisionScoreboard(
           contestId,
@@ -236,7 +230,11 @@ function ContestScoreboardContent({
         )}
         {scoreboardQuery.data?.frozen ? (
           <PageNotice
-            message="현재 공개 스코어보드는 프리즈된 상태입니다."
+            message={
+              scoreboardQuery.data.release?.mode === 'partial'
+                ? `순위를 공개하고 있습니다. ${scoreboardQuery.data.release.revealed_count} / ${scoreboardQuery.data.release.total_count}팀 공개`
+                : '현재 공개 스코어보드는 프리즈된 상태입니다.'
+            }
             status="ready"
           />
         ) : null}

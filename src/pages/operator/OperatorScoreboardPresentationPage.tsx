@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import ScoreboardReleaseControl from '@/components/operator/ScoreboardReleaseControl';
 import { OperatorAccessGate } from '@/components/operator/OperatorShell';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorPresentationScoreboard } from '@/domains/submissionScoreboard/api';
@@ -77,7 +78,9 @@ function sortedProblemCodes(section: OperatorPresentationScoreboardSection) {
 }
 
 function problemScoreByCode(row: ScoreboardRow) {
-  return new Map(row.problem_scores.map((score) => [score.problem_code, score]));
+  return new Map(
+    row.problem_scores.map((score) => [score.problem_code, score]),
+  );
 }
 
 function solvedLabel(score?: ScoreboardProblemScore) {
@@ -142,7 +145,13 @@ function PresentationDivisionBoard({
           ].join(' ')}
         >
           <span className="size-2 rounded-full bg-current" />
-          {section.frozen ? '프리즈' : '라이브'}
+          {section.release?.mode === 'all'
+            ? '최종 순위'
+            : section.release?.mode === 'partial'
+              ? '순위 공개 중'
+              : section.frozen
+                ? '프리즈'
+                : '라이브'}
         </span>
       </header>
 
@@ -166,11 +175,28 @@ function PresentationDivisionBoard({
           </thead>
           <tbody>
             {section.rows.map((row) => {
+              if (row.is_revealed === false)
+                return (
+                  <tr
+                    key={row.team_id}
+                    className="border-b border-white/10 bg-white/[0.03]"
+                  >
+                    <td className="px-3 py-4 text-lg font-black text-violet-300">
+                      {row.rank}
+                    </td>
+                    <td
+                      colSpan={3 + problemCodes.length}
+                      className="px-3 py-4 text-sm font-bold text-white/35"
+                    >
+                      공개 대기
+                    </td>
+                  </tr>
+                );
               const scores = problemScoreByCode(row);
 
               return (
                 <tr
-                  className="border-b border-white/5 last:border-b-0 odd:bg-white/[0.035]"
+                  className={`border-b border-white/5 last:border-b-0 ${row.is_revealed ? 'bg-violet-500/15' : 'odd:bg-white/[0.035]'}`}
                   key={`${section.division.division_id}-${row.team_id ?? row.team_name}`}
                 >
                   <td className="px-3 py-2.5 text-[clamp(0.9rem,1.3vw,1.15rem)] font-black text-violet-300">
@@ -239,15 +265,33 @@ function OperatorScoreboardPresentationContent({
   now: number;
   token: string;
 }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showControls, setShowControls] = useState(true);
   const queryIdentity = tokenQueryIdentity(token);
   const presentationQuery = useQuery({
-    queryKey: ['operator', 'scoreboard', 'presentation', contestId, queryIdentity],
+    queryKey: [
+      'operator',
+      'scoreboard',
+      'presentation',
+      contestId,
+      queryIdentity,
+    ],
     queryFn: () => getOperatorPresentationScoreboard(contestId, token),
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   });
   const contest = presentationQuery.data?.contest;
   const sections = presentationQuery.data?.sections ?? [];
+  const selectedDivisionId = searchParams.get('divisionId') ?? '';
+  const selectedSection = sections.find(
+    (section) => section.division.division_id === selectedDivisionId,
+  );
+  const visibleSections = selectedSection ? [selectedSection] : sections;
+  const ended = Boolean(
+    contest &&
+    (['ended', 'finalized', 'archived'].includes(contest.status ?? '') ||
+      new Date(contest.end_at).getTime() <= now),
+  );
   const titleParts = splitContestTitle(contest?.title);
   const startsAt = contest?.start_at ? new Date(contest.start_at).getTime() : 0;
   const isBeforeContestStart = Boolean(startsAt && startsAt > now);
@@ -295,7 +339,7 @@ function OperatorScoreboardPresentationContent({
               : 'px-[clamp(1rem,2vw,2rem)] py-[clamp(1rem,1.8vw,2rem)]',
           ].join(' ')}
         >
-          <div className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem]" />
+          <div className="pointer-events-none absolute inset-0 -z-10 [background-image:linear-gradient(30deg,transparent_48%,rgba(255,255,255,0.18)_49%,rgba(255,255,255,0.18)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,rgba(255,255,255,0.14)_49%,rgba(255,255,255,0.14)_51%,transparent_52%)] [background-size:6.5rem_3.75rem] opacity-20" />
           <div
             className={
               isBeforeContestStart
@@ -312,7 +356,7 @@ function OperatorScoreboardPresentationContent({
                     : 'text-[clamp(0.58rem,0.65vw,0.72rem)] tracking-[0.28em]',
                 ].join(' ')}
               >
-              ZOJ Presentation Scoreboard
+                ZOJ Presentation Scoreboard
               </p>
               <h1
                 className={[
@@ -328,7 +372,7 @@ function OperatorScoreboardPresentationContent({
                 {titleParts.secondary ? (
                   <span
                     className={[
-                      'zoj-truncate-safe whitespace-nowrap bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text text-transparent',
+                      'zoj-truncate-safe bg-gradient-to-r from-white via-violet-100 to-violet-500 bg-clip-text whitespace-nowrap text-transparent',
                       isBeforeContestStart
                         ? 'pl-0'
                         : 'pl-[clamp(0.75rem,2.8vw,2.25rem)]',
@@ -351,7 +395,9 @@ function OperatorScoreboardPresentationContent({
                   time={formatDateTime(contest?.freeze_at)}
                   value={
                     contest && new Date(contest.freeze_at).getTime() <= now
-                      ? '프리즈 적용 중'
+                      ? sections.every((section) => !section.frozen)
+                        ? '공개됨'
+                        : '프리즈 / 공개 진행'
                       : timeLeftLabel(contest?.freeze_at, now)
                   }
                 />
@@ -368,6 +414,59 @@ function OperatorScoreboardPresentationContent({
             )}
           </div>
         </header>
+
+        {ended ? (
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-3 text-sm font-bold">
+                공개할 유형
+                <select
+                  className="rounded border border-white/20 bg-slate-900 px-3 py-2 text-white"
+                  value={selectedSection ? selectedDivisionId : ''}
+                  onChange={(event) =>
+                    setSearchParams(
+                      event.target.value
+                        ? { divisionId: event.target.value }
+                        : {},
+                    )
+                  }
+                >
+                  <option value="">전체 유형 보기</option>
+                  {sections.map((section) => (
+                    <option
+                      key={section.division.division_id}
+                      value={section.division.division_id}
+                    >
+                      {section.division.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="rounded border border-white/20 px-3 py-2 text-sm"
+                aria-expanded={showControls}
+                onClick={() => setShowControls((value) => !value)}
+              >
+                {showControls ? '공개 컨트롤 숨기기' : '공개 컨트롤 표시'}
+              </button>
+            </div>
+            {showControls && selectedSection ? (
+              <ScoreboardReleaseControl
+                key={selectedDivisionId}
+                contestId={contestId}
+                divisionId={selectedDivisionId}
+                divisionName={selectedSection.division.name}
+                token={token}
+              />
+            ) : showControls ? (
+              <p className="text-sm text-white/60">
+                순위를 공개할 유형을 선택하세요. 다른 유형의 공개 상태는
+                유지됩니다.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {presentationQuery.error && contest ? (
           <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">
@@ -386,7 +485,7 @@ function OperatorScoreboardPresentationContent({
 
         {!isBeforeContestStart ? (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,34rem),1fr))] gap-[clamp(0.75rem,1.3vw,1.35rem)]">
-            {sections.map((section) => (
+            {visibleSections.map((section) => (
               <PresentationDivisionBoard
                 key={section.division.division_id}
                 section={section}
@@ -395,7 +494,9 @@ function OperatorScoreboardPresentationContent({
           </div>
         ) : null}
 
-        {!presentationQuery.isLoading && !isBeforeContestStart && sections.length === 0 ? (
+        {!presentationQuery.isLoading &&
+        !isBeforeContestStart &&
+        sections.length === 0 ? (
           <div className="rounded border border-white/10 bg-white/[0.06] px-5 py-16 text-center text-lg font-black text-white/70">
             표시할 유형이 없습니다.
           </div>

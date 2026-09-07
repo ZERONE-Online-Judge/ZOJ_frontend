@@ -2,6 +2,7 @@ import type {
   OperatorScoreboardResponse,
   OperatorPresentationScoreboardResponse,
   ScoreboardResponse,
+  ScoreboardRelease,
   Submission,
   SubmissionCreateRequest,
 } from '@/domains/submissionScoreboard/types';
@@ -260,6 +261,33 @@ export function getOperatorPresentationScoreboard(
   return apiRequest<OperatorPresentationScoreboardResponse>(
     `/operator/contests/${contestId}/scoreboard/presentation`,
     token,
+  );
+}
+
+export function getScoreboardRelease(
+  contestId: string,
+  divisionId: string,
+  token: string,
+) {
+  return apiRequest<ScoreboardRelease>(
+    `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/release`,
+    token,
+  );
+}
+
+export function updateScoreboardRelease(
+  contestId: string,
+  divisionId: string,
+  token: string,
+  body: { action: 'start' | 'rank' | 'all'; rank?: number },
+) {
+  return apiRequest<ScoreboardRelease>(
+    `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/release`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
   );
 }
 

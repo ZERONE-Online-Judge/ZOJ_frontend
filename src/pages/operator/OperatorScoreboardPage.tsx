@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   keepPreviousData,
@@ -8,6 +8,8 @@ import {
 } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { sharedUiText } from '@/data/uiText';
+import ScoreboardReleaseControl from '@/components/operator/ScoreboardReleaseControl';
+import { isContestEnded } from '@/domains/contestAdministration/logic';
 import ContestScoreboardTable from '@/components/contest/scoreboard/ContestScoreboardTable';
 import {
   OperatorAccessGate,
@@ -53,8 +55,8 @@ function writeStoredValue(key: string, value: string) {
   }
 }
 
-function openPresentationPopup(contestId: string) {
-  const url = `/operator/contests/${contestId}/scoreboard/presentation`;
+function openPresentationPopup(contestId: string, divisionId: string) {
+  const url = `/operator/contests/${contestId}/scoreboard/presentation?divisionId=${encodeURIComponent(divisionId)}`;
   const popup = window.open(
     url,
     `zoj-scoreboard-presentation-${contestId}`,
@@ -120,7 +122,8 @@ function elapsedMinutes(
   contestStartAt?: string | null,
 ) {
   if (contestStartAt && score.solved_at) {
-    const diff = new Date(score.solved_at).getTime() - new Date(contestStartAt).getTime();
+    const diff =
+      new Date(score.solved_at).getTime() - new Date(contestStartAt).getTime();
     if (Number.isFinite(diff)) return Math.max(0, Math.floor(diff / 60_000));
   }
 
@@ -181,10 +184,18 @@ function PenaltyBreakdownModal({
                 <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-black text-slate-500">
                     <tr>
-                      <th className="border-r border-slate-200 px-4 py-3">문제</th>
-                      <th className="border-r border-slate-200 px-4 py-3">정답 시각</th>
-                      <th className="border-r border-slate-200 px-4 py-3 text-right">기본 시간</th>
-                      <th className="border-r border-slate-200 px-4 py-3 text-right">실패</th>
+                      <th className="border-r border-slate-200 px-4 py-3">
+                        문제
+                      </th>
+                      <th className="border-r border-slate-200 px-4 py-3">
+                        정답 시각
+                      </th>
+                      <th className="border-r border-slate-200 px-4 py-3 text-right">
+                        기본 시간
+                      </th>
+                      <th className="border-r border-slate-200 px-4 py-3 text-right">
+                        실패
+                      </th>
                       <th className="px-4 py-3 text-right">문제별 패널티</th>
                     </tr>
                   </thead>
@@ -201,12 +212,13 @@ function PenaltyBreakdownModal({
                             {formatDateTime(score.solved_at ?? undefined)}
                           </td>
                           <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
-                            {elapsed === null ? '-' : `${elapsed.toLocaleString('ko-KR')}분`}
+                            {elapsed === null
+                              ? '-'
+                              : `${elapsed.toLocaleString('ko-KR')}분`}
                           </td>
                           <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
-                            {score.wrong_attempts.toLocaleString('ko-KR')}회 × 20 =
-                            {' '}
-                            {wrongPenalty.toLocaleString('ko-KR')}분
+                            {score.wrong_attempts.toLocaleString('ko-KR')}회 ×
+                            20 = {wrongPenalty.toLocaleString('ko-KR')}분
                           </td>
                           <td className="px-4 py-3 text-right font-black text-indigo-700">
                             {formatPenalty(score.penalty)}
@@ -225,11 +237,13 @@ function PenaltyBreakdownModal({
 
             <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
               <p>
-                합계: {solvedScores.length}개 해결, 총시간 {formatPenalty(row.penalty)}
+                합계: {solvedScores.length}개 해결, 총시간{' '}
+                {formatPenalty(row.penalty)}
               </p>
               <p>
-                미해결 문제의 실패 시도 {unsolvedAttemptCount.toLocaleString('ko-KR')}회는
-                총시간에 더하지 않고, 동점 정렬용 시도 수로만 사용됩니다.
+                미해결 문제의 실패 시도{' '}
+                {unsolvedAttemptCount.toLocaleString('ko-KR')}회는 총시간에
+                더하지 않고, 동점 정렬용 시도 수로만 사용됩니다.
               </p>
             </div>
           </div>
@@ -299,10 +313,18 @@ function ProblemStatsBlock({
           <thead className="bg-slate-50 text-xs font-black text-slate-500">
             <tr>
               <th className="border-r border-slate-200 px-4 py-3">문제</th>
-              <th className="border-r border-slate-200 px-4 py-3 text-right">총 제출</th>
-              <th className="border-r border-slate-200 px-4 py-3 text-right">정답률</th>
-              <th className="border-r border-slate-200 px-4 py-3 text-right">정답 팀</th>
-              <th className="border-r border-slate-200 px-4 py-3">첫 정답 팀</th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">
+                총 제출
+              </th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">
+                정답률
+              </th>
+              <th className="border-r border-slate-200 px-4 py-3 text-right">
+                정답 팀
+              </th>
+              <th className="border-r border-slate-200 px-4 py-3">
+                첫 정답 팀
+              </th>
               <th className="px-4 py-3">첫 정답 시간</th>
             </tr>
           </thead>
@@ -365,6 +387,7 @@ export default function OperatorScoreboardPage() {
       {(session) =>
         contestId ? (
           <OperatorScoreboardContent
+            key={contestId}
             contestId={contestId}
             token={session.accessToken}
           />
@@ -448,8 +471,8 @@ function ScoreboardFreezeControl({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-500">
-          기본 운용은 프리즈 시간 자동 적용입니다. 라이브와 프리즈는 수동
-          유지 모드입니다.
+          기본 운용은 프리즈 시간 자동 적용입니다. 라이브와 프리즈는 수동 유지
+          모드입니다.
         </p>
         <span
           className={[
@@ -475,8 +498,8 @@ function ScoreboardFreezeControl({
       </div>
       {mode !== 'auto' ? (
         <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-          현재 공개 스코어보드가 오토가 아닙니다. 프리즈 시각 기준으로
-          자동 전환하려면 오토로 변경해 주세요.
+          현재 공개 스코어보드가 오토가 아닙니다. 프리즈 시각 기준으로 자동
+          전환하려면 오토로 변경해 주세요.
         </p>
       ) : null}
       {error ? (
@@ -499,7 +522,7 @@ function OperatorScoreboardContent({
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const divisionStorageKey = operatorScoreboardDivisionStorageKey(contestId);
-  const [divisionId, setDivisionId] = useState(() =>
+  const [selectedDivisionId, setDivisionId] = useState(() =>
     readStoredValue(divisionStorageKey),
   );
   const [selectedPenaltyRow, setSelectedPenaltyRow] =
@@ -515,11 +538,16 @@ function OperatorScoreboardContent({
     queryFn: () => getOperatorProblems(contestId, token),
     placeholderData: keepPreviousData,
   });
+  const divisions = dashboardQuery.data?.divisions ?? [];
+  const divisionId = divisions.some(
+    (division) => division.division_id === selectedDivisionId,
+  )
+    ? selectedDivisionId
+    : (divisions[0]?.division_id ?? '');
   const scoreboardQuery = useQuery({
     enabled: Boolean(divisionId),
     queryKey: ['operator', 'scoreboard', contestId, divisionId, queryIdentity],
     queryFn: () => getOperatorDivisionScoreboard(contestId, divisionId, token),
-    placeholderData: keepPreviousData,
     refetchInterval: isVisible ? 5_000 : false,
     refetchIntervalInBackground: false,
   });
@@ -538,37 +566,18 @@ function OperatorScoreboardContent({
     },
   });
 
-  const divisions = dashboardQuery.data?.divisions ?? [];
   const contest = dashboardQuery.data?.contest;
   const freezeMode = contest?.scoreboard_freeze_mode ?? 'auto';
   const problems = (problemsQuery.data ?? []).filter((problem) =>
     divisionId ? problem.division_id === divisionId : true,
   );
   const problemById = useMemo(
-    () =>
-      new Map(
-        problems.map((problem) => [problem.problem_id, problem]),
-      ),
+    () => new Map(problems.map((problem) => [problem.problem_id, problem])),
     [problems],
   );
 
   const rows = scoreboardQuery.data?.rows ?? [];
   const problemStats = scoreboardQuery.data?.problem_stats ?? [];
-
-  useEffect(() => {
-    if (!divisions.length) {
-      setDivisionId('');
-      return;
-    }
-    if (
-      !divisionId ||
-      !divisions.some((division) => division.division_id === divisionId)
-    ) {
-      const nextDivisionId = divisions[0].division_id;
-      setDivisionId(nextDivisionId);
-      writeStoredValue(divisionStorageKey, nextDivisionId);
-    }
-  }, [divisionId, divisionStorageKey, divisions]);
 
   return (
     <PageLayout
@@ -579,14 +588,16 @@ function OperatorScoreboardContent({
     >
       <OperatorTabs contestId={contestId} />
 
-      <ScoreboardFreezeControl
-        disabled={freezeModeMutation.isPending}
-        error={freezeModeMutation.error}
-        freezeAt={contest?.freeze_at}
-        mode={freezeMode}
-        onChange={(mode) => freezeModeMutation.mutate(mode)}
-        publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
-      />
+      {contest && !isContestEnded(contest) ? (
+        <ScoreboardFreezeControl
+          disabled={freezeModeMutation.isPending}
+          error={freezeModeMutation.error}
+          freezeAt={contest?.freeze_at}
+          mode={freezeMode}
+          onChange={(mode) => freezeModeMutation.mutate(mode)}
+          publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
+        />
+      ) : null}
 
       {dashboardQuery.error || problemsQuery.error || scoreboardQuery.error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
@@ -604,7 +615,7 @@ function OperatorScoreboardContent({
           <>
             <button
               className="zoj-pressable inline-flex h-10 items-center gap-2 rounded border border-indigo-200 bg-indigo-600 px-4 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700"
-              onClick={() => openPresentationPopup(contestId)}
+              onClick={() => openPresentationPopup(contestId, divisionId)}
               type="button"
             >
               <ScoreboardIcon />
@@ -635,6 +646,18 @@ function OperatorScoreboardContent({
         description="유형별 스코어보드를 확인합니다."
         title="순위표"
       >
+        {contest && isContestEnded(contest) && divisionId ? (
+          <ScoreboardReleaseControl
+            key={divisionId}
+            contestId={contestId}
+            divisionId={divisionId}
+            divisionName={
+              divisions.find((division) => division.division_id === divisionId)
+                ?.name ?? '선택 유형'
+            }
+            token={token}
+          />
+        ) : null}
         {scoreboardQuery.data?.frozen_public_view ? (
           <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
             공개 스코어보드는 프리즈 상태입니다. 이 화면은 운영자 live
@@ -647,10 +670,7 @@ function OperatorScoreboardContent({
           rows={rows}
         />
         {scoreboardQuery.data ? (
-          <ProblemStatsBlock
-            problemStats={problemStats}
-            problems={problems}
-          />
+          <ProblemStatsBlock problemStats={problemStats} problems={problems} />
         ) : null}
         {!scoreboardQuery.isLoading && rows.length === 0 ? (
           <p className="mt-4 rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
