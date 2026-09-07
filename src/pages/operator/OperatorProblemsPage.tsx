@@ -3,9 +3,10 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { sharedUiText } from '@/data/uiText';
@@ -198,7 +199,11 @@ function verificationKindFromAsset(
 
 function languageFromFilename(filename: string): JudgeLanguage | null {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.cpp') || lower.endsWith('.cc') || lower.endsWith('.cxx')) {
+  if (
+    lower.endsWith('.cpp') ||
+    lower.endsWith('.cc') ||
+    lower.endsWith('.cxx')
+  ) {
     return 'cpp17';
   }
   if (lower.endsWith('.c')) return 'c99';
@@ -261,7 +266,7 @@ function codeLength(submission: Submission) {
     : '-';
 }
 
-type ProblemEditorMode = 'create' | 'edit';
+type ProblemEditorMode = 'idle' | 'create' | 'edit';
 
 const emptyProblemForm: ProblemForm = {
   displayOrder: '',
@@ -302,7 +307,10 @@ function problemFormFromProblem(problem: Problem): ProblemForm {
           },
         ];
       })
-      .filter(Boolean) as [JudgeLanguage, { memoryLimitMb: string; timeLimitMs: string }][],
+      .filter(Boolean) as [
+      JudgeLanguage,
+      { memoryLimitMb: string; timeLimitMs: string },
+    ][],
   );
 
   return {
@@ -343,7 +351,8 @@ function languageResourceLimitsFromForm(form: ProblemForm) {
         if (!limit) return null;
         const timeLimitMs = limit.timeLimitMs.trim();
         const memoryLimitMb = limit.memoryLimitMb.trim();
-        const payload: { memory_limit_mb?: number; time_limit_ms?: number } = {};
+        const payload: { memory_limit_mb?: number; time_limit_ms?: number } =
+          {};
         if (timeLimitMs) payload.time_limit_ms = Number(timeLimitMs);
         if (memoryLimitMb) payload.memory_limit_mb = Number(memoryLimitMb);
         return Object.keys(payload).length ? [language, payload] : null;
@@ -451,11 +460,16 @@ function normalizeProblemLimitForm(form: ProblemForm) {
       memoryLimitMb: memory.value,
       timeLimitMs: time.value,
     },
-    messages: [time.message, memory.message, ...languageMessages].filter(Boolean),
+    messages: [time.message, memory.message, ...languageMessages].filter(
+      Boolean,
+    ),
   };
 }
 
-function automaticLanguageLimitText(form: ProblemForm, language: JudgeLanguage) {
+function automaticLanguageLimitText(
+  form: ProblemForm,
+  language: JudgeLanguage,
+) {
   const adjustment = AUTOMATIC_LANGUAGE_ADJUSTMENTS[language];
   if (!adjustment) return '';
   const limit = form.languageResourceLimits[language];
@@ -648,7 +662,10 @@ function formatTestcaseFileSize(sizeBytes?: number | null) {
   return `${Math.max(1, Math.ceil(sizeBytes / 1024))}KB`;
 }
 
-function testcaseDisplayFileName(displayOrder: number, extension: 'in' | 'out') {
+function testcaseDisplayFileName(
+  displayOrder: number,
+  extension: 'in' | 'out',
+) {
   return `${String(displayOrder).padStart(2, '0')}.${extension}`;
 }
 
@@ -671,6 +688,7 @@ export default function OperatorProblemsPage() {
       {(session) =>
         contestId ? (
           <OperatorProblemsContent
+            key={contestId}
             contestId={contestId}
             token={session.accessToken}
           />
@@ -693,7 +711,11 @@ function OperatorProblemsContent({
 }) {
   const queryIdentity = tokenQueryIdentity(token);
   const queryClient = useQueryClient();
-  const [editorMode, setEditorMode] = useState<ProblemEditorMode>('create');
+  const [editorMode, setEditorMode] = useState<ProblemEditorMode>('idle');
+  const editorRef = useRef<HTMLDivElement>(null);
+  const initialFormRef = useRef(emptyProblemForm);
+  const [problemSearch, setProblemSearch] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
   const [authoringTab, setAuthoringTab] = useState<
     'settings' | 'statement' | 'editorial' | 'tests' | 'preview'
   >('settings');
@@ -752,9 +774,14 @@ function OperatorProblemsContent({
     divisions.some((division) => division.division_id === filterDivisionId)
       ? filterDivisionId
       : divisions[0]?.division_id) ?? '';
-  const filteredProblems = activeDivisionId
+  const divisionProblems = activeDivisionId
     ? problems.filter((problem) => problem.division_id === activeDivisionId)
     : problems;
+  const filteredProblems = divisionProblems.filter((problem) =>
+    `${problem.problem_code} ${problem.title}`
+      .toLowerCase()
+      .includes(problemSearch.trim().toLowerCase()),
+  );
   const displayOrderOptions = useMemo(
     () => problemOrderOptions(problems, form.divisionId, form.displayOrder),
     [form.displayOrder, form.divisionId, problems],
@@ -979,6 +1006,10 @@ function OperatorProblemsContent({
       setEditorMode('edit');
       setSelectedProblemId(problem.problem_id);
       setForm(problemFormFromProblem(problem));
+      initialFormRef.current = problemFormFromProblem(problem);
+      setSavedMessage(
+        `${problem.problem_code}. ${problem.title} 문제가 저장되었습니다.`,
+      );
       setTestSubmission(null);
       setFormError('');
       setFormNotice('');
@@ -992,7 +1023,7 @@ function OperatorProblemsContent({
     mutationFn: (problem: Problem) =>
       deleteOperatorProblem(contestId, problem.problem_id, token),
     onSuccess: (_deleted, problem) => {
-      setEditorMode('create');
+      setEditorMode('idle');
       setAuthoringTab('settings');
       setSelectedProblemId('');
       setForm({
@@ -1005,7 +1036,10 @@ function OperatorProblemsContent({
       setTestSubmission(null);
       setVerificationResults({});
       setFormError('');
-      setFormNotice(`${problem.problem_code}. ${problem.title} 문제가 삭제되었습니다.`);
+      setFormNotice('');
+      setSavedMessage(
+        `${problem.problem_code}. ${problem.title} 문제가 삭제되었습니다.`,
+      );
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'problems', contestId],
       });
@@ -1031,12 +1065,17 @@ function OperatorProblemsContent({
         targetProblems.map((problem) => problem.problem_code),
       );
       const nextDisplayOrder =
-        Math.max(0, ...targetProblems.map((problem) => problem.display_order ?? 0)) +
-        1;
+        Math.max(
+          0,
+          ...targetProblems.map((problem) => problem.display_order ?? 0),
+        ) + 1;
 
       return copyOperatorProblem(contestId, token, {
         display_order: nextDisplayOrder,
-        problem_code: uniqueProblemCode(sourceProblem.problem_code, existingCodes),
+        problem_code: uniqueProblemCode(
+          sourceProblem.problem_code,
+          existingCodes,
+        ),
         source_problem_id: sourceProblem.problem_id,
         target_division_id: activeDivisionId,
       });
@@ -1048,6 +1087,11 @@ function OperatorProblemsContent({
       setAuthoringTab('statement');
       setSelectedProblemId(problem.problem_id);
       setForm(problemFormFromProblem(problem));
+      initialFormRef.current = problemFormFromProblem(problem);
+      setFormNotice('');
+      setSavedMessage(
+        `${problem.problem_code}. ${problem.title} 문제를 현재 유형으로 복사했습니다.`,
+      );
       setTestSubmission(null);
       setFormError('');
       void queryClient.invalidateQueries({
@@ -1136,7 +1180,9 @@ function OperatorProblemsContent({
   ) {
     const language = languageFromFilename(filename);
     if (!language) {
-      throw new Error('지원하지 않는 코드 파일입니다. .c, .cpp, .py, .java 파일을 사용해 주세요.');
+      throw new Error(
+        '지원하지 않는 코드 파일입니다. .c, .cpp, .py, .java 파일을 사용해 주세요.',
+      );
     }
 
     const submitted = await createOperatorTestSubmission(
@@ -1253,10 +1299,7 @@ function OperatorProblemsContent({
           });
         } catch (error) {
           const result = {
-            error: formatUserApiError(
-              error,
-              '검증 코드 처리에 실패했습니다.',
-            ),
+            error: formatUserApiError(error, '검증 코드 처리에 실패했습니다.'),
             expectedStatus,
             filename: file.name,
             stage: 'done' as const,
@@ -1345,10 +1388,7 @@ function OperatorProblemsContent({
         ...previous,
         [variables.asset.asset_id]: {
           asset: variables.asset,
-          error: formatUserApiError(
-            error,
-            '검증 코드 채점에 실패했습니다.',
-          ),
+          error: formatUserApiError(error, '검증 코드 채점에 실패했습니다.'),
           expectedStatus: variables.expectedStatus,
           filename: variables.asset.original_filename,
           stage: 'done',
@@ -1551,22 +1591,6 @@ function OperatorProblemsContent({
     return () => window.clearTimeout(timer);
   }, [testDraftKey, testDraftScope]);
 
-  useEffect(() => {
-    if (editorMode !== 'create' || !activeDivisionId) return;
-
-    setForm((prev) => {
-      if (prev.divisionId && prev.displayOrder) return prev;
-
-      const divisionId = prev.divisionId || activeDivisionId;
-      return {
-        ...prev,
-        displayOrder:
-          prev.displayOrder || String(nextProblemDisplayOrder(problems, divisionId)),
-        divisionId,
-      };
-    });
-  }, [activeDivisionId, editorMode, problems]);
-
   function handleTestLanguageChange(language: JudgeLanguage) {
     setTestLanguage(language);
     saveLastJudgeLanguage(language);
@@ -1583,28 +1607,78 @@ function OperatorProblemsContent({
   }
 
   function editProblem(problem: Problem) {
+    if (!canLeaveEditor()) return;
+    clearEditorFeedback();
     setEditorMode('edit');
     setAuthoringTab('statement');
     setSelectedProblemId(problem.problem_id);
     setForm(problemFormFromProblem(problem));
+    initialFormRef.current = problemFormFromProblem(problem);
     setTestSubmission(null);
     setFormError('');
+    focusEditor();
   }
 
   function startCreateMode() {
+    if (!activeDivisionId || !canLeaveEditor()) return;
+    clearEditorFeedback();
     const divisionId = activeDivisionId;
     setEditorMode('create');
     setAuthoringTab('settings');
     setSelectedProblemId('');
-    setForm({
+    const nextForm = {
       ...emptyProblemForm,
       displayOrder: divisionId
         ? String(nextProblemDisplayOrder(problems, divisionId))
         : '',
       divisionId,
-    });
+    };
+    setForm(nextForm);
+    initialFormRef.current = nextForm;
     setTestSubmission(null);
     setFormError('');
+    focusEditor();
+  }
+
+  function focusEditor() {
+    editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    editorRef.current?.focus({ preventScroll: true });
+  }
+
+  function canLeaveEditor() {
+    if (
+      saveProblemMutation.isPending ||
+      deleteProblemMutation.isPending ||
+      copyProblemMutation.isPending
+    )
+      return false;
+    return (
+      editorMode === 'idle' ||
+      JSON.stringify(form) === JSON.stringify(initialFormRef.current) ||
+      window.confirm(
+        '저장하지 않은 문제 변경사항이 있습니다. 변경사항을 버리고 이동할까요?',
+      )
+    );
+  }
+
+  function clearEditorFeedback() {
+    setFormError('');
+    setFormNotice('');
+    setSavedMessage('');
+    saveProblemMutation.reset();
+    deleteProblemMutation.reset();
+  }
+
+  function cancelEditor() {
+    if (!canLeaveEditor()) return false;
+    clearEditorFeedback();
+    setEditorMode('idle');
+    setSelectedProblemId('');
+    setAuthoringTab('settings');
+    setForm(emptyProblemForm);
+    setTestSubmission(null);
+    setVerificationResults({});
+    return true;
   }
 
   function addExample() {
@@ -1648,6 +1722,13 @@ function OperatorProblemsContent({
 
   function submitProblem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      editorMode === 'idle' ||
+      saveProblemMutation.isPending ||
+      deleteProblemMutation.isPending
+    )
+      return;
+    setSavedMessage('');
     if (editorMode === 'edit' && !form.problemId) {
       setFormError('수정할 문제를 먼저 가져와 주세요.');
       return;
@@ -1722,7 +1803,13 @@ function OperatorProblemsContent({
             </div>
             <div className="flex shrink-0 gap-2">
               <button
-                className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  !activeDivisionId ||
+                  saveProblemMutation.isPending ||
+                  deleteProblemMutation.isPending ||
+                  copyProblemMutation.isPending
+                }
                 onClick={startCreateMode}
                 type="button"
               >
@@ -1743,6 +1830,16 @@ function OperatorProblemsContent({
               </button>
             </div>
           </div>
+          <label className="grid gap-2 text-xs font-bold text-slate-600">
+            문제 검색
+            <input
+              className="h-10 min-w-0 rounded border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              type="search"
+              placeholder="문제 번호 또는 제목"
+              value={problemSearch}
+              onChange={(event) => setProblemSearch(event.target.value)}
+            />
+          </label>
           <div className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-slate-100 p-1">
             {divisions.map((division) => (
               <button
@@ -1753,7 +1850,13 @@ function OperatorProblemsContent({
                     : 'text-slate-500 hover:text-slate-900',
                 ].join(' ')}
                 key={division.division_id}
-                onClick={() => setFilterDivisionId(division.division_id)}
+                onClick={() => {
+                  if (division.division_id === activeDivisionId) return;
+                  if (!cancelEditor()) return;
+                  setFilterDivisionId(division.division_id);
+                  setProblemSearch('');
+                  setCopySourceProblemId('');
+                }}
                 type="button"
               >
                 {division.name}
@@ -1772,7 +1875,9 @@ function OperatorProblemsContent({
               </div>
               <select
                 className="h-10 rounded border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                disabled={!copyableProblems.length || copyProblemMutation.isPending}
+                disabled={
+                  !copyableProblems.length || copyProblemMutation.isPending
+                }
                 onChange={(event) => setCopySourceProblemId(event.target.value)}
                 value={copySourceProblemId}
               >
@@ -1784,7 +1889,8 @@ function OperatorProblemsContent({
                 {copyableProblems.map((problem) => {
                   const divisionName =
                     divisions.find(
-                      (division) => division.division_id === problem.division_id,
+                      (division) =>
+                        division.division_id === problem.division_id,
                     )?.name ?? '다른 유형';
 
                   return (
@@ -1799,9 +1905,16 @@ function OperatorProblemsContent({
                 disabled={
                   !copySourceProblemId ||
                   !activeDivisionId ||
-                  copyProblemMutation.isPending
+                  copyProblemMutation.isPending ||
+                  saveProblemMutation.isPending ||
+                  deleteProblemMutation.isPending
                 }
-                onClick={() => copyProblemMutation.mutate()}
+                onClick={() => {
+                  if (canLeaveEditor()) {
+                    clearEditorFeedback();
+                    copyProblemMutation.mutate();
+                  }
+                }}
                 type="button"
               >
                 {copyProblemMutation.isPending
@@ -1826,6 +1939,7 @@ function OperatorProblemsContent({
                     : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50',
                 ].join(' ')}
                 key={problem.problem_id}
+                aria-pressed={selectedProblemId === problem.problem_id}
                 onClick={() => editProblem(problem)}
                 type="button"
               >
@@ -1842,583 +1956,703 @@ function OperatorProblemsContent({
             ))}
             {!filteredProblems.length ? (
               <p className="rounded border border-dashed border-slate-200 px-3 py-8 text-center text-sm font-bold text-slate-500">
-                등록된 문제가 없습니다.
+                {problemsQuery.isLoading
+                  ? '문제를 불러오는 중입니다.'
+                  : problemSearch.trim()
+                    ? '검색 결과가 없습니다. 검색어를 바꿔보세요.'
+                    : '이 유형에 등록된 문제가 없습니다. 새 문제를 눌러 추가하세요.'}
               </p>
             ) : null}
           </div>
         </aside>
-        <div className="grid content-start gap-6">
+        <div
+          className="grid scroll-mt-6 content-start gap-6 outline-none"
+          ref={editorRef}
+          tabIndex={-1}
+        >
+          {savedMessage ? (
+            <p
+              role="status"
+              className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800"
+            >
+              {savedMessage}
+            </p>
+          ) : null}
           <OperatorPanel
             description={
               editorMode === 'edit'
                 ? '왼쪽 목록에서 선택한 문제를 수정합니다.'
-                : '새 문제의 기본 정보와 본문을 작성합니다.'
+                : editorMode === 'create'
+                  ? '기본 정보와 본문을 작성해 저장한 뒤, 테스트케이스와 채점 파일을 추가하세요.'
+                  : '새 문제를 만들거나 목록에서 수정할 문제를 선택하세요.'
             }
-            title={editorMode === 'edit' ? '문제 수정' : '문제 생성'}
+            title={
+              editorMode === 'edit'
+                ? `${selectedProblem?.problem_code ?? ''}. ${selectedProblem?.title ?? '문제'} 수정`
+                : editorMode === 'create'
+                  ? '새 문제 작성'
+                  : '문제 편집'
+            }
           >
-            {editorMode === 'edit' && !form.problemId ? (
-              <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                수정할 문제를 목록에서 가져와 주세요.
-              </p>
-            ) : null}
-            <div className="grid items-start gap-2 md:grid-cols-5">
-              {[
-                ['settings', '기본 정보'],
-                ['statement', '문제/예제'],
-                ['editorial', '해설'],
-                ['tests', '테스트케이스'],
-                ['preview', '전체 미리보기'],
-              ].map(([value, label]) => (
-                <button
-                  className={[
-                    'h-11 rounded border px-4 text-sm font-black transition',
-                    authoringTab === value
-                      ? 'border-indigo-300 bg-indigo-950 text-white'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',
-                  ].join(' ')}
-                  key={value}
-                  onClick={() => {
-                    if (value === 'preview') {
-                      setIsPreviewOpen(true);
-                      return;
+            {editorMode === 'idle' ? (
+              <div className="grid justify-items-center gap-4 rounded border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
+                <ProblemIcon />
+                <h3 className="text-lg font-black text-slate-800">
+                  {!activeDivisionId && !dashboardQuery.isLoading
+                    ? '참가 유형을 먼저 추가하세요'
+                    : '어떤 문제를 작업할까요?'}
+                </h3>
+                <p className="max-w-md text-sm leading-6 text-slate-500">
+                  문제를 선택하기 전에는 편집 폼이 열리지 않습니다. 기존 문제는
+                  목록에서 선택하고, 새로 출제할 때는 ‘새 문제’를 누르세요.
+                </p>
+                {activeDivisionId ? (
+                  <button
+                    className="rounded bg-indigo-950 px-5 py-3 text-sm font-black text-white"
+                    onClick={startCreateMode}
+                    type="button"
+                  >
+                    새 문제
+                  </button>
+                ) : !dashboardQuery.isLoading ? (
+                  <Link
+                    className="rounded bg-indigo-950 px-5 py-3 text-sm font-black text-white"
+                    to={`/operator/contests/${contestId}/settings`}
+                  >
+                    설정에서 참가 유형 추가
+                  </Link>
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    대회 정보를 불러오는 중입니다.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-indigo-100 bg-indigo-50 px-4 py-3">
+                  <p className="text-xs leading-5 text-indigo-800">
+                    {editorMode === 'create'
+                      ? '새로 작성 중 · 저장하면 문제 목록에 추가됩니다.'
+                      : '수정 중 · 기본 정보, 본문, 해설은 저장해야 반영됩니다. 파일 업로드와 테스트케이스 작업은 즉시 반영됩니다.'}
+                  </p>
+                  <button
+                    className="shrink-0 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+                    disabled={
+                      saveProblemMutation.isPending ||
+                      deleteProblemMutation.isPending ||
+                      copyProblemMutation.isPending
                     }
-                    setAuthoringTab(value as typeof authoringTab);
-                  }}
-                  type="button"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <form className="grid gap-3" onSubmit={submitProblem}>
-              {authoringTab === 'settings' ? (
-                <>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    유형
-                    <select
-                      className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          displayOrder:
-                            editorMode === 'create' && event.target.value
-                              ? String(
-                                  nextProblemDisplayOrder(
-                                    problems,
-                                    event.target.value,
-                                  ),
-                                )
-                              : prev.displayOrder,
-                          divisionId: event.target.value,
-                        }))
-                      }
-                      value={form.divisionId}
-                    >
-                      <option value="">유형 선택</option>
-                      {divisions.map((division) => (
-                        <option
-                          key={division.division_id}
-                          value={division.division_id}
-                        >
-                          {division.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput
-                      label="문제 번호"
-                      onChange={(value) =>
-                        setForm((prev) => ({ ...prev, problemCode: value }))
-                      }
-                      value={form.problemCode}
-                    />
-                    <TextInput
-                      label="제목"
-                      onChange={(value) =>
-                        setForm((prev) => ({ ...prev, title: value }))
-                      }
-                      value={form.title}
-                    />
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput
-                      label="시간(ms)"
-                      onBlur={normalizeLimitsInForm}
-                      onChange={(value) => {
-                        setFormNotice('');
-                        setForm((prev) => ({ ...prev, timeLimitMs: value }))
-                      }}
-                      helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.timeMs.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.timeMs.max.toLocaleString('ko-KR')}ms`}
-                      inputMode="numeric"
-                      value={form.timeLimitMs}
-                    />
-                    <TextInput
-                      label="메모리(MB)"
-                      onBlur={normalizeLimitsInForm}
-                      onChange={(value) => {
-                        setFormNotice('');
-                        setForm((prev) => ({ ...prev, memoryLimitMb: value }))
-                      }}
-                      helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.memoryMb.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.memoryMb.max.toLocaleString('ko-KR')}MB`}
-                      inputMode="numeric"
-                      value={form.memoryLimitMb}
-                    />
-                  </div>
-                  <div className="rounded border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-black text-slate-900">
-                          언어별 리소스 제한
-                        </h3>
-                        <p className="mt-1 text-xs font-bold text-slate-500">
-                          비워두면 기본 시간/메모리 제한을 그대로 사용합니다.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid gap-3">
-                      {judgeLanguages.map((language) => {
-                        const limit = form.languageResourceLimits[language] ?? {
-                          memoryLimitMb: '',
-                          timeLimitMs: '',
-                        };
-                        const automaticLimitText = automaticLanguageLimitText(
-                          form,
-                          language,
-                        );
-                        return (
-                          <div
-                            className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
-                            key={language}
-                          >
-                            <div>
-                              <p className="text-xs font-black tracking-normal text-slate-500 uppercase">
-                                Language
-                              </p>
-                              <p className="mt-1 text-sm font-black text-slate-950">
-                                {LANGUAGE_LABELS[language]}
-                              </p>
-                            </div>
-                            <TextInput
-                              label="시간(ms)"
-                              onBlur={normalizeLimitsInForm}
-                              onChange={(value) => {
-                                setFormNotice('');
-                                setForm((prev) => ({
-                                  ...prev,
-                                  languageResourceLimits: {
-                                    ...prev.languageResourceLimits,
-                                    [language]: {
-                                      memoryLimitMb:
-                                        prev.languageResourceLimits[language]
-                                          ?.memoryLimitMb ?? '',
-                                      timeLimitMs: value,
-                                    },
-                                  },
-                                }));
-                              }}
-                              placeholder={form.timeLimitMs}
-                              inputMode="numeric"
-                              value={limit.timeLimitMs}
-                            />
-                            <TextInput
-                              label="메모리(MB)"
-                              onBlur={normalizeLimitsInForm}
-                              onChange={(value) => {
-                                setFormNotice('');
-                                setForm((prev) => ({
-                                  ...prev,
-                                  languageResourceLimits: {
-                                    ...prev.languageResourceLimits,
-                                    [language]: {
-                                      memoryLimitMb: value,
-                                      timeLimitMs:
-                                        prev.languageResourceLimits[language]
-                                          ?.timeLimitMs ?? '',
-                                    },
-                                  },
-                                }));
-                              }}
-                              placeholder={form.memoryLimitMb}
-                              inputMode="numeric"
-                              value={limit.memoryLimitMb}
-                            />
-                            {automaticLimitText ? (
-                              <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-800 md:col-span-3">
-                                {automaticLimitText}
-                              </p>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    정렬 순서
-                    <select
-                      className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      disabled={!form.divisionId}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          displayOrder: event.target.value,
-                        }))
-                      }
-                      value={form.displayOrder}
-                    >
-                      {!form.divisionId ? (
-                        <option value="">유형을 먼저 선택해 주세요</option>
-                      ) : null}
-                      {displayOrderOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-xs font-bold text-slate-500">
-                      문제 생성 시 선택한 유형의 마지막 순서가 자동으로
-                      채워집니다.
-                    </span>
-                  </label>
-                </>
-              ) : null}
-              {authoringTab === 'statement' ? (
-                <>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    문제 본문
-                    <textarea
-                      className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          statement: event.target.value,
-                        }))
-                      }
-                      value={form.statement}
-                    />
-                  </label>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-black text-slate-700">
-                      입력 설명
-                      <textarea
-                        className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            inputDescription: event.target.value,
-                          }))
+                    onClick={cancelEditor}
+                    type="button"
+                  >
+                    {editorMode === 'create' ? '작성 취소' : '편집 닫기'}
+                  </button>
+                </div>
+                {editorMode === 'edit' && !form.problemId ? (
+                  <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                    수정할 문제를 목록에서 가져와 주세요.
+                  </p>
+                ) : null}
+                <div className="grid items-start gap-2 md:grid-cols-5">
+                  {[
+                    ['settings', '기본 정보'],
+                    ['statement', '문제/예제'],
+                    ['editorial', '해설'],
+                    ['tests', '테스트케이스'],
+                    ['preview', '전체 미리보기'],
+                  ].map(([value, label]) => (
+                    <button
+                      className={[
+                        'h-11 rounded border px-4 text-sm font-black transition',
+                        authoringTab === value
+                          ? 'border-indigo-300 bg-indigo-950 text-white'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',
+                      ].join(' ')}
+                      key={value}
+                      onClick={() => {
+                        if (value === 'preview') {
+                          setIsPreviewOpen(true);
+                          return;
                         }
-                        value={form.inputDescription}
-                      />
-                    </label>
-                    <label className="grid gap-2 text-sm font-black text-slate-700">
-                      출력 설명
-                      <textarea
-                        className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            outputDescription: event.target.value,
-                          }))
-                        }
-                        value={form.outputDescription}
-                      />
-                    </label>
-                  </div>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    노트
-                    <textarea
-                      className="min-h-24 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          note: event.target.value,
-                        }))
-                      }
-                      value={form.note}
-                    />
-                  </label>
-                  <div className="grid gap-3 rounded border border-slate-200 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-black text-slate-800">
-                          예제
-                        </p>
-                        <p className="text-xs font-bold text-slate-500">
-                          예제 입력, 출력, 설명을 여러 개 관리합니다.
-                        </p>
-                      </div>
-                      <button
-                        className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
-                        onClick={addExample}
-                        type="button"
-                      >
-                        예제 추가
-                      </button>
-                    </div>
-                    {form.examples.map((example, index) => (
-                      <section
-                        className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
-                        key={index}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <strong className="text-sm font-black text-slate-950">
-                            예제 {index + 1}
-                          </strong>
-                          <button
-                            className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
-                            onClick={() => removeExample(index)}
-                            type="button"
+                        setAuthoringTab(value as typeof authoringTab);
+                      }}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <form className="grid gap-3" onSubmit={submitProblem}>
+                  <fieldset
+                    className="grid min-w-0 gap-3 disabled:opacity-60"
+                    disabled={
+                      saveProblemMutation.isPending ||
+                      deleteProblemMutation.isPending ||
+                      copyProblemMutation.isPending
+                    }
+                  >
+                    {authoringTab === 'settings' ? (
+                      <>
+                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                          유형
+                          <select
+                            className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                displayOrder:
+                                  editorMode === 'create' && event.target.value
+                                    ? String(
+                                        nextProblemDisplayOrder(
+                                          problems,
+                                          event.target.value,
+                                        ),
+                                      )
+                                    : prev.displayOrder,
+                                divisionId: event.target.value,
+                              }))
+                            }
+                            value={form.divisionId}
                           >
-                            삭제
-                          </button>
+                            <option value="">유형 선택</option>
+                            {divisions.map((division) => (
+                              <option
+                                key={division.division_id}
+                                value={division.division_id}
+                              >
+                                {division.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <TextInput
+                            label="문제 번호"
+                            onChange={(value) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                problemCode: value,
+                              }))
+                            }
+                            value={form.problemCode}
+                          />
+                          <TextInput
+                            label="제목"
+                            onChange={(value) =>
+                              setForm((prev) => ({ ...prev, title: value }))
+                            }
+                            value={form.title}
+                          />
                         </div>
                         <div className="grid gap-3 md:grid-cols-2">
+                          <TextInput
+                            label="시간(ms)"
+                            onBlur={normalizeLimitsInForm}
+                            onChange={(value) => {
+                              setFormNotice('');
+                              setForm((prev) => ({
+                                ...prev,
+                                timeLimitMs: value,
+                              }));
+                            }}
+                            helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.timeMs.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.timeMs.max.toLocaleString('ko-KR')}ms`}
+                            inputMode="numeric"
+                            value={form.timeLimitMs}
+                          />
+                          <TextInput
+                            label="메모리(MB)"
+                            onBlur={normalizeLimitsInForm}
+                            onChange={(value) => {
+                              setFormNotice('');
+                              setForm((prev) => ({
+                                ...prev,
+                                memoryLimitMb: value,
+                              }));
+                            }}
+                            helperText={`설정 가능 범위: ${LIMIT_BOUNDARIES.memoryMb.min.toLocaleString('ko-KR')}~${LIMIT_BOUNDARIES.memoryMb.max.toLocaleString('ko-KR')}MB`}
+                            inputMode="numeric"
+                            value={form.memoryLimitMb}
+                          />
+                        </div>
+                        <div className="rounded border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-sm font-black text-slate-900">
+                                언어별 리소스 제한
+                              </h3>
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                비워두면 기본 시간/메모리 제한을 그대로
+                                사용합니다.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4 grid gap-3">
+                            {judgeLanguages.map((language) => {
+                              const limit = form.languageResourceLimits[
+                                language
+                              ] ?? {
+                                memoryLimitMb: '',
+                                timeLimitMs: '',
+                              };
+                              const automaticLimitText =
+                                automaticLanguageLimitText(form, language);
+                              return (
+                                <div
+                                  className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
+                                  key={language}
+                                >
+                                  <div>
+                                    <p className="text-xs font-black tracking-normal text-slate-500 uppercase">
+                                      Language
+                                    </p>
+                                    <p className="mt-1 text-sm font-black text-slate-950">
+                                      {LANGUAGE_LABELS[language]}
+                                    </p>
+                                  </div>
+                                  <TextInput
+                                    label="시간(ms)"
+                                    onBlur={normalizeLimitsInForm}
+                                    onChange={(value) => {
+                                      setFormNotice('');
+                                      setForm((prev) => ({
+                                        ...prev,
+                                        languageResourceLimits: {
+                                          ...prev.languageResourceLimits,
+                                          [language]: {
+                                            memoryLimitMb:
+                                              prev.languageResourceLimits[
+                                                language
+                                              ]?.memoryLimitMb ?? '',
+                                            timeLimitMs: value,
+                                          },
+                                        },
+                                      }));
+                                    }}
+                                    placeholder={form.timeLimitMs}
+                                    inputMode="numeric"
+                                    value={limit.timeLimitMs}
+                                  />
+                                  <TextInput
+                                    label="메모리(MB)"
+                                    onBlur={normalizeLimitsInForm}
+                                    onChange={(value) => {
+                                      setFormNotice('');
+                                      setForm((prev) => ({
+                                        ...prev,
+                                        languageResourceLimits: {
+                                          ...prev.languageResourceLimits,
+                                          [language]: {
+                                            memoryLimitMb: value,
+                                            timeLimitMs:
+                                              prev.languageResourceLimits[
+                                                language
+                                              ]?.timeLimitMs ?? '',
+                                          },
+                                        },
+                                      }));
+                                    }}
+                                    placeholder={form.memoryLimitMb}
+                                    inputMode="numeric"
+                                    value={limit.memoryLimitMb}
+                                  />
+                                  {automaticLimitText ? (
+                                    <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed font-bold text-amber-800 md:col-span-3">
+                                      {automaticLimitText}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                          정렬 순서
+                          <select
+                            className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            disabled={!form.divisionId}
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                displayOrder: event.target.value,
+                              }))
+                            }
+                            value={form.displayOrder}
+                          >
+                            {!form.divisionId ? (
+                              <option value="">
+                                유형을 먼저 선택해 주세요
+                              </option>
+                            ) : null}
+                            {displayOrderOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-xs font-bold text-slate-500">
+                            문제 생성 시 선택한 유형의 마지막 순서가 자동으로
+                            채워집니다.
+                          </span>
+                        </label>
+                      </>
+                    ) : null}
+                    {authoringTab === 'statement' ? (
+                      <>
+                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                          문제 본문
+                          <textarea
+                            className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                statement: event.target.value,
+                              }))
+                            }
+                            value={form.statement}
+                          />
+                        </label>
+                        <div className="grid gap-3 md:grid-cols-2">
                           <label className="grid gap-2 text-sm font-black text-slate-700">
-                            예제 입력
+                            입력 설명
                             <textarea
-                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                               onChange={(event) =>
-                                updateExample(index, {
-                                  input: event.target.value,
-                                })
+                                setForm((prev) => ({
+                                  ...prev,
+                                  inputDescription: event.target.value,
+                                }))
                               }
-                              value={example.input}
+                              value={form.inputDescription}
                             />
                           </label>
                           <label className="grid gap-2 text-sm font-black text-slate-700">
-                            예제 출력
+                            출력 설명
                             <textarea
-                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                               onChange={(event) =>
-                                updateExample(index, {
-                                  output: event.target.value,
-                                })
+                                setForm((prev) => ({
+                                  ...prev,
+                                  outputDescription: event.target.value,
+                                }))
                               }
-                              value={example.output}
+                              value={form.outputDescription}
                             />
                           </label>
                         </div>
                         <label className="grid gap-2 text-sm font-black text-slate-700">
-                          예제 설명
+                          노트
                           <textarea
-                            className="min-h-20 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="min-h-24 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
-                              updateExample(index, { note: event.target.value })
+                              setForm((prev) => ({
+                                ...prev,
+                                note: event.target.value,
+                              }))
                             }
-                            value={example.note ?? ''}
+                            value={form.note}
                           />
                         </label>
-                      </section>
-                    ))}
-                    {!form.examples.length ? (
-                      <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
-                        등록된 예제가 없습니다.
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                    <div className="grid gap-1">
-                      <p className="text-sm font-black text-indigo-800">
-                        문제/예제 이미지
-                      </p>
-                      <p className="text-xs font-bold text-slate-600">
-                        본문이나 예제 설명에 사용할 이미지를 업로드합니다.
-                      </p>
-                    </div>
-                    <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
-                      이미지 선택
-                      <input
-                        accept="image/png,image/jpeg,image/webp"
-                        className="sr-only"
-                        disabled={
-                          !effectiveSelectedProblemId ||
-                          uploadAssetMutation.isPending
-                        }
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0];
-                          if (file) uploadAssetMutation.mutate(file);
-                          event.currentTarget.value = '';
-                        }}
-                        type="file"
-                      />
-                    </label>
-                    <div className="grid gap-2">
-                      {imageAssets.map((asset) => (
-                        <p
-                          className="rounded border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-600"
-                          key={asset.asset_id}
-                        >
-                          {asset.original_filename}
-                        </p>
-                      ))}
-                      {effectiveSelectedProblemId &&
-                      !assetsQuery.isLoading &&
-                      !imageAssets.length ? (
-                        <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
-                          업로드된 이미지가 없습니다.
-                        </p>
-                      ) : null}
-                    </div>
-                    {uploadAssetMutation.error ? (
-                      <ErrorBox
-                        error={uploadAssetMutation.error}
-                        fallback="이미지 업로드에 실패했습니다"
-                      />
-                    ) : null}
-                  </div>
-                </>
-              ) : null}
-              {authoringTab === 'editorial' ? (
-                <>
-                  <label className="grid gap-2 text-sm font-black text-slate-700">
-                    해설 본문
-                    <textarea
-                      className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          editorial: event.target.value,
-                        }))
-                      }
-                      value={form.editorial}
-                    />
-                    <span className="text-xs font-bold text-slate-500">
-                      문제 본문과 동일한 Markdown, LaTeX, 이미지 문법을
-                      사용할 수 있습니다.
-                    </span>
-                  </label>
-                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                    <div className="grid gap-1">
-                      <p className="text-sm font-black text-indigo-800">
-                        해설 PDF / 이미지
-                      </p>
-                      <p className="text-xs font-bold text-slate-600">
-                        해설집 PDF나 본문에 넣을 이미지를 업로드합니다.
-                        본문에는 아래 asset 문법을 붙여 넣어 사용할 수
-                        있습니다.
-                      </p>
-                    </div>
-                    <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
-                      파일 선택
-                      <input
-                        accept="application/pdf,image/png,image/jpeg,image/webp"
-                        className="sr-only"
-                        disabled={
-                          !effectiveSelectedProblemId ||
-                          uploadEditorialAssetMutation.isPending
-                        }
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0];
-                          if (file) uploadEditorialAssetMutation.mutate(file);
-                          event.currentTarget.value = '';
-                        }}
-                        type="file"
-                      />
-                    </label>
-                    <div className="grid gap-2">
-                      {editorialAssets.map((asset) => {
-                        const isImage = asset.mime_type.startsWith('image/');
-                        const snippet = isImage
-                          ? `![${asset.original_filename}](asset://${asset.asset_id})`
-                          : `[${asset.original_filename}](asset://${asset.asset_id})`;
-                        return (
-                          <div
-                            className="grid gap-2 rounded border border-indigo-100 bg-white px-3 py-3 text-xs font-bold text-slate-600"
-                            key={asset.asset_id}
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span>{asset.original_filename}</span>
-                              <button
-                                className="rounded border border-rose-200 px-2 py-1 text-[11px] font-black text-rose-600"
-                                disabled={deleteAssetMutation.isPending}
-                                onClick={() => deleteAssetMutation.mutate(asset)}
-                                type="button"
-                              >
-                                삭제
-                              </button>
+                        <div className="grid gap-3 rounded border border-slate-200 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-black text-slate-800">
+                                예제
+                              </p>
+                              <p className="text-xs font-bold text-slate-500">
+                                예제 입력, 출력, 설명을 여러 개 관리합니다.
+                              </p>
                             </div>
-                            <code className="zoj-break-anywhere rounded bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
-                              {snippet}
-                            </code>
+                            <button
+                              className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                              onClick={addExample}
+                              type="button"
+                            >
+                              예제 추가
+                            </button>
                           </div>
-                        );
-                      })}
-                      {effectiveSelectedProblemId &&
-                      !assetsQuery.isLoading &&
-                      !editorialAssets.length ? (
-                        <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
-                          업로드된 해설 파일이 없습니다.
-                        </p>
-                      ) : null}
-                    </div>
-                    {uploadEditorialAssetMutation.error ? (
+                          {form.examples.map((example, index) => (
+                            <section
+                              className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+                              key={index}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <strong className="text-sm font-black text-slate-950">
+                                  예제 {index + 1}
+                                </strong>
+                                <button
+                                  className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
+                                  onClick={() => removeExample(index)}
+                                  type="button"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <label className="grid gap-2 text-sm font-black text-slate-700">
+                                  예제 입력
+                                  <textarea
+                                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                    onChange={(event) =>
+                                      updateExample(index, {
+                                        input: event.target.value,
+                                      })
+                                    }
+                                    value={example.input}
+                                  />
+                                </label>
+                                <label className="grid gap-2 text-sm font-black text-slate-700">
+                                  예제 출력
+                                  <textarea
+                                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                    onChange={(event) =>
+                                      updateExample(index, {
+                                        output: event.target.value,
+                                      })
+                                    }
+                                    value={example.output}
+                                  />
+                                </label>
+                              </div>
+                              <label className="grid gap-2 text-sm font-black text-slate-700">
+                                예제 설명
+                                <textarea
+                                  className="min-h-20 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                  onChange={(event) =>
+                                    updateExample(index, {
+                                      note: event.target.value,
+                                    })
+                                  }
+                                  value={example.note ?? ''}
+                                />
+                              </label>
+                            </section>
+                          ))}
+                          {!form.examples.length ? (
+                            <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                              등록된 예제가 없습니다.
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                          <div className="grid gap-1">
+                            <p className="text-sm font-black text-indigo-800">
+                              문제/예제 이미지
+                            </p>
+                            <p className="text-xs font-bold text-slate-600">
+                              본문이나 예제 설명에 사용할 이미지를 업로드합니다.
+                            </p>
+                          </div>
+                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                            이미지 선택
+                            <input
+                              accept="image/png,image/jpeg,image/webp"
+                              className="sr-only"
+                              disabled={
+                                !effectiveSelectedProblemId ||
+                                uploadAssetMutation.isPending
+                              }
+                              onChange={(event) => {
+                                const file = event.currentTarget.files?.[0];
+                                if (file) uploadAssetMutation.mutate(file);
+                                event.currentTarget.value = '';
+                              }}
+                              type="file"
+                            />
+                          </label>
+                          <div className="grid gap-2">
+                            {imageAssets.map((asset) => (
+                              <p
+                                className="rounded border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-600"
+                                key={asset.asset_id}
+                              >
+                                {asset.original_filename}
+                              </p>
+                            ))}
+                            {effectiveSelectedProblemId &&
+                            !assetsQuery.isLoading &&
+                            !imageAssets.length ? (
+                              <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                                업로드된 이미지가 없습니다.
+                              </p>
+                            ) : null}
+                          </div>
+                          {uploadAssetMutation.error ? (
+                            <ErrorBox
+                              error={uploadAssetMutation.error}
+                              fallback="이미지 업로드에 실패했습니다"
+                            />
+                          ) : null}
+                        </div>
+                      </>
+                    ) : null}
+                    {authoringTab === 'editorial' ? (
+                      <>
+                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                          해설 본문
+                          <textarea
+                            className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                editorial: event.target.value,
+                              }))
+                            }
+                            value={form.editorial}
+                          />
+                          <span className="text-xs font-bold text-slate-500">
+                            문제 본문과 동일한 Markdown, LaTeX, 이미지 문법을
+                            사용할 수 있습니다.
+                          </span>
+                        </label>
+                        <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                          <div className="grid gap-1">
+                            <p className="text-sm font-black text-indigo-800">
+                              해설 PDF / 이미지
+                            </p>
+                            <p className="text-xs font-bold text-slate-600">
+                              해설집 PDF나 본문에 넣을 이미지를 업로드합니다.
+                              본문에는 아래 asset 문법을 붙여 넣어 사용할 수
+                              있습니다.
+                            </p>
+                          </div>
+                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                            파일 선택
+                            <input
+                              accept="application/pdf,image/png,image/jpeg,image/webp"
+                              className="sr-only"
+                              disabled={
+                                !effectiveSelectedProblemId ||
+                                uploadEditorialAssetMutation.isPending
+                              }
+                              onChange={(event) => {
+                                const file = event.currentTarget.files?.[0];
+                                if (file)
+                                  uploadEditorialAssetMutation.mutate(file);
+                                event.currentTarget.value = '';
+                              }}
+                              type="file"
+                            />
+                          </label>
+                          <div className="grid gap-2">
+                            {editorialAssets.map((asset) => {
+                              const isImage =
+                                asset.mime_type.startsWith('image/');
+                              const snippet = isImage
+                                ? `![${asset.original_filename}](asset://${asset.asset_id})`
+                                : `[${asset.original_filename}](asset://${asset.asset_id})`;
+                              return (
+                                <div
+                                  className="grid gap-2 rounded border border-indigo-100 bg-white px-3 py-3 text-xs font-bold text-slate-600"
+                                  key={asset.asset_id}
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span>{asset.original_filename}</span>
+                                    <button
+                                      className="rounded border border-rose-200 px-2 py-1 text-[11px] font-black text-rose-600"
+                                      disabled={deleteAssetMutation.isPending}
+                                      onClick={() =>
+                                        deleteAssetMutation.mutate(asset)
+                                      }
+                                      type="button"
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                  <code className="zoj-break-anywhere rounded bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
+                                    {snippet}
+                                  </code>
+                                </div>
+                              );
+                            })}
+                            {effectiveSelectedProblemId &&
+                            !assetsQuery.isLoading &&
+                            !editorialAssets.length ? (
+                              <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                                업로드된 해설 파일이 없습니다.
+                              </p>
+                            ) : null}
+                          </div>
+                          {uploadEditorialAssetMutation.error ? (
+                            <ErrorBox
+                              error={uploadEditorialAssetMutation.error}
+                              fallback="해설 파일 업로드에 실패했습니다"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="overflow-hidden rounded border border-slate-200">
+                          <ProblemEditorialPanel
+                            assets={assetsQuery.data ?? []}
+                            problem={previewProblem}
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                    {authoringTab === 'tests' ? (
+                      <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
+                        아래 영역에서 채점 보조 파일과 .in/.out 테스트케이스를
+                        관리합니다.
+                      </p>
+                    ) : null}
+                    {formError ||
+                    saveProblemMutation.error ||
+                    deleteProblemMutation.error ? (
                       <ErrorBox
-                        error={uploadEditorialAssetMutation.error}
-                        fallback="해설 파일 업로드에 실패했습니다"
+                        error={
+                          saveProblemMutation.error ||
+                          deleteProblemMutation.error
+                        }
+                        fallback={
+                          formError ||
+                          (deleteProblemMutation.error
+                            ? '문제 삭제에 실패했습니다'
+                            : '문제 저장에 실패했습니다')
+                        }
                       />
                     ) : null}
-                  </div>
-                  <div className="overflow-hidden rounded border border-slate-200">
-                    <ProblemEditorialPanel
-                      assets={assetsQuery.data ?? []}
-                      problem={previewProblem}
-                    />
-                  </div>
-                </>
-              ) : null}
-              {authoringTab === 'tests' ? (
-                <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
-                  아래 영역에서 채점 보조 파일과 .in/.out 테스트케이스를
-                  관리합니다.
-                </p>
-              ) : null}
-              {formError ||
-              saveProblemMutation.error ||
-              deleteProblemMutation.error ? (
-                <ErrorBox
-                  error={
-                    saveProblemMutation.error || deleteProblemMutation.error
-                  }
-                  fallback={
-                    formError ||
-                    (deleteProblemMutation.error
-                      ? '문제 삭제에 실패했습니다'
-                      : '문제 저장에 실패했습니다')
-                  }
-                />
-              ) : null}
-              {formNotice ? (
-                <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                  {formNotice}
-                </p>
-              ) : null}
-              {authoringTab !== 'tests' ? (
-                <div className="flex flex-wrap items-center gap-2">
-                <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
-                  disabled={
-                    (editorMode === 'edit' && !form.problemId) ||
-                    saveProblemMutation.isPending
-                  }
-                  type="submit"
-                >
-                  <ProblemIcon />
-                  {editorMode === 'edit' ? '문제 수정' : '문제 생성'}
-                </button>
-                  {editorMode === 'edit' && selectedProblem ? (
-                    <button
-                      className="inline-flex h-11 items-center justify-center rounded border border-rose-200 bg-white px-5 text-sm font-black text-rose-700 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
-                      disabled={deleteProblemMutation.isPending}
-                      onClick={handleDeleteProblem}
-                      type="button"
-                    >
-                      {deleteProblemMutation.isPending ? '삭제 중' : '문제 삭제'}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </form>
+                    {formNotice ? (
+                      <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                        {formNotice}
+                      </p>
+                    ) : null}
+                    {authoringTab !== 'tests' ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
+                          disabled={
+                            (editorMode === 'edit' && !form.problemId) ||
+                            saveProblemMutation.isPending ||
+                            deleteProblemMutation.isPending
+                          }
+                          type="submit"
+                        >
+                          <ProblemIcon />
+                          {saveProblemMutation.isPending
+                            ? '저장 중…'
+                            : editorMode === 'edit'
+                              ? '변경사항 저장'
+                              : '새 문제 저장'}
+                        </button>
+                        {editorMode === 'edit' && selectedProblem ? (
+                          <button
+                            className="inline-flex h-11 items-center justify-center rounded border border-rose-200 bg-white px-5 text-sm font-black text-rose-700 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
+                            disabled={
+                              deleteProblemMutation.isPending ||
+                              saveProblemMutation.isPending
+                            }
+                            onClick={handleDeleteProblem}
+                            type="button"
+                          >
+                            {deleteProblemMutation.isPending
+                              ? '삭제 중'
+                              : '문제 삭제'}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </fieldset>
+                </form>
+              </>
+            )}
           </OperatorPanel>
 
           {authoringTab === 'tests' ? (
@@ -2818,14 +3052,14 @@ function OperatorProblemsContent({
               ? '테스트 제출은 저장된 문제를 수정 모드로 가져온 뒤 사용할 수 있습니다.'
               : testSubmissionMutation.isPending && testSubmission
                 ? `채점 중: ${submissionStatusLabel(testSubmission.status)}`
-              : testSubmission
-                ? `결과: ${submissionStatusLabel(testSubmission.status)}`
-                : testSubmissionMutation.error
-                  ? formatApiError(
-                      testSubmissionMutation.error,
-                      '테스트 제출에 실패했습니다',
-                    )
-                  : '채점 파일과 테스트케이스 등록 후 정답/오답 코드를 빠르게 검증할 수 있습니다.'
+                : testSubmission
+                  ? `결과: ${submissionStatusLabel(testSubmission.status)}`
+                  : testSubmissionMutation.error
+                    ? formatApiError(
+                        testSubmissionMutation.error,
+                        '테스트 제출에 실패했습니다',
+                      )
+                    : '채점 파일과 테스트케이스 등록 후 정답/오답 코드를 빠르게 검증할 수 있습니다.'
           }
           messageStatus={
             !form.problemId
@@ -2885,11 +3119,7 @@ function TestcaseSetModal({
   }
 
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
       <section className="zoj-modal-shell grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
@@ -3098,11 +3328,7 @@ function FileContentModal({
   onClose: () => void;
 }) {
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
       <section className="zoj-modal-shell grid h-full max-w-4xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
@@ -3155,11 +3381,7 @@ function UploadProgressModal({
   const safeProgress = Math.max(0, Math.min(100, progress));
 
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop z-[80]"
-      role="dialog"
-    >
+    <div aria-modal="true" className="zoj-modal-backdrop z-[80]" role="dialog">
       <section className="w-full max-w-md rounded border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="grid gap-2">
           <p className="text-xs font-black text-indigo-600 uppercase">
@@ -3214,9 +3436,7 @@ function VerificationCodeSection({
     <section className="grid gap-4 rounded border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
-          <h3 className="text-sm font-black text-slate-950">
-            검증 코드 채점
-          </h3>
+          <h3 className="text-sm font-black text-slate-950">검증 코드 채점</h3>
           <p className="text-xs leading-5 font-bold text-slate-500">
             정답/오답/시간초과/메모리초과 코드를 여러 개 올려 테스트케이스가
             의도대로 판정하는지 확인합니다.
@@ -3367,7 +3587,8 @@ function VerificationResultSummary({
   const isPending = actualStatus ? isSubmissionPending(actualStatus) : false;
   const passed =
     actualStatus && !isPending && actualStatus === result.expectedStatus;
-  const failed = actualStatus && !isPending && actualStatus !== result.expectedStatus;
+  const failed =
+    actualStatus && !isPending && actualStatus !== result.expectedStatus;
   const progressText = submissionProgressText(result.submission);
   const progressPercent = submissionProgressPercent(result.submission);
   const isWorking =
@@ -3423,17 +3644,17 @@ function VerificationResultSummary({
         </div>
       ) : null}
       {result.submission?.judge_message ? (
-        <p className="break-words text-[11px] leading-5">
+        <p className="text-[11px] leading-5 break-words">
           {result.submission.judge_message}
         </p>
       ) : null}
       {result.submission?.compile_message ? (
-        <p className="break-words text-[11px] leading-5">
+        <p className="text-[11px] leading-5 break-words">
           {result.submission.compile_message}
         </p>
       ) : null}
       {result.error ? (
-        <p className="break-words text-[11px] leading-5">{result.error}</p>
+        <p className="text-[11px] leading-5 break-words">{result.error}</p>
       ) : null}
     </div>
   );
@@ -3543,7 +3764,10 @@ function OperatorPreviewJudgeResult({
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <PreviewJudgeMetric label="실패 케이스" value={String(submission.failed_testcase_order ?? '-')} />
+        <PreviewJudgeMetric
+          label="실패 케이스"
+          value={String(submission.failed_testcase_order ?? '-')}
+        />
         <PreviewJudgeMetric label="실패 파일" value={detail.caseFiles || '-'} />
         <PreviewJudgeMetric label="소요 시간" value={runtime} />
         <PreviewJudgeMetric label="사용 메모리" value={memory} />
@@ -3551,8 +3775,14 @@ function OperatorPreviewJudgeResult({
         <PreviewJudgeMetric label="코드 길이" value={codeLength(submission)} />
       </div>
 
-      <PreviewJudgeLog label="컴파일 로그" value={submission.compile_message || '-'} />
-      <PreviewJudgeLog label="채점 로그" value={submission.judge_message || '-'} />
+      <PreviewJudgeLog
+        label="컴파일 로그"
+        value={submission.compile_message || '-'}
+      />
+      <PreviewJudgeLog
+        label="채점 로그"
+        value={submission.judge_message || '-'}
+      />
       <div className="grid gap-3 xl:grid-cols-3">
         <PreviewJudgeLog label="실패 입력" value={detail.inputText || '-'} />
         <PreviewJudgeLog label="기대 출력" value={detail.expectedText || '-'} />
@@ -3562,7 +3792,13 @@ function OperatorPreviewJudgeResult({
   );
 }
 
-function PreviewJudgeMetric({ label, value }: { label: string; value: string }) {
+function PreviewJudgeMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-3 py-2">
       <span className="text-[11px] font-black text-slate-500">{label}</span>
@@ -3614,11 +3850,7 @@ function ProblemPreviewModal({
   testLanguage: JudgeLanguage;
 }) {
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
       <section className="zoj-modal-shell flex h-full max-w-7xl flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
@@ -3706,7 +3938,14 @@ function TextInput({
   value,
 }: {
   helperText?: string;
-  inputMode?: 'decimal' | 'email' | 'numeric' | 'search' | 'tel' | 'text' | 'url';
+  inputMode?:
+    | 'decimal'
+    | 'email'
+    | 'numeric'
+    | 'search'
+    | 'tel'
+    | 'text'
+    | 'url';
   label: string;
   onBlur?: () => void;
   onChange: (value: string) => void;

@@ -29,6 +29,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
   const queryIdentity = tokenQueryIdentity(token);
   const [expandedId, setExpandedId] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [pendingOnly, setPendingOnly] = useState(false);
 
   const inquiriesQuery = useQuery({
     queryKey: ['admin', 'contact-inquiries', queryIdentity],
@@ -59,6 +60,9 @@ function AdminInquiriesContent({ token }: { token: string }) {
   const pendingCount = inquiries.filter(
     (inquiry) => inquiry.status !== 'answered',
   ).length;
+  const visibleInquiries = pendingOnly
+    ? inquiries.filter((inquiry) => inquiry.status !== 'answered')
+    : inquiries;
 
   function submitAnswer(event: FormEvent<HTMLFormElement>, inquiryId: string) {
     event.preventDefault();
@@ -78,7 +82,10 @@ function AdminInquiriesContent({ token }: { token: string }) {
 
       {inquiriesQuery.error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
-          {formatApiError(inquiriesQuery.error, '문의 목록을 불러오지 못했습니다')}
+          {formatApiError(
+            inquiriesQuery.error,
+            '문의 목록을 불러오지 못했습니다',
+          )}
         </div>
       ) : null}
 
@@ -86,13 +93,23 @@ function AdminInquiriesContent({ token }: { token: string }) {
         description={`최근 접수된 문의입니다. 답변 필요 ${pendingCount.toLocaleString('ko-KR')}건`}
         title="서비스 문의"
       >
+        <label className="flex w-fit items-center gap-2 rounded border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">
+          <input
+            className="size-4 accent-violet-600"
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={(event) => setPendingOnly(event.target.checked)}
+          />
+          답변 필요한 문의만 보기 ({pendingCount}건)
+        </label>
         <div className="divide-y divide-slate-100 rounded border border-slate-200">
-          {inquiries.length > 0 ? (
-            inquiries.map((inquiry) => {
+          {visibleInquiries.length > 0 ? (
+            visibleInquiries.map((inquiry) => {
               const expanded = expandedId === inquiry.contact_inquiry_id;
               return (
                 <article key={inquiry.contact_inquiry_id}>
                   <button
+                    aria-expanded={expanded}
                     className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-violet-50/40"
                     onClick={() =>
                       setExpandedId(expanded ? '' : inquiry.contact_inquiry_id)
@@ -146,7 +163,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                         <label className="grid gap-2 text-sm font-black text-slate-700">
                           답변 작성
                           <textarea
-                            className="min-h-32 resize-y rounded border border-slate-200 bg-white px-3 py-3 text-sm leading-6 font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                            className="min-h-32 resize-y rounded border border-slate-200 bg-white px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                             onChange={(event) =>
                               setAnswers((prev) => ({
                                 ...prev,
@@ -183,7 +200,11 @@ function AdminInquiriesContent({ token }: { token: string }) {
             })
           ) : (
             <p className="px-4 py-10 text-center text-sm font-bold text-slate-500">
-              접수된 문의가 없습니다.
+              {inquiriesQuery.isLoading
+                ? '문의를 불러오는 중입니다.'
+                : pendingOnly
+                  ? '답변이 필요한 문의가 없습니다. 체크를 해제하면 전체 문의를 볼 수 있습니다.'
+                  : '접수된 문의가 없습니다.'}
             </p>
           )}
         </div>
@@ -212,7 +233,7 @@ function InquiryBlock({ label, value }: { label: string; value: string }) {
   return (
     <section className="grid min-w-0 gap-2">
       <h3 className="text-sm font-black text-slate-700">{label}</h3>
-      <div className="zoj-break-anywhere whitespace-pre-wrap rounded border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-bold text-slate-700">
+      <div className="zoj-break-anywhere rounded border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-bold whitespace-pre-wrap text-slate-700">
         {value}
       </div>
     </section>

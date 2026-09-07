@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useId, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -97,6 +97,17 @@ const accessOptions: { label: string; value: ContestResourceAccess }[] = [
   { label: '참가자 공개 유지', value: 'participants' },
   { label: '비로그인 공개', value: 'public' },
 ];
+
+const statusDescriptions: Record<string, string> = {
+  draft:
+    '운영자가 대회를 준비하는 단계입니다. 공개 대회 목록에 표시되지 않습니다.',
+  scheduled: '일정은 정해졌지만 공개 대회 목록에는 표시하지 않는 상태입니다.',
+  open: '공개 대회 목록에 표시됩니다. 시작 시간이 되면 진행 중으로 전환됩니다.',
+  running:
+    '대회를 진행하는 상태입니다. 대회명·주최 기관·개요·상태 변경이 잠깁니다.',
+  ended:
+    '정규 제출을 마감한 상태입니다. 아래 공개 범위에 따라 종료 후 자료를 열람할 수 있습니다.',
+};
 
 function settingsFormFromContest(contest: Contest): SettingsForm {
   const status = contest.status === 'schedule_tbd' ? 'draft' : contest.status;
@@ -367,12 +378,14 @@ function OperatorSettingsContent({
 
   function handleDivisionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveDivisionMutation.isPending) return;
     if (!divisionForm.name.trim()) return;
     saveDivisionMutation.mutate();
   }
 
   function handleOperatorSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveOperatorMutation.isPending) return;
     if (!operatorForm.editingEmail && !operatorForm.email.trim()) return;
     saveOperatorMutation.mutate();
   }
@@ -403,23 +416,37 @@ function OperatorSettingsContent({
               {operationLocked ? (
                 <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
                   대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
-                  시작/프리즈/종료 시간만 조정하세요.
+                  일정, 공개 범위와 채점 진행률 설정은 계속 조정할 수 있습니다.
                 </p>
               ) : null}
               <div className="grid gap-4 rounded border border-indigo-100 bg-indigo-50/60 px-4 py-4 md:grid-cols-3">
+                <div className="grid gap-1 md:col-span-3">
+                  <h3 className="text-sm font-black text-slate-800">
+                    대회 일정
+                  </h3>
+                  <p className="text-xs leading-5 text-slate-600">
+                    시간은 현재 기기의 시간대(
+                    {Intl.DateTimeFormat().resolvedOptions().timeZone})
+                    기준입니다. 시작은 종료보다 빨라야 하고, 프리즈는 시작과
+                    종료 사이로 설정하세요.
+                  </p>
+                </div>
                 <DateInput
+                  helperText="참가자가 문제를 열고 정규 제출을 시작하는 시각입니다."
                   label="시작"
                   name="start_at"
                   setForm={setSettingsForm}
                   value={settingsForm.start_at}
                 />
                 <DateInput
+                  helperText="공개 스코어보드의 순위 반영을 멈추는 기준 시각입니다. 제출과 채점은 계속됩니다. 스코어보드 화면에서 수동으로 공개 모드를 바꾸면 그 설정이 우선합니다."
                   label="프리즈"
                   name="freeze_at"
                   setForm={setSettingsForm}
                   value={settingsForm.freeze_at}
                 />
                 <DateInput
+                  helperText="정규 제출이 마감되는 시각입니다. 이후 자료 열람과 모의채점은 아래 설정을 따릅니다."
                   label="종료"
                   name="end_at"
                   setForm={setSettingsForm}
@@ -432,6 +459,7 @@ function OperatorSettingsContent({
               />
               <div className="grid gap-4 md:grid-cols-2">
                 <TextInput
+                  helperText="대회 목록과 참가자 화면에 표시되는 이름입니다."
                   disabled={operationLocked}
                   label="대회명"
                   onChange={(value) =>
@@ -442,6 +470,7 @@ function OperatorSettingsContent({
                   value={settingsForm.title}
                 />
                 <TextInput
+                  helperText="대회를 주최하는 학교·기관·단체 이름을 입력하세요."
                   disabled={operationLocked}
                   label="주최 기관"
                   onChange={(value) =>
@@ -455,6 +484,7 @@ function OperatorSettingsContent({
               <label className="grid gap-2 text-sm font-black text-slate-700">
                 상태
                 <select
+                  aria-describedby="contest-status-help"
                   className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
                   disabled={operationLocked}
                   onChange={(event) =>
@@ -470,10 +500,20 @@ function OperatorSettingsContent({
                     </option>
                   ))}
                 </select>
+                <span
+                  id="contest-status-help"
+                  className="text-xs leading-5 font-normal text-slate-500"
+                >
+                  {statusDescriptions[settingsForm.status] ??
+                    '종료된 대회입니다. 종료 후 자료 공개 범위를 조정할 수 있습니다.'}{' '}
+                  초안을 제외한 예정·진행 상태는 시작·종료 시간에 따라 자동으로
+                  바뀝니다.
+                </span>
               </label>
               <label className="grid gap-2 text-sm font-black text-slate-700">
                 개요
                 <textarea
+                  aria-describedby="contest-overview-help"
                   className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
                   disabled={operationLocked}
                   onChange={(event) =>
@@ -483,9 +523,54 @@ function OperatorSettingsContent({
                   }
                   value={settingsForm.overview}
                 />
+                <span
+                  id="contest-overview-help"
+                  className="text-xs leading-5 font-normal text-slate-500"
+                >
+                  참가자가 대회를 이해할 수 있도록 대상, 진행 방식, 준비 사항
+                  등을 적어주세요.
+                </span>
               </label>
               <div className="grid gap-3 rounded border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-2 md:col-span-2 xl:col-span-3">
+                  <h3 className="text-sm font-black text-slate-800">
+                    자료 공개 범위
+                  </h3>
+                  <p className="text-xs leading-5 text-slate-600">
+                    종료 후 각 자료를 누가 볼 수 있는지 선택하세요.
+                    문제집·스코어보드·채점현황은 ‘비로그인 공개’를 선택하면 대회
+                    진행 중에도 로그인 없이 열람할 수 있습니다. 해설은 대회 종료
+                    후에만 공개됩니다.
+                  </p>
+                  <dl className="grid gap-2 text-xs leading-5 sm:grid-cols-3">
+                    <div>
+                      <dt className="font-bold text-slate-700">비공개</dt>
+                      <dd className="text-slate-500">
+                        종료 후 참가자와 일반 방문자의 열람을 막습니다.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-bold text-slate-700">
+                        참가자 공개 유지
+                      </dt>
+                      <dd className="text-slate-500">
+                        종료 후에도 해당 대회 참가자로 로그인하면 볼 수
+                        있습니다.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-bold text-slate-700">
+                        비로그인 공개
+                      </dt>
+                      <dd className="text-slate-500">
+                        로그인하지 않은 방문자도 볼 수 있습니다. 게시판 작성
+                        권한은 별도입니다.
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
                 <AccessSelect
+                  helperText="문제 목록과 문제 본문의 공개 범위입니다. 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다."
                   label="문제집"
                   onChange={(value) =>
                     setSettingsForm((prev) =>
@@ -509,6 +594,7 @@ function OperatorSettingsContent({
                 />
                 <AccessSelect
                   label="스코어보드"
+                  helperText="순위와 팀별 성적의 열람 범위입니다. 프리즈 해제는 스코어보드 화면에서 별도로 관리합니다."
                   onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev
@@ -520,6 +606,7 @@ function OperatorSettingsContent({
                 />
                 <AccessSelect
                   label="채점현황"
+                  helperText="제출 목록과 채점 결과의 열람 범위입니다. 제출 소스 코드의 열람 권한과는 별개입니다."
                   onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev
@@ -531,6 +618,7 @@ function OperatorSettingsContent({
                 />
                 <AccessSelect
                   label="게시판"
+                  helperText="종료 후 게시판을 열람할 수 있는 대상입니다. 글을 쓰게 하려면 아래 ‘게시판 작성 허용’도 켜세요."
                   onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev ? { ...prev, board_access_after_end: value } : prev,
@@ -557,6 +645,7 @@ function OperatorSettingsContent({
                 />
                 <AccessSelect
                   label="공지"
+                  helperText="대회 종료 후 공지사항을 열람할 수 있는 대상입니다."
                   onChange={(value) =>
                     setSettingsForm((prev) =>
                       prev ? { ...prev, notice_access_after_end: value } : prev,
@@ -571,7 +660,8 @@ function OperatorSettingsContent({
                   <span className="font-black">참가자 채점 진행률</span>
                   <span className="font-bold text-slate-500">
                     가리면 참가자 화면에는 테스트케이스 진행률이나 큐 순번을
-                    보여주지 않고 채점 경과 시간만 표시합니다.
+                    보여주지 않고 채점 경과 시간만 표시합니다. 최종 채점 결과는
+                    계속 표시되며, 스코어보드 프리즈와는 별도 설정입니다.
                   </span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -648,11 +738,10 @@ function OperatorSettingsContent({
                       type="checkbox"
                     />
                     <span className="grid gap-1">
-                      <span className="font-black">
-                        모의채점 진행률 보이기
-                      </span>
+                      <span className="font-black">모의채점 진행률 보이기</span>
                       <span className="font-bold text-slate-500">
-                        꺼두면 모의채점도 퍼센트 대신 채점 경과 시간만
+                        정규 제출의 진행률은 가린 채 모의채점 진행률만
+                        보여줍니다. 꺼두면 모의채점도 채점 경과 시간만
                         표시합니다.
                       </span>
                     </span>
@@ -713,7 +802,13 @@ function OperatorSettingsContent({
                     </span>
                   </span>
                 </label>
-              ) : null}
+              ) : (
+                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+                  모의채점은 종료 후 연습 제출 기능입니다. 사용하려면 문제집을
+                  ‘참가자 공개 유지’ 또는 ‘비로그인 공개’로 바꾸세요. 모의채점
+                  결과는 대회 순위에 반영되지 않습니다.
+                </p>
+              )}
 
               {formError || updateSettingsMutation.error ? (
                 <ErrorBox
@@ -745,12 +840,15 @@ function OperatorSettingsContent({
 
         <div className="grid gap-6">
           <OperatorPanel
-            description="참가 유형을 추가하거나 이름을 수정합니다."
-            title="참가 유형"
+            description="초등부·중등부처럼 참가팀을 나누는 구분입니다. 참가 유형별로 문제를 배정하고 스코어보드를 확인할 수 있습니다. 목록을 누르면 해당 유형을 수정합니다. 추가·수정은 대회 설정 저장과 별도로 반영됩니다."
+            title={
+              divisionForm.divisionId ? '참가 유형 수정' : '참가 유형 추가'
+            }
           >
             <form className="grid gap-3" onSubmit={handleDivisionSubmit}>
               <TextInput
                 label="유형 이름"
+                helperText="예: 초등부, 중등부, 고등부"
                 onChange={(value) =>
                   setDivisionForm((prev) => ({ ...prev, name: value }))
                 }
@@ -770,22 +868,57 @@ function OperatorSettingsContent({
                 />
               ) : null}
               <button
-                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white"
+                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:opacity-50"
+                disabled={
+                  saveDivisionMutation.isPending || !divisionForm.name.trim()
+                }
                 type="submit"
               >
-                {divisionForm.divisionId ? '유형 수정' : '유형 추가'}
+                {saveDivisionMutation.isPending
+                  ? '저장 중…'
+                  : divisionForm.divisionId
+                    ? '변경사항 저장'
+                    : '유형 추가'}
               </button>
+              {divisionForm.divisionId ? (
+                <button
+                  className="h-10 rounded border border-slate-200 text-sm font-bold text-slate-600"
+                  disabled={saveDivisionMutation.isPending}
+                  onClick={() => {
+                    setDivisionForm(emptyDivisionForm);
+                    saveDivisionMutation.reset();
+                  }}
+                  type="button"
+                >
+                  수정 취소 · 새 유형 추가로 돌아가기
+                </button>
+              ) : null}
             </form>
-            <DivisionList divisions={divisions} onEdit={setDivisionForm} />
+            <DivisionList
+              divisions={divisions}
+              onEdit={(form) => {
+                if (!saveDivisionMutation.isPending) {
+                  saveDivisionMutation.reset();
+                  setDivisionForm(form);
+                }
+              }}
+            />
+            {!divisions.length ? (
+              <p className="text-sm text-slate-500">
+                등록된 참가 유형이 없습니다. 문제와 참가팀을 추가하기 전에
+                유형을 만들어주세요.
+              </p>
+            ) : null}
           </OperatorPanel>
 
           <OperatorPanel
-            description="대회별 운영 계정을 등록합니다. 서비스 마스터는 전역 권한으로 자동 적용되며 목록에 표시되지 않습니다."
-            title="운영자"
+            description="이 대회를 관리할 운영자의 이메일을 등록합니다. 추가·수정·제거는 대회 설정 저장과 별도로 즉시 반영됩니다. 서비스 마스터는 전역 권한으로 자동 적용되며 목록에 표시되지 않습니다."
+            title={operatorForm.editingEmail ? '운영자 수정' : '운영자 추가'}
           >
             <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
               <TextInput
                 disabled={Boolean(operatorForm.editingEmail)}
+                helperText="운영자가 로그인할 때 사용하는 이메일입니다. 등록 후에는 표시 이름만 수정할 수 있습니다."
                 label="이메일"
                 onChange={(value) =>
                   setOperatorForm((prev) => ({ ...prev, email: value }))
@@ -806,20 +939,42 @@ function OperatorSettingsContent({
                 />
               ) : null}
               <button
-                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white"
+                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:opacity-50"
+                disabled={
+                  saveOperatorMutation.isPending || !operatorForm.email.trim()
+                }
                 type="submit"
               >
-                {operatorForm.editingEmail ? '운영자 수정' : '운영자 추가'}
+                {saveOperatorMutation.isPending
+                  ? '저장 중…'
+                  : operatorForm.editingEmail
+                    ? '변경사항 저장'
+                    : '운영자 추가'}
               </button>
+              {operatorForm.editingEmail ? (
+                <button
+                  className="h-10 rounded border border-slate-200 text-sm font-bold text-slate-600"
+                  disabled={saveOperatorMutation.isPending}
+                  onClick={() => {
+                    setOperatorForm(emptyOperatorForm);
+                    saveOperatorMutation.reset();
+                  }}
+                  type="button"
+                >
+                  수정 취소 · 새 운영자 추가로 돌아가기
+                </button>
+              ) : null}
             </form>
             <OperatorList
-              onEdit={(operator) =>
+              onEdit={(operator) => {
+                if (saveOperatorMutation.isPending) return;
+                saveOperatorMutation.reset();
                 setOperatorForm({
                   displayName: operator.display_name,
                   editingEmail: operator.email,
                   email: operator.email,
-                })
-              }
+                });
+              }}
               onRemove={(operator) => removeOperatorMutation.mutate(operator)}
               operators={operators}
             />
@@ -832,34 +987,48 @@ function OperatorSettingsContent({
 
 function TextInput({
   disabled,
+  helperText,
   label,
   onChange,
   value,
 }: {
   disabled?: boolean;
+  helperText?: string;
   label: string;
   onChange: (value: string) => void;
   value: string;
 }) {
+  const helpId = useId();
   return (
     <label className="grid gap-2 text-sm font-black text-slate-700">
       {label}
       <input
+        aria-describedby={helperText ? helpId : undefined}
         className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
+      {helperText ? (
+        <span
+          id={helpId}
+          className="text-xs leading-5 font-normal text-slate-500"
+        >
+          {helperText}
+        </span>
+      ) : null}
     </label>
   );
 }
 
 function DateInput({
+  helperText,
   label,
   name,
   setForm,
   value,
 }: {
+  helperText: string;
   label: string;
   name: 'start_at' | 'end_at' | 'freeze_at';
   setForm: (
@@ -867,10 +1036,12 @@ function DateInput({
   ) => void;
   value: string;
 }) {
+  const helpId = useId();
   return (
     <label className="grid gap-2 text-sm font-black text-slate-700">
       {label}
       <input
+        aria-describedby={helpId}
         className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
         onChange={(event) =>
           setForm((prev) =>
@@ -880,6 +1051,12 @@ function DateInput({
         type="datetime-local"
         value={value}
       />
+      <span
+        id={helpId}
+        className="text-xs leading-5 font-normal text-slate-500"
+      >
+        {helperText}
+      </span>
     </label>
   );
 }
@@ -897,10 +1074,12 @@ function AccessSelect({
   onChange: (value: ContestResourceAccess) => void;
   value: ContestResourceAccess;
 }) {
+  const helpId = useId();
   return (
     <label className="grid gap-2 text-sm font-black text-slate-700">
       {label}
       <select
+        aria-describedby={helperText ? helpId : undefined}
         className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
         disabled={disabled}
         onChange={(event) =>
@@ -915,7 +1094,12 @@ function AccessSelect({
         ))}
       </select>
       {helperText ? (
-        <span className="text-xs font-bold text-slate-500">{helperText}</span>
+        <span
+          id={helpId}
+          className="text-xs leading-5 font-normal text-slate-500"
+        >
+          {helperText}
+        </span>
       ) : null}
     </label>
   );
@@ -939,12 +1123,12 @@ function QuickActions({
 }) {
   const actions = [
     ['start-now', '지금 시작'],
-    ['end-10', '종료 +10분'],
-    ['end-30', '종료 +30분'],
+    ['end-10', '지금부터 10분 뒤 종료'],
+    ['end-30', '지금부터 30분 뒤 종료'],
     ['freeze-now', '지금 프리즈'],
-    ['freeze-30', '프리즈 +30분'],
-    ['freeze-60', '프리즈 +60분'],
-    ['open-after-end', '종료 후 공개'],
+    ['freeze-30', '지금부터 30분 뒤 프리즈'],
+    ['freeze-60', '지금부터 60분 뒤 프리즈'],
+    ['open-after-end', '전체 자료 공개 · 즉시 저장'],
   ] as const;
 
   return (
@@ -954,9 +1138,13 @@ function QuickActions({
           빠른 운영 액션
         </strong>
         <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">
-          현재 상태: {contestStatusLabel(currentStatus)}
+          선택한 상태: {contestStatusLabel(currentStatus)}
         </span>
       </div>
+      <p className="text-xs leading-5 text-slate-500">
+        시간 버튼은 입력값만 바꿉니다. 기존 시간에 더하는 것이 아니라 지금을
+        기준으로 설정하며, 아래 ‘설정 저장’을 눌러야 반영됩니다.
+      </p>
       <div className="flex flex-wrap gap-2">
         {actions.map(([action, label]) => (
           <button
@@ -969,6 +1157,11 @@ function QuickActions({
           </button>
         ))}
       </div>
+      <p className="text-xs leading-5 text-slate-600">
+        ‘전체 자료 공개’는 6개 자료를 모두 비로그인 공개로 바꾸고 종료 후 게시판
+        작성을 허용합니다. 이 버튼은 현재 편집 중인 다른 대회 설정까지 함께 즉시
+        저장합니다. 모의채점은 별도로 켜야 합니다.
+      </p>
     </div>
   );
 }

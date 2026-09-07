@@ -481,7 +481,7 @@ function OperatorParticipantsContent({
                           onClick={() => removeDraftMember(index)}
                           title={
                             member.team_member_id
-                              ? '기존 팀원 삭제 API가 없어 이 화면에서는 제거할 수 없습니다.'
+                              ? '이미 등록된 팀원은 이 화면에서 제거할 수 없습니다.'
                               : undefined
                           }
                           type="button"
@@ -527,19 +527,21 @@ function OperatorParticipantsContent({
                 />
               ) : null}
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:opacity-50"
+                disabled={saveTeamMutation.isPending}
                 type="submit"
               >
                 <TeamIcon />
-                {teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
+                {saveTeamMutation.isPending ? '저장 중…' : teamForm.teamId ? '변경사항 저장' : '참가팀 등록'}
               </button>
               <div className="flex gap-2">
                 <button
                   className="h-11 rounded border border-slate-200 px-4 text-sm font-black text-slate-600"
                   onClick={resetTeamEditor}
+                  disabled={saveTeamMutation.isPending}
                   type="button"
                 >
-                  초기화
+                  {teamForm.teamId ? '수정 취소 · 새 팀 등록' : '입력 초기화'}
                 </button>
               </div>
             </form>
