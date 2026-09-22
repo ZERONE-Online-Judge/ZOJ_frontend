@@ -205,7 +205,7 @@ export default function MainPage() {
                 {notices.map((notice) => (
                   <li key={notice.service_notice_id}>
                     <Link
-                      to={`/notices?noticeId=${encodeURIComponent(notice.service_notice_id)}`}
+                      to={`/notices/${encodeURIComponent(notice.service_notice_id)}`}
                     >
                       <div>
                         <span

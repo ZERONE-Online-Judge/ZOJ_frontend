@@ -18,7 +18,13 @@ const React = require('react');
 const { act } = React;
 const h = React.createElement;
 const { createRoot } = require('react-dom/client');
-const { MemoryRouter, useNavigate, useLocation } = require('react-router-dom');
+const {
+  MemoryRouter,
+  Route,
+  Routes,
+  useNavigate,
+  useLocation,
+} = require('react-router-dom');
 let query, options, visible, location, navigate;
 const cache = new Map();
 function source(relative) {
@@ -93,7 +99,17 @@ after(() => dom.window.close());
 async function render(url = '/notices') {
   await act(async () =>
     root.render(
-      h(MemoryRouter, { initialEntries: [url] }, h(Observer), h(NoticesPage)),
+      h(
+        MemoryRouter,
+        { initialEntries: [url] },
+        h(Observer),
+        h(
+          Routes,
+          null,
+          h(Route, { path: '/notices', element: h(NoticesPage) }),
+          h(Route, { path: '/notices/:noticeId', element: h(NoticesPage) }),
+        ),
+      ),
     ),
   );
 }
@@ -144,7 +160,29 @@ test('a requested notice hidden by a search can be recovered without losing its 
     ),
   );
   assert.equal(toggle('n24').getAttribute('aria-expanded'), 'true');
-  assert.equal(location.search, '?noticeId=n24');
+  assert.equal(location.pathname, '/notices/n24');
+  assert.equal(location.search, '');
+});
+
+test('notice titles are crawlable permalink links and direct paths open the matching notice', async () => {
+  await render('/notices/n24');
+  const link = toggle('n24');
+  assert.equal(link.tagName, 'A');
+  assert.equal(link.getAttribute('href'), '/notices/n24?page=2');
+  assert.equal(link.getAttribute('aria-expanded'), 'true');
+  assert.match(
+    document.getElementById('notice-body-n24').textContent,
+    /본문 24/,
+  );
+  await click(toggle('n23'));
+  assert.equal(location.pathname, '/notices/n23');
+  assert.equal(toggle('n23').getAttribute('aria-expanded'), 'true');
+  await click(toggle('n23'));
+  assert.equal(location.pathname, '/notices');
+  assert.match(location.search, /page=2/);
+  await act(async () => navigate(-1));
+  assert.equal(location.pathname, '/notices/n23');
+  assert.equal(toggle('n23').getAttribute('aria-expanded'), 'true');
 });
 
 test('failed notice loading is not represented as an empty collection', async () => {

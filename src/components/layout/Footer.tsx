@@ -17,9 +17,9 @@ const footerGroups = [
     title: '도움이 필요할 때',
     links: [
       { label: '이용안내', href: '/support' },
-      { label: '자주 묻는 질문', href: '/support?tab=help' },
-      { label: '서비스 문의', href: '/support?tab=contact' },
-      { label: '개인정보처리방침', href: '/support?tab=privacy' },
+      { label: '자주 묻는 질문', href: '/support/help' },
+      { label: '서비스 문의', href: '/support/contact' },
+      { label: '개인정보처리방침', href: '/support/privacy' },
     ],
   },
 ];

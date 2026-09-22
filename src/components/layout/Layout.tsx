@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
+import PageSeo from '@/shared/seo/PageSeo';
 
 type LayoutProps = {
   children: ReactNode;
@@ -12,11 +13,17 @@ export default function Layout({ children }: LayoutProps) {
   if (
     /^\/operator\/contests\/[^/]+\/scoreboard\/presentation\/?$/.test(pathname)
   ) {
-    return <main>{children}</main>;
+    return (
+      <>
+        <PageSeo />
+        <main>{children}</main>
+      </>
+    );
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-950">
+      <PageSeo />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />

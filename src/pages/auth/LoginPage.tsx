@@ -516,7 +516,7 @@ export default function LoginPage() {
               </li>
             </ol>
             <Link
-              to="/support?tab=help"
+              to="/support/help"
               className="experience-text-link login-help-link"
             >
               로그인에 도움이 필요하신가요? <ExperienceArrow />
@@ -680,7 +680,7 @@ export default function LoginPage() {
               </ul>
             </details>
           ))}
-          <Link to="/support?tab=contact" className="experience-text-link">
+          <Link to="/support/contact" className="experience-text-link">
             해결되지 않았다면, 서비스 문의 <ExperienceArrow />
           </Link>
         </div>

@@ -198,7 +198,7 @@ test('footer preserves team contacts, links to supported help tab, and honors re
   await render(Footer);
   assert.equal(host.querySelector('details').open, false);
   assert.equal(host.querySelectorAll('details a[href^="mailto:"]').length, 4);
-  assert.ok(host.querySelector('a[href="/support?tab=help"]'));
+  assert.ok(host.querySelector('a[href="/support/help"]'));
   assert.ok(host.querySelector('a[href="/notices"]'));
   await clickButton('맨 위로');
   assert.deepEqual(scrolled, { top: 0, behavior: 'auto' });

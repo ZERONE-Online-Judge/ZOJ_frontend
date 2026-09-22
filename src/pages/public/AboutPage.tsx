@@ -238,12 +238,7 @@ export default function AboutPage() {
   }, []);
 
   useEffect(() => {
-    const previousTitle = document.title;
-    document.title = 'ZOJ 소개 · Zerone Online Judge';
     window.scrollTo(0, 0);
-    return () => {
-      document.title = previousTitle;
-    };
   }, []);
 
   function selectStage(index: number, focus = false) {
@@ -580,7 +575,7 @@ export default function AboutPage() {
           <div className="about-actions">
             <Link
               className="about-button about-button-lime"
-              to="/support?tab=contact"
+              to="/support/contact"
             >
               대회 운영 문의 <Arrow diagonal />
             </Link>

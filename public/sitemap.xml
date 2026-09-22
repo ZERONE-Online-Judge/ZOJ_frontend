@@ -1,28 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Static preview fallback. Production serves the live database-backed sitemap. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://zoj.kr/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://zoj.kr/contests</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://zoj.kr/notices</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://zoj.kr/judge-status</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://zoj.kr/support</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
+  <url><loc>https://zoj.kr/</loc></url>
+  <url><loc>https://zoj.kr/about</loc></url>
+  <url><loc>https://zoj.kr/contests</loc></url>
+  <url><loc>https://zoj.kr/notices</loc></url>
+  <url><loc>https://zoj.kr/judge-status</loc></url>
+  <url><loc>https://zoj.kr/support</loc></url>
+  <url><loc>https://zoj.kr/support/rules</loc></url>
+  <url><loc>https://zoj.kr/support/help</loc></url>
+  <url><loc>https://zoj.kr/support/privacy</loc></url>
+  <url><loc>https://zoj.kr/support/contact</loc></url>
 </urlset>

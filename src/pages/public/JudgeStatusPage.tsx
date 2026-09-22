@@ -340,7 +340,7 @@ export default function JudgeStatusPage() {
             <Link className="experience-button is-dark" to="/contests">
               대회 목록 <ExperienceArrow />
             </Link>
-            <Link className="experience-text-link" to="/support?tab=help">
+            <Link className="experience-text-link" to="/support/help">
               채점 도움말 <ExperienceArrow />
             </Link>
           </div>

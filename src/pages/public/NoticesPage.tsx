@@ -2,7 +2,12 @@ import PublicHero from '@/components/common/PublicHero';
 import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import {
   ExperienceArrow,
   ExperienceReveal,
@@ -18,9 +23,11 @@ const NOTICE_PAGE_SIZE = 20;
 
 export default function NoticesPage() {
   const motion = usePublicMotion();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  const { noticeId } = useParams<{ noticeId: string }>();
+  const navigate = useNavigate();
   const visible = useDocumentVisibility();
-  const requestedId = params.get('noticeId') ?? '';
+  const requestedId = noticeId ?? params.get('noticeId') ?? '';
   const search = params.get('q') ?? '';
   const emergencyOnly = params.get('filter') === 'emergency';
   const requestedPage = Number(params.get('page'));
@@ -94,30 +101,43 @@ export default function NoticesPage() {
     else next.delete(key);
     next.delete('noticeId');
     next.delete('page');
-    setParams(next, { replace: key === 'q', preventScrollReset: true });
+    navigate(
+      { pathname: '/notices', search: next.toString() },
+      { replace: key === 'q', preventScrollReset: true },
+    );
   }
-  function toggleNotice(id: string) {
+  function noticeLocation(id?: string) {
     const next = new URLSearchParams(params);
-    if (requestedId === id) next.delete('noticeId');
-    else next.set('noticeId', id);
+    next.delete('noticeId');
     if (currentPage > 1) next.set('page', String(currentPage));
     else next.delete('page');
-    setParams(next, { preventScrollReset: true });
+    return {
+      pathname: id ? `/notices/${encodeURIComponent(id)}` : '/notices',
+      search: next.toString(),
+    };
+  }
+  function collapseNotice() {
+    navigate(noticeLocation(), { preventScrollReset: true });
   }
   function changePage(page: number) {
     const next = new URLSearchParams(params);
     next.delete('noticeId');
     if (page > 1) next.set('page', String(page));
     else next.delete('page');
-    setParams(next, { preventScrollReset: true });
+    navigate(
+      { pathname: '/notices', search: next.toString() },
+      { preventScrollReset: true },
+    );
     document
       .getElementById('notice-list-heading')
       ?.focus({ preventScroll: true });
     document.getElementById('notice-list')?.scrollIntoView({ block: 'start' });
   }
   function resetFilters() {
-    setParams(
-      requestedId && !missingRequested ? { noticeId: requestedId } : {},
+    navigate(
+      requestedId && !missingRequested
+        ? `/notices/${encodeURIComponent(requestedId)}`
+        : '/notices',
       { preventScrollReset: true },
     );
   }
@@ -321,7 +341,8 @@ export default function NoticesPage() {
                     key={notice.service_notice_id}
                     notice={notice}
                     expanded={requestedId === notice.service_notice_id}
-                    onToggle={() => toggleNotice(notice.service_notice_id)}
+                    to={noticeLocation(notice.service_notice_id)}
+                    onCollapse={collapseNotice}
                   />
                 ))}
               </ul>
@@ -341,7 +362,9 @@ export default function NoticesPage() {
                 {ordered.length ? (
                   <button
                     className="experience-text-link"
-                    onClick={() => setParams({}, { preventScrollReset: true })}
+                    onClick={() =>
+                      navigate('/notices', { preventScrollReset: true })
+                    }
                     type="button"
                   >
                     전체 공지 보기 <ExperienceArrow />
@@ -385,7 +408,7 @@ export default function NoticesPage() {
                 </span>
                 <ExperienceArrow />
               </Link>
-              <Link to="/support?tab=help">
+              <Link to="/support/help">
                 <span>
                   서비스 이용 중 궁금한 점<strong>도움말</strong>
                 </span>
@@ -402,11 +425,13 @@ export default function NoticesPage() {
 function NoticeRow({
   notice,
   expanded,
-  onToggle,
+  to,
+  onCollapse,
 }: {
   notice: ServiceNotice;
   expanded: boolean;
-  onToggle: () => void;
+  to: { pathname: string; search: string };
+  onCollapse: () => void;
 }) {
   const id = notice.service_notice_id;
   return (
@@ -414,13 +439,26 @@ function NoticeRow({
       className={`notices-row ${expanded ? 'is-expanded' : ''} ${notice.emergency ? 'is-emergency' : ''}`}
     >
       <h3>
-        <button
+        <Link
           className="notices-row-toggle"
           id={`notice-toggle-${id}`}
           aria-expanded={expanded}
           aria-controls={`notice-body-${id}`}
-          onClick={onToggle}
-          type="button"
+          to={to}
+          preventScrollReset
+          onClick={(event) => {
+            if (
+              expanded &&
+              event.button === 0 &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey
+            ) {
+              event.preventDefault();
+              onCollapse();
+            }
+          }}
         >
           <span
             className={`notices-badge ${notice.emergency ? 'is-emergency' : ''}`}
@@ -437,7 +475,7 @@ function NoticeRow({
           <span className="notices-row-plus" aria-hidden="true">
             +
           </span>
-        </button>
+        </Link>
       </h3>
       <div
         id={`notice-body-${id}`}
@@ -461,7 +499,7 @@ function NoticeRow({
               <span>ZOJ 서비스 공지</span>
               <button
                 onClick={() => {
-                  onToggle();
+                  onCollapse();
                   document
                     .getElementById(`notice-toggle-${id}`)
                     ?.focus({ preventScroll: true });

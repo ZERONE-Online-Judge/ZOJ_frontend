@@ -143,6 +143,12 @@ export const appRoutes: readonly AppRoute[] = [
     Component: NoticesPage,
   },
   {
+    name: routeText.notices,
+    path: '/notices/:noticeId',
+    Component: NoticesPage,
+    showInNavigation: false,
+  },
+  {
     name: routeText.judgeStatus,
     path: '/judge-status',
     Component: JudgeStatusPage,
@@ -152,6 +158,12 @@ export const appRoutes: readonly AppRoute[] = [
     path: '/support',
     Component: SupportGuidePage,
   },
+  ...['rules', 'help', 'privacy', 'contact'].map((section) => ({
+    name: routeText.support,
+    path: `/support/${section}`,
+    Component: SupportGuidePage,
+    showInNavigation: false,
+  })),
   {
     name: routeText.login,
     path: '/login',

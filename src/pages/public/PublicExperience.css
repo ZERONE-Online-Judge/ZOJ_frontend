@@ -723,7 +723,7 @@
   gap: 28px;
   scrollbar-width: thin;
 }
-.support-navigation button {
+.support-navigation [role='tab'] {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -737,15 +737,15 @@
     color 0.2s,
     border-color 0.2s;
 }
-.support-navigation button span {
+.support-navigation [role='tab'] span {
   opacity: 0;
   color: var(--xp-purple);
 }
-.support-navigation button.is-active {
+.support-navigation [role='tab'].is-active {
   color: #171c30;
   border-bottom-color: #7b61ff;
 }
-.support-navigation button:is(:hover, .is-active) span {
+.support-navigation [role='tab']:is(:hover, .is-active) span {
   opacity: 1;
 }
 .support-section-intro {
@@ -1398,7 +1398,7 @@
   .support-navigation [role='tablist'] {
     gap: 22px;
   }
-  .support-navigation button {
+  .support-navigation [role='tab'] {
     padding-block: 20px 18px;
     font-size: 13px;
     gap: 10px;

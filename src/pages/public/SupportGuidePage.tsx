@@ -2,8 +2,12 @@ import PublicHero from '@/components/common/PublicHero';
 import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import {
   ExperienceArrow,
   ExperienceReveal,
@@ -24,13 +28,21 @@ const emptyContactForm = {
   title: '',
 };
 
+function supportPath(tabId: SupportTabId) {
+  return tabId === 'guide' ? '/support' : `/support/${tabId}`;
+}
+
 export default function SupportGuidePage() {
   const motion = usePublicMotion();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedTab =
+    location.pathname.split('/')[2] || searchParams.get('tab');
   const initialTab = supportSections.some(
-    (section) => section.id === searchParams.get('tab'),
+    (section) => section.id === requestedTab,
   )
-    ? (searchParams.get('tab') as SupportTabId)
+    ? (requestedTab as SupportTabId)
     : 'guide';
   const activeTab = initialTab;
   const [contactForm, setContactForm] = useState(emptyContactForm);
@@ -61,7 +73,7 @@ export default function SupportGuidePage() {
   });
 
   function changeTab(tabId: SupportTabId) {
-    setSearchParams(tabId === 'guide' ? {} : { tab: tabId });
+    navigate(supportPath(tabId));
   }
 
   function updateContact(key: keyof typeof emptyContactForm, value: string) {
@@ -139,12 +151,12 @@ export default function SupportGuidePage() {
               )
                 return;
               const tabs = Array.from(
-                event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                event.currentTarget.querySelectorAll<HTMLAnchorElement>(
                   '[role="tab"]',
                 ),
               );
               const current = tabs.indexOf(
-                document.activeElement as HTMLButtonElement,
+                document.activeElement as HTMLAnchorElement,
               );
               const next =
                 event.key === 'Home'
@@ -161,20 +173,31 @@ export default function SupportGuidePage() {
             }}
           >
             {supportSections.map((section) => (
-              <button
+              <Link
                 aria-controls={`support-panel-${section.id}`}
                 aria-selected={section.id === activeTab}
                 className={section.id === activeTab ? 'is-active' : ''}
                 id={`support-tab-${section.id}`}
                 key={section.id}
-                onClick={() => changeTab(section.id)}
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  changeTab(section.id);
+                }}
                 role="tab"
                 tabIndex={section.id === activeTab ? 0 : -1}
-                type="button"
+                to={supportPath(section.id)}
               >
                 {section.label}
                 <span aria-hidden="true">↗</span>
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -431,7 +454,7 @@ export default function SupportGuidePage() {
                     </label>
                     <p className="support-form-note">
                       문의 접수와 답변을 위해 이름과 이메일을 사용합니다.{' '}
-                      <Link to="/support?tab=privacy">개인정보처리방침</Link>
+                      <Link to="/support/privacy">개인정보처리방침</Link>
                     </p>
                     <button
                       className="experience-button is-dark"
@@ -476,18 +499,17 @@ export default function SupportGuidePage() {
               <h2>찾는 답이 없었나요?</h2>
               <p>서비스 이용 중 궁금한 점을 남겨 주세요.</p>
             </div>
-            <button
+            <Link
               className="experience-button is-dark"
               onClick={() => {
-                changeTab('contact');
                 document
                   .getElementById('support-content')
                   ?.scrollIntoView({ block: 'start' });
               }}
-              type="button"
+              to="/support/contact"
             >
               문의 남기기 <ExperienceArrow />
-            </button>
+            </Link>
           </div>
         </section>
       ) : null}

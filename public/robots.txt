@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /minio/
+Disallow: /minio-console/
 
 Sitemap: https://zoj.kr/sitemap.xml
