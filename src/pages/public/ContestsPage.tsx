@@ -1,9 +1,15 @@
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import PageLayout from '@/components/common/PageLayout';
+import { Link } from 'react-router-dom';
+import {
+  ExperienceArrow,
+  ExperienceReveal,
+} from '@/components/common/PublicExperience';
+import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
+import './PublicExperience.css';
+import './ContestsPage.css';
 import ContestListItem from '@/components/ui/ContestListItem';
-import { publicPageText } from '@/data/uiText';
 import {
   getOperatorContests,
   getPublicContests,
@@ -18,7 +24,6 @@ import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
-import PageNotice from '@/shared/ui/PageNotice';
 
 type ContestFilter = 'all' | 'mine';
 type ContestSectionKey = 'running' | 'upcoming' | 'ended';
@@ -32,19 +37,19 @@ type ContestSection = {
 
 const contestSections: Omit<ContestSection, 'contests'>[] = [
   {
-    description: '현재 참가하거나 운영 중인 대회입니다.',
+    description: '지금, 새로운 답을 찾아가고 있어요.',
     key: 'running',
-    title: '진행중 대회',
+    title: '진행 중인 대회',
   },
   {
-    description: '시작 전이거나 일정이 준비 중인 대회입니다.',
+    description: '다음 도전을 미리 살펴보세요.',
     key: 'upcoming',
-    title: '운영예정 대회',
+    title: '시작을 기다리는 대회',
   },
   {
-    description: '이미 종료된 대회입니다.',
+    description: '지난 도전의 기록을 만나보세요. 공개 범위는 대회마다 달라요.',
     key: 'ended',
-    title: '이미 종료된 대회',
+    title: '종료된 대회',
   },
 ];
 
@@ -63,11 +68,28 @@ function contestSortDate(contest: Contest) {
 }
 
 function sortContestsByRecentDate(contests: Contest[]) {
-  return [...contests].sort((a, b) => contestSortDate(b) - contestSortDate(a));
+  return [...contests].sort((a, b) => {
+    if (
+      sectionKeyForContest(a) === 'upcoming' &&
+      sectionKeyForContest(b) === 'upcoming'
+    ) {
+      const aTbd = contestAccessPhase(a) === 'schedule_tbd';
+      const bTbd = contestAccessPhase(b) === 'schedule_tbd';
+      return (
+        Number(aTbd) - Number(bTbd) || contestSortDate(a) - contestSortDate(b)
+      );
+    }
+    return contestSortDate(b) - contestSortDate(a);
+  });
 }
 
 export default function ContestsPage() {
   const [filter, setFilter] = useState<ContestFilter>('all');
+  const [search, setSearch] = useState('');
+  const [phaseFilter, setPhaseFilter] = useState<ContestSectionKey | 'all'>(
+    'all',
+  );
+  const isDocumentVisible = useDocumentVisibility();
   useRefreshGeneralSession();
   const generalSession = useSessionStore((state) => state.generalSession);
   const operatorToken = generalSession?.operatorSession?.accessToken;
@@ -75,13 +97,15 @@ export default function ContestsPage() {
   const contestsQuery = useQuery({
     queryKey: ['public-contests'],
     queryFn: getPublicContests,
-    refetchInterval: 15_000,
+    refetchInterval: isDocumentVisible ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
   const operatorContestsQuery = useQuery({
     enabled: Boolean(operatorToken),
     queryKey: ['operator', 'contests', operatorQueryIdentity],
     queryFn: () => getOperatorContests(operatorToken!),
-    refetchInterval: 15_000,
+    refetchInterval: isDocumentVisible ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const operatorContests =
@@ -125,144 +149,360 @@ export default function ContestsPage() {
               operatorContestIds.has(contest.contest_id),
           )
       : contests;
-  const sections = contestSections.map((section) => ({
-    ...section,
-    contests: sortContestsByRecentDate(
-      visibleContests.filter(
+  const keyword = search.trim().toLocaleLowerCase('ko-KR');
+  const searchedContests = visibleContests.filter(
+    (contest) =>
+      !keyword ||
+      `${contest.title} ${contest.organization_name}`
+        .toLocaleLowerCase('ko-KR')
+        .includes(keyword),
+  );
+  const phaseCounts = Object.fromEntries(
+    contestSections.map((section) => [
+      section.key,
+      searchedContests.filter(
         (contest) => sectionKeyForContest(contest) === section.key,
+      ).length,
+    ]),
+  );
+  const sections = contestSections
+    .filter((section) => phaseFilter === 'all' || phaseFilter === section.key)
+    .map((section) => ({
+      ...section,
+      contests: sortContestsByRecentDate(
+        searchedContests.filter(
+          (contest) => sectionKeyForContest(contest) === section.key,
+        ),
       ),
-    ),
-  }));
+    }));
+
+  const displayedCount = sections.reduce(
+    (total, section) => total + section.contests.length,
+    0,
+  );
+  const waiting =
+    contestsQuery.isLoading ||
+    (Boolean(operatorToken) && operatorContestsQuery.isLoading);
+  const failed = contestsQuery.isError || operatorContestsQuery.isError;
+  const showSignIn = filter === 'mine' && !generalSession;
+  function clearFilters() {
+    setSearch('');
+    setPhaseFilter('all');
+  }
 
   return (
-    <PageLayout>
-      <header className="flex flex-wrap items-start justify-between gap-5">
-        <div className="grid gap-2">
-          <span className="text-zoj-blue text-sm font-bold">
-            {publicPageText.contests.eyebrow}
-          </span>
-          <h1 className="text-3xl font-black tracking-normal break-keep text-slate-950">
-            {publicPageText.contests.title}
-          </h1>
-          <p className="text-sm leading-6 font-medium text-slate-500">
-            {publicPageText.contests.description}
+    <div className="public-experience contest-directory">
+      <section className="experience-hero directory-hero">
+        <div className="experience-container">
+          <div className="experience-topline">
+            <span>ZOJ / 대회 목록</span>
+            <Link to="/support">처음 참가하시나요? ↗</Link>
+          </div>
+          <div className="experience-hero-grid">
+            <div className="experience-hero-copy">
+              <p className="experience-eyebrow">YOUR NEXT CHALLENGE</p>
+              <h1>
+                다음 도전이
+                <br />
+                시작되는 곳<span className="experience-lime">.</span>
+              </h1>
+              <p className="experience-lead">
+                새로운 문제, 함께하는 몰입의 시간.
+                <br />
+                당신의 다음 대회를 만나보세요.
+              </p>
+              <a className="experience-text-link" href="#contest-directory">
+                대회 둘러보기 <ExperienceArrow />
+              </a>
+            </div>
+            <div className="directory-art" aria-hidden="true">
+              <div className="directory-art-orbit" />
+              <div className="directory-art-ticket">
+                <div>
+                  <span>ZOJ CONTEST</span>
+                  <span>↗</span>
+                </div>
+                <p>
+                  READY.
+                  <br />
+                  SET.
+                  <br />
+                  <strong>CODE.</strong>
+                </p>
+                <div className="directory-art-ticket-bottom">
+                  <span>YOUR NEXT CHALLENGE</span>
+                  <i />
+                </div>
+              </div>
+              <div className="directory-art-code">&lt;/&gt;</div>
+              <div className="directory-art-label">
+                <span>✳</span> 새로운 도전을 기다리며
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        className="experience-container experience-section directory-content"
+        id="contest-directory"
+      >
+        <div className="experience-section-heading">
+          <div>
+            <p className="experience-eyebrow">FIND YOUR CONTEST</p>
+            <h2>어떤 도전을 해볼까요?</h2>
+          </div>
+          <p>
+            참가하거나 운영하는 대회는
+            <br />
+            ‘내 대회’에서 모아볼 수 있어요.
           </p>
         </div>
-
-        <div className="inline-flex rounded-full bg-slate-100 p-1">
+        <div className="directory-toolbar">
+          <div className="directory-scope" role="group" aria-label="대회 범위">
+            {[
+              ['all', '전체 대회'],
+              ['mine', '내 대회'],
+            ].map(([value, label]) => (
+              <button
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value as ContestFilter)}
+                type="button"
+                key={value}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="directory-search">
+            <svg
+              aria-hidden="true"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+            >
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 5 5" />
+            </svg>
+            <label className="sr-only" htmlFor="contest-directory-search">
+              대회 검색
+            </label>
+            <input
+              id="contest-directory-search"
+              type="search"
+              placeholder="대회명이나 주최 기관으로 검색"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search ? (
+              <button
+                aria-label="검색어 지우기"
+                onClick={() => setSearch('')}
+                type="button"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div
+          className="directory-phases"
+          role="group"
+          aria-label="대회 진행 상태"
+        >
           {[
-            ['all', '전체'],
-            ['mine', '내 대회'],
+            ['all', '모든 일정'],
+            ['running', '진행 중'],
+            ['upcoming', '시작 예정'],
+            ['ended', '종료'],
           ].map(([value, label]) => (
             <button
-              className={[
-                'h-8 rounded-full px-5 text-sm font-black transition',
-                filter === value
-                  ? 'bg-white text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700',
-              ].join(' ')}
+              aria-pressed={phaseFilter === value}
+              onClick={() => setPhaseFilter(value as ContestSectionKey | 'all')}
               key={value}
-              onClick={() => setFilter(value as ContestFilter)}
               type="button"
             >
+              {value !== 'all' ? <i className={`is-${value}`} /> : null}
               {label}
+              <span>
+                {waiting && !contests.length
+                  ? '—'
+                  : value === 'all'
+                    ? searchedContests.length
+                    : phaseCounts[value]}
+              </span>
             </button>
           ))}
         </div>
-      </header>
-
-      {contestsQuery.isLoading && (
-        <PageNotice
-          message={publicPageText.contests.loading}
-          status="loading"
-        />
-      )}
-      {contestsQuery.isError && (
-        <PageNotice
-          message={publicPageText.contests.loadError}
-          status="error"
-        />
-      )}
-      {operatorContestsQuery.isError && (
-        <PageNotice
-          message="운영 권한 대회를 불러오지 못했습니다."
-          status="error"
-        />
-      )}
-
-      <div className="zoj-list-stagger grid gap-8">
-        {sections.map((section) =>
-          section.contests.length > 0 ? (
-            <ContestSectionList
-              contests={section.contests}
-              description={section.description}
-              key={section.key}
-              canOperateAllContests={canOperateAllContests}
-              operatorContestIds={operatorContestIds}
-              title={section.title}
-            />
-          ) : null,
+        {failed ? (
+          <div className="directory-message is-error" role="alert">
+            <div>
+              <strong>
+                {contests.length
+                  ? '일부 대회 정보를 갱신하지 못했어요.'
+                  : '대회 목록을 불러오지 못했어요.'}
+              </strong>
+              <p>
+                {contests.length
+                  ? '지금 보이는 정보를 참고하고 잠시 후 다시 확인해 주세요.'
+                  : '연결 상태를 확인한 뒤 다시 시도해 주세요.'}
+              </p>
+            </div>
+            <button
+              disabled={
+                contestsQuery.isFetching || operatorContestsQuery.isFetching
+              }
+              onClick={() => {
+                void contestsQuery.refetch();
+                if (operatorToken) void operatorContestsQuery.refetch();
+              }}
+              type="button"
+            >
+              다시 확인하기 ↻
+            </button>
+          </div>
+        ) : null}
+        {showSignIn ? (
+          <div className="directory-empty">
+            <span aria-hidden="true">↗</span>
+            <h3>내 대회, 로그인하고 만나세요.</h3>
+            <p>
+              등록된 이메일로 로그인하면 참가 중인 대회와 운영하는 대회를 확인할
+              수 있어요.
+            </p>
+            <Link
+              className="experience-button is-dark"
+              to="/login?moveTo=%2Fcontests"
+            >
+              로그인하기 <ExperienceArrow />
+            </Link>
+          </div>
+        ) : (
+          <>
+            {waiting && !contests.length ? (
+              <div className="directory-loading" role="status">
+                <p>대회 일정을 불러오고 있어요.</p>
+                <div aria-hidden="true">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i}>
+                      <i />
+                      <span>
+                        <b />
+                        <b />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="directory-sections">
+              {sections.map((section) =>
+                section.contests.length ? (
+                  <section
+                    className={`directory-section is-${section.key}`}
+                    key={section.key}
+                  >
+                    <header>
+                      <div>
+                        <h2>{section.title}</h2>
+                        <p>{section.description}</p>
+                      </div>
+                      <span>{section.contests.length}개</span>
+                    </header>
+                    <ul>
+                      {section.contests.map((contest) => {
+                        const isOperatorContest =
+                          canOperateAllContests ||
+                          operatorContestIds.has(contest.contest_id);
+                        return (
+                          <ContestListItem
+                            key={contest.contest_id}
+                            href={
+                              isOperatorContest
+                                ? `/operator/contests/${encodeURIComponent(contest.contest_id)}`
+                                : undefined
+                            }
+                            operatorOnlyVisible={
+                              isOperatorContest &&
+                              isContestHiddenFromPublic(contest)
+                            }
+                            directoryMeta={{
+                              phase: section.key,
+                              startAt: contest.start_at,
+                              endAt: contest.end_at,
+                              scheduleTbd:
+                                contestAccessPhase(contest) === 'schedule_tbd',
+                            }}
+                            {...toContestCardData(contest)}
+                          />
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ) : null,
+              )}
+            </div>
+            {!waiting && !failed && displayedCount === 0 ? (
+              <div className="directory-empty">
+                <span aria-hidden="true">
+                  {search || phaseFilter !== 'all' ? '⌕' : '✳'}
+                </span>
+                <h3>
+                  {search || phaseFilter !== 'all'
+                    ? '조건에 맞는 대회가 없어요.'
+                    : filter === 'mine'
+                      ? '아직 연결된 대회가 없어요.'
+                      : '새로운 대회를 준비하고 있어요.'}
+                </h3>
+                <p>
+                  {search || phaseFilter !== 'all'
+                    ? '다른 검색어나 일정으로 다시 찾아보세요.'
+                    : filter === 'mine'
+                      ? '참가 등록에 사용한 이메일이 맞는지 확인해 주세요.'
+                      : '대회가 공개되면 이곳에서 안내해 드릴게요.'}
+                </p>
+                {search || phaseFilter !== 'all' ? (
+                  <button
+                    className="experience-text-link"
+                    onClick={clearFilters}
+                    type="button"
+                  >
+                    검색 조건 초기화 <ExperienceArrow />
+                  </button>
+                ) : filter === 'mine' ? (
+                  <button
+                    className="experience-text-link"
+                    onClick={() => setFilter('all')}
+                    type="button"
+                  >
+                    전체 대회 둘러보기 <ExperienceArrow />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </>
         )}
-      </div>
-
-      {!contestsQuery.isLoading && visibleContests.length === 0 && (
-        <PageNotice
-          message={
-            filter === 'mine'
-              ? '참가 가능한 내 대회가 없습니다.'
-              : publicPageText.contests.empty
-          }
-          status="idle"
-        />
-      )}
-    </PageLayout>
-  );
-}
-
-function ContestSectionList({
-  canOperateAllContests,
-  contests,
-  description,
-  operatorContestIds,
-  title,
-}: {
-  canOperateAllContests: boolean;
-  contests: Contest[];
-  description: string;
-  operatorContestIds: Set<string>;
-  title: string;
-}) {
-  return (
-    <section className="grid gap-3">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="grid gap-1">
-          <h2 className="text-xl font-black text-slate-950">{title}</h2>
-          <p className="text-sm font-medium text-slate-500">{description}</p>
+      </section>
+      <section className="experience-soft-section">
+        <div className="experience-container directory-guide">
+          <ExperienceReveal className="directory-guide-inner">
+            <div>
+              <p className="experience-eyebrow">READY WHEN YOU ARE</p>
+              <h2>첫 대회라도, 괜찮아요.</h2>
+              <p>
+                로그인부터 코드 제출, 결과 확인까지.
+                <br />
+                이용안내에서 차근차근 살펴보세요.
+              </p>
+            </div>
+            <Link className="experience-button is-dark" to="/support">
+              참가 방법 알아보기 <ExperienceArrow />
+            </Link>
+          </ExperienceReveal>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-          {contests.length}개
-        </span>
-      </header>
-      <ul className="zoj-list-stagger grid grid-cols-1 gap-2.5">
-        {contests.map((contest) => {
-          const isOperatorContest =
-            canOperateAllContests || operatorContestIds.has(contest.contest_id);
-          return (
-            <ContestListItem
-              href={
-                isOperatorContest
-                  ? `/operator/contests/${contest.contest_id}`
-                  : undefined
-              }
-              key={contest.contest_id}
-              operatorOnlyVisible={
-                isOperatorContest && isContestHiddenFromPublic(contest)
-              }
-              {...toContestCardData(contest)}
-            />
-          );
-        })}
-      </ul>
-    </section>
+      </section>
+    </div>
   );
 }

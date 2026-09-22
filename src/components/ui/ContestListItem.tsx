@@ -1,3 +1,6 @@
+import ContestDirectoryCardContent, {
+  type ContestDirectoryMeta,
+} from '@/components/ui/ContestDirectoryCardContent';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,6 +22,7 @@ export type ContestListItemData = {
   isOpen?: boolean;
   publicResourceLabels?: string[];
   href?: string;
+  directoryMeta?: ContestDirectoryMeta;
 };
 
 type ContestListItemProps = ContestListItemData;
@@ -35,6 +39,7 @@ export default function ContestListItem({
   isOpen = false,
   publicResourceLabels = [],
   href,
+  directoryMeta,
 }: ContestListItemProps) {
   const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState(false);
   const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
@@ -70,7 +75,19 @@ export default function ContestListItem({
     : undefined;
   const canShowUnavailableMessage = canOpenContest && !itemHref;
 
-  const content = (
+  const content = directoryMeta ? (
+    <ContestDirectoryCardContent
+      title={title}
+      organization={organization}
+      meta={directoryMeta}
+      participant={Boolean(isParticipantContest)}
+      operator={Boolean(isOperatorContest || href?.startsWith('/operator/'))}
+      preview={isPreviewContest}
+      privateContest={operatorOnlyVisible}
+      countdown={countdownLabel}
+      publicLabels={publicResourceLabels}
+    />
+  ) : (
     <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="grid min-w-0 gap-3 sm:gap-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -146,13 +163,14 @@ export default function ContestListItem({
   return (
     <li
       className={[
+        directoryMeta ? 'directory-card' : '',
         'zoj-surface zoj-surface-hover relative overflow-hidden rounded border border-slate-200 bg-white transition',
         itemHref || !canOpenContest || canShowUnavailableMessage
           ? 'hover:border-zoj-blue hover:shadow-sm'
           : 'opacity-70',
       ].join(' ')}
     >
-      {isParticipantContest || isOperatorContest ? (
+      {!directoryMeta && (isParticipantContest || isOperatorContest) ? (
         <span
           aria-hidden="true"
           className={[
