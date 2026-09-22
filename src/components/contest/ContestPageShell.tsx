@@ -1,10 +1,11 @@
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import ParticipantPreviewShell from '@/components/contest/ParticipantPreviewShell';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import type { ReactNode } from 'react';
 import ContestEmergencyNotice from '@/components/contest/ContestEmergencyNotice';
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { getPublicContest } from '@/domains/contestAdministration/api';
@@ -16,10 +17,6 @@ import {
 import type { PublicContestDetail } from '@/domains/contestAdministration/types';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
-import {
-  getContestNotices,
-  getContestQuestions,
-} from '@/domains/serviceCommunication/api';
 import PageNotice from '@/shared/ui/PageNotice';
 import { contestLoginPath } from '@/shared/lib/loginRedirect';
 
@@ -49,8 +46,9 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const resolvedContestId = contestId ?? '';
-  const queryClient = useQueryClient();
-  const prefetchedKeyRef = useRef<string | null>(null);
+  const isOverview =
+    location.pathname.replace(/\/$/, '') ===
+    `/contests/${encodeURIComponent(resolvedContestId)}`;
   const [checkedParticipantAccessKey, setCheckedParticipantAccessKey] =
     useState('');
   const {
@@ -58,11 +56,15 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
     ensureParticipantSession,
     generalSession,
     participantContest,
+    token,
   } = useContestParticipantSession(resolvedContestId);
   const contestQuery = useQuery({
     enabled: Boolean(contestId),
-    queryKey: contestQueryKeys.publicContest(contestId),
-    queryFn: () => getPublicContest(contestId!),
+    queryKey: [
+      ...contestQueryKeys.publicContest(contestId),
+      tokenQueryIdentity(token),
+    ],
+    queryFn: () => getPublicContest(contestId!, token),
     refetchInterval: 15_000,
   });
 
@@ -82,11 +84,12 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
         ),
       )
     : false;
-  const shouldRequireParticipantAccess = contest
-    ? contestAccessPhase(contest) !== 'ended'
-    : true;
+  const shouldRequireParticipantAccess =
+    !isOverview && (!contest || contestAccessPhase(contest) !== 'ended');
   const hasContestParticipantAccess =
+    isOverview ||
     !generalSession ||
+    Boolean(activeParticipantSession) ||
     Boolean(participantContest) ||
     (!shouldRequireParticipantAccess && hasPublicAfterEndResource);
   const shouldCheckParticipantAccess = Boolean(
@@ -132,80 +135,6 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
     participantAccessCheckKey,
     participantContest,
     shouldRequireParticipantAccess,
-  ]);
-
-  useEffect(() => {
-    if (!contestId || !detail) return;
-    if (!hasContestParticipantAccess) return;
-
-    const currentContestId = contestId;
-    const currentDetail = detail;
-    let cancelled = false;
-
-    async function prefetchContestPageData() {
-      const generalToken = generalSession?.accessToken;
-      const generalIdentity = generalSession?.account.email ?? 'public';
-      const shouldUseParticipantScope =
-        contestAccessPhase(currentDetail.contest) !== 'ended';
-      const currentParticipantSession = shouldUseParticipantScope
-        ? (activeParticipantSession ?? (await ensureParticipantSession()))
-        : null;
-      if (cancelled) return;
-
-      const participantToken = currentParticipantSession?.accessToken;
-      const participantIdentity = currentParticipantSession
-        ? [
-            currentParticipantSession.contestId,
-            currentParticipantSession.member.email,
-            currentParticipantSession.division.division_id,
-          ].join(':')
-        : undefined;
-      const token = participantToken ?? generalToken;
-      const prefetchKey = [
-        currentContestId,
-        generalIdentity,
-        participantIdentity ?? 'no-participant',
-      ].join(':');
-
-      if (prefetchedKeyRef.current === prefetchKey) return;
-      prefetchedKeyRef.current = prefetchKey;
-
-      await Promise.allSettled([
-        queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.notices(
-            currentContestId,
-            generalIdentity,
-            currentParticipantSession?.contestId,
-            participantIdentity,
-          ),
-          queryFn: () => getContestNotices(currentContestId, token),
-        }),
-        queryClient.prefetchQuery({
-          queryKey: contestQueryKeys.questions(
-            currentContestId,
-            generalIdentity,
-            currentParticipantSession?.contestId,
-            participantIdentity,
-          ),
-          queryFn: () => getContestQuestions(currentContestId, token),
-        }),
-      ]);
-    }
-
-    void prefetchContestPageData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    contestId,
-    detail,
-    generalSession,
-    activeParticipantSession,
-    ensureParticipantSession,
-    hasContestParticipantAccess,
-    participantContest,
-    queryClient,
   ]);
 
   if (!contestId) {

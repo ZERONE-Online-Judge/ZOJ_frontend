@@ -1,7 +1,11 @@
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { NavLink } from 'react-router-dom';
 import { contestCompactNavText, sharedUiText } from '@/data/uiText';
-import { contestAccessPhase } from '@/domains/contestAdministration/logic';
+import {
+  canViewContestResource,
+  contestAccessPhase,
+  contestResourceAccess,
+} from '@/domains/contestAdministration/logic';
 import type { Contest } from '@/domains/contestAdministration/types';
 
 type ContestPageNavigationProps = {
@@ -13,7 +17,29 @@ export default function ContestPageNavigation({
   contest,
   contestId,
 }: ContestPageNavigationProps) {
-  const { isPreview } = useContestParticipantSession(contestId);
+  const { isPreview, participantContest, activeParticipantSession } =
+    useContestParticipantSession(contestId);
+  const hasSessionAccess = Boolean(
+    participantContest || activeParticipantSession,
+  );
+  const phase = contest ? contestAccessPhase(contest) : undefined;
+  const tabs = contestCompactNavText.filter((tab) => {
+    if (!tab.path || isPreview || !contest) return true;
+    if (phase === 'before' || phase === 'schedule_tbd') return hasSessionAccess;
+    const canView = (resource: Parameters<typeof contestResourceAccess>[1]) =>
+      canViewContestResource(
+        contest,
+        hasSessionAccess,
+        contestResourceAccess(contest, resource),
+      );
+    if (tab.path === 'board') return canView('notice') || canView('board');
+    const resources = {
+      problems: 'problem',
+      submissions: 'submission',
+      scoreboard: 'scoreboard',
+    } as const;
+    return canView(resources[tab.path]);
+  });
   const isBeforeStart =
     !isPreview && contest ? contestAccessPhase(contest) === 'before' : false;
 
@@ -23,7 +49,7 @@ export default function ContestPageNavigation({
       className="zoj-contest-tabs mt-5 min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
     >
       <ul className="flex min-w-max items-center gap-1">
-        {contestCompactNavText.map((tab) => {
+        {tabs.map((tab) => {
           const to = tab.path
             ? `/contests/${contestId}/${tab.path}`
             : `/contests/${contestId}`;

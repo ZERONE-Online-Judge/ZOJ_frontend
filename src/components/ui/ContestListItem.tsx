@@ -1,13 +1,10 @@
+import { contestListItemText } from '@/data/uiText';
 import ContestDirectoryCardContent, {
   type ContestDirectoryMeta,
 } from '@/components/ui/ContestDirectoryCardContent';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
-import { contestListItemText } from '@/data/uiText';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
-import { contestLoginPath } from '@/shared/lib/loginRedirect';
 import { SvgIcon } from '@/utils/Icons';
 
 export type ContestListItemData = {
@@ -41,12 +38,8 @@ export default function ContestListItem({
   href,
   directoryMeta,
 }: ContestListItemProps) {
-  const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState(false);
-  const [isUnavailableMessageVisible, setIsUnavailableMessageVisible] =
-    useState(false);
   const generalSession = useSessionStore((state) => state.generalSession);
   const contestHref = `/contests/${encodeURIComponent(contestId)}`;
-  const loginHref = contestLoginPath(contestId, contestHref);
   const isParticipantContest = generalSession?.participantContests.some(
     (item) => item.contest.contest_id === contestId,
   );
@@ -58,22 +51,9 @@ export default function ContestListItem({
     contestId,
   );
   const operatorHref = `/operator/contests/${encodeURIComponent(contestId)}`;
-  const hasPublicReadableResource = publicResourceLabels.some((label) =>
-    label.includes('비로그인 공개'),
-  );
-  const canOpenContest =
-    !generalSession || isParticipantContest || isOperatorContest;
-  const itemHref = canOpenContest
-    ? isPreviewContest
-      ? contestHref
-      : (href ??
-        (isOperatorContest
-          ? operatorHref
-          : generalSession || hasPublicReadableResource
-            ? contestHref
-            : loginHref))
-    : undefined;
-  const canShowUnavailableMessage = canOpenContest && !itemHref;
+  const itemHref = isPreviewContest
+    ? contestHref
+    : (href ?? (isOperatorContest ? operatorHref : contestHref));
 
   const content = directoryMeta ? (
     <ContestDirectoryCardContent
@@ -165,9 +145,7 @@ export default function ContestListItem({
       className={[
         directoryMeta ? 'directory-card' : '',
         'zoj-surface zoj-surface-hover relative overflow-hidden rounded border border-slate-200 bg-white transition',
-        itemHref || !canOpenContest || canShowUnavailableMessage
-          ? 'hover:border-zoj-blue hover:shadow-sm'
-          : 'opacity-70',
+        'hover:border-zoj-blue hover:shadow-sm',
       ].join(' ')}
     >
       {!directoryMeta && (isParticipantContest || isOperatorContest) ? (
@@ -179,50 +157,12 @@ export default function ContestListItem({
           ].join(' ')}
         />
       ) : null}
-      {itemHref ? (
-        <Link
-          className="block px-4 py-5 transition-colors duration-200 sm:px-6 sm:py-6 lg:px-8 lg:py-7"
-          to={itemHref}
-        >
-          {content}
-        </Link>
-      ) : !canOpenContest ? (
-        <>
-          <button
-            aria-haspopup="dialog"
-            className="zoj-pressable block w-full px-4 py-5 text-left sm:px-6 sm:py-6 lg:px-8 lg:py-7"
-            onClick={() => setIsAccessDeniedOpen(true)}
-            type="button"
-          >
-            {content}
-          </button>
-          {isAccessDeniedOpen ? (
-            <ContestAccessDeniedModal
-              onClose={() => setIsAccessDeniedOpen(false)}
-            />
-          ) : null}
-        </>
-      ) : canShowUnavailableMessage ? (
-        <button
-          className="zoj-pressable block w-full px-4 py-5 text-left sm:px-6 sm:py-6 lg:px-8 lg:py-7"
-          onClick={() => setIsUnavailableMessageVisible(true)}
-          type="button"
-        >
-          {content}
-          {isUnavailableMessageVisible ? (
-            <p
-              className="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
-              role="alert"
-            >
-              {contestListItemText.unavailableMessage}
-            </p>
-          ) : null}
-        </button>
-      ) : (
-        <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
-          {content}
-        </div>
-      )}
+      <Link
+        className="block px-4 py-5 transition-colors duration-200 sm:px-6 sm:py-6 lg:px-8 lg:py-7"
+        to={itemHref}
+      >
+        {content}
+      </Link>
     </li>
   );
 }

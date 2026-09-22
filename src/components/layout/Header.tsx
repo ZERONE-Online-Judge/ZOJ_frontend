@@ -21,7 +21,7 @@ export default function Header() {
     navItems.push({
       activeClassName: 'text-zoj-blue',
       key: `contest-${contestId}`,
-      label: '내 대회',
+      label: '대회 개요',
       to: `/contests/${contestId}`,
     });
   }

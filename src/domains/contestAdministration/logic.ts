@@ -104,13 +104,8 @@ export function contestAccessPhase(
   if (isScheduleTbd(contest)) return 'schedule_tbd';
 
   const now = Date.now();
+  if (isContestEnded(contest)) return 'ended';
   if (now < new Date(contest.start_at).getTime()) return 'before';
-  if (
-    now >= new Date(contest.end_at).getTime() ||
-    ['ended', 'finalized', 'archived'].includes(contest.status)
-  ) {
-    return 'ended';
-  }
 
   return 'running';
 }
@@ -286,7 +281,13 @@ export function freezeAnnouncement(contest: Contest) {
   if (diffMinutes <= 0 || diffMinutes > 30) return '';
 
   const threshold =
-    diffMinutes <= 1 ? 1 : diffMinutes <= 5 ? 5 : diffMinutes <= 10 ? 10 : 30;
+    diffMinutes <= 1
+      ? 1
+      : diffMinutes <= 5
+        ? 5
+        : diffMinutes <= 10
+          ? 10
+          : 30;
   return `스코어보드 프리즈 ${threshold}분 전입니다. 프리즈 이후 공개 스코어보드는 프리즈 시점 순위만 표시됩니다.`;
 }
 
@@ -297,7 +298,13 @@ export function contestStartAnnouncement(contest: Contest) {
   if (diffMinutes <= 0 || diffMinutes > 30) return '';
 
   const threshold =
-    diffMinutes <= 1 ? 1 : diffMinutes <= 5 ? 5 : diffMinutes <= 10 ? 10 : 30;
+    diffMinutes <= 1
+      ? 1
+      : diffMinutes <= 5
+        ? 5
+        : diffMinutes <= 10
+          ? 10
+          : 30;
   return `대회 시작 ${threshold}분 전입니다. 시작 후 문제와 제출 기능이 열립니다.`;
 }
 

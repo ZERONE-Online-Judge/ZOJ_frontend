@@ -68,6 +68,8 @@ export type PublicHomeReadModel = {
 export type PublicContestDetail = {
   contest: Contest;
   divisions: Division[];
+  participant_count?: number;
+  team_count?: number;
 };
 
 export type ContestWorkspace = {

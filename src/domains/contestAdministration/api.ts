@@ -19,8 +19,11 @@ export function getPublicContests() {
   return apiRequest<Contest[]>('/public/contests');
 }
 
-export function getPublicContest(contestId: string) {
-  return apiRequest<PublicContestDetail>(`/public/contests/${contestId}`);
+export function getPublicContest(contestId: string, token?: string) {
+  return apiRequest<PublicContestDetail>(
+    `/public/contests/${contestId}`,
+    token,
+  );
 }
 
 export function getContestWorkspace(contestId: string, token?: string) {

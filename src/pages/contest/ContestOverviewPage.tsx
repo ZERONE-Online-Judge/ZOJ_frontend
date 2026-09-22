@@ -1,3 +1,4 @@
+import ContestPublicOverview from '@/components/contest/ContestPublicOverview';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
@@ -11,7 +12,11 @@ import {
   contestResourceAccess,
   contestResourceAccessMessage,
 } from '@/domains/contestAdministration/logic';
-import type { Contest, Division } from '@/domains/contestAdministration/types';
+import type {
+  Contest,
+  Division,
+  PublicContestDetail,
+} from '@/domains/contestAdministration/types';
 import {
   contestQueryKeys,
   generalSessionQueryIdentity,
@@ -401,12 +406,24 @@ function ContestOverviewContent({
   );
 }
 
+function ContestOverview({ detail }: { detail: PublicContestDetail }) {
+  const { participantContest, activeParticipantSession, isPreview } =
+    useContestParticipantSession(detail.contest.contest_id);
+  if (!isPreview && !participantContest && !activeParticipantSession) {
+    return <ContestPublicOverview detail={detail} />;
+  }
+  return (
+    <ContestOverviewContent
+      contest={detail.contest}
+      divisions={detail.divisions}
+    />
+  );
+}
+
 export default function ContestOverviewPage() {
   return (
     <ContestPageShell>
-      {({ contest, divisions }) => (
-        <ContestOverviewContent contest={contest} divisions={divisions} />
-      )}
+      {(detail) => <ContestOverview detail={detail} />}
     </ContestPageShell>
   );
 }
