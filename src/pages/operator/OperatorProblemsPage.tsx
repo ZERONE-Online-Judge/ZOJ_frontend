@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import Modal from '@/shared/ui/Modal';
 import VerificationCodeSection from '@/components/operator/VerificationCodeSection';
@@ -3236,7 +3237,10 @@ function OperatorPreviewJudgeResult({
         <PreviewJudgeMetric label="실패 파일" value={detail.caseFiles || '-'} />
         <PreviewJudgeMetric label="소요 시간" value={runtime} />
         <PreviewJudgeMetric label="사용 메모리" value={memory} />
-        <PreviewJudgeMetric label="언어" value={String(submission.language)} />
+        <PreviewJudgeMetric
+          label="언어"
+          value={judgeLanguageLabel(submission.language)}
+        />
         <PreviewJudgeMetric label="코드 길이" value={codeLength(submission)} />
       </div>
 

@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import Modal from '@/shared/ui/Modal';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -714,7 +715,7 @@ function OperatorSubmissionsTable({
                   <SubmissionStatusBadge submission={submission} compact />
                 </td>
                 <td className={`${cellClass} font-medium`}>
-                  {submission.language}
+                  {judgeLanguageLabel(submission.language)}
                 </td>
                 <td
                   className={`${cellClass} text-xs font-medium text-slate-500`}
@@ -1023,7 +1024,10 @@ function SubmissionDetailModal({
                   label="제출 구분"
                   value={submissionKindLabel(submission)}
                 />
-                <DetailCard label="언어" value={String(submission.language)} />
+                <DetailCard
+                  label="언어"
+                  value={judgeLanguageLabel(submission.language)}
+                />
                 <DetailCard
                   label="실패 케이스"
                   value={String(submission.failed_testcase_order ?? '-')}

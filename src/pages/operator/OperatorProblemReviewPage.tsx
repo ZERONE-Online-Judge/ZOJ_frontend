@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -459,7 +460,7 @@ function ReviewWorkspace({
                       minute: '2-digit',
                       second: '2-digit',
                     })}{' '}
-                    · {run.language}
+                    · {judgeLanguageLabel(run.language)}
                   </span>
                   <span className="font-medium">{runLabel(run)}</span>
                 </button>

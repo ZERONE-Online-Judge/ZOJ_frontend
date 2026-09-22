@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import type { ProblemReviewRun } from '@/domains/problemManagement/useProblemReviewRuns';
 import { parseVerificationDetails } from '@/domains/problemManagement/verificationDetails';
 import {
@@ -122,7 +123,7 @@ export default function ProblemReviewResult({
       ) : null}
       <details className="min-w-0 text-xs text-slate-500">
         <summary className="cursor-pointer">
-          제출한 코드 · {run.language}
+          제출한 코드 · {judgeLanguageLabel(run.language)}
         </summary>
         <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100">
           {run.sourceCode}

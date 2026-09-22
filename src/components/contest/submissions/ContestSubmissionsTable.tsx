@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
@@ -232,7 +233,7 @@ export default function ContestSubmissionsTable({
                           }
                           type="button"
                         >
-                          {submission.language}
+                          {judgeLanguageLabel(submission.language)}
                         </button>
                         {sourceCode ? (
                           <Link
@@ -285,7 +286,7 @@ function SubmissionCodeAccordion({
           <p className="text-xs font-black text-slate-400">제출 코드</p>
           <h2 className="mt-1 font-mono text-sm font-black">
             {displaySubmissionId(submission.submission_id)} ·{' '}
-            {submission.language}
+            {judgeLanguageLabel(submission.language)}
           </h2>
         </div>
         <button

@@ -1,3 +1,4 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import Modal from '@/shared/ui/Modal';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -845,7 +846,7 @@ function SubmissionRow({
         </span>
       </td>
       <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-700">
-        {submission.language}
+        {judgeLanguageLabel(submission.language)}
       </td>
       <td className="border-r border-slate-100 px-4 py-4 align-top">
         <strong
@@ -989,7 +990,10 @@ function SubmissionDetail({
           label="결과"
           value={submissionStatusLabel(submission.status)}
         />
-        <DetailCard label="언어" value={String(submission.language)} />
+        <DetailCard
+          label="언어"
+          value={judgeLanguageLabel(submission.language)}
+        />
         <DetailCard
           label="진행"
           value={submissionProgressText(progressSubmission) || '-'}

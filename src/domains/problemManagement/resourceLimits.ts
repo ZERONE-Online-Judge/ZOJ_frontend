@@ -1,12 +1,6 @@
+import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import type { Problem } from '@/domains/problemManagement/types';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
-
-const LANGUAGE_LABELS: Record<JudgeLanguage, string> = {
-  c99: 'C',
-  cpp17: 'C++',
-  java8: 'Java',
-  python313: 'Python',
-};
 
 const LANGUAGE_ORDER: JudgeLanguage[] = ['cpp17', 'python313', 'java8', 'c99'];
 
@@ -42,7 +36,10 @@ type LimitValue = {
   source: 'base' | 'automatic' | 'override';
 };
 
-function effectiveTimeLimit(problem: Problem, language: JudgeLanguage): LimitValue {
+function effectiveTimeLimit(
+  problem: Problem,
+  language: JudgeLanguage,
+): LimitValue {
   const override = problem.language_resource_limits?.[language]?.time_limit_ms;
   if (override) return { value: override, source: 'override' };
   const adjustment = LANGUAGE_TIME_ADJUSTMENTS[language];
@@ -53,8 +50,12 @@ function effectiveTimeLimit(problem: Problem, language: JudgeLanguage): LimitVal
   };
 }
 
-function effectiveMemoryLimit(problem: Problem, language: JudgeLanguage): LimitValue {
-  const override = problem.language_resource_limits?.[language]?.memory_limit_mb;
+function effectiveMemoryLimit(
+  problem: Problem,
+  language: JudgeLanguage,
+): LimitValue {
+  const override =
+    problem.language_resource_limits?.[language]?.memory_limit_mb;
   if (override) return { value: override, source: 'override' };
   const adjustment = LANGUAGE_MEMORY_ADJUSTMENTS[language];
   if (!adjustment) return { value: problem.memory_limit_mb, source: 'base' };
@@ -76,7 +77,9 @@ function limitSummary(
         ? effectiveTimeLimit(problem, language)
         : effectiveMemoryLimit(problem, language);
     const base =
-      kind === 'time_limit_ms' ? problem.time_limit_ms : problem.memory_limit_mb;
+      kind === 'time_limit_ms'
+        ? problem.time_limit_ms
+        : problem.memory_limit_mb;
     if (limit.value === base) return [];
     if (limit.source === 'automatic' && !options.includeAutomaticAdjustments) {
       return [];
@@ -85,7 +88,7 @@ function limitSummary(
       limit.source === 'automatic' && options.markAutomaticAdjustments
         ? ' 자동 보정'
         : '';
-    return `${LANGUAGE_LABELS[language]} : ${formatter(limit.value)}${sourceLabel}`;
+    return `${judgeLanguageLabel(language)} : ${formatter(limit.value)}${sourceLabel}`;
   }).join(', ');
 }
 
