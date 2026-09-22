@@ -66,28 +66,30 @@ function render(data, extra = {}) {
 }
 const status = {
   active_node_count: 5,
-  total_running_jobs: 0,
-  total_queue_depth: 0,
-  allocation_policy: 'internal claim FIFO',
 };
 
 test('unloaded judge status shows unknown counts instead of fabricated zeros or a connected state', () => {
   const html = render(undefined, { isFetching: true });
   assert.match(html, /채점 서버를 만나고 있어요/);
-  assert.equal((html.match(/<strong>—<\/strong>/g) || []).length, 3);
+  assert.equal((html.match(/<strong>—<\/strong>/g) || []).length, 1);
   assert.doesNotMatch(html, /서버 연결됨/);
 });
 
-test('public judge status presents aggregate work without internal allocation policy', () => {
+test('public judge status only presents server connectivity, even with cached workload fields', () => {
   const html = render({
     ...status,
     total_running_jobs: 7,
     total_queue_depth: 2,
+    allocation_policy: 'internal claim FIFO',
   });
-  assert.match(html, /지금, 코드를 채점하고 있어요/);
-  assert.match(html, /<strong>7<\/strong>/);
-  assert.match(html, /<strong>2<\/strong>/);
-  assert.doesNotMatch(html, /internal claim FIFO|할당 정책/);
+  assert.match(html, /채점 서버가 연결되어 있어요/);
+  assert.match(html, /<strong>5<\/strong>/);
+  assert.equal((html.match(/class="judge-metric"/g) || []).length, 1);
+  assert.doesNotMatch(
+    html,
+    /지금 채점 중|차례를 기다리는 코드|<strong>[27]<\/strong>|internal claim FIFO|할당 정책|is-busy/,
+  );
+  assert.equal(html, render(status));
 });
 
 test('zero connected servers and stale data never claim a live connection', () => {
@@ -111,8 +113,26 @@ test('judge status polling pauses when the document is hidden', () => {
   visible = true;
 });
 
-test('queued submissions are distinguished from an idle room', () => {
-  const html = render({ ...status, total_queue_depth: 3 });
-  assert.match(html, /코드가 채점 차례를 기다리고 있어요/);
-  assert.doesNotMatch(html, /다음 도전을 기다리고 있어요/);
+test('submission activity never changes public text or animation state', () => {
+  const idle = render({
+    ...status,
+    total_running_jobs: 0,
+    total_queue_depth: 0,
+  });
+  const queued = render({
+    ...status,
+    total_running_jobs: 0,
+    total_queue_depth: 3,
+  });
+  const running = render({
+    ...status,
+    total_running_jobs: 7,
+    total_queue_depth: 0,
+  });
+  assert.equal(queued, idle);
+  assert.equal(running, idle);
+  assert.doesNotMatch(
+    idle,
+    /다음 제출을 기다리는 중|코드를 확인하는 중|접수된 코드가 기다리는 중/,
+  );
 });

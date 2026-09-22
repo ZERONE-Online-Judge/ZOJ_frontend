@@ -1,12 +1,12 @@
 import type { Contest, Division } from '@/domains/contestAdministration/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
-import type { ParticipantTeam, TeamMember } from '@/domains/teamParticipation/types';
+import type {
+  ParticipantTeam,
+  TeamMember,
+} from '@/domains/teamParticipation/types';
 
 export type JudgeStatus = {
   active_node_count: number;
-  total_running_jobs: number;
-  total_queue_depth: number;
-  allocation_policy: string;
 };
 
 export type AdminJudgeDashboard = {

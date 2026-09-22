@@ -23,7 +23,6 @@ export default function JudgeStatusPage() {
   const status = query.data;
   const unavailable = query.isError;
   const connected = !!status && status.active_node_count > 0 && !unavailable;
-  const busy = connected && status.total_running_jobs > 0;
   const tone = unavailable
     ? 'unknown'
     : !status
@@ -37,22 +36,14 @@ export default function JudgeStatusPage() {
       ? '채점 서버를 만나고 있어요.'
       : !connected
         ? '채점 서버를 기다리고 있어요.'
-        : busy
-          ? '지금, 코드를 채점하고 있어요.'
-          : status.total_queue_depth > 0
-            ? '코드가 채점 차례를 기다리고 있어요.'
-            : '다음 도전을 기다리고 있어요.';
+        : '채점 서버가 연결되어 있어요.';
   const description = unavailable
     ? '최신 상태를 가져오지 못했습니다. 잠시 후 자동으로 다시 확인할게요.'
     : !status
-      ? '서버 연결과 채점 현황을 확인하고 있습니다.'
+      ? '채점 서버의 연결 상태를 확인하고 있습니다.'
       : !connected
         ? '현재 연결된 채점 서버가 없습니다. 제출한 코드의 상태는 대회 채점현황에서 확인해 주세요.'
-        : busy
-          ? '제출된 코드를 테스트하며 결과를 확인하는 중입니다.'
-          : status.total_queue_depth > 0
-            ? '접수된 코드가 채점을 기다리고 있습니다. 채점이 시작되면 이곳에 표시됩니다.'
-            : '채점 서버가 연결되어 있습니다. 여러분의 새로운 코드를 기다립니다.';
+        : '서버 연결을 확인했습니다. 내 코드의 진행 상황과 결과는 대회 채점현황에서 확인해 주세요.';
   const stateLabel = unavailable
     ? '연결 확인 필요'
     : !status
@@ -68,26 +59,12 @@ export default function JudgeStatusPage() {
       description: '현재 연결을 확인한 서버예요.',
       icon: '▤',
     },
-    {
-      label: '지금 채점 중',
-      value: status?.total_running_jobs,
-      unit: '건',
-      description: '제출된 코드를 검사하고 있어요.',
-      icon: '</>',
-    },
-    {
-      label: '차례를 기다리는 코드',
-      value: status?.total_queue_depth,
-      unit: '건',
-      description: '채점 시작을 기다리는 제출이에요.',
-      icon: '···',
-    },
   ];
 
   return (
     <div
       data-motion={motion.paused ? 'off' : 'on'}
-      className={`public-experience judge-experience is-${tone} ${busy ? 'is-busy' : ''}`}
+      className={`public-experience judge-experience is-${tone}`}
     >
       <PublicHero
         label="채점 상태"
@@ -110,9 +87,9 @@ export default function JudgeStatusPage() {
               답을 만나는 곳<span className="experience-lime">.</span>
             </h1>
             <p className="experience-lead">
-              제출부터 결과까지, 보이지 않는 곳의 움직임.
+              제출부터 결과까지, 코드를 살펴보는 채점 서버.
               <br />
-              ZOJ 채점 서버의 지금을 만나보세요.
+              서버 연결 상태와 채점 과정을 만나보세요.
             </p>
             <a className="experience-button is-lime" href="#judge-now">
               지금 상태 살펴보기 <ExperienceArrow />
@@ -164,13 +141,7 @@ export default function JudgeStatusPage() {
             <div className="judge-room-floor" />
             <div className="judge-room-caption">
               <span>
-                {busy
-                  ? '코드를 확인하는 중'
-                  : connected
-                    ? status.total_queue_depth > 0
-                      ? '접수된 코드가 기다리는 중'
-                      : '다음 제출을 기다리는 중'
-                    : '서버 연결을 확인하는 중'}
+                {connected ? '채점 서버 연결됨' : '서버 연결을 확인하는 중'}
               </span>
               <span className="judge-signal">
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -193,7 +164,7 @@ export default function JudgeStatusPage() {
           <div className="experience-section-heading">
             <div>
               <p className="experience-eyebrow">RIGHT NOW</p>
-              <h2>채점실의 지금</h2>
+              <h2>채점 서버 연결 상태</h2>
             </div>
             <p>상태는 5초마다 자동으로 확인합니다.</p>
           </div>
