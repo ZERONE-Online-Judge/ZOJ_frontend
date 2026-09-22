@@ -82,7 +82,7 @@ export default function ParticipantPreviewShell({
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[96rem] gap-6 px-3 py-8 font-sans sm:gap-8 sm:px-5 sm:py-10 lg:px-6 lg:py-12 2xl:max-w-[104rem]">
+    <section className="zoj-contest-shell mx-auto grid w-full max-w-[112rem] min-w-0 gap-5 px-4 py-6 font-sans sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       <section
         className="grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5"
         aria-label="참가자 미리보기"

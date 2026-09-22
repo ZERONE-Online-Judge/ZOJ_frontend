@@ -24,7 +24,7 @@ function ExampleBox({ title, value }: { title: string; value: string }) {
           <SvgIcon name="clipboard" size={14} />
         </button>
       </header>
-      <pre className="min-h-24 px-4 py-3 font-mono text-sm leading-6 whitespace-pre-wrap text-slate-950">
+      <pre className="min-h-24 max-w-full overflow-x-auto px-4 py-3 font-mono text-sm leading-6 whitespace-pre text-slate-950">
         {value}
       </pre>
     </section>
@@ -38,7 +38,7 @@ export default function ProblemExamplesGrid({
   if (examples.length === 0) return null;
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="zoj-problem-examples grid min-w-0 gap-4 md:grid-cols-2">
       {examples.map((example, index) => (
         <div className="contents" key={`${example.input}-${index}`}>
           <ExampleBox title={`예제 입력 ${index + 1}`} value={example.input} />

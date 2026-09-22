@@ -1,0 +1,564 @@
+/* Participant workspace: the same restrained surfaces and typography as management. */
+main:has(.zoj-contest-shell) {
+  background: #f7f8fb;
+}
+.zoj-participant {
+  color: #172033;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.zoj-participant
+  :where(section, article, aside, form, fieldset, label, header, nav, ul, li) {
+  min-width: 0;
+}
+.zoj-participant :is(h1, h2, h3, p, strong, a) {
+  overflow-wrap: anywhere;
+}
+.zoj-participant .font-black {
+  font-weight: 600;
+}
+.zoj-participant .font-bold {
+  font-weight: 500;
+}
+.zoj-participant > header {
+  gap: 0.5rem;
+}
+.zoj-participant > .mt-9 {
+  margin-top: 1.5rem;
+}
+.zoj-participant :is(input:not([type='range']), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  font-weight: 400;
+}
+.zoj-participant
+  :is(button, a, summary, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 3px;
+}
+.zoj-participant
+  :is(.overflow-auto, .overflow-x-auto, .overflow-y-auto, .zoj-contest-tabs) {
+  scrollbar-width: thin;
+}
+.zoj-participant table {
+  font-variant-numeric: tabular-nums;
+}
+.zoj-participant th {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.zoj-participant thead {
+  color: #64748b;
+  background: #f8fafc;
+}
+.zoj-participant thead tr {
+  background: #f8fafc;
+  color: #64748b;
+}
+.zoj-participant tbody tr:hover {
+  background: #fafbff;
+}
+.zoj-contest-tabs {
+  scrollbar-width: thin;
+  scroll-padding-inline: 0.5rem;
+}
+.zoj-overview-card > div {
+  min-width: 0;
+}
+.zoj-overview-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.zoj-overview-card h2 {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+.zoj-overview-schedule > div {
+  min-width: 0;
+}
+.zoj-overview-notices :is(h2, h3) {
+  font-size: 1.125rem;
+}
+.zoj-participant .zoj-overview-notices :is(a, li) {
+  min-width: 0;
+}
+
+.zoj-problem-workspace {
+  display: grid;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  overflow: clip;
+  align-items: start;
+}
+.zoj-participant .zoj-problem-sidebar {
+  border-right: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  align-self: stretch;
+}
+.zoj-participant .zoj-problem-sidebar nav {
+  padding: 1rem;
+}
+.zoj-participant .zoj-problem-sidebar ul {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  margin: 0;
+  padding: 0 0 0.25rem;
+}
+.zoj-participant .zoj-problem-sidebar li {
+  flex-shrink: 0;
+}
+.zoj-participant .zoj-problem-sidebar a {
+  display: flex;
+  height: 2.5rem;
+  max-width: 18rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.zoj-participant .zoj-problem-sidebar a[aria-current='page'] {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+.zoj-participant .zoj-problem-sidebar nav > div {
+  display: flex;
+}
+.zoj-participant .zoj-problem-sidebar nav > div > span:last-child {
+  display: inline;
+}
+.zoj-participant .zoj-problem-document {
+  container-type: inline-size;
+  width: 100%;
+  padding: clamp(1rem, 2vw, 1.75rem);
+}
+.zoj-participant .zoj-problem-document h1 {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.zoj-participant .zoj-problem-document h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.zoj-participant .zoj-problem-document > section {
+  margin-top: 1.75rem;
+}
+.zoj-participant .zoj-problem-document .prose {
+  font-size: 0.9375rem;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.zoj-participant .zoj-problem-document .prose img {
+  max-width: 100%;
+  height: auto;
+}
+.zoj-participant .zoj-problem-document .prose :is(pre, .katex-display) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.zoj-participant .zoj-problem-document .prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.zoj-participant .zoj-problem-examples {
+  grid-template-columns: minmax(0, 1fr);
+}
+.zoj-participant .zoj-problem-examples section {
+  min-width: 0;
+  grid-column: auto;
+}
+.zoj-participant .zoj-problem-examples pre {
+  max-width: 100%;
+  scrollbar-width: thin;
+}
+@container (min-width: 560px) {
+  .zoj-participant .zoj-problem-examples {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .zoj-participant .zoj-problem-examples section[class*='col-span'] {
+    grid-column: 1 / -1;
+  }
+}
+.zoj-participant .zoj-problem-submit {
+  border-left: 0;
+  border-top: 1px solid #e2e8f0;
+  padding: 1.25rem;
+  align-self: stretch;
+}
+.zoj-participant .zoj-problem-submit > h2 {
+  font-size: 1.125rem;
+}
+.zoj-participant .zoj-problem-submit > label {
+  margin-top: 1rem;
+}
+.zoj-participant .is-submit-only .zoj-problem-submit {
+  border: 0;
+}
+.zoj-problem-workspace:not(.is-combined) > .zoj-problem-document {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+@media (min-width: 1100px) {
+  .zoj-problem-workspace.is-combined {
+    grid-template-columns: minmax(0, 1.3fr) minmax(20rem, 1fr);
+  }
+  .zoj-problem-workspace.is-combined > .zoj-problem-sidebar {
+    grid-column: 1 / -1;
+  }
+  .zoj-participant .zoj-problem-submit {
+    border-top: 0;
+    border-left: 1px solid #e2e8f0;
+  }
+}
+@media (min-width: 1600px) {
+  .zoj-problem-workspace {
+    grid-template-columns: 12rem minmax(0, 1fr);
+  }
+  .zoj-problem-workspace.is-combined {
+    grid-template-columns: 12rem minmax(0, 1.35fr) minmax(24rem, 1fr);
+  }
+  .zoj-problem-workspace.is-submit-only {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .zoj-participant .zoj-problem-workspace > .zoj-problem-sidebar {
+    grid-column: auto;
+    border-bottom: 0;
+    border-right: 1px solid #e2e8f0;
+  }
+  .zoj-participant .zoj-problem-sidebar ul {
+    display: grid;
+    overflow: visible;
+  }
+  .zoj-participant .zoj-problem-sidebar a {
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .zoj-participant .zoj-problem-sidebar nav > div > span:last-child {
+    display: none;
+  }
+}
+
+.zoj-participant .zoj-problems-surface,
+.zoj-participant .zoj-submissions-surface {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: white;
+  scrollbar-width: thin;
+}
+.zoj-participant .zoj-problems-table {
+  table-layout: fixed;
+}
+.zoj-problem-title-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.zoj-participant .zoj-submissions-table td {
+  overflow-wrap: anywhere;
+}
+.zoj-participant .zoj-submission-code-row td {
+  padding: 0;
+}
+.zoj-participant .zoj-scoreboard-table {
+  table-layout: fixed;
+}
+.zoj-participant .zoj-scoreboard-table th:nth-child(n + 5):not(:last-child) {
+  width: auto;
+}
+.zoj-participant .zoj-scoreboard-scroll {
+  scrollbar-width: thin;
+}
+.zoj-participant .zoj-scoreboard-table td,
+.zoj-participant .zoj-scoreboard-table th {
+  padding: 0.875rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.zoj-participant .zoj-scoreboard-table .zoj-score-rank {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 3rem;
+  min-width: 3rem;
+  padding-inline: 0.5rem;
+  text-align: center;
+  background: #fff;
+}
+.zoj-participant .zoj-scoreboard-table .zoj-score-team {
+  position: sticky;
+  left: 3rem;
+  z-index: 2;
+  width: 12rem;
+  min-width: 12rem;
+  max-width: 12rem;
+  overflow-wrap: anywhere;
+  background: #fff;
+  box-shadow: 3px 0 5px -4px #64748b;
+}
+.zoj-participant
+  .zoj-scoreboard-table
+  thead
+  :is(.zoj-score-rank, .zoj-score-team) {
+  z-index: 3;
+  background: #f8fafc;
+}
+.zoj-participant .zoj-scoreboard-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.zoj-participant .zoj-result-badge > span:first-child {
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.zoj-participant .zoj-judge-detail {
+  width: 100%;
+}
+.zoj-participant .zoj-judge-detail pre {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.zoj-contest-board > section {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 0.75rem;
+}
+.zoj-contest-board :is(h2, h3) {
+  font-size: 1.125rem;
+}
+.zoj-contest-board :is(p, strong, span, time) {
+  overflow-wrap: anywhere;
+}
+.zoj-contest-board ul > li > button {
+  gap: 1rem;
+  padding: 1rem 0.5rem;
+}
+.zoj-contest-board ul > li > button > strong {
+  white-space: normal;
+  font-size: 0.875rem;
+}
+.zoj-contest-board ul > li > button > span:last-child {
+  max-width: 22rem;
+  min-width: 0;
+}
+.zoj-contest-board ul > li > button > span:last-child :is(span, strong) {
+  white-space: normal;
+  font-size: 0.8125rem;
+}
+.zoj-contest-board time {
+  font-size: 0.75rem;
+}
+.zoj-contest-board ul > li > article {
+  padding: 0 0 1rem;
+}
+.zoj-contest-board form {
+  gap: 1rem;
+}
+.zoj-contest-board .zoj-row-motion > *:hover {
+  transform: none;
+}
+
+@media (max-width: 1099px) {
+  .zoj-overview-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .zoj-overview-cards > :last-child {
+    grid-column: 1 / -1;
+  }
+  .zoj-participant .zoj-problems-table th {
+    width: auto;
+  }
+  .zoj-participant .zoj-problems-table th:first-child {
+    width: 4.5rem;
+  }
+  .zoj-participant .zoj-problems-table th:nth-child(3) {
+    width: 6rem;
+  }
+  .zoj-participant .zoj-problems-table th:nth-child(n + 4) {
+    width: 7rem;
+  }
+}
+@media (max-width: 639px) {
+  .zoj-overview-cards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  .zoj-overview-card {
+    padding: 1rem;
+  }
+  .zoj-overview-card h2 {
+    font-size: 1rem;
+  }
+  .zoj-participant .zoj-problem-document h1 {
+    font-size: 1.25rem;
+  }
+  .zoj-participant .zoj-problem-document .prose {
+    font-size: 0.875rem;
+  }
+  .zoj-participant .zoj-problem-submit {
+    padding: 1rem;
+  }
+  .zoj-participant .zoj-scoreboard-table .zoj-score-team {
+    width: 8rem;
+    min-width: 8rem;
+    max-width: 8rem;
+    font-size: 0.75rem;
+  }
+  .zoj-participant .zoj-scoreboard-table td {
+    font-size: 0.8125rem;
+  }
+  .zoj-contest-board > section {
+    padding: 1rem;
+  }
+  .zoj-contest-board ul > li > button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 1rem 0;
+  }
+  .zoj-contest-board ul > li > button > :is(span, time) {
+    justify-self: start;
+    max-width: 100%;
+    text-align: left;
+    align-items: start;
+  }
+  .zoj-contest-board form {
+    padding: 1rem;
+  }
+  .zoj-contest-board article :is(.pl-4, .pl-8) {
+    padding-left: 0;
+  }
+  .zoj-contest-board article .px-5 {
+    padding-inline: 0.875rem;
+  }
+  .zoj-participant .zoj-problems-surface,
+  .zoj-participant .zoj-submissions-surface {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+  }
+  .zoj-participant :is(.zoj-problems-table, .zoj-submissions-table) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .zoj-participant :is(.zoj-problems-table, .zoj-submissions-table) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .zoj-participant :is(.zoj-problems-table, .zoj-submissions-table) tbody {
+    display: grid;
+    gap: 0.875rem;
+  }
+  .zoj-participant .zoj-problems-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: white;
+    padding: 1rem;
+    gap: 0.625rem 1rem;
+  }
+  .zoj-participant .zoj-problems-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+  }
+  .zoj-participant .zoj-problems-table td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    font-size: 0.875rem;
+  }
+  .zoj-participant .zoj-problems-table td:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-bottom: 0.5rem;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  .zoj-participant .zoj-problems-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .zoj-participant .zoj-problems-table td:nth-child(n + 4)::before {
+    content: attr(data-label);
+    margin-right: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.75rem;
+  }
+  .zoj-participant .zoj-submission-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: white;
+  }
+  .zoj-participant .zoj-submission-row td {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    font-size: 0.8125rem;
+  }
+  .zoj-participant .zoj-submission-row td::before {
+    content: attr(data-label);
+    font-size: 0.6875rem;
+    color: #64748b;
+    font-weight: 400;
+  }
+  .zoj-participant .zoj-submission-row td:nth-child(4) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .zoj-participant .zoj-submission-row td:last-child {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .zoj-participant .zoj-submission-row td:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .zoj-participant .zoj-submission-row .zoj-truncate-safe {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+  .zoj-participant .zoj-submission-code-row,
+  .zoj-participant .zoj-submission-code-row td {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .zoj-participant .zoj-submission-code-row {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-top: -0.5rem;
+  }
+  .zoj-participant .zoj-submission-code-row section {
+    padding: 1rem;
+  }
+}

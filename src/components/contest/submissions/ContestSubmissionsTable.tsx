@@ -132,16 +132,17 @@ export default function ContestSubmissionsTable({
   const problemById = new Map(
     problems.map((problem) => [problem.problem_id, problem]),
   );
-  const cellClassName =
-    'border-r border-slate-200 px-5 py-4 align-top font-medium text-slate-950 last:border-r-0';
-  const headerCellClassName =
-    'border-r border-slate-200 px-5 py-4 last:border-r-0';
+  const cellClassName = 'px-4 py-4 align-top font-normal text-slate-700';
+  const headerCellClassName = 'px-4 py-3 font-medium';
   const [openSubmissionId, setOpenSubmissionId] = useState<string | null>(null);
 
   return (
     <>
-      <div className="zoj-horizontal-scroll border border-slate-200 bg-white">
-        <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
+      <div className="zoj-submissions-surface">
+        <table className="zoj-submissions-table w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
+          <caption className="sr-only">
+            제출별 문제, 채점 결과와 실행 정보
+          </caption>
           <thead>
             <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
               <th className={`${headerCellClassName} w-28`}>제출번호</th>
@@ -169,15 +170,17 @@ export default function ContestSubmissionsTable({
 
               return (
                 <Fragment key={submission.submission_id}>
-                  <tr className="border-b border-slate-200 odd:bg-slate-50/80">
+                  <tr className="zoj-submission-row border-b border-slate-200">
                     <td
-                      className={`${cellClassName} font-mono text-xs font-bold`}
+                      data-label="제출번호"
+                      className={`${cellClassName} font-mono text-xs font-medium`}
                       title={submission.submission_id}
                     >
                       {displaySubmissionId(submission.submission_id)}
                     </td>
                     <td
                       className={`${cellClassName} font-bold`}
+                      data-label="이름"
                       title={name}
                     >
                       <span className="zoj-truncate-safe max-w-full">
@@ -186,33 +189,34 @@ export default function ContestSubmissionsTable({
                     </td>
                     <td
                       className={`${cellClassName} font-bold`}
+                      data-label="문제"
                       title={submissionProblemTitle(submission, problemById)}
                     >
                       <Link
-                        className="zoj-truncate-safe max-w-full transition hover:text-zoj-blue"
+                        className="zoj-truncate-safe hover:text-zoj-blue max-w-full transition"
                         to={`/contests/${contestId}/problems/${problemId}`}
                       >
                         {submissionProblem(submission, problemById)}
                       </Link>
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="결과" className={cellClassName}>
                       <ContestSubmissionResultBadge
                         judgeMessage={submission.judge_message}
                         submission={submission}
                         status={submission.status}
                       />
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="메모리" className={cellClassName}>
                       {formatMemoryKb(submissionMemory(submission))}
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="시간" className={cellClassName}>
                       {formatTimeMs(submissionTime(submission))}
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="언어 · 코드" className={cellClassName}>
                       <span className="inline-flex max-w-full items-center gap-3">
                         <button
                           aria-expanded={isOpen}
-                          className="zoj-truncate-safe max-w-full font-bold text-slate-950 transition hover:text-zoj-blue disabled:cursor-not-allowed disabled:text-slate-400"
+                          className="zoj-truncate-safe hover:text-zoj-blue max-w-full font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:text-slate-400"
                           disabled={!sourceCode}
                           onClick={() =>
                             setOpenSubmissionId((current) =>
@@ -232,7 +236,7 @@ export default function ContestSubmissionsTable({
                         </button>
                         {sourceCode ? (
                           <Link
-                            className="text-xs font-black whitespace-nowrap text-zoj-blue transition hover:text-slate-950"
+                            className="text-zoj-blue text-xs font-black whitespace-nowrap transition hover:text-slate-950"
                             to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
                           >
                             수정
@@ -240,16 +244,16 @@ export default function ContestSubmissionsTable({
                         ) : null}
                       </span>
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="코드 길이" className={cellClassName}>
                       {formatCodeLength(submission)}
                     </td>
-                    <td className={cellClassName}>
+                    <td data-label="제출한 시간" className={cellClassName}>
                       {formatRelativeTime(submission.submitted_at)}
                     </td>
                   </tr>
                   {isOpen ? (
-                    <tr className="border-b border-slate-200 bg-white">
-                      <td className="p-0" colSpan={9}>
+                    <tr className="zoj-submission-code-row border-b border-slate-200 bg-white">
+                      <td className="min-w-0 p-0" colSpan={9}>
                         <SubmissionCodeAccordion
                           sourceCode={sourceCode}
                           submission={submission}
@@ -275,7 +279,7 @@ function SubmissionCodeAccordion({
   submission: Submission;
 }) {
   return (
-    <section className="grid gap-3 border-t border-slate-200 bg-slate-950 px-5 py-4 text-slate-50">
+    <section className="grid min-w-0 gap-3 border-t border-slate-200 bg-slate-950 px-5 py-4 text-slate-50">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-black text-slate-400">제출 코드</p>

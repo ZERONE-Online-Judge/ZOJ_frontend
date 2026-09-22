@@ -16,7 +16,7 @@ export default function ProblemStatementPanel({
   const document = parseProblemDocument(problem.statement);
 
   return (
-    <article className="min-w-0 bg-white px-8 py-7">
+    <article className="zoj-problem-document min-w-0 bg-white px-4 py-5 sm:px-6 sm:py-6">
       <header>
         <h1 className="text-3xl font-black tracking-normal text-slate-950">
           {problem.problem_code}. {problem.title}

@@ -724,7 +724,7 @@ function ContestProblemDetailContent({
 
       <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <section className="mt-6 mb-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:mt-7 sm:mb-7 sm:px-5">
+      <section className="mt-5 mb-5 grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-black text-slate-800">문제 보기</span>
           <span className="text-xs font-bold text-slate-400">
@@ -765,7 +765,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'combined' && canShowSubmit ? (
-        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1.45fr)_minmax(24rem,0.95fr)] 2xl:grid-cols-[14rem_minmax(0,1.55fr)_minmax(26rem,0.9fr)]">
+        <section className="zoj-problem-workspace is-combined">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -804,7 +804,7 @@ function ContestProblemDetailContent({
       {problem &&
       (effectiveView === 'problem' ||
         (effectiveView === 'combined' && !canShowSubmit)) ? (
-        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <section className="zoj-problem-workspace">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -824,7 +824,7 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'editorial' && canViewEditorial ? (
-        <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <section className="zoj-problem-workspace">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
@@ -844,10 +844,10 @@ function ContestProblemDetailContent({
       ) : null}
 
       {problem && effectiveView === 'submit' && canShowSubmit ? (
-        <section className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px]">
+        <section className="zoj-problem-workspace is-submit-only">
           <ProblemSubmitPanel
             canSubmit={canSubmitActiveDraft}
-            editorHeight={560}
+            editorHeight="clamp(280px, 55dvh, 640px)"
             isSubmitting={
               submitMutation.isPending || mockSubmitMutation.isPending
             }

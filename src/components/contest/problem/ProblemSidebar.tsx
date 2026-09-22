@@ -27,7 +27,7 @@ export default function ProblemSidebar({
   const showDivisionSelect = divisions.length > 1 && onDivisionChange;
 
   return (
-    <aside className="min-w-0 border-b border-slate-200 bg-slate-50 xl:border-r xl:border-b-0 xl:bg-white">
+    <aside className="zoj-problem-sidebar min-w-0 border-b border-slate-200 bg-slate-50 xl:border-r xl:border-b-0 xl:bg-white">
       <nav aria-label="문제 목록" className="grid gap-3 p-3">
         <div className="flex items-center justify-between gap-3 px-1 xl:block">
           <span className="text-xs font-black tracking-wide text-slate-500 uppercase">
@@ -42,7 +42,7 @@ export default function ProblemSidebar({
             유형
             <span className="relative block">
               <select
-                className="h-10 w-full appearance-none rounded border border-slate-200 bg-white px-3 pr-9 text-sm font-bold text-slate-800 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                className="h-10 w-full appearance-none rounded border border-slate-200 bg-white px-3 pr-9 text-sm font-bold text-slate-800 transition outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 onChange={(event) => onDivisionChange(event.target.value)}
                 value={selectedDivisionId}
               >
@@ -76,6 +76,7 @@ export default function ProblemSidebar({
           {problems.map((problem) => (
             <li className="shrink-0 xl:shrink" key={problem.problem_id}>
               <NavLink
+                title={`${problem.problem_code}. ${problem.title}`}
                 className={({ isActive }) =>
                   [
                     'flex h-10 max-w-[16rem] items-center rounded border px-3 text-sm font-bold whitespace-nowrap transition xl:block xl:h-auto xl:max-w-none xl:truncate xl:border-0 xl:px-4 xl:py-3 xl:whitespace-normal',

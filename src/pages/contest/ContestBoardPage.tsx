@@ -328,7 +328,7 @@ function ContestBoardContent({
 
       <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <div className="mt-10 grid gap-10">
+      <div className="zoj-contest-board mt-6 grid min-w-0 gap-5">
         <section>
           {canViewNotices ? (
             <NoticePanel

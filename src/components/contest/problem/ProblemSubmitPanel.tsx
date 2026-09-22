@@ -42,7 +42,7 @@ export default function ProblemSubmitPanel({
   onSourceCodeChange,
   onSubmit,
   canSubmit = true,
-  editorHeight = 430,
+  editorHeight = 'clamp(280px, 52dvh, 560px)',
   layout = 'side',
   title = '코드 제출',
   submitLabel = '제출하기',
@@ -51,8 +51,9 @@ export default function ProblemSubmitPanel({
 }: ProblemSubmitPanelProps) {
   const initialEditorHeight =
     typeof editorHeight === 'number' ? editorHeight : 430;
-  const [resizedEditorHeight, setResizedEditorHeight] =
-    useState(initialEditorHeight);
+  const [resizedEditorHeight, setResizedEditorHeight] = useState<number | null>(
+    null,
+  );
   const panelClassName =
     layout === 'standalone'
       ? 'bg-slate-50 px-4 py-5 sm:px-7 sm:py-7'
@@ -63,17 +64,17 @@ export default function ProblemSubmitPanel({
       : '';
 
   return (
-    <aside className={panelClassName}>
-      <h2 className="text-xl font-black tracking-normal break-keep text-slate-950 sm:text-2xl">
+    <aside className={`zoj-problem-submit min-w-0 ${panelClassName}`}>
+      <h2 className="text-lg font-semibold tracking-tight break-words text-slate-900">
         {title}
         {headingProblemLabel}
       </h2>
 
       <label className="mt-6 grid gap-2">
-        <span className="sr-only">언어</span>
+        <span className="text-xs font-medium text-slate-500">제출 언어</span>
         <span className="relative block">
           <select
-            className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-white px-5 pr-11 text-sm font-bold text-slate-700 transition outline-none focus:border-[#6d5dfc] focus:ring-2 focus:ring-[#6d5dfc]/15 disabled:bg-slate-100"
+            className="h-11 w-full min-w-0 appearance-none rounded-lg border border-slate-200 bg-white px-5 pr-11 text-sm font-bold text-slate-700 transition outline-none focus:border-[#6d5dfc] focus:ring-2 focus:ring-[#6d5dfc]/15 disabled:bg-slate-100"
             disabled={isSubmitting}
             onChange={(event) =>
               onLanguageChange(event.target.value as JudgeLanguage)
@@ -103,33 +104,36 @@ export default function ProblemSubmitPanel({
         </span>
       </label>
 
-      <label className="mt-4 grid gap-2 text-xs font-bold text-slate-500">
-        <span className="flex items-center justify-between">
-          <span>편집기 높이</span>
-          <span>{resizedEditorHeight}px</span>
-        </span>
-        <input
-          className="accent-[#6d5dfc]"
-          disabled={isSubmitting}
-          max={760}
-          min={280}
-          onChange={(event) =>
-            setResizedEditorHeight(Number(event.target.value))
-          }
-          step={20}
-          type="range"
-          value={resizedEditorHeight}
-        />
-      </label>
+      <details className="mt-3 text-xs text-slate-500">
+        <summary className="cursor-pointer py-2">편집기 높이 조절</summary>
+        <label className="mt-2 grid gap-2">
+          <span className="flex items-center justify-between">
+            <span>편집기 높이</span>
+            <span>
+              {resizedEditorHeight === null
+                ? '자동'
+                : `${resizedEditorHeight}px`}
+            </span>
+          </span>
+          <input
+            className="accent-[#6d5dfc]"
+            disabled={isSubmitting}
+            max={760}
+            min={280}
+            onChange={(event) =>
+              setResizedEditorHeight(Number(event.target.value))
+            }
+            step={20}
+            type="range"
+            value={resizedEditorHeight ?? initialEditorHeight}
+          />
+        </label>
+      </details>
 
-      <div className="mt-5">
+      <div className="mt-3 min-w-0">
         <CodeEditor
           disabled={isSubmitting}
-          height={
-            typeof editorHeight === 'number'
-              ? resizedEditorHeight
-              : editorHeight
-          }
+          height={resizedEditorHeight ?? editorHeight}
           language={language}
           onChange={onSourceCodeChange}
           value={sourceCode}

@@ -67,12 +67,21 @@ export default function ContestScoreboardTable({
     'border-r border-slate-200 px-2 py-4 text-center last:border-r-0';
 
   return (
-    <div className="overflow-x-auto border border-slate-200 bg-white">
-      <table className="w-full min-w-[1200px] border-collapse text-left text-sm">
+    <div
+      className="zoj-scoreboard-scroll overflow-x-auto rounded-xl border border-slate-200 bg-white"
+      role="region"
+      aria-label="대회 순위표, 좌우로 스크롤하여 문제별 결과 확인"
+      tabIndex={0}
+    >
+      <table
+        className="zoj-scoreboard-table w-full border-separate border-spacing-0 text-left text-sm"
+        style={{ minWidth: `${360 + scoreboardProblemScores.length * 64}px` }}
+      >
+        <caption className="sr-only">팀별 순위와 문제별 해결 현황</caption>
         <thead>
           <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
-            <th className={`${headerCellClassName} w-24`}>순위</th>
-            <th className={`${headerCellClassName} min-w-72`}>팀명</th>
+            <th className={`${headerCellClassName} zoj-score-rank`}>순위</th>
+            <th className={`${headerCellClassName} zoj-score-team`}>팀명</th>
             <th className={`${headerCellClassName} w-24`}>해결</th>
             <th className={`${headerCellClassName} w-24`}>시도</th>
             {scoreboardProblemScores.map((problem) => (
@@ -93,7 +102,9 @@ export default function ContestScoreboardTable({
                 key={row.team_id}
                 className="border-b border-slate-200 bg-slate-100/70"
               >
-                <td className={bodyCellClassName}>{row.rank}위</td>
+                <td className={`${bodyCellClassName} zoj-score-rank`}>
+                  {row.rank}위
+                </td>
                 <td
                   colSpan={4 + scoreboardProblemScores.length}
                   className="px-5 py-5 text-sm font-bold text-slate-400"
@@ -106,10 +117,14 @@ export default function ContestScoreboardTable({
                 className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
                 key={`${row.rank}-${row.team_id ?? row.team_name}`}
               >
-                <td className={`${bodyCellClassName} font-bold`}>
+                <td
+                  className={`${bodyCellClassName} zoj-score-rank font-semibold`}
+                >
                   {row.rank}위
                 </td>
-                <td className={`${bodyCellClassName} font-bold`}>
+                <td
+                  className={`${bodyCellClassName} zoj-score-team font-semibold`}
+                >
                   {row.team_name}
                 </td>
                 <td className={`${bodyCellClassName} font-bold`}>

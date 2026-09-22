@@ -20,7 +20,7 @@ export default function ProblemEditorialPanel({
   const body = problem.editorial?.trim() ?? '';
 
   return (
-    <article className="min-w-0 bg-white px-8 py-7">
+    <article className="zoj-problem-document min-w-0 bg-white px-4 py-5 sm:px-6 sm:py-6">
       <header>
         <p className="text-xs font-black tracking-normal text-indigo-600 uppercase">
           Editorial

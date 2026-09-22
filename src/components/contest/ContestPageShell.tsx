@@ -210,14 +210,14 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
 
   if (!contestId) {
     return (
-      <section className="mx-auto grid w-full max-w-[96rem] gap-6 px-3 py-8 font-sans sm:gap-8 sm:px-5 sm:py-10 lg:px-6 lg:py-12 2xl:max-w-[104rem]">
+      <section className="zoj-contest-shell mx-auto grid w-full max-w-[112rem] min-w-0 gap-5 px-4 py-6 font-sans sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
         <PageNotice message="대회 정보를 찾을 수 없습니다." status="error" />
       </section>
     );
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[96rem] gap-6 px-3 py-8 font-sans sm:gap-8 sm:px-5 sm:py-10 lg:px-6 lg:py-12 2xl:max-w-[104rem]">
+    <section className="zoj-contest-shell mx-auto grid w-full max-w-[112rem] min-w-0 gap-5 px-4 py-6 font-sans sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       {contestQuery.isLoading && (
         <PageNotice message="대회 정보를 불러오는 중입니다." status="loading" />
       )}

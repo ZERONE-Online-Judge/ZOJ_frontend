@@ -33,14 +33,14 @@ const headingClasses: Record<PageHeadingVariant, string> = {
     'break-keep text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl',
   page: 'break-keep text-2xl font-black tracking-normal text-slate-950 sm:text-3xl',
   contest:
-    'break-keep text-3xl font-black tracking-normal text-slate-950 sm:text-4xl',
+    'break-keep text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl',
   section: 'break-keep text-xl font-black text-slate-950 sm:text-2xl',
 };
 
 const descriptionClasses: Record<PageHeadingVariant, string> = {
   management: 'max-w-4xl text-sm leading-6 font-normal text-slate-500',
   page: 'text-sm leading-6 text-slate-600 sm:text-base sm:leading-7',
-  contest: 'text-sm leading-6 font-medium text-slate-400 sm:text-base',
+  contest: 'max-w-4xl text-sm leading-6 font-normal text-slate-500',
   section: 'text-sm leading-6 text-slate-600',
 };
 

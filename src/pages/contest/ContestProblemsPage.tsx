@@ -209,15 +209,18 @@ function ContestProblemsContent({
         )}
 
         {canViewProblems ? (
-          <div className="overflow-x-auto border border-slate-200 bg-white">
-            <table className="w-full min-w-[800px] border-collapse text-left text-sm">
+          <div className="zoj-problems-surface">
+            <table className="zoj-problems-table w-full border-collapse text-left text-sm">
+              <caption className="sr-only">
+                문제별 제목, 풀이 상태와 실행 제한
+              </caption>
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
-                  <th className="w-24 px-6 py-4">문제 번호</th>
-                  <th className="px-6 py-4">제목</th>
-                  <th className="w-36 px-6 py-4">정보</th>
-                  <th className="min-w-40 px-6 py-4">제한 시간</th>
-                  <th className="min-w-48 px-6 py-4">제한 메모리</th>
+                  <th className="w-20 px-4 py-3">문제 번호</th>
+                  <th className="px-4 py-3">제목</th>
+                  <th className="w-28 px-4 py-3">정보</th>
+                  <th className="w-36 px-4 py-3">제한 시간</th>
+                  <th className="w-40 px-4 py-3">제한 메모리</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,26 +230,38 @@ function ContestProblemsContent({
                       className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
                       key={problem.problem_id}
                     >
-                      <td className="px-6 py-4 font-bold text-slate-950">
+                      <td
+                        data-label="문제"
+                        className="px-4 py-4 font-semibold text-indigo-700"
+                      >
                         {problem.problem_code}
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-950">
+                      <td
+                        data-label="제목"
+                        className="min-w-0 px-4 py-4 font-semibold text-slate-900"
+                      >
                         <Link
-                          className="hover:text-zoj-blue transition"
+                          className="zoj-problem-title-link hover:text-zoj-blue transition"
                           to={`/contests/${contestId}/problems/${problem.problem_id}${problemDetailSearch}`}
                         >
                           {problem.title}
                         </Link>
                       </td>
-                      <td className="px-6 py-4">
+                      <td data-label="풀이 상태" className="px-4 py-4">
                         <ProblemStatusBadge
                           status={problemStatus(problem.solve_status)}
                         />
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-950">
+                      <td
+                        data-label="시간"
+                        className="px-4 py-4 text-slate-600"
+                      >
                         {problemTimeLimitLabel(problem)}
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-950">
+                      <td
+                        data-label="메모리"
+                        className="px-4 py-4 text-slate-600"
+                      >
                         {problemMemoryLimitLabel(problem)}
                       </td>
                     </tr>

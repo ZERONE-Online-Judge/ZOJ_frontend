@@ -34,7 +34,7 @@ type OverviewCardProps = {
 
 function OverviewIconBadge({ icon }: { icon: OverviewIcon }) {
   return (
-    <span className="flex size-12 items-center justify-center rounded-full bg-[#eee8ff] text-[#7c5cff]">
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#eee8ff] text-[#7c5cff]">
       {icon === 'user' ? (
         <svg
           aria-hidden="true"
@@ -74,13 +74,13 @@ function OverviewIconBadge({ icon }: { icon: OverviewIcon }) {
 
 function OverviewCard({ icon, title, subtitle }: OverviewCardProps) {
   return (
-    <article className="animate-panel-enter zoj-surface zoj-surface-hover flex h-52 flex-col justify-between rounded-lg border border-slate-200 bg-white px-8 py-7">
+    <article className="zoj-overview-card flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-5">
       <OverviewIconBadge icon={icon} />
       <div>
-        <h2 className="truncate text-2xl font-black tracking-normal text-slate-950">
+        <h2 className="text-lg font-semibold tracking-tight break-words text-slate-900">
           {title}
         </h2>
-        <p className="mt-2 truncate text-lg font-medium text-slate-400">
+        <p className="mt-1 text-sm leading-6 break-all text-slate-500">
           {subtitle}
         </p>
       </div>
@@ -346,7 +346,7 @@ function ContestOverviewContent({
 
       <ContestPageNavigation contest={contest} contestId={contest.contest_id} />
 
-      <section className="mt-8 grid gap-8 md:grid-cols-3">
+      <section className="zoj-overview-cards mt-6 grid gap-4">
         <OverviewCard icon="user" subtitle={memberEmail} title={memberName} />
         <OverviewCard icon="team" subtitle={divisionName} title={teamName} />
         <OverviewCard
@@ -356,7 +356,7 @@ function ContestOverviewContent({
         />
       </section>
 
-      <section className="animate-panel-enter zoj-surface mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
+      <section className="zoj-overview-schedule mt-4 grid gap-5 rounded-xl border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
         <div className="grid gap-1">
           <span className="text-xs font-black text-slate-400">시작 시간</span>
           <strong className="text-sm font-black text-slate-950">
@@ -380,7 +380,7 @@ function ContestOverviewContent({
         </div>
       </section>
 
-      <div className="mt-8">
+      <div className="zoj-overview-notices mt-6 rounded-xl border border-slate-200 bg-white p-5">
         <NoticePreview
           contestId={contest.contest_id}
           isError={noticesQuery.isError}

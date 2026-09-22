@@ -65,13 +65,14 @@ export default function ContestSubmissionResultBadge({
     status === 'judging' && targetProgress !== null
       ? Math.max(0, Math.min(99, Math.round(displayProgress)))
       : null;
-  const shouldShowElapsed = isSubmissionPending(status) && visibleProgress === null;
+  const shouldShowElapsed =
+    isSubmissionPending(status) && visibleProgress === null;
   const displayLabel =
     isSubmissionPending(status) && visibleProgress !== null
       ? `${label} - ${visibleProgress}%`
       : shouldShowElapsed
         ? `${label} ${elapsedSeconds}초`
-      : label;
+        : label;
 
   useEffect(() => {
     if (targetProgress === null) {
@@ -111,15 +112,25 @@ export default function ContestSubmissionResultBadge({
   }, [status, submission?.submitted_at]);
 
   return (
-    <span className="inline-flex min-w-0 flex-col gap-1">
+    <div className="zoj-result-badge inline-flex max-w-full min-w-0 flex-col gap-2">
       <span
         className={[
           'font-black decoration-1 underline-offset-2',
           toneClassNames[tone],
         ].join(' ')}
       >
-        {detail ? `${displayLabel}(${detail})` : displayLabel}
+        {displayLabel}
       </span>
+      {detail ? (
+        <details className="zoj-judge-detail max-w-full text-xs font-normal text-slate-500">
+          <summary className="cursor-pointer py-1 text-slate-500">
+            채점 메시지 보기
+          </summary>
+          <pre className="mt-2 max-h-48 max-w-full overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-5 break-all whitespace-pre-wrap text-slate-700">
+            {detail}
+          </pre>
+        </details>
+      ) : null}
       {visibleProgress !== null ? (
         <span className="h-1.5 w-24 overflow-hidden rounded-full bg-amber-100">
           <span
@@ -128,6 +139,6 @@ export default function ContestSubmissionResultBadge({
           />
         </span>
       ) : null}
-    </span>
+    </div>
   );
 }

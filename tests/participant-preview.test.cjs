@@ -198,7 +198,7 @@ function source(relative) {
   loaded.paths = Module._nodeModulePaths(path.dirname(filename));
   const native = loaded.require.bind(loaded);
   loaded.require = (id) =>
-    mocks[id] ??
+    (id.endsWith('.css') ? {} : mocks[id]) ??
     (id.startsWith('@/')
       ? source(
           ['.ts', '.tsx']
@@ -335,6 +335,14 @@ async function click(element) {
   await act(async () => element.click());
   await flush();
 }
+async function waitForElement(selector) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const element = container.querySelector(selector);
+    if (element) return element;
+    await flush();
+  }
+  assert.fail(`Element did not appear: ${selector}`);
+}
 async function input(element, value) {
   assert.ok(element);
   await act(async () => {
@@ -424,7 +432,7 @@ test('selected preview can submit code before start using the ordinary participa
   serverDivision = 'a';
   await render('/contests/contest/problems/problem/submit');
   await input(
-    container.querySelector('textarea[aria-label="제출 코드"]'),
+    await waitForElement('textarea[aria-label="제출 코드"]'),
     'print(3)',
   );
   await click(button('제출하기'));
