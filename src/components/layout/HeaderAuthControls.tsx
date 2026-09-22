@@ -1,3 +1,4 @@
+import HeaderPanel, { HeaderIcon } from '@/components/layout/HeaderPanel';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import Modal from '@/shared/ui/Modal';
 import { useState } from 'react';
@@ -23,9 +24,9 @@ const accountContestSections: {
   key: ContestSectionKey;
   title: string;
 }[] = [
-  { key: 'running', title: '진행중 대회' },
-  { key: 'upcoming', title: '운영예정 대회' },
-  { key: 'ended', title: '이미 종료된 대회' },
+  { key: 'running', title: '진행 중' },
+  { key: 'upcoming', title: '참가 예정' },
+  { key: 'ended', title: '종료된 대회' },
 ];
 
 function sectionKeyForContest(contest: Contest): ContestSectionKey {
@@ -45,48 +46,6 @@ function contestSortDate(contest: Contest) {
 function sortContestsByRecentDate<T extends { contest: Contest }>(items: T[]) {
   return [...items].sort(
     (a, b) => contestSortDate(b.contest) - contestSortDate(a.contest),
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 20 20">
-      <path
-        d="M8.25 4.25H5.5a1.5 1.5 0 0 0-1.5 1.5v8.5a1.5 1.5 0 0 0 1.5 1.5h2.75M12 6.5 15.5 10 12 13.5M15.25 10H8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function LoginIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      fill="currentColor"
-      viewBox="0 0 20 20"
-    >
-      <path d="M10 9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-      <path d="M2.5 18.5a7.5 7.5 0 0 1 15 0 .5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5Z" />
-    </svg>
-  );
-}
-
-function AdminIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 20 20">
-      <path
-        d="M4 7.5 10 3l6 4.5v7.25a1.25 1.25 0 0 1-1.25 1.25h-9.5A1.25 1.25 0 0 1 4 14.75V7.5ZM7.5 9.25h5M7.5 12.25h5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
   );
 }
 
@@ -144,11 +103,11 @@ export default function HeaderAuthControls({
     return (
       <Link
         aria-label={headerText.login}
-        className="flex h-10 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 sm:h-11 sm:px-5 sm:text-base"
+        className="header-action"
         to={loginTo}
       >
-        <LoginIcon />
-        <span className="hidden sm:inline">{headerText.login}</span>
+        <HeaderIcon name="user" />
+        <span className="header-action-label">{headerText.login}</span>
       </Link>
     );
   }
@@ -158,160 +117,125 @@ export default function HeaderAuthControls({
       {isServiceMaster(generalSession) ? (
         <Link
           aria-label={headerText.admin}
-          className="flex h-10 items-center gap-2 rounded border border-violet-200 bg-violet-50 px-3 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100 sm:h-11 sm:px-4"
+          className="header-action"
           to="/admin"
         >
-          <AdminIcon />
-          <span className="hidden sm:inline">{headerText.admin}</span>
+          <HeaderIcon name="admin" />
+          <span className="header-action-label">{headerText.admin}</span>
         </Link>
       ) : null}
       <HeaderNotifications />
       <button
         aria-label="내 정보"
-        className="flex h-10 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:h-11 sm:px-5 sm:text-base"
+        aria-expanded={isAccountPanelOpen}
+        aria-haspopup="dialog"
+        className="header-action"
         onClick={() => setIsAccountPanelOpen(true)}
         type="button"
       >
-        <LoginIcon />
-        <span className="hidden sm:inline">내 정보</span>
+        <HeaderIcon name="user" />
+        <span className="header-action-label">내 정보</span>
       </button>
       {isAccountPanelOpen ? (
-        <Modal
-          aria-labelledby="account-panel-title"
+        <HeaderPanel
+          id="account-panel-title"
+          title="내 정보"
+          label="MY ACCOUNT"
+          icon="user"
+          description="내 계정과 참가 중인 대회를 한곳에서 확인하세요."
           onClose={() => setIsAccountPanelOpen(false)}
-          drawer
+          footer={
+            <button
+              className="header-logout-button"
+              disabled={isLoggingOut}
+              onClick={() => setIsLogoutConfirmOpen(true)}
+              type="button"
+            >
+              <HeaderIcon name="logout" />
+              <span>
+                {isLoggingOut ? headerText.loggingOut : headerText.logout}
+              </span>
+            </button>
+          }
         >
-          <button
-            aria-label="내 정보 닫기"
-            className="absolute inset-0 size-full cursor-default"
-            onClick={() => setIsAccountPanelOpen(false)}
-            type="button"
-          />
-          <aside className="absolute top-0 right-0 grid h-full w-full max-w-md grid-rows-[auto_minmax(0,1fr)_auto] border-l border-slate-200 bg-white shadow-2xl">
-            <header className="border-b border-slate-200 px-6 py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="grid min-w-0 gap-1">
-                  <p className="text-xs font-semibold text-indigo-600 uppercase">
-                    Account
-                  </p>
-                  <h2
-                    className="text-xl font-semibold text-slate-950"
-                    id="account-panel-title"
-                  >
-                    내 정보
-                  </h2>
-                </div>
-                <button
-                  className="h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          <div className="header-profile">
+            <span className="header-profile-avatar">
+              <HeaderIcon name="user" />
+            </span>
+            <div>
+              <small>로그인한 계정</small>
+              <p>{accountEmail}</p>
+            </div>
+          </div>
+          {previewContests.length ? (
+            <section
+              className="header-panel-section"
+              aria-label="미리보기 대회"
+            >
+              <div className="header-section-heading">
+                <h3>참가자 미리보기</h3>
+                <span>{previewContests.length}개</span>
+              </div>
+              {previewContests.map(({ contest }) => (
+                <Link
+                  key={contest.contest_id}
+                  className="header-contest-card"
+                  to={`/contests/${encodeURIComponent(contest.contest_id)}`}
                   onClick={() => setIsAccountPanelOpen(false)}
-                  type="button"
                 >
-                  닫기
-                </button>
-              </div>
-              <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-500">이메일</p>
-                <p
-                  className="mt-1 truncate text-sm font-semibold text-slate-950"
-                  title={accountEmail}
-                >
-                  {accountEmail}
-                </p>
-              </div>
-            </header>
-
-            <div className="min-h-0 overflow-y-auto px-6 py-5">
-              {previewContests.length ? (
-                <section className="mb-6 grid gap-3" aria-label="미리보기 대회">
-                  <h3 className="text-base font-semibold text-slate-950">
-                    참가자 미리보기
-                  </h3>
-                  {previewContests.map(({ contest }) => (
+                  <strong>{contest.title}</strong>
+                  <span>유형을 선택해 참가자 화면 사전 점검 ↗</span>
+                </Link>
+              ))}
+            </section>
+          ) : null}
+          <section className="header-panel-section">
+            <div className="header-section-heading">
+              <h3>내가 참가한 대회</h3>
+              <span>{generalSession.participantContests.length}개</span>
+            </div>
+            {participantContestSections.map((section) =>
+              section.contests.length ? (
+                <section className="header-panel-section" key={section.key}>
+                  <div className="header-section-heading">
+                    <h4>{section.title}</h4>
+                    <span>{section.contests.length}</span>
+                  </div>
+                  {section.contests.map((item) => (
                     <Link
-                      key={contest.contest_id}
-                      className="grid gap-1 rounded-lg border border-amber-200 bg-amber-50 p-3"
-                      to={`/contests/${encodeURIComponent(contest.contest_id)}`}
+                      className="header-contest-card"
+                      key={item.contest.contest_id}
                       onClick={() => setIsAccountPanelOpen(false)}
+                      to={`/contests/${item.contest.contest_id}`}
                     >
-                      <span className="text-sm font-semibold text-amber-950">
-                        {contest.title}
+                      <strong>{item.contest.title}</strong>
+                      <span>
+                        {item.division.name} · {item.team.team_name}
                       </span>
-                      <span className="text-xs text-amber-800">
-                        유형을 선택해 참가자 화면 사전 점검
-                      </span>
+                      <small>
+                        {formatContestMoment(item.contest.start_at)} ~{' '}
+                        {formatContestMoment(item.contest.end_at)}
+                      </small>
                     </Link>
                   ))}
                 </section>
-              ) : null}
-              <div className="grid gap-5">
-                <div className="grid gap-1">
-                  <h3 className="text-base font-semibold text-slate-950">
-                    내가 참가한 대회
-                  </h3>
-                  <p className="text-xs font-medium text-slate-500">
-                    진행중, 예정, 종료 순서로 표시합니다.
-                  </p>
-                </div>
-
-                {participantContestSections.map((section) =>
-                  section.contests.length > 0 ? (
-                    <section className="grid gap-2" key={section.key}>
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-semibold text-slate-800">
-                          {section.title}
-                        </h4>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                          {section.contests.length}개
-                        </span>
-                      </div>
-                      <div className="grid gap-2">
-                        {section.contests.map((item) => (
-                          <Link
-                            className="grid gap-1 rounded-lg border border-slate-200 px-3 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
-                            key={item.contest.contest_id}
-                            onClick={() => setIsAccountPanelOpen(false)}
-                            to={`/contests/${item.contest.contest_id}`}
-                          >
-                            <span className="truncate text-sm font-semibold text-slate-950">
-                              {item.contest.title}
-                            </span>
-                            <span className="truncate text-xs font-medium text-slate-500">
-                              {item.division.name} · {item.team.team_name}
-                            </span>
-                            <span className="text-xs font-medium text-slate-400">
-                              {formatContestMoment(item.contest.start_at)} -{' '}
-                              {formatContestMoment(item.contest.end_at)}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                    </section>
-                  ) : null,
-                )}
-
-                {generalSession.participantContests.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
-                    참가 중인 대회가 없습니다.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            <footer className="border-t border-slate-200 px-6 py-5">
-              <button
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-slate-300"
-                disabled={isLoggingOut}
-                onClick={() => setIsLogoutConfirmOpen(true)}
-                type="button"
-              >
-                <LogoutIcon />
+              ) : null,
+            )}
+            {!generalSession.participantContests.length ? (
+              <div className="header-empty">
                 <span>
-                  {isLoggingOut ? headerText.loggingOut : headerText.logout}
+                  <HeaderIcon name="contest" />
                 </span>
-              </button>
-            </footer>
-          </aside>
-        </Modal>
+                <strong>참가 중인 대회가 없습니다.</strong>
+                <p>
+                  새로운 도전이 시작되면
+                  <br />
+                  이곳에서 바로 이어갈 수 있어요.
+                </p>
+              </div>
+            ) : null}
+          </section>
+        </HeaderPanel>
       ) : null}
       {isLogoutConfirmOpen ? (
         <Modal
@@ -320,10 +244,10 @@ export default function HeaderAuthControls({
             isLoggingOut ? undefined : () => setIsLogoutConfirmOpen(false)
           }
         >
-          <div className="zoj-modal-card w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="header-logout-dialog zoj-modal-card w-full max-w-md p-6">
             <div className="flex items-start gap-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
-                <LogoutIcon />
+              <span className="header-panel-symbol">
+                <HeaderIcon name="logout" />
               </span>
               <div className="grid gap-2">
                 <h2
@@ -339,7 +263,7 @@ export default function HeaderAuthControls({
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+                className="header-confirm-cancel"
                 disabled={isLoggingOut}
                 onClick={() => setIsLogoutConfirmOpen(false)}
                 type="button"
@@ -347,7 +271,7 @@ export default function HeaderAuthControls({
                 {headerText.logoutCancel}
               </button>
               <button
-                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-slate-300"
+                className="header-confirm-submit"
                 disabled={isLoggingOut}
                 onClick={() => void handleLogout()}
                 type="button"

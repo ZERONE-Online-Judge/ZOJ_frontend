@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import PublicHero from '@/components/common/PublicHero';
+import HomeHero from './HomeHero';
 import {
   ExperienceArrow,
   ExperienceReveal,
@@ -82,119 +82,7 @@ export default function MainPage() {
       className="public-experience contest-directory home-experience"
       data-motion={motion.paused ? 'off' : 'on'}
     >
-      <PublicHero
-        label="Zerone Online Judge"
-        motion={motion}
-        className="home-hero"
-        scrollTo="#home-explore"
-      >
-        <div className="experience-hero-grid">
-          <div className="experience-hero-copy">
-            <p className="experience-eyebrow">
-              FROM ZERO TO YOUR NEXT CHALLENGE
-            </p>
-            <h1>
-              생각을 코드로,
-              <br />
-              도전을 정답으로<span className="experience-lime">.</span>
-            </h1>
-            <p className="experience-lead">
-              문제를 만나는 설렘부터 정답의 기쁨까지.
-              <br />
-              당신의 다음 도전, ZOJ에서 시작하세요.
-            </p>
-            <div className="experience-actions">
-              <Link to="/contests" className="experience-button is-lime">
-                대회 둘러보기 <ExperienceArrow />
-              </Link>
-              <Link to="/about" className="experience-text-link">
-                ZOJ 알아보기 <span aria-hidden="true">↗</span>
-              </Link>
-            </div>
-            <p className="home-hero-caption">
-              <span /> 준비하는 사람도, 도전하는 사람도. 함께하는 대회 플랫폼.
-            </p>
-          </div>
-          <div className="home-visual" aria-hidden="true">
-            <div className="home-code-window">
-              <div className="home-window-bar">
-                <span>
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <span>YOUR NEXT CHALLENGE</span>
-                <small>예시 화면</small>
-              </div>
-              <div className="home-code-heading">
-                <span>A</span>
-                <div>
-                  <small>오늘의 첫 번째 도전</small>
-                  <strong>두 수의 합</strong>
-                </div>
-                <span>↗</span>
-              </div>
-              <div className="home-code-lines">
-                <div>
-                  <em>01</em>
-                  <code>
-                    <b>int</b> main() {'{'}
-                  </code>
-                </div>
-                <div>
-                  <em>02</em>
-                  <code>
-                    {' '}
-                    <b>int</b> a, b;
-                  </code>
-                </div>
-                <div>
-                  <em>03</em>
-                  <code> cin &gt;&gt; a &gt;&gt; b;</code>
-                </div>
-                <div>
-                  <em>04</em>
-                  <code> cout &lt;&lt; a + b;</code>
-                </div>
-                <div>
-                  <em>05</em>
-                  <code>
-                    {' '}
-                    <b>return</b> <strong>0</strong>;
-                  </code>
-                </div>
-                <div>
-                  <em>06</em>
-                  <code>
-                    {'}'}
-                    <i />
-                  </code>
-                </div>
-              </div>
-              <div className="home-test-cells">
-                {[1, 2, 3, 4].map((n) => (
-                  <span key={n}>
-                    <i>✓</i> TEST 0{n}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="home-accepted">
-              <span>✓</span>
-              <div>
-                <small>한 걸음 더 나아갔어요.</small>
-                <strong>맞았습니다!</strong>
-              </div>
-              <i>✳</i>
-            </div>
-            <div className="home-visual-caption">
-              <span>WRITE.</span>
-              <span>SUBMIT.</span>
-              <span>GROW.</span>
-            </div>
-          </div>
-        </div>
-      </PublicHero>
+      <HomeHero motion={motion} />
       <section
         className="experience-container home-explore"
         id="home-explore"

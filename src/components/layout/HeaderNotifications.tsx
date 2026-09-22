@@ -1,4 +1,7 @@
-import Modal from '@/shared/ui/Modal';
+import HeaderPanel, {
+  HeaderIcon,
+  type HeaderIconName,
+} from '@/components/layout/HeaderPanel';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMatch, useNavigate } from 'react-router-dom';
@@ -20,7 +23,7 @@ import {
   submissionStatusLabel,
 } from '@/domains/submissionScoreboard/status';
 import type { Submission } from '@/domains/submissionScoreboard/types';
-import { formatDateTime, formatTime } from '@/shared/lib/dateTime';
+import { formatDateTime } from '@/shared/lib/dateTime';
 
 type HeaderNotificationType = 'answer' | 'notice' | 'submission';
 
@@ -128,30 +131,46 @@ function answerBelongsToParticipant(
   );
 }
 
-function BellIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 20 20">
-      <path
-        d="M6.25 8.25a3.75 3.75 0 0 1 7.5 0v2.1c0 .7.22 1.38.63 1.95l.74 1.03H4.88l.74-1.03c.41-.57.63-1.25.63-1.95v-2.1ZM8.5 15.5a1.75 1.75 0 0 0 3 0"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
-  );
-}
+const notificationLabels: Record<HeaderNotificationType, string> = {
+  notice: '대회 공지',
+  answer: '질문 답변',
+  submission: '채점 결과',
+};
+const notificationIcons: Record<HeaderNotificationType, HeaderIconName> = {
+  notice: 'bell',
+  answer: 'answer',
+  submission: 'submission',
+};
 
-function CloseIcon() {
+function NotificationContent({
+  notification,
+  now,
+}: {
+  notification: HeaderNotification;
+  now: number;
+}) {
   return (
-    <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 20 20">
-      <path
-        d="m6 6 8 8M14 6l-8 8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
+    <>
+      <span className="header-notification-icon" data-type={notification.type}>
+        <HeaderIcon name={notificationIcons[notification.type]} />
+      </span>
+      <span className="header-notification-content">
+        <span className="header-notification-meta">
+          {notificationLabels[notification.type]}
+          {!notification.dismissedAt ? (
+            <>
+              <i aria-hidden="true" />
+              <span className="sr-only">새 알림</span>
+            </>
+          ) : null}
+        </span>
+        <strong>{notification.title}</strong>
+        <span>{notification.body}</span>
+        <time dateTime={notification.createdAt}>
+          {formatNotificationAge(notification.createdAt, now)}
+        </time>
+      </span>
+    </>
   );
 }
 
@@ -449,125 +468,97 @@ export default function HeaderNotifications() {
     <>
       <button
         aria-label="알림"
-        className="relative flex size-10 items-center justify-center rounded border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:size-11"
+        aria-expanded={isPanelOpen}
+        aria-haspopup="dialog"
+        className="header-action"
         onClick={() => setIsPanelOpen(true)}
         type="button"
       >
-        <BellIcon />
-        {toastNotifications.length > 0 ? (
-          <span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs leading-5 font-black text-white">
-            {toastNotifications.length}
+        <HeaderIcon name="bell" />
+        <span className="header-action-label">알림</span>
+        {toastNotifications.length ? (
+          <span className="header-action-count">
+            {toastNotifications.length > 99 ? '99+' : toastNotifications.length}
           </span>
         ) : null}
       </button>
-
-      {toastNotifications.length > 0 ? (
-        <div className="fixed top-24 right-4 z-[65] grid w-[min(22rem,calc(100vw-2rem))] gap-2">
-          {toastNotifications.map((notification) => (
-            <article
-              className="grid gap-2 rounded-lg border border-slate-200 bg-white/95 p-4 text-left shadow-xl backdrop-blur"
-              key={notification.id}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <button
-                  className="grid min-w-0 flex-1 gap-1 text-left"
-                  onClick={() => openNotification(notification)}
-                  type="button"
-                >
-                  <span className="text-sm font-black text-slate-950">
-                    {notification.title}
-                  </span>
-                  <span className="line-clamp-2 text-xs leading-5 font-bold text-slate-600">
-                    {notification.body}
-                  </span>
-                  <span className="text-xs font-bold text-slate-400">
-                    {formatNotificationAge(notification.createdAt, now)}
-                  </span>
-                </button>
-                <button
-                  aria-label="알림 닫기"
-                  className="flex size-7 shrink-0 items-center justify-center rounded border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
-                  onClick={() => dismissNotification(notification.id)}
-                  type="button"
-                >
-                  <CloseIcon />
-                </button>
-              </div>
+      {toastNotifications.length && !isPanelOpen ? (
+        <div className="header-toast-stack" aria-label="새 알림">
+          {toastNotifications.slice(0, 3).map((notification) => (
+            <article className="header-toast" key={notification.id}>
+              <button
+                onClick={() => openNotification(notification)}
+                type="button"
+              >
+                <NotificationContent notification={notification} now={now} />
+              </button>
+              <button
+                aria-label="알림 닫기"
+                className="header-icon-button"
+                onClick={() => dismissNotification(notification.id)}
+                type="button"
+              >
+                <HeaderIcon name="close" />
+              </button>
             </article>
           ))}
+          {toastNotifications.length > 3 ? (
+            <button
+              className="header-toast-more"
+              type="button"
+              onClick={() => setIsPanelOpen(true)}
+            >
+              새 알림 {toastNotifications.length}개 모두 보기 ↗
+            </button>
+          ) : null}
         </div>
       ) : null}
-
       {isPanelOpen ? (
-        <Modal
-          aria-labelledby="notification-panel-title"
+        <HeaderPanel
+          id="notification-panel-title"
+          title="알림"
+          label="NOTIFICATIONS"
+          icon="bell"
+          description="대회 소식부터 내 질문의 답변, 채점 결과까지."
           onClose={() => setIsPanelOpen(false)}
-          drawer
         >
-          <button
-            aria-label="알림 닫기"
-            className="absolute inset-0 size-full cursor-default"
-            onClick={() => setIsPanelOpen(false)}
-            type="button"
-          />
-          <aside className="absolute top-0 right-0 grid h-full w-full max-w-md grid-rows-[auto_minmax(0,1fr)] border-l border-slate-200 bg-white shadow-2xl">
-            <header className="border-b border-slate-200 px-6 py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="grid gap-1">
-                  <p className="text-xs font-semibold text-indigo-600 uppercase">
-                    Notifications
-                  </p>
-                  <h2
-                    className="text-xl font-semibold text-slate-950"
-                    id="notification-panel-title"
-                  >
-                    알림
-                  </h2>
-                </div>
-                <button
-                  className="h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                  onClick={() => setIsPanelOpen(false)}
-                  type="button"
-                >
-                  닫기
-                </button>
+          {panelNotifications.length ? (
+            <>
+              <div className="header-section-heading">
+                <h3>받은 알림</h3>
+                <span>새 알림 {toastNotifications.length}개</span>
               </div>
-            </header>
-
-            <div className="min-h-0 overflow-y-auto px-6 py-5">
-              {panelNotifications.length > 0 ? (
-                <ul className="grid gap-2">
-                  {panelNotifications.map((notification) => (
-                    <li key={notification.id}>
-                      <button
-                        className="grid w-full gap-1 rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
-                        onClick={() => openNotification(notification)}
-                        type="button"
-                      >
-                        <span className="text-sm font-semibold text-slate-950">
-                          {notification.title}
-                        </span>
-                        <span className="line-clamp-2 text-xs leading-5 font-medium text-slate-600">
-                          {notification.body}
-                        </span>
-                        <span className="text-xs font-medium text-slate-400">
-                          {formatNotificationAge(notification.createdAt, now)}
-                          {notification.dismissedAt
-                            ? ` · 닫음 ${formatTime(notification.dismissedAt)}`
-                            : ''}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
-                  받은 알림이 없습니다.
-                </p>
-              )}
+              <ul className="header-notification-list">
+                {panelNotifications.map((notification) => (
+                  <li key={notification.id}>
+                    <button
+                      className={`header-notification-card${notification.dismissedAt ? 'is-dismissed' : ''}`}
+                      onClick={() => openNotification(notification)}
+                      type="button"
+                    >
+                      <NotificationContent
+                        notification={notification}
+                        now={now}
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div className="header-empty">
+              <span>
+                <HeaderIcon name="bell" />
+              </span>
+              <strong>아직 도착한 알림이 없어요.</strong>
+              <p>
+                새로운 소식이 생기면
+                <br />
+                이곳에 차곡차곡 모아 드릴게요.
+              </p>
             </div>
-          </aside>
-        </Modal>
+          )}
+        </HeaderPanel>
       ) : null}
     </>
   );
