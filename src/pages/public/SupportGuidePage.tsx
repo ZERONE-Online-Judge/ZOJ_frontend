@@ -263,6 +263,22 @@ export default function SupportGuidePage() {
                         <div>
                           <h3>{step.title}</h3>
                           <p>{step.description}</p>
+                          {i === 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1">
+                              <Link
+                                className="experience-text-link"
+                                to="/support/contact"
+                              >
+                                대회 개설 문의 <ExperienceArrow />
+                              </Link>
+                              <a
+                                className="experience-text-link"
+                                href={`mailto:zoj.service@gmail.com?subject=${encodeURIComponent('ZOJ 대회 개설 문의')}`}
+                              >
+                                이메일 보내기 <ExperienceArrow />
+                              </a>
+                            </div>
+                          ) : null}
                         </div>
                       </li>
                     ))}

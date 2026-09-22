@@ -186,9 +186,9 @@ export const supportSections: SupportSection[] = [
 
 export const operatorGuideSteps = [
   {
-    title: '대회의 틀을 준비해요',
+    title: '대회 개설을 요청해요',
     description:
-      '설정에서 일정과 공개 범위를 정하고, 참가자와 운영진을 등록합니다.',
+      '서비스 문의나 이메일로 대회 개설을 요청해 주세요. 대회가 생성되면 운영 화면에서 일정과 공개 범위를 설정하고, 참가자와 운영진을 등록할 수 있어요.',
   },
   {
     title: '문제와 테스트를 확인해요',
