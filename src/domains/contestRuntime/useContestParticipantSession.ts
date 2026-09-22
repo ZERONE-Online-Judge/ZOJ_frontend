@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
+import { useCallback, useMemo } from 'react';
 import { getGeneralMe } from '@/domains/identityAccess/api';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
@@ -22,8 +23,21 @@ export function useContestParticipantSession(contestId: string) {
   const participantContest = generalSession?.participantContests.find(
     (item) => item.contest.contest_id === contestId,
   );
-  const activeParticipantSession =
+  const canPreview = hasParticipantPreviewAccess(generalSession, contestId);
+  const matchingSession =
     participantSession?.contestId === contestId ? participantSession : null;
+  const activeParticipantSession = useMemo(
+    () =>
+      matchingSession?.isPreview
+        ? canPreview &&
+          generalSession &&
+          matchingSession.member.email === generalSession.account.email
+          ? { ...matchingSession, accessToken: generalSession.accessToken }
+          : null
+        : matchingSession,
+    [matchingSession, canPreview, generalSession],
+  );
+  const isPreview = activeParticipantSession?.isPreview === true;
   const divisionId =
     activeParticipantSession?.division.division_id ??
     participantContest?.division.division_id;
@@ -40,9 +54,10 @@ export function useContestParticipantSession(contestId: string) {
         : await getGeneralMe(generalSession.accessToken, generalSession).catch(
             () => generalSession,
           );
-    const latestParticipantContest = latestGeneralSession.participantContests.find(
-      (item) => item.contest.contest_id === contestId,
-    );
+    const latestParticipantContest =
+      latestGeneralSession.participantContests.find(
+        (item) => item.contest.contest_id === contestId,
+      );
 
     if (!latestParticipantContest) return null;
     if (latestGeneralSession !== generalSession) {
@@ -84,6 +99,7 @@ export function useContestParticipantSession(contestId: string) {
     participantContest,
     participantSession,
     isRefreshingGeneralSession,
+    isPreview,
     token,
   };
 }

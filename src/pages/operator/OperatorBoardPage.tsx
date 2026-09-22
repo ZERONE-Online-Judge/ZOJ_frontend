@@ -12,6 +12,7 @@ import {
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { contestStaffDisplayName } from '@/domains/identityAccess/staffDisplay';
 import {
   createContestAnswer,
   deleteContestAnswer,
@@ -59,7 +60,11 @@ function questionAuthorContext(question: ContestQuestion) {
 }
 
 function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
-  if (answer.created_by_role === 'operator') return '운영자 답변';
+  if (answer.created_by_role === 'operator')
+    return contestStaffDisplayName(
+      answer.created_by_name,
+      answer.created_by_title,
+    );
 
   const name = answer.created_by_name || answer.created_by_email || '참가자';
   const answerEmail = normalizedEmail(answer.created_by_email);

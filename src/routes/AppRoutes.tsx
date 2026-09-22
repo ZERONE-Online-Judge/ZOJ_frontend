@@ -1,3 +1,4 @@
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { type ReactNode, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { isServiceMaster } from '@/domains/identityAccess/permissions';
@@ -61,6 +62,20 @@ function RouteAccessGuard({
 
   if (!access || access === 'public') return children;
 
+  const operatorRoute = operatorContestRoute(location.pathname);
+  if (
+    access === 'operator' &&
+    operatorRoute &&
+    hasParticipantPreviewAccess(generalSession, operatorRoute.contestId)
+  ) {
+    return (
+      <Navigate
+        replace
+        to={`/contests/${encodeURIComponent(operatorRoute.contestId)}`}
+      />
+    );
+  }
+
   const canUseOperatorArea =
     Boolean(generalSession?.operatorSession) ||
     Boolean(generalSession?.operatorContests.length) ||
@@ -81,7 +96,9 @@ function RouteAccessGuard({
     }
     const next = `${location.pathname}${location.search}`;
 
-    return <Navigate replace to={`/login?moveTo=${encodeURIComponent(next)}`} />;
+    return (
+      <Navigate replace to={`/login?moveTo=${encodeURIComponent(next)}`} />
+    );
   }
 
   if (!canUseOperatorArea) {
@@ -124,7 +141,10 @@ export default function AppRoutes() {
       <Suspense
         fallback={
           <section className="mx-auto w-full max-w-4xl px-6 py-14">
-            <PageNotice message="페이지를 불러오는 중입니다." status="loading" />
+            <PageNotice
+              message="페이지를 불러오는 중입니다."
+              status="loading"
+            />
           </section>
         }
       >

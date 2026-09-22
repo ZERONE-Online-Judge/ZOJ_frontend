@@ -80,6 +80,7 @@ const roleScopes = {
     'contest.generator.manage',
   ],
   problem_reviewer: ['contest.problem.review', 'contest.problem.test'],
+  participant_preview: ['contest.participant.preview'],
 };
 const roleTabs = {
   settings_manager: ['', 'settings'],
@@ -93,6 +94,7 @@ const roleTabs = {
   audit_viewer: ['', 'audit-logs'],
   problem_author: ['', 'problems', 'problem-review'],
   problem_reviewer: ['problem-review'],
+  participant_preview: [],
 };
 let session, reads;
 function staffWith(scopes, contestId = 'contest') {
@@ -113,7 +115,7 @@ function generalWith(scopes) {
 }
 function forRoles(...roles) {
   return generalWith([
-    'contest.view',
+    ...(roles.includes('participant_preview') ? [] : ['contest.view']),
     ...new Set(roles.flatMap((role) => roleScopes[role])),
   ]);
 }
@@ -379,7 +381,9 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
         ? '출제자'
         : role === 'problem_reviewer'
           ? '검수자'
-          : '운영자';
+          : role === 'participant_preview'
+            ? '참가자 미리보기'
+            : '운영자';
     assert.match(container.textContent, new RegExp(`운영진 / ${title}`));
   });
 }
@@ -417,6 +421,33 @@ test('multiple roles combine permissions and navigation without granting unrelat
   );
   await render(h(OperatorTabs, { contestId: 'other' }));
   assert.equal(container.querySelectorAll('nav a').length, 0);
+});
+
+test('participant preview does not grant operator home, management, or review access', async () => {
+  session = forRoles('participant_preview');
+  for (const permission of [
+    'contest.view',
+    'contest.problem.review',
+    'contest.staff.manage',
+  ]) {
+    assert.equal(hasContestPermission(session, 'contest', permission), false);
+    await render(
+      h(OperatorAccessGate, { contestId: 'contest', permission }, () =>
+        h('p', { 'data-protected': true }, '운영자 기능'),
+      ),
+    );
+    assert.equal(container.querySelector('[data-protected]'), null);
+  }
+  assert.deepEqual(reads, []);
+  assert.equal(contestRoleTitle(['participant_preview']), '참가자 미리보기');
+  assert.equal(
+    contestRoleTitleForScopes(['contest.participant.preview']),
+    '참가자 미리보기',
+  );
+  assert.equal(
+    contestRoleTitleForAccount(session.operatorSession.staff, 'contest'),
+    '참가자 미리보기',
+  );
 });
 
 test('board and notice roles combine independent tabs without granting staff or audit powers', async () => {

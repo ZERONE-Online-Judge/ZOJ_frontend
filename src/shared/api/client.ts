@@ -88,7 +88,16 @@ function storedReplacementTokenForRequest(
 ): string | null {
   const contestId = parseContestId(path);
   const participant = loadStoredParticipantSession();
+  const general = loadStoredGeneralSession();
   if (
+    participant?.isPreview &&
+    participant.contestId === contestId &&
+    general?.account.email === participant.member.email
+  ) {
+    return general.accessToken !== token ? general.accessToken : null;
+  }
+  if (
+    !participant?.isPreview &&
     contestId &&
     participant?.accessToken &&
     participant.accessToken !== token &&
@@ -97,7 +106,6 @@ function storedReplacementTokenForRequest(
     return participant.accessToken;
   }
 
-  const general = loadStoredGeneralSession();
   if (
     (path.startsWith('/operator/') || path.startsWith('/admin/')) &&
     general?.operatorSession?.accessToken &&
@@ -141,6 +149,14 @@ function preferredStoredTokenForRequest(
   const contestId = parseContestId(path);
   const participant = loadStoredParticipantSession();
   if (
+    participant?.isPreview &&
+    participant.contestId === contestId &&
+    general?.account.email === participant.member.email
+  ) {
+    return general.accessToken;
+  }
+  if (
+    !participant?.isPreview &&
     contestId &&
     participant?.accessToken &&
     (!participant.contestId || participant.contestId === contestId)
@@ -159,7 +175,8 @@ async function refreshOperatorAccessTokenViaGeneralSession(): Promise<
 
   let generalToken = general.accessToken;
   if (general.refreshToken) {
-    generalToken = (await refreshGeneralAccessToken(generalToken)) ?? generalToken;
+    generalToken =
+      (await refreshGeneralAccessToken(generalToken)) ?? generalToken;
   }
 
   let result = await apiFetchRaw('/auth/general/me', generalToken);
@@ -275,6 +292,16 @@ async function refreshGeneralAccessToken(
         general,
       );
       saveGeneralSession(next);
+      const participant = loadStoredParticipantSession();
+      if (
+        participant?.isPreview &&
+        participant.member.email === next.account.email
+      ) {
+        saveParticipantSession({
+          ...participant,
+          accessToken: next.accessToken,
+        });
+      }
       emitSessionSync();
       return next.accessToken;
     })().finally(() => {
@@ -290,7 +317,12 @@ async function refreshParticipantAccessToken(
   path: string,
 ): Promise<string | null> {
   const participant = loadStoredParticipantSession();
-  if (!participant || participant.accessToken !== token) return null;
+  if (
+    !participant ||
+    participant.isPreview ||
+    participant.accessToken !== token
+  )
+    return null;
 
   if (!participantRefreshInFlight) {
     participantRefreshInFlight = (async () => {
@@ -374,6 +406,17 @@ async function tryRefreshTokenForRequest(
   const replacement = storedReplacementTokenForRequest(token, path);
   if (replacement) return replacement;
 
+  const general = loadStoredGeneralSession();
+  const participant = loadStoredParticipantSession();
+  if (
+    general?.accessToken === token &&
+    (path.startsWith('/auth/general/') ||
+      (participant?.isPreview &&
+        participant.member.email === general.account.email))
+  ) {
+    return refreshGeneralAccessToken(token);
+  }
+
   if (path.startsWith('/operator/') || path.startsWith('/admin/')) {
     const refreshedOperator =
       await refreshOperatorAccessTokenViaGeneralSession();
@@ -416,7 +459,10 @@ function clearStoredSessionForFailedToken(token: string, path: string) {
   const participant = loadStoredParticipantSession();
   const contestId = parseContestId(path);
   if (
-    participant?.accessToken === token &&
+    (participant?.accessToken === token ||
+      (participant?.isPreview &&
+        general?.accessToken === token &&
+        participant.member.email === general.account.email)) &&
     (!contestId ||
       !participant.contestId ||
       participant.contestId === contestId)

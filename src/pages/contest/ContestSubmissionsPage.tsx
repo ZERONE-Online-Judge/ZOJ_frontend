@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
@@ -47,6 +51,7 @@ function ContestSubmissionsContent({
   const waitingIds = useRef(new Set<string>());
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -61,7 +66,7 @@ function ContestSubmissionsContent({
   );
   const submissionAccess = contestResourceAccess(contest, 'submission');
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const phase = contestAccessPhase(contest);
+  const phase = isPreview ? 'running' : contestAccessPhase(contest);
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
@@ -72,9 +77,7 @@ function ContestSubmissionsContent({
   const currentCursor = cursorStack.at(-1);
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
-  const shouldUseParticipantScope =
-    hasSessionAccess &&
-    !isEnded;
+  const shouldUseParticipantScope = hasSessionAccess && !isEnded;
   const shouldUseParticipantAuth =
     isEnded &&
     hasSessionAccess &&
@@ -84,16 +87,14 @@ function ContestSubmissionsContent({
   const effectiveDivisionId = shouldUseParticipantScope
     ? activeParticipantSession?.division.division_id
     : selectedPublicDivisionId;
-  const canViewSubmissions = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    submissionAccess,
-  ) && !isBeforeStart;
-  const canViewProblems = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    problemAccess,
-  ) && !isBeforeStart;
+  const canViewSubmissions =
+    isPreview ||
+    (canViewContestResource(contest, hasSessionAccess, submissionAccess) &&
+      !isBeforeStart);
+  const canViewProblems =
+    isPreview ||
+    (canViewContestResource(contest, hasSessionAccess, problemAccess) &&
+      !isBeforeStart);
   const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
   const participantQueryIdentity = participantSessionQueryIdentity(
     activeParticipantSession,
@@ -122,21 +123,24 @@ function ContestSubmissionsContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
+        ? (activeParticipantSession?.division.division_id ??
+            participantContest?.division.division_id)
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? participantQueryIdentity
         : shouldUseParticipantAuth
           ? participantQueryIdentity
-        : undefined,
+          : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
@@ -166,24 +170,27 @@ function ContestSubmissionsContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
+        ? (activeParticipantSession?.division.division_id ??
+            participantContest?.division.division_id)
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? participantQueryIdentity
         : shouldUseParticipantAuth
           ? participantQueryIdentity
-        : undefined,
+          : undefined,
       currentCursor ?? undefined,
       selectedProblemId || undefined,
       shouldUseParticipantScope,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return listSubmissionsPage(contestId, session.accessToken, {
           cursor: currentCursor,
@@ -197,10 +204,10 @@ function ContestSubmissionsContent({
         contestId,
         session?.accessToken ?? generalSession?.accessToken,
         {
-        cursor: currentCursor,
-        divisionId: effectiveDivisionId,
-        limit: SUBMISSIONS_PAGE_SIZE,
-        problemId: selectedProblemId || undefined,
+          cursor: currentCursor,
+          divisionId: effectiveDivisionId,
+          limit: SUBMISSIONS_PAGE_SIZE,
+          problemId: selectedProblemId || undefined,
         },
       );
     },
@@ -229,7 +236,7 @@ function ContestSubmissionsContent({
 
   useEffect(() => {
     if (!isDocumentVisible) return;
-    if (!participantContest) return;
+    if (!participantContest && !isPreview) return;
 
     submissions
       .filter((submission) => {
@@ -275,6 +282,7 @@ function ContestSubmissionsContent({
     ensureParticipantSession,
     isDocumentVisible,
     participantContest,
+    isPreview,
     participantTeamId,
     queryClient,
     shouldUseParticipantScope,

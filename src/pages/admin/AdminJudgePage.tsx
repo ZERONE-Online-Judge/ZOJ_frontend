@@ -31,6 +31,7 @@ import type {
   AdminJudgeSubmissionEntry,
 } from '@/domains/auditMonitoring/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { contestStaffDisplayName } from '@/domains/identityAccess/staffDisplay';
 import {
   parseJudgeDetail,
   submissionProgressText,
@@ -755,8 +756,10 @@ function JudgeNodeLogsModal({
 function entryOwner(entry: AdminJudgeSubmissionEntry) {
   if (entry.submission.submission_kind === 'mock_judging') return '모의채점';
   if (entry.submission.submission_kind === 'operator_test') {
-    const name = entry.submission.submitted_by_name?.trim();
-    return name ? `운영자(${name})` : '운영자';
+    return contestStaffDisplayName(
+      entry.submission.submitted_by_name,
+      entry.submission.submitted_by_title,
+    );
   }
   return (
     entry.team?.team_name ??

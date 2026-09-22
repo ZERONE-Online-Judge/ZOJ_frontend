@@ -1,3 +1,4 @@
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
@@ -47,6 +48,10 @@ export default function ContestListItem({
   const isOperatorContest = generalSession?.operatorContests.some(
     (item) => item.contest.contest_id === contestId,
   );
+  const isPreviewContest = hasParticipantPreviewAccess(
+    generalSession,
+    contestId,
+  );
   const operatorHref = `/operator/contests/${encodeURIComponent(contestId)}`;
   const hasPublicReadableResource = publicResourceLabels.some((label) =>
     label.includes('비로그인 공개'),
@@ -54,12 +59,14 @@ export default function ContestListItem({
   const canOpenContest =
     !generalSession || isParticipantContest || isOperatorContest;
   const itemHref = canOpenContest
-    ? (href ??
-      (isOperatorContest
-        ? operatorHref
-        : generalSession || hasPublicReadableResource
-          ? contestHref
-          : loginHref))
+    ? isPreviewContest
+      ? contestHref
+      : (href ??
+        (isOperatorContest
+          ? operatorHref
+          : generalSession || hasPublicReadableResource
+            ? contestHref
+            : loginHref))
     : undefined;
   const canShowUnavailableMessage = canOpenContest && !itemHref;
 
@@ -76,7 +83,7 @@ export default function ContestListItem({
           {isOperatorContest ? (
             <span className="inline-flex h-7 items-center gap-2 rounded-full bg-indigo-50 px-3 text-xs font-black text-indigo-700">
               <span className="size-2 rounded-full bg-indigo-500" />
-              <span>운영</span>
+              <span>{isPreviewContest ? '참가자 미리보기' : '운영'}</span>
             </span>
           ) : null}
           <span className="inline-flex h-7 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-black text-slate-700">
@@ -194,7 +201,9 @@ export default function ContestListItem({
           ) : null}
         </button>
       ) : (
-        <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">{content}</div>
+        <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+          {content}
+        </div>
       )}
     </li>
   );

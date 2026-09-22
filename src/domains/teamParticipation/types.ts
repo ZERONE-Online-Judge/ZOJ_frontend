@@ -31,6 +31,7 @@ export type ParticipantTeam = {
 };
 
 export type ParticipantSession = {
+  isPreview?: boolean;
   accessToken: string;
   contestId: string;
   team: { team_name: string };
@@ -51,6 +52,7 @@ export type ParticipantOtpRequestResponse = {
 };
 
 export type ParticipantSessionApi = {
+  is_preview?: boolean;
   access_token: string;
   team: ParticipantSession['team'];
   member: ParticipantSession['member'];

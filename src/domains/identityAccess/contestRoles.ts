@@ -64,6 +64,12 @@ export const CONTEST_ROLES = [
     label: '검수진',
     description: '문제 모아보기에서 문제를 풀고 자신의 검수 코드를 제출합니다.',
   },
+  {
+    value: 'participant_preview',
+    label: '참가자 미리보기',
+    description:
+      '참가자 화면에서 대회 전 문제 풀이·제출·게시판을 점검합니다. 다른 권한과 함께 선택할 수 없습니다.',
+  },
 ] as const;
 
 export type ContestRole = (typeof CONTEST_ROLES)[number]['value'];
@@ -80,13 +86,21 @@ const roleScopes: Record<Exclude<ContestRole, 'master'>, string> = {
   audit_viewer: 'contest.audit.view',
   problem_author: 'contest.problem.manage',
   problem_reviewer: 'contest.problem.review',
+  participant_preview: 'contest.participant.preview',
 };
 
-export type ContestRoleTitle = '마스터' | '출제자' | '운영자' | '검수자';
+export type ContestRoleTitle =
+  | '마스터'
+  | '출제자'
+  | '운영자'
+  | '검수자'
+  | '참가자 미리보기';
 
 export function contestRoleTitle(
   roles: readonly ContestRole[],
 ): ContestRoleTitle | null {
+  if (roles.length === 1 && roles[0] === 'participant_preview')
+    return '참가자 미리보기';
   if (roles.includes('master')) return '마스터';
   if (roles.includes('problem_author')) return '출제자';
   if (roles.some((role) => role !== 'problem_reviewer')) return '운영자';
@@ -96,6 +110,8 @@ export function contestRoleTitle(
 export function contestRoleTitleForScopes(
   scopes: readonly string[],
 ): ContestRoleTitle | null {
+  if (scopes.length === 1 && scopes[0] === roleScopes.participant_preview)
+    return '참가자 미리보기';
   if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
     return '마스터';
   const authorScopes = [

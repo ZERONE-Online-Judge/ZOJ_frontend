@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { Problem } from '@/domains/problemManagement/types';
+import { contestStaffDisplayName } from '@/domains/identityAccess/staffDisplay';
 import { formatRelativeTime } from '@/shared/lib/dateTime';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 import ContestSubmissionResultBadge from '@/components/contest/submissions/ContestSubmissionResultBadge';
@@ -69,8 +70,10 @@ function submissionName(
 ) {
   if (submission.submission_kind === 'mock_judging') return '모의채점';
   if (isOperatorTestSubmission(submission)) {
-    const name = submission.submitted_by_name?.trim();
-    return name ? `운영자(${name})` : '운영자';
+    return contestStaffDisplayName(
+      submission.submitted_by_name,
+      submission.submitted_by_title,
+    );
   }
 
   return (

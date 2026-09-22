@@ -1,3 +1,4 @@
+import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { NavLink } from 'react-router-dom';
 import { contestCompactNavText, sharedUiText } from '@/data/uiText';
 import { contestAccessPhase } from '@/domains/contestAdministration/logic';
@@ -12,14 +13,14 @@ export default function ContestPageNavigation({
   contest,
   contestId,
 }: ContestPageNavigationProps) {
-  const isBeforeStart = contest
-    ? contestAccessPhase(contest) === 'before'
-    : false;
+  const { isPreview } = useContestParticipantSession(contestId);
+  const isBeforeStart =
+    !isPreview && contest ? contestAccessPhase(contest) === 'before' : false;
 
   return (
     <nav
       aria-label={sharedUiText.contestMenuAriaLabel}
-      className="mt-6 -mx-3 overflow-x-auto px-3 pb-1 sm:mt-8 sm:mx-0 sm:px-0"
+      className="-mx-3 mt-6 overflow-x-auto px-3 pb-1 sm:mx-0 sm:mt-8 sm:px-0"
     >
       <ul className="flex min-w-max items-center gap-2 sm:gap-3">
         {contestCompactNavText.map((tab) => {

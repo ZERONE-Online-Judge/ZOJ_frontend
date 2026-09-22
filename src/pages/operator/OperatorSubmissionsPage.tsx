@@ -18,6 +18,7 @@ import {
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { contestStaffDisplayName } from '@/domains/identityAccess/staffDisplay';
 import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
@@ -563,8 +564,10 @@ function submissionProblemLabel(
 function submissionOwner(submission: Submission) {
   if (isMockJudgingSubmission(submission)) return '모의채점';
   if (isOperatorTestSubmission(submission)) {
-    const name = submission.submitted_by_name?.trim();
-    return name ? `운영자(${name})` : '운영자';
+    return contestStaffDisplayName(
+      submission.submitted_by_name,
+      submission.submitted_by_title,
+    );
   }
   const teamName = submission.team_name ?? submission.team?.team_name ?? '';
   const memberName = submission.member_name ?? submission.member?.name ?? '';

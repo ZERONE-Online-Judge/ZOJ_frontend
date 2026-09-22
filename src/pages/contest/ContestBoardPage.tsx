@@ -19,6 +19,7 @@ import {
   participantSessionQueryIdentity,
 } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
+import { contestStaffDisplayName } from '@/domains/identityAccess/staffDisplay';
 import {
   createContestQuestionAnswer,
   createContestQuestion,
@@ -68,7 +69,11 @@ function questionAuthorContext(question: ContestQuestion) {
 }
 
 function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
-  if (answer.created_by_role === 'operator') return '운영자 답변';
+  if (answer.created_by_role === 'operator')
+    return contestStaffDisplayName(
+      answer.created_by_name,
+      answer.created_by_title,
+    );
 
   const name =
     answer.created_by_name ||
@@ -96,6 +101,7 @@ function ContestBoardContent({
   const queryClient = useQueryClient();
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -109,7 +115,7 @@ function ContestBoardContent({
   const requestedQuestionId = searchParams.get('questionId') ?? '';
   const noticeAccess = contestResourceAccess(contest, 'notice');
   const boardAccess = contestResourceAccess(contest, 'board');
-  const phase = contestAccessPhase(contest);
+  const phase = isPreview ? 'running' : contestAccessPhase(contest);
   const isEnded = phase === 'ended';
   const canViewNotices =
     !isEnded || canViewContestResource(contest, hasSessionAccess, noticeAccess);

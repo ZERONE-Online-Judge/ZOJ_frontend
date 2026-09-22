@@ -1,3 +1,4 @@
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import Modal from '@/shared/ui/Modal';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -101,6 +102,10 @@ export default function HeaderAuthControls({
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const accountEmail = generalSession?.account.email;
+  const previewContests =
+    generalSession?.operatorContests.filter((entry) =>
+      hasParticipantPreviewAccess(generalSession, entry.contest.contest_id),
+    ) ?? [];
   const participantContestSections = accountContestSections.map((section) => ({
     ...section,
     contests: sortContestsByRecentDate(
@@ -216,6 +221,28 @@ export default function HeaderAuthControls({
             </header>
 
             <div className="min-h-0 overflow-y-auto px-6 py-5">
+              {previewContests.length ? (
+                <section className="mb-6 grid gap-3" aria-label="미리보기 대회">
+                  <h3 className="text-base font-semibold text-slate-950">
+                    참가자 미리보기
+                  </h3>
+                  {previewContests.map(({ contest }) => (
+                    <Link
+                      key={contest.contest_id}
+                      className="grid gap-1 rounded-lg border border-amber-200 bg-amber-50 p-3"
+                      to={`/contests/${encodeURIComponent(contest.contest_id)}`}
+                      onClick={() => setIsAccountPanelOpen(false)}
+                    >
+                      <span className="text-sm font-semibold text-amber-950">
+                        {contest.title}
+                      </span>
+                      <span className="text-xs text-amber-800">
+                        유형을 선택해 참가자 화면 사전 점검
+                      </span>
+                    </Link>
+                  ))}
+                </section>
+              ) : null}
               <div className="grid gap-5">
                 <div className="grid gap-1">
                   <h3 className="text-base font-semibold text-slate-950">

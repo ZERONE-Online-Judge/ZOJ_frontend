@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useMatch, useNavigate } from 'react-router-dom';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { getParticipantPreview } from '@/domains/teamParticipation/api';
 import {
   getContestNotices,
   getContestQuestions,
@@ -162,6 +164,7 @@ export default function HeaderNotifications() {
   const {
     activeParticipantSession,
     ensureParticipantSession,
+    isPreview,
     participantContest,
     token,
   } = useContestParticipantSession(contestId);
@@ -169,8 +172,26 @@ export default function HeaderNotifications() {
   const [now, setNow] = useState(() => Date.now());
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const participantToken = activeParticipantSession?.accessToken ?? token;
+  const previewSelection = useQuery({
+    enabled: isPreview && Boolean(contestId && participantToken),
+    queryKey: [
+      'participant-preview',
+      contestId,
+      tokenQueryIdentity(participantToken),
+    ],
+    queryFn: () => getParticipantPreview(contestId, participantToken!),
+    refetchOnMount: 'always',
+    refetchInterval: 15_000,
+  });
+  const hasValidPreviewSelection =
+    previewSelection.isFetchedAfterMount &&
+    !previewSelection.error &&
+    previewSelection.data?.selected_division_id ===
+      activeParticipantSession?.division.division_id;
   const canPollContestNotifications = Boolean(
-    contestId && (participantContest || activeParticipantSession),
+    contestId &&
+    (participantContest || activeParticipantSession) &&
+    (!isPreview || hasValidPreviewSelection),
   );
   const participantTeamName =
     participantContest?.team.team_name ??

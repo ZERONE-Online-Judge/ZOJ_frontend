@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ContestAccessDeniedModal from '@/components/contest/ContestAccessDeniedModal';
 import { contestListItemText } from '@/data/uiText';
@@ -48,7 +49,11 @@ export default function ContestCard({
         (item) => item.contest.contest_id === contestId,
       )
     : true;
-  const canOpenContest = !generalSession || !contestId || isParticipantContest;
+  const isPreviewContest = Boolean(
+    contestId && hasParticipantPreviewAccess(generalSession, contestId),
+  );
+  const canOpenContest =
+    !generalSession || !contestId || isParticipantContest || isPreviewContest;
   const cardHref = canOpenContest
     ? (href ?? (generalSession ? contestHref : loginHref))
     : undefined;
@@ -66,6 +71,11 @@ export default function ContestCard({
   const cardContent = (
     <>
       <div className="mb-5 flex flex-wrap items-center gap-2">
+        {isPreviewContest ? (
+          <span className="rounded-full bg-amber-50 px-4 py-1.5 text-sm font-semibold text-amber-800">
+            참가자 미리보기
+          </span>
+        ) : null}
         {isParticipantContest ? (
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5">
             <span className="bg-zoj-blue size-2 rounded-full" />

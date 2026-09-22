@@ -4,9 +4,7 @@ import type {
   ParticipantSession,
 } from '@/domains/teamParticipation/types';
 
-export function generalSessionQueryIdentity(
-  session?: GeneralSession | null,
-) {
+export function generalSessionQueryIdentity(session?: GeneralSession | null) {
   return session ? `account:${session.account.email}` : undefined;
 }
 
@@ -16,7 +14,7 @@ export function participantSessionQueryIdentity(
 ) {
   if (session) {
     return [
-      'participant',
+      session.isPreview ? 'participant-preview' : 'participant',
       session.contestId,
       session.team.team_name,
       session.member.email,

@@ -114,7 +114,7 @@ function MockJudgeResult({
 
   if (!result) return null;
   const hasProgress = typeof result.progress_percent === 'number';
-  const progress = hasProgress ? result.progress_percent ?? 0 : 100;
+  const progress = hasProgress ? (result.progress_percent ?? 0) : 100;
   const queueText =
     result.status === 'waiting' && typeof result.queue_position === 'number'
       ? `큐 ${result.queue_position}번째`
@@ -122,7 +122,9 @@ function MockJudgeResult({
   const done = !judgingStatuses.has(result.status);
   const pendingText =
     queueText ||
-    (hasProgress ? `${progress}%` : `${statusLabels[result.status] ?? result.status} ${elapsedSeconds}초`);
+    (hasProgress
+      ? `${progress}%`
+      : `${statusLabels[result.status] ?? result.status} ${elapsedSeconds}초`);
   return (
     <div className="rounded border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
@@ -188,24 +190,21 @@ function ContestProblemDetailContent({
   const selectedSubmissionId = searchParams.get('submissionId');
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
-  } =
-    useContestParticipantSession(contestId);
+  } = useContestParticipantSession(contestId);
   const problemAccess = contestResourceAccess(contest, 'problem');
   const editorialAccess = contestResourceAccess(contest, 'editorial');
-  const accessPhase = contestAccessPhase(contest);
+  const accessPhase = isPreview ? 'running' : contestAccessPhase(contest);
   const hasSessionAccess = Boolean(
     participantContest || activeParticipantSession,
   );
-  const canViewProblem = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    problemAccess,
-  );
-  const shouldUseParticipantScope =
-    hasSessionAccess && accessPhase !== 'ended';
+  const canViewProblem =
+    isPreview ||
+    canViewContestResource(contest, hasSessionAccess, problemAccess);
+  const shouldUseParticipantScope = hasSessionAccess && accessPhase !== 'ended';
   const shouldUseParticipantAuth =
     hasSessionAccess &&
     accessPhase === 'ended' &&
@@ -255,13 +254,15 @@ function ContestProblemDetailContent({
       contestId,
       problemId,
       generalQueryIdentity,
-      activeParticipantSession?.contestId ?? participantContest?.contest.contest_id,
+      activeParticipantSession?.contestId ??
+        participantContest?.contest.contest_id,
       participantQueryIdentity,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
 
       return getContestProblem(
         contestId,
@@ -280,16 +281,18 @@ function ContestProblemDetailContent({
       problemId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope || shouldUseParticipantAuth
         ? participantQueryIdentity
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
 
       return getContestProblemAssets(
         contestId,
@@ -300,11 +303,11 @@ function ContestProblemDetailContent({
   });
   const problemAssets = problemAssetsQuery.data ?? [];
   const selectedDivisionId = shouldUseParticipantScope
-    ? activeParticipantSession?.division.division_id ?? ''
-    : searchParams.get('divisionId') ??
+    ? (activeParticipantSession?.division.division_id ?? '')
+    : (searchParams.get('divisionId') ??
       problem?.division_id ??
       divisions[0]?.division_id ??
-      '';
+      '');
   const showDivisionSelectInSidebar =
     !shouldUseParticipantScope && divisions.length > 1;
 
@@ -317,7 +320,8 @@ function ContestProblemDetailContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       selectedDivisionId,
       shouldUseParticipantScope || shouldUseParticipantAuth
@@ -325,9 +329,10 @@ function ContestProblemDetailContent({
         : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
@@ -372,10 +377,9 @@ function ContestProblemDetailContent({
     currentParams.set('divisionId', nextDivisionId);
     currentParams.delete('submissionId');
     const suffix = currentParams.toString();
-    navigate(
-      `${location.pathname}${suffix ? `?${suffix}` : ''}`,
-      { replace: false },
-    );
+    navigate(`${location.pathname}${suffix ? `?${suffix}` : ''}`, {
+      replace: false,
+    });
   }
 
   useEffect(() => {
@@ -411,7 +415,8 @@ function ContestProblemDetailContent({
       selectedSubmissionId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope || shouldUseParticipantAuth
         ? participantQueryIdentity
@@ -534,7 +539,12 @@ function ContestProblemDetailContent({
         [activeDraftKey]: submissionLanguage,
       }));
     }
-  }, [activeDraftKey, activeDraftScope, selectedSubmission, selectedSubmissionId]);
+  }, [
+    activeDraftKey,
+    activeDraftScope,
+    selectedSubmission,
+    selectedSubmissionId,
+  ]);
 
   function handleLanguageChange(nextLanguage: JudgeLanguage) {
     setLastJudgeLanguage(nextLanguage);
@@ -714,7 +724,7 @@ function ContestProblemDetailContent({
 
       <ContestPageNavigation contest={contest} contestId={contestId} />
 
-      <section className="mb-5 mt-6 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:mb-7 sm:mt-7 sm:px-5">
+      <section className="mt-6 mb-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:mt-7 sm:mb-7 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-black text-slate-800">문제 보기</span>
           <span className="text-xs font-bold text-slate-400">
@@ -761,7 +771,9 @@ function ContestProblemDetailContent({
             contestId={contestId}
             divisions={divisions}
             onDivisionChange={
-              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+              showDivisionSelectInSidebar
+                ? handleSidebarDivisionChange
+                : undefined
             }
             problems={problems}
             selectedDivisionId={selectedDivisionId}
@@ -769,7 +781,9 @@ function ContestProblemDetailContent({
           />
           <ProblemStatementPanel assets={problemAssets} problem={problem} />
           <ProblemSubmitPanel
-            isSubmitting={submitMutation.isPending || mockSubmitMutation.isPending}
+            isSubmitting={
+              submitMutation.isPending || mockSubmitMutation.isPending
+            }
             language={activeLanguage}
             message={submitFeedback.message}
             messageStatus={submitFeedback.status}
@@ -787,14 +801,18 @@ function ContestProblemDetailContent({
         </section>
       ) : null}
 
-      {problem && (effectiveView === 'problem' || (effectiveView === 'combined' && !canShowSubmit)) ? (
+      {problem &&
+      (effectiveView === 'problem' ||
+        (effectiveView === 'combined' && !canShowSubmit)) ? (
         <section className="grid min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white xl:min-h-[760px] xl:grid-cols-[14rem_minmax(0,1fr)]">
           <ProblemSidebar
             activeProblemId={activeProblemId}
             contestId={contestId}
             divisions={divisions}
             onDivisionChange={
-              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+              showDivisionSelectInSidebar
+                ? handleSidebarDivisionChange
+                : undefined
             }
             problems={problems}
             selectedDivisionId={selectedDivisionId}
@@ -812,7 +830,9 @@ function ContestProblemDetailContent({
             contestId={contestId}
             divisions={divisions}
             onDivisionChange={
-              showDivisionSelectInSidebar ? handleSidebarDivisionChange : undefined
+              showDivisionSelectInSidebar
+                ? handleSidebarDivisionChange
+                : undefined
             }
             problems={problems}
             selectedDivisionId={selectedDivisionId}
@@ -828,7 +848,9 @@ function ContestProblemDetailContent({
           <ProblemSubmitPanel
             canSubmit={canSubmitActiveDraft}
             editorHeight={560}
-            isSubmitting={submitMutation.isPending || mockSubmitMutation.isPending}
+            isSubmitting={
+              submitMutation.isPending || mockSubmitMutation.isPending
+            }
             language={activeLanguage}
             layout="standalone"
             message={submitPanelMessage}

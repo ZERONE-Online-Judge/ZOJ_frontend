@@ -1,3 +1,4 @@
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import Modal from '@/shared/ui/Modal';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -131,6 +132,7 @@ function postLoginRedirectPath(
 
   if (
     targetContestId &&
+    !hasParticipantPreviewAccess(session, targetContestId) &&
     !isParticipantContest &&
     (isOperatorContest || isServiceMaster(session))
   ) {

@@ -258,6 +258,7 @@ function ContestOverviewContent({
 }) {
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -282,6 +283,7 @@ function ContestOverviewContent({
     participantContest,
   );
   const canViewNotices =
+    isPreview ||
     contestAccessPhase(contest) !== 'ended' ||
     canViewContestResource(contest, hasParticipantAccess, noticeAccess);
   const noticesQuery = useQuery({

@@ -257,6 +257,27 @@ test('new operator requires name and roles, allows multiple roles, and treats ma
   assert.equal(inputByLabel('이름 (필수)').value, '');
 });
 
+test('participant preview is exclusive in both selection directions and saves as its own role', async () => {
+  await render();
+  await input(inputByLabel('이메일 (필수)'), 'preview@example.test');
+  await input(inputByLabel('이름 (필수)'), '참가자 화면 검수자');
+  await click(role('출제진'));
+  await click(role('공지 작성'));
+  await click(role('참가자 미리보기'));
+  assert.equal(role('출제진').checked, false);
+  assert.equal(role('공지 작성').checked, false);
+  await click(role('대회 마스터'));
+  assert.equal(role('참가자 미리보기').checked, false);
+  await click(role('참가자 미리보기'));
+  assert.equal(role('대회 마스터').checked, false);
+  await click(role('검수진'));
+  assert.equal(role('참가자 미리보기').checked, false);
+  await click(role('참가자 미리보기'));
+  assert.equal(role('검수진').checked, false);
+  await click(button('운영자 추가'));
+  assert.deepEqual(creates[0].body.roles, ['participant_preview']);
+});
+
 test('notice, board, and audit roles can be selected independently and saved together', async () => {
   await render();
   await input(inputByLabel('이메일 (필수)'), 'operations@example.test');
@@ -293,6 +314,10 @@ test('operator list shows one prioritized title beside each name while retaining
       display_name: '문제 검수자',
     },
     {
+      ...staff('preview@example.test', ['participant_preview']),
+      display_name: '미리보기 계정',
+    },
+    {
       ...staff('legacy@example.test', []),
       display_name: '기존 운영자',
       contest_scopes: { contest: ['contest.notice.create'] },
@@ -304,6 +329,7 @@ test('operator list shows one prioritized title beside each name while retaining
     ['author@example.test', '손동열 / 출제자'],
     ['operations@example.test', '운영 담당자 / 운영자'],
     ['reviewer@example.test', '문제 검수자 / 검수자'],
+    ['preview@example.test', '미리보기 계정 / 참가자 미리보기'],
     ['legacy@example.test', '기존 운영자 / 운영자'],
   ])
     assert.equal(
@@ -346,6 +372,7 @@ test('staff manager sees staff controls only and cannot assign or edit masters',
   assert.ok(button('운영자 추가'));
   assert.ok(reads > 0);
   assert.equal(role('대회 마스터'), undefined);
+  assert.ok(role('참가자 미리보기'));
   assert.equal(
     operatorCard('assigned@example.test').querySelector('button'),
     null,
@@ -408,9 +435,25 @@ for (const [label, scope, page, suffix] of [
     OperatorsPage,
     'operators',
   ],
+  [
+    'participant preview cannot open settings',
+    'contest.participant.preview',
+    SettingsPage,
+    'settings',
+  ],
+  [
+    'participant preview cannot open operators',
+    'contest.participant.preview',
+    OperatorsPage,
+    'operators',
+  ],
 ]) {
   test(`${label} or fetch operator accounts by direct URL`, async () => {
-    setActor(['contest.view', scope]);
+    setActor(
+      scope === 'contest.participant.preview'
+        ? [scope]
+        : ['contest.view', scope],
+    );
     await render(page, suffix);
     assert.equal(button('운영자 추가'), undefined);
     assert.equal(button('설정 저장'), undefined);

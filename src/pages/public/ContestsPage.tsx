@@ -1,3 +1,4 @@
+import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import PageLayout from '@/components/common/PageLayout';
@@ -91,7 +92,13 @@ export default function ContestsPage() {
   for (const contest of contestsQuery.data ?? []) {
     contestById.set(contest.contest_id, contest);
   }
-  for (const contest of operatorContests) {
+  const previewContests =
+    generalSession?.operatorContests
+      .filter((entry) =>
+        hasParticipantPreviewAccess(generalSession, entry.contest.contest_id),
+      )
+      .map((entry) => entry.contest) ?? [];
+  for (const contest of [...operatorContests, ...previewContests]) {
     contestById.set(contest.contest_id, contest);
   }
   const contests = sortContestsByRecentDate([...contestById.values()]);
@@ -101,7 +108,9 @@ export default function ContestsPage() {
     ) ?? [],
   );
   const operatorContestIds = new Set(
-    operatorContests.map((contest) => contest.contest_id),
+    [...operatorContests, ...previewContests].map(
+      (contest) => contest.contest_id,
+    ),
   );
   const canOperateAllContests = Boolean(
     generalSession && isServiceMaster(generalSession),

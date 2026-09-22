@@ -23,9 +23,14 @@ export default function ContestRoleSelector({
       return;
     }
     onChange(
-      role === 'master'
-        ? ['master']
-        : [...value.filter((item) => item !== 'master'), role],
+      role === 'master' || role === 'participant_preview'
+        ? [role]
+        : [
+            ...value.filter(
+              (item) => item !== 'master' && item !== 'participant_preview',
+            ),
+            role,
+          ],
     );
   }
 
@@ -39,7 +44,7 @@ export default function ContestRoleSelector({
         권한 (필수)
       </legend>
       <p id={helpId} className="text-xs leading-5 text-slate-500">
-        담당할 권한을 하나 이상 선택하세요. 대회 마스터는 모든 권한을 가지며
+        담당할 권한을 하나 이상 선택하세요. 대회 마스터와 참가자 미리보기는 각각
         단독으로 선택합니다. 나머지 권한은 함께 선택할 수 있습니다.
         {!canAssignMaster
           ? ' 대회 마스터 권한은 마스터만 부여할 수 있습니다.'

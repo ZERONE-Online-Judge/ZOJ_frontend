@@ -41,6 +41,7 @@ function ContestScoreboardContent({
   const isDocumentVisible = useDocumentVisibility();
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -53,7 +54,7 @@ function ContestScoreboardContent({
   );
   const scoreboardAccess = contestResourceAccess(contest, 'scoreboard');
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const phase = contestAccessPhase(contest);
+  const phase = isPreview ? 'running' : contestAccessPhase(contest);
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
@@ -73,11 +74,13 @@ function ContestScoreboardContent({
     ? activeParticipantSession?.division.division_id
     : selectedPublicDivisionId;
   const canViewScoreboard =
-    canViewContestResource(contest, hasSessionAccess, scoreboardAccess) &&
-    !isBeforeStart;
+    isPreview ||
+    (canViewContestResource(contest, hasSessionAccess, scoreboardAccess) &&
+      !isBeforeStart);
   const canViewProblems =
-    canViewContestResource(contest, hasSessionAccess, problemAccess) &&
-    !isBeforeStart;
+    isPreview ||
+    (canViewContestResource(contest, hasSessionAccess, problemAccess) &&
+      !isBeforeStart);
   const generalQueryIdentity = generalSessionQueryIdentity(generalSession);
   const participantQueryIdentity = participantSessionQueryIdentity(
     activeParticipantSession,

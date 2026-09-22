@@ -72,6 +72,7 @@ function ContestProblemsContent({
 }) {
   const {
     activeParticipantSession,
+    isPreview,
     ensureParticipantSession,
     generalSession,
     participantContest,
@@ -80,19 +81,15 @@ function ContestProblemsContent({
     participantContest || activeParticipantSession,
   );
   const problemAccess = contestResourceAccess(contest, 'problem');
-  const phase = contestAccessPhase(contest);
+  const phase = isPreview ? 'running' : contestAccessPhase(contest);
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
   const selectedPublicDivisionId =
     publicDivisionId || divisions[0]?.division_id || '';
-  const shouldUseParticipantScope =
-    hasSessionAccess &&
-    !isEnded;
+  const shouldUseParticipantScope = hasSessionAccess && !isEnded;
   const shouldUseParticipantAuth =
-    isEnded &&
-    hasSessionAccess &&
-    problemAccess !== 'private';
+    isEnded && hasSessionAccess && problemAccess !== 'private';
   const shouldShowDivisionSelect =
     !shouldUseParticipantScope && divisions.length > 1;
   const effectiveDivisionId = shouldUseParticipantScope
@@ -103,11 +100,10 @@ function ContestProblemsContent({
     activeParticipantSession,
     participantContest,
   );
-  const canViewProblems = canViewContestResource(
-    contest,
-    hasSessionAccess,
-    problemAccess,
-  ) && !isBeforeStart;
+  const canViewProblems =
+    isPreview ||
+    (canViewContestResource(contest, hasSessionAccess, problemAccess) &&
+      !isBeforeStart);
 
   useEffect(() => {
     if (
@@ -124,21 +120,24 @@ function ContestProblemsContent({
       contestId,
       generalQueryIdentity,
       shouldUseParticipantScope
-        ? activeParticipantSession?.contestId ?? participantContest?.contest.contest_id
+        ? (activeParticipantSession?.contestId ??
+            participantContest?.contest.contest_id)
         : undefined,
       shouldUseParticipantScope
-        ? activeParticipantSession?.division.division_id ?? participantContest?.division.division_id
+        ? (activeParticipantSession?.division.division_id ??
+            participantContest?.division.division_id)
         : effectiveDivisionId,
       shouldUseParticipantScope
         ? participantQueryIdentity
         : shouldUseParticipantAuth
           ? participantQueryIdentity
-        : undefined,
+          : undefined,
     ),
     queryFn: async () => {
-      const session = shouldUseParticipantScope || shouldUseParticipantAuth
-        ? await ensureParticipantSession()
-        : null;
+      const session =
+        shouldUseParticipantScope || shouldUseParticipantAuth
+          ? await ensureParticipantSession()
+          : null;
       if (session && shouldUseParticipantScope) {
         return getDivisionProblems(
           contestId,
@@ -211,9 +210,7 @@ function ContestProblemsContent({
 
         {canViewProblems ? (
           <div className="overflow-x-auto border border-slate-200 bg-white">
-            <table
-              className="w-full min-w-[800px] border-collapse text-left text-sm"
-            >
+            <table className="w-full min-w-[800px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-xs font-black text-slate-950">
                   <th className="w-24 px-6 py-4">문제 번호</th>

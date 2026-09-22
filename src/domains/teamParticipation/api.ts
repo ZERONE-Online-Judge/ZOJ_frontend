@@ -1,6 +1,5 @@
-import {
-  saveParticipantSession,
-} from '@/domains/identityAccess/sessionStorage';
+import type { PublicContestDetail } from '@/domains/contestAdministration/types';
+import { saveParticipantSession } from '@/domains/identityAccess/sessionStorage';
 import type {
   ParticipantBulkImportResponse,
   ParticipantOtpRequestResponse,
@@ -16,7 +15,8 @@ import { ApiClientError, formatApiError } from '@/shared/api/errors';
 
 export function formatParticipantTeamError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) {
-    const field = typeof error.details?.field === 'string' ? error.details.field : '';
+    const field =
+      typeof error.details?.field === 'string' ? error.details.field : '';
     if (error.code === 'validation_error' && field === 'email_conflict') {
       const email = emailFromConflictMessage(error.message);
       if (error.message.startsWith('participant email already registered:')) {
@@ -24,7 +24,11 @@ export function formatParticipantTeamError(error: unknown, fallback: string) {
           ? `${email}은 이미 다른 참가팀의 팀장/팀원으로 등록된 이메일입니다.`
           : '이미 다른 참가팀의 팀장/팀원으로 등록된 이메일이 있습니다.';
       }
-      if (error.message.startsWith('participant email cannot be operator/staff account:')) {
+      if (
+        error.message.startsWith(
+          'participant email cannot be operator/staff account:',
+        )
+      ) {
         return email
           ? `${email}은 운영자 또는 서비스 관리자 계정이라 참가팀으로 등록할 수 없습니다.`
           : '운영자 또는 서비스 관리자 계정 이메일은 참가팀으로 등록할 수 없습니다.';
@@ -43,9 +47,13 @@ function emailFromConflictMessage(message: string) {
   return value.trim();
 }
 
-function toParticipantSession(contestId: string, data: ParticipantSessionApi): ParticipantSession {
+function toParticipantSession(
+  contestId: string,
+  data: ParticipantSessionApi,
+): ParticipantSession {
   return {
     accessToken: data.access_token,
+    isPreview: data.is_preview === true,
     contestId,
     team: data.team,
     member: data.member,
@@ -87,7 +95,10 @@ export async function verifyParticipantOtp(
   return session;
 }
 
-export async function createParticipantSessionFromGeneralToken(contestId: string, generalToken: string) {
+export async function createParticipantSessionFromGeneralToken(
+  contestId: string,
+  generalToken: string,
+) {
   const data = await apiRequest<ParticipantSessionApi>(
     `/auth/general/contests/${contestId}/participant-session`,
     generalToken,
@@ -98,15 +109,43 @@ export async function createParticipantSessionFromGeneralToken(contestId: string
   return session;
 }
 
-export function getParticipantSessionMe(contestId: string, participantToken: string) {
-  return apiRequest<Omit<ParticipantSessionApi, 'access_token' | 'workspace_path'>>(
-    `/contests/${contestId}/participant-session/me`,
-    participantToken,
+export function getParticipantPreview(contestId: string, token: string) {
+  return apiRequest<
+    PublicContestDetail & { selected_division_id: string | null }
+  >(`/auth/general/contests/${contestId}/participant-preview`, token);
+}
+
+export async function createParticipantPreviewSession(
+  contestId: string,
+  token: string,
+  divisionId: string,
+) {
+  const data = await apiRequest<ParticipantSessionApi>(
+    `/auth/general/contests/${contestId}/participant-preview-session`,
+    token,
+    { method: 'POST', body: JSON.stringify({ division_id: divisionId }) },
   );
+  if (!data.is_preview)
+    throw new Error('참가자 미리보기 세션을 확인하지 못했습니다.');
+  const session = toParticipantSession(contestId, data);
+  saveParticipantSession(session);
+  return session;
+}
+
+export function getParticipantSessionMe(
+  contestId: string,
+  participantToken: string,
+) {
+  return apiRequest<
+    Omit<ParticipantSessionApi, 'access_token' | 'workspace_path'>
+  >(`/contests/${contestId}/participant-session/me`, participantToken);
 }
 
 export function listParticipantTeams(contestId: string, token: string) {
-  return apiRequest<ParticipantTeam[]>(`/operator/contests/${contestId}/participants`, token);
+  return apiRequest<ParticipantTeam[]>(
+    `/operator/contests/${contestId}/participants`,
+    token,
+  );
 }
 
 export function createParticipantTeam(
@@ -119,13 +158,21 @@ export function createParticipantTeam(
     members?: TeamMemberDraft[];
   },
 ) {
-  return apiRequest<ParticipantTeam>(`/operator/contests/${contestId}/participants`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<ParticipantTeam>(
+    `/operator/contests/${contestId}/participants`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
-export function bulkCreateParticipantTeams(contestId: string, token: string, teams: TeamImportRow[]) {
+export function bulkCreateParticipantTeams(
+  contestId: string,
+  token: string,
+  teams: TeamImportRow[],
+) {
   return apiRequest<ParticipantBulkImportResponse>(
     `/operator/contests/${contestId}/participants:bulk-create`,
     token,
