@@ -9,6 +9,9 @@ const AdminAuditLogsPage = lazy(
 const AdminInquiriesPage = lazy(
   () => import('@/pages/admin/AdminInquiriesPage'),
 );
+const AdminAnalyticsPage = lazy(
+  () => import('@/pages/admin/AdminAnalyticsPage'),
+);
 const AdminJudgePage = lazy(() => import('@/pages/admin/AdminJudgePage'));
 const ContestBoardPage = lazy(() => import('@/pages/contest/ContestBoardPage'));
 const ContestOverviewPage = lazy(
@@ -280,6 +283,13 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.adminJudge,
     path: '/admin/judge',
     Component: AdminJudgePage,
+    showInNavigation: false,
+  },
+  {
+    access: 'admin',
+    name: '운영 통계',
+    path: '/admin/analytics',
+    Component: AdminAnalyticsPage,
     showInNavigation: false,
   },
   {

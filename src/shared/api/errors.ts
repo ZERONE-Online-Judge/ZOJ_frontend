@@ -79,6 +79,8 @@ function apiErrorUserMessage(error: ApiClientError) {
     return '대회가 진행 중이라 문제 내용, 제한 시간, 테스트케이스처럼 채점 결과가 바뀔 수 있는 항목은 수정할 수 없습니다. 대회 종료 후 다시 시도해 주세요.';
   }
 
+  if (error.code === 'invalid_analytics_period') return error.message;
+
   if (error.code === 'validation_error') {
     return '입력한 값을 다시 확인해 주세요.';
   }

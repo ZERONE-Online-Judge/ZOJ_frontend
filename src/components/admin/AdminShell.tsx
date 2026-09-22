@@ -38,6 +38,7 @@ const adminTabs = [
     icon: ContestIcon,
   },
   { label: routeText.adminJudge, path: '/admin/judge', icon: JudgeIcon },
+  { label: '운영 통계', path: '/admin/analytics', icon: AnalyticsIcon },
   {
     label: routeText.adminAuditLogs,
     path: '/admin/audit-logs',
@@ -245,6 +246,20 @@ export function NoticeIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.7"
+      />
+    </svg>
+  );
+}
+
+export function AnalyticsIcon() {
+  return (
+    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 20 20">
+      <path
+        d="M3 3v14h14M6 13V9m4 4V5m4 8V7"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

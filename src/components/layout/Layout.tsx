@@ -1,3 +1,4 @@
+import useUsageTracking from '@/domains/usageAnalytics/useUsageTracking';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import Footer from '@/components/layout/Footer';
@@ -10,6 +11,7 @@ type LayoutProps = {
 
 export default function Layout({ children }: LayoutProps) {
   const { pathname } = useLocation();
+  useUsageTracking();
   if (
     /^\/operator\/contests\/[^/]+\/scoreboard\/presentation\/?$/.test(pathname)
   ) {
