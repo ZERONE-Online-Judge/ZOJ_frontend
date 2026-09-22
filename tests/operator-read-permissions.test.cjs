@@ -56,7 +56,7 @@ const submission = {
   memory_kb: 1024,
   failed_testcase_order: 2,
 };
-let session, reads, location;
+let session, reads, location, submissionItems;
 function withScopes(scopes) {
   return {
     account: { email: 'staff@test' },
@@ -151,14 +151,14 @@ const mocks = {
     listOperatorSubmissionsPage: async (contestId, token, filters) => {
       record('submissions', { contestId, token, filters });
       return {
-        data: [submission],
+        data: submissionItems,
         page: { total_count: 1, current_cursor: null, next_cursor: null },
       };
     },
     getOperatorSubmission: async (contestId, submissionId, token) => {
       record('detail', { contestId, submissionId, token });
       return {
-        ...submission,
+        ...submissionItems.find((item) => item.submission_id === submissionId),
         source_code: 'int main() { return 0; }',
         compile_message: '컴파일 성공',
         judge_message:
@@ -250,6 +250,7 @@ beforeEach(() => {
     'contest.submission.source.view',
   ]);
   reads = [];
+  submissionItems = [submission];
   location = '';
   document.body.innerHTML = '';
   window.localStorage.clear();
@@ -344,7 +345,7 @@ test('submission viewers use safe filter labels and inspect source/results witho
   await input(selects[2], 'team');
   assert.deepEqual(requests('submissions').at(-1).filters, {
     cursor: undefined,
-    divisionId: 'division',
+    divisionId: undefined,
     limit: 20,
     problemId: 'problem',
     teamId: 'team',
@@ -518,3 +519,69 @@ for (const [scopes, expectedLinks] of [
     }
   });
 }
+
+test('all submissions clears persisted filters and identifies review and preview owners', async () => {
+  window.localStorage.setItem(
+    'zoj.operator.submissions.division.contest',
+    'division',
+  );
+  window.localStorage.setItem(
+    'zoj.operator.submissions.problem.contest',
+    'problem',
+  );
+  window.localStorage.setItem('zoj.operator.submissions.team.contest', 'team');
+  submissionItems = [
+    {
+      ...submission,
+      submission_id: 'preview-one',
+      participant_team_id: null,
+      team_name: null,
+      member_name: null,
+      submission_kind: 'participant_preview',
+      submitted_by_name: '미리보기 담당',
+      submitted_by_title: '참가자 미리보기',
+    },
+    {
+      ...submission,
+      submission_id: 'review-one',
+      participant_team_id: null,
+      team_name: null,
+      member_name: null,
+      submission_kind: 'operator_test',
+      submitted_by_name: '검수 담당',
+      submitted_by_title: '검수자',
+    },
+  ];
+  await render(SubmissionsPage, '/submissions');
+  await click(button('전체 제출 보기'));
+  assert.deepEqual(requests('submissions').at(-1).filters, {
+    cursor: undefined,
+    divisionId: undefined,
+    limit: 20,
+    problemId: undefined,
+    teamId: undefined,
+  });
+  for (const field of ['division', 'problem', 'team']) {
+    assert.equal(
+      window.localStorage.getItem(`zoj.operator.submissions.${field}.contest`),
+      '',
+    );
+  }
+  assert.equal(container.querySelector('select').value, '');
+  assert.ok(button('미리보기 담당 / 참가자 미리보기'));
+  assert.ok(button('검수 담당 / 검수자'));
+  assert.match(
+    container.querySelector('tbody').textContent,
+    /문제 검수·테스트/,
+  );
+  await click(button('미리보기 담당 / 참가자 미리보기'));
+  const owner = document.querySelector('dialog[aria-label="팀 정보"]');
+  assert.match(owner.textContent, /참가자 미리보기 화면에서 생성한 제출/);
+  assert.doesNotMatch(owner.textContent, /팀장|팀원/);
+  await click(button('닫기', owner));
+  await click(button('보기'));
+  const detail = document.querySelector('dialog[aria-label="제출 상세"]');
+  assert.match(detail.textContent, /제출 구분참가자 미리보기/);
+  assert.match(detail.textContent, /int main/);
+  assert.equal(requests('participants').length, 0);
+});

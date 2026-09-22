@@ -162,7 +162,6 @@ function OperatorSubmissionsContent({
     queryFn: () => getOperatorSubmissionFilters(contestId, token),
   });
   const submissionsQuery = useQuery({
-    enabled: Boolean(divisionId),
     queryKey: [
       'operator',
       'submissions',
@@ -176,7 +175,7 @@ function OperatorSubmissionsContent({
     queryFn: () =>
       listOperatorSubmissionsPage(contestId, token, {
         cursor: currentCursor,
-        divisionId,
+        divisionId: divisionId || undefined,
         limit: SUBMISSIONS_PAGE_SIZE,
         problemId: problemId || undefined,
         teamId: teamId || undefined,
@@ -218,10 +217,10 @@ function OperatorSubmissionsContent({
   useEffect(() => {
     if (!divisions.length) return;
     if (
-      !divisionId ||
+      divisionId &&
       !divisions.some((division) => division.division_id === divisionId)
     ) {
-      const nextDivisionId = divisions[0].division_id;
+      const nextDivisionId = '';
       setDivisionId(nextDivisionId);
       writeStoredValue(divisionStorageKey, nextDivisionId);
       setCursorStack([]);
@@ -388,6 +387,21 @@ function OperatorSubmissionsContent({
       <OperatorPanel
         actions={
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="h-10 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+              onClick={() => {
+                setDivisionId('');
+                setProblemId('');
+                setTeamId('');
+                setCursorStack([]);
+                writeStoredValue(divisionStorageKey, '');
+                writeStoredValue(problemStorageKey, '');
+                writeStoredValue(teamStorageKey, '');
+              }}
+            >
+              전체 제출 보기
+            </button>
             <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               유형
               <select
@@ -404,6 +418,7 @@ function OperatorSubmissionsContent({
                 }}
                 value={divisionId}
               >
+                <option value="">전체 유형</option>
                 {divisions.map((division) => (
                   <option
                     key={division.division_id}
@@ -459,7 +474,7 @@ function OperatorSubmissionsContent({
             </label>
           </div>
         }
-        description="제출 상세에서 소스, 컴파일 로그, 실패 케이스 입출력을 확인합니다."
+        description="참가자 제출, 문제 검수·테스트, 참가자 미리보기 채점을 함께 표시합니다. 팀을 선택하면 해당 참가 팀의 제출만 표시됩니다."
         title="제출 목록"
       >
         <OperatorSubmissionsTable
@@ -535,6 +550,17 @@ function isOperatorTestSubmission(submission: Submission) {
   );
 }
 
+function isParticipantPreviewSubmission(submission: Submission) {
+  return submission.submission_kind === 'participant_preview';
+}
+
+function submissionKindLabel(submission: Submission) {
+  if (isParticipantPreviewSubmission(submission)) return '참가자 미리보기';
+  if (isOperatorTestSubmission(submission)) return '문제 검수·테스트';
+  if (isMockJudgingSubmission(submission)) return '모의채점';
+  return '참가자 제출';
+}
+
 function isMockJudgingSubmission(submission: Submission) {
   return submission.submission_kind === 'mock_judging';
 }
@@ -563,7 +589,10 @@ function submissionProblemLabel(
 
 function submissionOwner(submission: Submission) {
   if (isMockJudgingSubmission(submission)) return '모의채점';
-  if (isOperatorTestSubmission(submission)) {
+  if (
+    isOperatorTestSubmission(submission) ||
+    isParticipantPreviewSubmission(submission)
+  ) {
     return contestStaffDisplayName(
       submission.submitted_by_name,
       submission.submitted_by_title,
@@ -656,6 +685,9 @@ function OperatorSubmissionsTable({
                   >
                     {submissionOwner(submission)}
                   </button>
+                  <span className="mt-1.5 block w-fit rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-500">
+                    {submissionKindLabel(submission)}
+                  </span>
                 </td>
                 <td className={`${cellClass} font-medium`}>
                   {problem &&
@@ -831,6 +863,7 @@ function TeamDetailModal({
 }) {
   const isOperatorTest = isOperatorTestSubmission(submission);
   const isMockJudging = isMockJudgingSubmission(submission);
+  const isPreview = isParticipantPreviewSubmission(submission);
   const members = team?.members ?? [];
   const leader = members.find((member) => member.role === 'leader');
 
@@ -855,11 +888,13 @@ function TeamDetailModal({
           </button>
         </header>
         <div className="min-h-0 overflow-y-auto p-5">
-          {isOperatorTest || isMockJudging ? (
+          {isOperatorTest || isMockJudging || isPreview ? (
             <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-medium text-indigo-700">
-              {isMockJudging
-                ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
-                : '운영자가 문제 검증을 위해 생성한 테스트 제출입니다.'}
+              {isPreview
+                ? '참가자 미리보기 화면에서 생성한 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'
+                : isMockJudging
+                  ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
+                  : '문제 모아보기 또는 문제 관리에서 생성한 검수·테스트 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'}
             </p>
           ) : (
             <div className="grid gap-5">
@@ -983,6 +1018,10 @@ function SubmissionDetailModal({
                 <DetailCard
                   label="결과"
                   value={submissionStatusLabel(submission.status)}
+                />
+                <DetailCard
+                  label="제출 구분"
+                  value={submissionKindLabel(submission)}
                 />
                 <DetailCard label="언어" value={String(submission.language)} />
                 <DetailCard

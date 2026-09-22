@@ -29,7 +29,12 @@ export type Submission = {
   queue_position?: number | null;
   participant_team_id?: string;
   team_member_id?: string;
-  submission_kind?: 'participant' | 'operator_test' | 'mock_judging' | string;
+  submission_kind?:
+    | 'participant'
+    | 'operator_test'
+    | 'participant_preview'
+    | 'mock_judging'
+    | string;
   submitted_by_name?: string | null;
   submitted_by_title?: string | null;
   submitted_by_email?: string | null;
