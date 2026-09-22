@@ -103,6 +103,22 @@ function apiErrorUserMessage(error: ApiClientError) {
     return '마지막 대회 운영자는 제거할 수 없습니다.';
   }
 
+  if (error.code === 'email_already_in_use') {
+    return '이미 등록된 이메일입니다. 다른 이메일을 입력해 주세요.';
+  }
+
+  if (error.code === 'email_change_scope_denied') {
+    return '이메일을 변경하려면 해당 계정이 속한 모든 대회에서 운영자 관리 권한이 필요합니다.';
+  }
+
+  if (error.code === 'email_change_participant_identity') {
+    return '참가자 계정에도 연결된 이메일은 이 화면에서 변경할 수 없습니다. 서비스 관리자에게 문의해 주세요.';
+  }
+
+  if (error.code === 'assigned_master_email_immutable') {
+    return '서비스 관리자가 배정한 대회 마스터의 이메일은 서비스 관리자만 변경할 수 있습니다.';
+  }
+
   if (error.code === 'self_remove_denied') {
     return '현재 로그인한 운영자 자신은 제거할 수 없습니다.';
   }

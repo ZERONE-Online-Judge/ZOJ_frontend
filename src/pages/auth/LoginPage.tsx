@@ -1,7 +1,7 @@
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import Modal from '@/shared/ui/Modal';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import PageLayout from '@/components/common/PageLayout';
 import { loginGuideSections } from '@/data/loginGuideContent';
@@ -144,7 +144,13 @@ function postLoginRedirectPath(
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const emailChanged = searchParams.get('reason') === 'email_changed';
+  const changedEmail =
+    emailChanged && typeof location.state?.emailChangedTo === 'string'
+      ? location.state.emailChangedTo
+      : '';
   const setGeneralSession = useSessionStore((state) => state.setGeneralSession);
   const setParticipantSession = useSessionStore(
     (state) => state.setParticipantSession,
@@ -157,12 +163,20 @@ export default function LoginPage() {
   const [message, setMessage] = useState(() =>
     searchParams.get('reason') === 'session'
       ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
-      : '',
+      : emailChanged
+        ? '이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요.'
+        : '',
   );
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'loading' | 'ready' | 'error'
-  >(() => (searchParams.get('reason') === 'session' ? 'error' : 'idle'));
-  const [email, setEmail] = useState('');
+  >(() =>
+    searchParams.get('reason') === 'session'
+      ? 'error'
+      : emailChanged
+        ? 'ready'
+        : 'idle',
+  );
+  const [email, setEmail] = useState(changedEmail);
   const [otpCode, setOtpCode] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

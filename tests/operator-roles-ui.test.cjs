@@ -14,10 +14,16 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 const React = require('react');
 const { act } = React;
 const { createRoot } = require('react-dom/client');
-const { MemoryRouter, Routes, Route } = require('react-router-dom');
+const {
+  MemoryRouter,
+  Routes,
+  Route,
+  useLocation,
+} = require('react-router-dom');
 const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 const h = React.createElement;
 let session, operators, reads, creates, updates, removals;
+let updateError, sessionClears, currentLocation, apiCalls;
 const mocks = {
   '@/shared/unsaved/useUnsavedForm': {
     default: () => ({ formProps: {}, confirm: (callback) => callback() }),
@@ -27,7 +33,20 @@ const mocks = {
     tokenQueryIdentity: (token) => token,
   },
   '@/domains/identityAccess/sessionStore': {
-    useSessionStore: (selector) => selector({ generalSession: session }),
+    useSessionStore: (selector) =>
+      selector({
+        generalSession: session,
+        clearSessions: () => {
+          sessionClears++;
+          session = null;
+        },
+      }),
+  },
+  '@/shared/api/client': {
+    apiRequest: async (url, token, init) => {
+      apiCalls.push({ url, token, init });
+      return {};
+    },
   },
   '@/domains/contestAdministration/api': {
     getOperatorContestDashboard: async () => ({
@@ -53,7 +72,12 @@ const mocks = {
     },
     updateContestOperator: async (contestId, email, token, body) => {
       updates.push({ contestId, email, token, body });
-      return body;
+      if (updateError) throw updateError;
+      const result = { ...body, email: body.email.trim().toLowerCase() };
+      operators = operators.map((operator) =>
+        operator.email === email ? { ...operator, ...result } : operator,
+      );
+      return result;
     },
     removeContestOperator: async (contestId, email, token) => {
       removals.push({ contestId, email, token });
@@ -102,6 +126,11 @@ const OperatorsPage = source(
   'pages/operator/OperatorOperatorsPage.tsx',
 ).default;
 const SettingsPage = source('pages/operator/OperatorSettingsPage.tsx').default;
+const LoginPage = source('pages/auth/LoginPage.tsx').default;
+const { ApiClientError } = source('shared/api/errors.ts');
+const { updateContestOperator } = source(
+  'domains/contestAdministration/api.ts',
+);
 let root, container, client;
 function setActor(scopes) {
   session = {
@@ -144,6 +173,9 @@ beforeEach(() => {
   creates = [];
   updates = [];
   removals = [];
+  updateError = null;
+  sessionClears = 0;
+  apiCalls = [];
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -166,6 +198,10 @@ async function flush() {
   );
 }
 async function render(page = OperatorsPage, suffix = 'operators') {
+  function Observer() {
+    currentLocation = useLocation();
+    return null;
+  }
   await act(async () =>
     root.render(
       h(
@@ -174,6 +210,7 @@ async function render(page = OperatorsPage, suffix = 'operators') {
         h(
           MemoryRouter,
           { initialEntries: [`/operator/contests/contest/${suffix}`] },
+          h(Observer),
           h(
             Routes,
             null,
@@ -181,6 +218,7 @@ async function render(page = OperatorsPage, suffix = 'operators') {
               path: `/operator/contests/:contestId/${suffix}`,
               element: h(page),
             }),
+            h(Route, { path: '/login', element: h(LoginPage) }),
           ),
         ),
       ),
@@ -381,17 +419,22 @@ test('staff manager sees staff controls only and cannot assign or edit masters',
     operatorCard('master@example.test').querySelector('button'),
     null,
   );
-  assert.ok(button('이름·권한 수정', operatorCard('reviewer@example.test')));
+  assert.ok(
+    button('이름·이메일·권한 수정', operatorCard('reviewer@example.test')),
+  );
 });
 
-test('editing preserves email, submits changed name and roles, and protects assigned master even from master actor', async () => {
+test('editing submits old email in the route and new email, name and roles in the body while protecting assigned masters', async () => {
   await render();
   assert.equal(
     operatorCard('assigned@example.test').querySelector('button'),
     null,
   );
-  await click(button('이름·권한 수정', operatorCard('reviewer@example.test')));
-  assert.equal(inputByLabel('이메일 (필수)').disabled, true);
+  await click(
+    button('이름·이메일·권한 수정', operatorCard('reviewer@example.test')),
+  );
+  assert.equal(inputByLabel('이메일 (필수)').disabled, false);
+  await input(inputByLabel('이메일 (필수)'), 'new-reviewer@example.test');
   assert.equal(role('검수진').checked, true);
   await input(inputByLabel('이름 (필수)'), '  출제 검수자  ');
   await click(role('출제진'));
@@ -403,12 +446,98 @@ test('editing preserves email, submits changed name and roles, and protects assi
       token: 'staff-token',
       body: {
         display_name: '출제 검수자',
+        email: 'new-reviewer@example.test',
         roles: ['problem_reviewer', 'problem_author'],
       },
     },
   ]);
   assert.deepEqual(removals, []);
+  assert.equal(sessionClears, 0);
+  assert.ok(operatorCard('new-reviewer@example.test'));
+  assert.match(container.textContent, /새 이메일로 다시 로그인해야 합니다/);
 });
+
+test('operator update API encodes the old address and sends the new address in the PATCH body', async () => {
+  const body = {
+    email: 'new@example.test',
+    display_name: '운영자',
+    roles: ['problem_reviewer'],
+  };
+  await updateContestOperator(
+    'contest',
+    'old+review@example.test',
+    'token',
+    body,
+  );
+  assert.deepEqual(apiCalls, [
+    {
+      url: '/operator/contests/contest/operators/old%2Breview%40example.test',
+      token: 'token',
+      init: { method: 'PATCH', body: JSON.stringify(body) },
+    },
+  ]);
+});
+
+test('successful self email change clears sessions and cached data and opens login with the new address and success notice', async () => {
+  operators = [staff('actor@example.test', ['master'])];
+  await render();
+  client.setQueryData(['private-old-account'], 'old account data');
+  await click(
+    button('이름·이메일·권한 수정', operatorCard('actor@example.test')),
+  );
+  await input(inputByLabel('이메일 (필수)'), 'new-actor@example.test');
+  await click(button('변경사항 저장'));
+  assert.equal(sessionClears, 1);
+  assert.equal(client.getQueryData(['private-old-account']), undefined);
+  assert.equal(currentLocation.pathname, '/login');
+  assert.equal(currentLocation.search, '?reason=email_changed');
+  assert.equal(
+    container.querySelector('input[type="email"]').value,
+    'new-actor@example.test',
+  );
+  assert.match(
+    container.textContent,
+    /이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요/,
+  );
+});
+
+test('same normalized self email keeps the session while updating the name', async () => {
+  operators = [staff('actor@example.test', ['master'])];
+  await render();
+  await click(
+    button('이름·이메일·권한 수정', operatorCard('actor@example.test')),
+  );
+  await input(inputByLabel('이메일 (필수)'), 'Actor@Example.test');
+  await input(inputByLabel('이름 (필수)'), '수정된 이름');
+  await click(button('변경사항 저장'));
+  assert.equal(sessionClears, 0);
+  assert.equal(
+    currentLocation.pathname,
+    '/operator/contests/contest/operators',
+  );
+});
+
+for (const [status, code, message] of [
+  [409, 'email_already_in_use', '이미 등록된 이메일'],
+  [403, 'email_change_scope_denied', '모든 대회에서 운영자 관리 권한'],
+  [409, 'assigned_master_email_immutable', '서비스 관리자만 변경'],
+  [409, 'email_change_participant_identity', '참가자 계정에도 연결된 이메일'],
+]) {
+  test(`failed email edit (${code}) preserves the form and current session`, async () => {
+    updateError = new ApiClientError(status, code, 'server error');
+    await render();
+    await click(
+      button('이름·이메일·권한 수정', operatorCard('reviewer@example.test')),
+    );
+    await input(inputByLabel('이메일 (필수)'), 'blocked@example.test');
+    await click(button('변경사항 저장'));
+    assert.equal(sessionClears, 0);
+    assert.equal(inputByLabel('이메일 (필수)').value, 'blocked@example.test');
+    assert.equal(inputByLabel('이름 (필수)').value, 'reviewer');
+    assert.match(container.textContent, new RegExp(message));
+    assert.ok(operatorCard('reviewer@example.test'));
+  });
+}
 
 for (const [label, scope, page, suffix] of [
   [

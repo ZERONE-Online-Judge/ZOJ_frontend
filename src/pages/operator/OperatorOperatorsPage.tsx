@@ -1,5 +1,6 @@
 import { type FormEvent, useId, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { flushSync } from 'react-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import ContestRoleSelector from '@/components/operator/ContestRoleSelector';
@@ -28,6 +29,7 @@ import {
   isContestMaster,
 } from '@/domains/identityAccess/permissions';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import type {
   StaffAccount,
   StaffSession,
@@ -80,6 +82,8 @@ function OperatorOperatorsContent({
   session: StaffSession;
 }) {
   const token = session.accessToken;
+  const navigate = useNavigate();
+  const clearSessions = useSessionStore((state) => state.clearSessions);
   const canManageStaff = hasContestPermission(
     session,
     contestId,
@@ -90,6 +94,7 @@ function OperatorOperatorsContent({
   const queryIdentity = tokenQueryIdentity(token);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
   const [operatorFormError, setOperatorFormError] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
@@ -102,22 +107,49 @@ function OperatorOperatorsContent({
     (operator) => !operator.is_service_master,
   );
   const saveOperatorMutation = useMutation({
-    mutationFn: () =>
-      operatorForm.editingEmail
-        ? updateContestOperator(contestId, operatorForm.editingEmail, token, {
-            display_name: operatorForm.displayName.trim(),
-            roles: operatorForm.roles,
+    mutationFn: (form: OperatorForm) =>
+      form.editingEmail
+        ? updateContestOperator(contestId, form.editingEmail, token, {
+            display_name: form.displayName.trim(),
+            email: form.email.trim(),
+            roles: form.roles,
           })
         : createContestOperator(contestId, token, {
-            display_name: operatorForm.displayName.trim(),
-            roles: operatorForm.roles,
-            email: operatorForm.email.trim(),
+            display_name: form.displayName.trim(),
+            roles: form.roles,
+            email: form.email.trim(),
           }),
-    onSuccess: () => {
-      setOperatorForm(emptyOperatorForm);
+    onSuccess: async (operator, form) => {
+      const previousEmail = form.editingEmail.trim().toLowerCase();
+      const nextEmail = operator.email.trim().toLowerCase();
+      const emailChanged = Boolean(
+        previousEmail && previousEmail !== nextEmail,
+      );
+      // Reset the saved form before leaving, including any unsaved-form guard.
+      flushSync(() => setOperatorForm(emptyOperatorForm));
       setOperatorFormError('');
+      if (
+        emailChanged &&
+        previousEmail === session.staff.email.trim().toLowerCase()
+      ) {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+        navigate('/login?reason=email_changed', {
+          replace: true,
+          state: { emailChangedTo: nextEmail },
+        });
+        clearSessions();
+        return;
+      }
+      setSavedMessage(
+        emailChanged
+          ? `${nextEmail} 주소로 변경했습니다. 해당 계정은 새 이메일로 다시 로그인해야 합니다.`
+          : '운영자 정보를 저장했습니다.',
+      );
       void queryClient.invalidateQueries({
-        queryKey: ['operator', 'operators', contestId],
+        queryKey: emailChanged
+          ? ['operator']
+          : ['operator', 'operators', contestId],
       });
     },
   });
@@ -145,7 +177,8 @@ function OperatorOperatorsContent({
       return;
     }
     setOperatorFormError('');
-    saveOperatorMutation.mutate();
+    setSavedMessage('');
+    saveOperatorMutation.mutate(operatorForm);
   }
 
   return (
@@ -154,7 +187,7 @@ function OperatorOperatorsContent({
       width="full"
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 운영자 추가`}
-      description="이 대회를 운영할 구성원을 추가하고 이름과 담당 권한을 관리합니다."
+      description="이 대회를 운영할 구성원을 추가하고 이름, 이메일과 담당 권한을 관리합니다."
     >
       <OperatorTabs contestId={contestId} />
       {dashboardQuery.error || operatorsQuery.error ? (
@@ -164,17 +197,14 @@ function OperatorOperatorsContent({
         />
       ) : null}
       <OperatorPanel
-        description="운영자의 이름과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 서비스 관리자가 배정한 대회 마스터는 이 화면에서 변경하거나 제거할 수 없습니다."
+        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 서비스 관리자가 배정한 대회 마스터는 이 화면에서 변경하거나 제거할 수 없습니다."
         title={operatorForm.editingEmail ? '운영자 수정' : '운영자 추가'}
       >
         <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <TextInput
-              disabled={
-                Boolean(operatorForm.editingEmail) ||
-                saveOperatorMutation.isPending
-              }
-              helperText="로그인에 사용하는 이메일입니다. 등록 후에는 이름과 권한을 수정할 수 있습니다."
+              disabled={saveOperatorMutation.isPending}
+              helperText="이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다."
               label="이메일 (필수)"
               required
               type="email"
@@ -206,6 +236,14 @@ function OperatorOperatorsContent({
               error={saveOperatorMutation.error}
               fallback={operatorFormError || '운영자 저장에 실패했습니다'}
             />
+          ) : null}
+          {savedMessage ? (
+            <p
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              role="status"
+            >
+              {savedMessage}
+            </p>
           ) : null}
           <button
             className="h-10 w-fit rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
@@ -263,6 +301,7 @@ function OperatorOperatorsContent({
               if (saveOperatorMutation.isPending) return;
               saveOperatorMutation.reset();
               setOperatorFormError('');
+              setSavedMessage('');
               setOperatorForm({
                 displayName: operator.display_name,
                 editingEmail: operator.email,
@@ -388,7 +427,7 @@ function OperatorList({
                   onClick={() => onEdit(operator)}
                   type="button"
                 >
-                  이름·권한 수정
+                  이름·이메일·권한 수정
                 </button>
                 <button
                   className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-50"

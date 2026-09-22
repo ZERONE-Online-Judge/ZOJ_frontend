@@ -131,7 +131,7 @@ export function updateContestOperator(
   contestId: string,
   operatorEmail: string,
   token: string,
-  body: { display_name: string; roles: ContestRole[] },
+  body: { display_name: string; email: string; roles: ContestRole[] },
 ) {
   return apiRequest<StaffAccount>(
     `/operator/contests/${contestId}/operators/${encodeURIComponent(operatorEmail)}`,
