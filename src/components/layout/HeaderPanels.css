@@ -309,6 +309,7 @@
 }
 .header-notification-card {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
   width: 100%;
   text-align: left;
@@ -320,6 +321,18 @@
 .header-notification-card:hover {
   background: #f8f5fe;
   border-color: #cbb9e4;
+}
+.header-notification-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 12px;
+  text-align: left;
+}
+.header-notification-remove:hover {
+  background: #fff0f0;
+  border-color: #f0cdcd;
+  color: #aa4b4b;
 }
 .header-notification-icon {
   display: grid;

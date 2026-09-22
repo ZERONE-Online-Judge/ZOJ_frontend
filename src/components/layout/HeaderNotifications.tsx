@@ -458,6 +458,17 @@ export default function HeaderNotifications() {
     }));
   }
 
+  function removeNotification(notification: HeaderNotification) {
+    setStore((current) => ({
+      ...current,
+      notifications: current.notifications.filter(
+        (item) => item.id !== notification.id,
+      ),
+      // Keep the source recorded so polling cannot recreate a removed alert.
+      sourceSeen: { ...current.sourceSeen, [notification.sourceKey]: true },
+    }));
+  }
+
   function openNotification(notification: HeaderNotification) {
     dismissNotification(notification.id);
     setIsPanelOpen(false);
@@ -530,9 +541,12 @@ export default function HeaderNotifications() {
               </div>
               <ul className="header-notification-list">
                 {panelNotifications.map((notification) => (
-                  <li key={notification.id}>
+                  <li
+                    className={`header-notification-card ${notification.dismissedAt ? 'is-dismissed' : ''}`}
+                    key={notification.id}
+                  >
                     <button
-                      className={`header-notification-card${notification.dismissedAt ? 'is-dismissed' : ''}`}
+                      className="header-notification-open"
                       onClick={() => openNotification(notification)}
                       type="button"
                     >
@@ -540,6 +554,15 @@ export default function HeaderNotifications() {
                         notification={notification}
                         now={now}
                       />
+                    </button>
+                    <button
+                      aria-label={`${notification.title} 알림 삭제`}
+                      className="header-icon-button header-notification-remove"
+                      onClick={() => removeNotification(notification)}
+                      title="알림 삭제"
+                      type="button"
+                    >
+                      <HeaderIcon name="close" />
                     </button>
                   </li>
                 ))}
