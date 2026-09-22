@@ -50,6 +50,9 @@ const OperatorParticipantsPage = lazy(
 const OperatorProblemsPage = lazy(
   () => import('@/pages/operator/OperatorProblemsPage'),
 );
+const OperatorProblemReviewPage = lazy(
+  () => import('@/pages/operator/OperatorProblemReviewPage'),
+);
 const OperatorScoreboardPage = lazy(
   () => import('@/pages/operator/OperatorScoreboardPage'),
 );
@@ -200,6 +203,13 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.operatorProblems,
     path: '/operator/contests/:contestId/problems',
     Component: OperatorProblemsPage,
+    showInNavigation: false,
+  },
+  {
+    access: 'operator',
+    name: routeText.operatorProblemReview,
+    path: '/operator/contests/:contestId/problem-review',
+    Component: OperatorProblemReviewPage,
     showInNavigation: false,
   },
   {

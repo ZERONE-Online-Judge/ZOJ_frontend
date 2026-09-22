@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { accessText, operatorNavText } from '@/data/uiText';
@@ -88,6 +88,12 @@ const operatorTabs = [
   {
     label: operatorNavText.problems,
     path: 'problems',
+    icon: ProblemIcon,
+    permission: 'contest.problem.view',
+  },
+  {
+    label: operatorNavText.problemReview,
+    path: 'problem-review',
     icon: ProblemIcon,
     permission: 'contest.problem.view',
   },
@@ -190,6 +196,19 @@ export function OperatorAccessGate({
 }
 
 export function OperatorTabs({ contestId }: OperatorTabsProps) {
+  const navRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !active) return;
+    const viewport = nav.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    if (item.left < viewport.left || item.right > viewport.right) {
+      nav.scrollLeft +=
+        item.left - viewport.left - (nav.clientWidth - item.width) / 2;
+    }
+  }, [pathname, contestId]);
   const generalSession = useSessionStore((state) => state.generalSession);
   const token = staffSessionFromGeneralSession(generalSession)?.accessToken;
   const canViewParticipants = Boolean(
@@ -255,6 +274,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
 
   return (
     <nav
+      ref={navRef}
       aria-label="운영자 메뉴"
       className="zoj-management-tabs flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
     >
