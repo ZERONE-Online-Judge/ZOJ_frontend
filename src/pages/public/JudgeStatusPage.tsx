@@ -1,3 +1,5 @@
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -10,6 +12,7 @@ import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import './PublicExperience.css';
 
 export default function JudgeStatusPage() {
+  const motion = usePublicMotion();
   const isDocumentVisible = useDocumentVisibility();
   const query = useQuery({
     queryKey: ['public-judge-status'],
@@ -83,104 +86,104 @@ export default function JudgeStatusPage() {
 
   return (
     <div
+      data-motion={motion.paused ? 'off' : 'on'}
       className={`public-experience judge-experience is-${tone} ${busy ? 'is-busy' : ''}`}
     >
-      <section className="experience-hero judge-hero">
-        <div className="experience-container">
-          <div className="experience-topline">
-            <span>ZOJ / 채점 상태</span>
-            <span className="experience-live">
-              <i /> {stateLabel}
-            </span>
+      <PublicHero
+        label="채점 상태"
+        motion={motion}
+        className="judge-hero"
+        scrollTo="#judge-now"
+        aside={
+          <span className="experience-live">
+            <i />
+            {stateLabel}
+          </span>
+        }
+      >
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">BEHIND EVERY ANSWER</p>
+            <h1>
+              당신의 코드가
+              <br />
+              답을 만나는 곳<span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              제출부터 결과까지, 보이지 않는 곳의 움직임.
+              <br />
+              ZOJ 채점 서버의 지금을 만나보세요.
+            </p>
+            <a className="experience-button is-lime" href="#judge-now">
+              지금 상태 살펴보기 <ExperienceArrow />
+            </a>
           </div>
-          <div className="experience-hero-grid">
-            <div className="experience-hero-copy">
-              <p className="experience-eyebrow">BEHIND EVERY ANSWER</p>
-              <h1>
-                당신의 코드가
-                <br />
-                답을 만나는 곳<span className="experience-lime">.</span>
-              </h1>
-              <p className="experience-lead">
-                제출부터 결과까지, 보이지 않는 곳의 움직임.
-                <br />
-                ZOJ 채점 서버의 지금을 만나보세요.
-              </p>
-              <a className="experience-button is-lime" href="#judge-now">
-                지금 상태 살펴보기 <ExperienceArrow />
-              </a>
+          <div className="judge-room" aria-hidden="true">
+            <div className="judge-room-orbit" />
+            <div className="judge-room-label">
+              <span className="experience-live">
+                <i /> JUDGE ROOM
+              </span>
+              <span>ZOJ</span>
             </div>
-            <div className="judge-room" aria-hidden="true">
-              <div className="judge-room-orbit" />
-              <div className="judge-room-label">
-                <span className="experience-live">
-                  <i /> JUDGE ROOM
-                </span>
-                <span>ZOJ</span>
-              </div>
-              <div className="judge-racks">
-                {[0, 1, 2].map((rack) => (
-                  <div
-                    className="judge-rack"
-                    key={rack}
-                    style={{ '--rack': rack } as CSSProperties}
-                  >
-                    <div className="judge-rack-cap">
-                      <span /> <span />
-                    </div>
-                    {[0, 1, 2, 3].map((slot) => (
-                      <div
-                        className="judge-server"
-                        key={slot}
-                        style={
-                          {
-                            '--delay': `${(rack * 4 + slot) * 0.19}s`,
-                          } as CSSProperties
-                        }
-                      >
-                        <span className="judge-vents">
-                          {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <i key={i} />
-                          ))}
-                        </span>
-                        <span className="judge-lights">
-                          <i />
-                          <i />
-                        </span>
-                      </div>
-                    ))}
-                    <div className="judge-rack-foot" />
+            <div className="judge-racks">
+              {[0, 1, 2].map((rack) => (
+                <div
+                  className="judge-rack"
+                  key={rack}
+                  style={{ '--rack': rack } as CSSProperties}
+                >
+                  <div className="judge-rack-cap">
+                    <span /> <span />
                   </div>
-                ))}
-              </div>
-              <div className="judge-room-floor" />
-              <div className="judge-room-caption">
-                <span>
-                  {busy
-                    ? '코드를 확인하는 중'
-                    : connected
-                      ? status.total_queue_depth > 0
-                        ? '접수된 코드가 기다리는 중'
-                        : '다음 제출을 기다리는 중'
-                      : '서버 연결을 확인하는 중'}
-                </span>
-                <span className="judge-signal">
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <i
-                      key={i}
-                      style={{ '--delay': `${i * 0.12}s` } as CSSProperties}
-                    />
+                  {[0, 1, 2, 3].map((slot) => (
+                    <div
+                      className="judge-server"
+                      key={slot}
+                      style={
+                        {
+                          '--delay': `${(rack * 4 + slot) * 0.19}s`,
+                        } as CSSProperties
+                      }
+                    >
+                      <span className="judge-vents">
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                          <i key={i} />
+                        ))}
+                      </span>
+                      <span className="judge-lights">
+                        <i />
+                        <i />
+                      </span>
+                    </div>
                   ))}
-                </span>
-              </div>
+                  <div className="judge-rack-foot" />
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="experience-hero-foot">
-            <span>코드 한 줄의 도전도, 끝까지.</span>
-            <span>SCROLL TO EXPLORE ↓</span>
+            <div className="judge-room-floor" />
+            <div className="judge-room-caption">
+              <span>
+                {busy
+                  ? '코드를 확인하는 중'
+                  : connected
+                    ? status.total_queue_depth > 0
+                      ? '접수된 코드가 기다리는 중'
+                      : '다음 제출을 기다리는 중'
+                    : '서버 연결을 확인하는 중'}
+              </span>
+              <span className="judge-signal">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <i
+                    key={i}
+                    style={{ '--delay': `${i * 0.12}s` } as CSSProperties}
+                  />
+                ))}
+              </span>
+            </div>
           </div>
         </div>
-      </section>
+      </PublicHero>
 
       <section
         className="experience-section experience-container"

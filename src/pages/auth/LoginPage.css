@@ -1,0 +1,299 @@
+.login-experience .login-hero .experience-hero-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  align-items: start;
+  padding-block: 62px 76px;
+  gap: 90px;
+}
+.login-experience .login-hero h1 {
+  font-size: clamp(36px, 4vw, 56px);
+}
+.login-experience .login-hero .experience-hero-copy {
+  padding-top: 18px;
+}
+.login-steps {
+  display: grid;
+  gap: 22px;
+  margin: 32px 0 26px;
+  padding: 0;
+  list-style: none;
+}
+.login-steps li {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.login-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+  font-size: 10px;
+  border: 1px solid #ffffff22;
+  color: #929bb3;
+  border-radius: 50%;
+}
+.login-steps .is-current > span,
+.login-steps .is-complete > span {
+  background: #b8f28b;
+  color: #274026;
+  border-color: #b8f28b;
+}
+.login-steps strong {
+  font-size: 13px;
+  color: #bcc4d5;
+  font-weight: 550;
+}
+.login-steps .is-current strong {
+  color: #f1f2f8;
+}
+.login-experience .login-steps p {
+  font-size: 11px;
+  color: #8994ac;
+  margin-top: 4px;
+  line-height: 1.7;
+}
+.login-experience .login-help-link {
+  font-size: 11px;
+  color: #b5a7e6;
+}
+.login-experience .login-card {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  gap: 20px;
+  padding: 36px;
+  background: #fff;
+  color: #272d40;
+  border: 1px solid #ececf3;
+  border-radius: 18px;
+  box-shadow: 0 22px 60px #080c2126;
+}
+.login-card-heading {
+  padding-bottom: 6px;
+}
+.login-step-label {
+  display: inline-block;
+  color: #9183b4;
+  background: #f2eefb;
+  border: 1px solid #e9e1fb;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 18px;
+}
+.login-experience .login-card-heading h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.05em;
+}
+.login-experience .login-card-heading p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #858797;
+  margin-top: 10px;
+}
+.login-experience .login-card label > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #545b6d;
+}
+.login-experience .login-card input {
+  min-width: 0;
+  height: 52px;
+  border: 1px solid #dedfe8;
+  border-radius: 9px;
+  background: #fafafd;
+  padding: 0 15px;
+  color: #262d40;
+  font-size: 16px;
+  font-weight: 450;
+}
+.login-experience .login-card input:focus {
+  border-color: #947cd8;
+  outline: 0;
+  box-shadow: 0 0 0 3px #947cd812;
+  background: #fff;
+}
+.login-experience .login-card input::placeholder {
+  color: #a1a4b2;
+  font-size: 13px;
+}
+.login-experience .login-card input[aria-invalid='true'] {
+  border-color: #c77171;
+}
+.login-experience .login-card input[autocomplete='one-time-code'] {
+  letter-spacing: 0.2em;
+}
+.login-experience .login-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  border-radius: 9px;
+  padding: 12px 18px;
+  background: #252c41;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #252c41;
+  transition: background 0.2s;
+}
+.login-experience .login-action:hover:not(:disabled) {
+  background: #3c3456;
+}
+.login-experience .login-action:disabled {
+  background: #e7e8ef;
+  color: #969baa;
+  border-color: #e7e8ef;
+  cursor: default;
+  opacity: 1;
+}
+.login-experience .login-action.is-secondary {
+  background: #f7f5fc;
+  border-color: #e7e1f5;
+  color: #7d679e;
+}
+.login-experience .login-action.is-secondary:hover:not(:disabled) {
+  background: #ede7f9;
+}
+.login-experience .login-action svg {
+  width: 17px;
+  height: 17px;
+}
+.login-experience .login-expiry {
+  text-align: right;
+  font-size: 11px;
+  color: #8c809e;
+  font-variant-numeric: tabular-nums;
+  margin-top: -8px;
+}
+.login-experience .login-spam-help {
+  color: #8b90a0;
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.8;
+}
+.login-card > [role='status'],
+.login-card > [role='alert'] {
+  font-size: 12px;
+  line-height: 1.8;
+  border-radius: 9px;
+}
+.login-help {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: 90px;
+  padding-block: 64px 76px;
+}
+.login-experience .login-help h2 {
+  font-size: 28px;
+}
+.login-experience .login-help > div > p:last-child {
+  font-size: 13px;
+  color: #828796;
+  margin-top: 18px;
+  line-height: 1.9;
+}
+.login-help-details details {
+  border-bottom: 1px solid #e6e6ed;
+}
+.login-help-details details:first-child {
+  border-top: 1px solid #e6e6ed;
+}
+.login-help-details summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 0;
+  list-style: none;
+  font-size: 14px;
+  color: #4e556b;
+  font-weight: 600;
+}
+.login-help-details summary::-webkit-details-marker {
+  display: none;
+}
+.login-help-details summary span {
+  color: #a197b6;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 400;
+}
+.login-help-details details[open] summary span {
+  transform: rotate(45deg);
+}
+.login-help-details ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 0 24px 18px;
+  font-size: 12px;
+  color: #808697;
+  line-height: 1.9;
+  list-style: disc;
+}
+.login-help-details > .experience-text-link {
+  margin-top: 20px;
+  color: #8b79ab;
+  font-size: 12px;
+}
+@media (max-width: 1000px) {
+  .login-experience .login-hero .experience-hero-grid,
+  .login-help {
+    gap: 40px;
+  }
+  .login-experience .login-card {
+    padding: 28px;
+  }
+}
+@media (max-width: 800px) {
+  .login-experience .login-hero .experience-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: 36px 48px;
+    gap: 28px;
+  }
+  .login-experience .login-hero .experience-hero-copy {
+    padding: 0;
+  }
+  .login-title-break {
+    display: none;
+  }
+  .login-experience .login-hero h1 {
+    font-size: 36px;
+  }
+  .login-steps {
+    display: none;
+  }
+  .login-experience .login-hero .experience-lead {
+    margin: 18px 0 0;
+  }
+  .login-help-link {
+    display: none !important;
+  }
+  .login-experience .login-hero .login-card {
+    max-width: 520px;
+    justify-self: start;
+  }
+  .login-help {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-block: 44px;
+  }
+}
+@media (max-width: 400px) {
+  .login-experience .login-card {
+    padding: 24px 20px;
+    gap: 18px;
+  }
+  .login-experience .login-card-heading h2 {
+    font-size: 22px;
+  }
+  .login-experience .login-hero h1 {
+    font-size: 32px;
+  }
+}

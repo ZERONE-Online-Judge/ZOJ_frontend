@@ -1,3 +1,5 @@
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -84,6 +86,7 @@ function sortContestsByRecentDate(contests: Contest[]) {
 }
 
 export default function ContestsPage() {
+  const motion = usePublicMotion();
   const [filter, setFilter] = useState<ContestFilter>('all');
   const [search, setSearch] = useState('');
   const [phaseFilter, setPhaseFilter] = useState<ContestSectionKey | 'all'>(
@@ -191,57 +194,59 @@ export default function ContestsPage() {
   }
 
   return (
-    <div className="public-experience contest-directory">
-      <section className="experience-hero directory-hero">
-        <div className="experience-container">
-          <div className="experience-topline">
-            <span>ZOJ / 대회 목록</span>
-            <Link to="/support">처음 참가하시나요? ↗</Link>
+    <div
+      data-motion={motion.paused ? 'off' : 'on'}
+      className="public-experience contest-directory"
+    >
+      <PublicHero
+        label="대회 목록"
+        motion={motion}
+        className="directory-hero"
+        scrollTo="#contest-directory"
+      >
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">YOUR NEXT CHALLENGE</p>
+            <h1>
+              다음 도전이
+              <br />
+              시작되는 곳<span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              새로운 문제, 함께하는 몰입의 시간.
+              <br />
+              당신의 다음 대회를 만나보세요.
+            </p>
+            <a className="experience-text-link" href="#contest-directory">
+              대회 둘러보기 <ExperienceArrow />
+            </a>
           </div>
-          <div className="experience-hero-grid">
-            <div className="experience-hero-copy">
-              <p className="experience-eyebrow">YOUR NEXT CHALLENGE</p>
-              <h1>
-                다음 도전이
+          <div className="directory-art" aria-hidden="true">
+            <div className="directory-art-orbit" />
+            <div className="directory-art-ticket">
+              <div>
+                <span>ZOJ CONTEST</span>
+                <span>↗</span>
+              </div>
+              <p>
+                READY.
                 <br />
-                시작되는 곳<span className="experience-lime">.</span>
-              </h1>
-              <p className="experience-lead">
-                새로운 문제, 함께하는 몰입의 시간.
+                SET.
                 <br />
-                당신의 다음 대회를 만나보세요.
+                <strong>CODE.</strong>
               </p>
-              <a className="experience-text-link" href="#contest-directory">
-                대회 둘러보기 <ExperienceArrow />
-              </a>
+              <div className="directory-art-ticket-bottom">
+                <span>YOUR NEXT CHALLENGE</span>
+                <i />
+              </div>
             </div>
-            <div className="directory-art" aria-hidden="true">
-              <div className="directory-art-orbit" />
-              <div className="directory-art-ticket">
-                <div>
-                  <span>ZOJ CONTEST</span>
-                  <span>↗</span>
-                </div>
-                <p>
-                  READY.
-                  <br />
-                  SET.
-                  <br />
-                  <strong>CODE.</strong>
-                </p>
-                <div className="directory-art-ticket-bottom">
-                  <span>YOUR NEXT CHALLENGE</span>
-                  <i />
-                </div>
-              </div>
-              <div className="directory-art-code">&lt;/&gt;</div>
-              <div className="directory-art-label">
-                <span>✳</span> 새로운 도전을 기다리며
-              </div>
+            <div className="directory-art-code">&lt;/&gt;</div>
+            <div className="directory-art-label">
+              <span>✳</span> 새로운 도전을 기다리며
             </div>
           </div>
         </div>
-      </section>
+      </PublicHero>
       <section
         className="experience-container experience-section directory-content"
         id="contest-directory"

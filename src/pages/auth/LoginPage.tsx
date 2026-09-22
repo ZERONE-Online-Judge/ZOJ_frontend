@@ -1,9 +1,17 @@
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import Modal from '@/shared/ui/Modal';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { z } from 'zod';
-import PageLayout from '@/components/common/PageLayout';
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
+import { ExperienceArrow } from '@/components/common/PublicExperience';
+import './LoginPage.css';
 import { loginGuideSections } from '@/data/loginGuideContent';
 import { loginPageText } from '@/data/uiText';
 import {
@@ -143,6 +151,7 @@ function postLoginRedirectPath(
 }
 
 export default function LoginPage() {
+  const motion = usePublicMotion();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -370,11 +379,9 @@ export default function LoginPage() {
   }
 
   return (
-    <PageLayout
-      description={loginPageText.description}
-      eyebrow={loginPageText.eyebrow}
-      title={loginPageText.title}
-      width="7xl"
+    <div
+      className="public-experience login-experience"
+      data-motion={motion.paused ? 'off' : 'on'}
     >
       {shouldShowContestLoginModal ? (
         <Modal
@@ -470,125 +477,214 @@ export default function LoginPage() {
         </Modal>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(22rem,32rem)_minmax(20rem,1fr)]">
-        <form
-          className="grid min-w-0 gap-5 rounded-md border border-slate-200 bg-white p-6 shadow-sm"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitLogin({ email, otpCode });
-          }}
-        >
-          <label className="grid gap-2">
-            <span className="text-sm font-bold text-slate-800">
-              {loginPageText.emailLabel}
-            </span>
-            <input
-              autoComplete="email"
-              className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
-              disabled={isSubmitting}
-              placeholder={loginPageText.emailPlaceholder}
-              type="email"
-              value={email}
-              onChange={(event) => {
-                const nextEmail = event.target.value;
-                setEmail(nextEmail);
-                if (emailError) setEmailError('');
-                if (
-                  otpRequested &&
-                  requestedOtpEmail &&
-                  nextEmail.trim() !== requestedOtpEmail
-                ) {
-                  resetOtpAfterEmailChange();
-                }
-              }}
-            />
-          </label>
-          {emailError && (
-            <p className="text-sm font-medium text-red-700">{emailError}</p>
-          )}
-
-          <button
-            className="bg-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded px-5 text-base font-bold text-white transition hover:bg-blue-700 disabled:bg-slate-300"
-            disabled={!canRequestOtp}
-            onClick={otpRequested ? requestOtp : undefined}
-            type={otpRequested ? 'button' : 'submit'}
-          >
-            <svg
-              aria-hidden="true"
-              className="size-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h10A2.5 2.5 0 0 1 17.5 5v10a2.5 2.5 0 0 1-2.5 2.5H5A2.5 2.5 0 0 1 2.5 15V5Zm2.2-.5 5.3 4.25L15.3 4.5H4.7Zm10.8 2.1-5.03 4.03a.75.75 0 0 1-.94 0L4.5 6.6V15c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V6.6Z" />
-            </svg>
-            {cooldownSeconds > 0
-              ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
-              : loginPageText.otpRequestButton}
-          </button>
-
-          {otpRequested && (
-            <>
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-slate-800">
-                  {loginPageText.otpLabel}
-                </span>
-                <input
-                  autoComplete="one-time-code"
-                  className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder={loginPageText.otpPlaceholder}
-                  ref={otpInputRef}
-                  value={otpCode}
-                  onChange={(event) => setOtpCode(event.target.value)}
-                />
-              </label>
-              <button
-                className="hover:border-zoj-blue hover:text-zoj-blue flex h-12 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-5 text-base font-bold text-slate-950 transition disabled:text-slate-400"
-                disabled={isSubmitting || otpExpiresSeconds <= 0}
-                type="submit"
+      <PublicHero label="로그인" motion={motion} className="login-hero">
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">WELCOME TO YOUR NEXT CHALLENGE</p>
+            <h1>
+              반가워요.
+              <br />
+              다음 도전을
+              <br className="login-title-break" /> 이어가요
+              <span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              비밀번호 대신, 이메일 인증으로.
+              <br />
+              참가자도 운영자도 같은 곳에서 시작하세요.
+            </p>
+            <ol className="login-steps" aria-label="로그인 순서">
+              <li
+                className={!otpRequested ? 'is-current' : 'is-complete'}
+                aria-current={!otpRequested ? 'step' : undefined}
               >
-                <svg
-                  aria-hidden="true"
-                  className="size-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M10 1.5 17 4v5.25c0 4.12-2.96 7.94-7 9.25-4.04-1.31-7-5.13-7-9.25V4l7-2.5Zm3.53 6.97a.75.75 0 0 0-1.06-1.06L9 10.88 7.53 9.41a.75.75 0 0 0-1.06 1.06l2 2c.3.3.77.3 1.06 0l4-4Z" />
-                </svg>
-                {loginPageText.loginButton}
-              </button>
-              <p className="text-sm font-medium text-slate-500">
-                {loginPageText.otpExpiryLabel}:{' '}
-                {otpExpiresSeconds > 0
-                  ? formatSeconds(otpExpiresSeconds)
-                  : loginPageText.otpExpiredLabel}
-              </p>
-            </>
-          )}
-
-          <PageNotice message={message} status={messageStatus} />
-          <p className="text-center text-xs font-medium text-slate-400">
-            {loginPageText.spamHelp}
-          </p>
-        </form>
-
-        <aside className="grid min-w-0 content-start gap-4 rounded-md border border-slate-200 bg-slate-50 p-6">
-          {loginGuideSections.map((section) => (
-            <section
-              className="rounded border border-slate-200 bg-white p-5"
-              key={section.title}
+                <span>{otpRequested ? '✓' : '01'}</span>
+                <div>
+                  <strong>이메일 입력</strong>
+                  <p>대회에 등록한 주소를 사용해 주세요.</p>
+                </div>
+              </li>
+              <li
+                className={otpRequested ? 'is-current' : ''}
+                aria-current={otpRequested ? 'step' : undefined}
+              >
+                <span>02</span>
+                <div>
+                  <strong>인증번호 확인</strong>
+                  <p>메일로 받은 번호로 로그인합니다.</p>
+                </div>
+              </li>
+            </ol>
+            <Link
+              to="/support?tab=help"
+              className="experience-text-link login-help-link"
             >
-              <h2 className="text-base font-black text-slate-950">
-                {section.title}
+              로그인에 도움이 필요하신가요? <ExperienceArrow />
+            </Link>
+          </div>
+          <form
+            className="login-card"
+            aria-labelledby="login-card-title"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitLogin({ email, otpCode });
+            }}
+          >
+            <div className="login-card-heading">
+              <span className="login-step-label">
+                STEP {otpRequested ? '02' : '01'} / 02
+              </span>
+              <h2 id="login-card-title">
+                {otpRequested
+                  ? '인증번호를 확인해 주세요.'
+                  : '이메일로 시작하기'}
               </h2>
-              <ul className="mt-3 grid list-disc gap-2 pl-5 text-sm leading-6 text-slate-700">
+              <p>
+                {otpRequested
+                  ? '메일에 도착한 인증번호를 입력해 주세요.'
+                  : '대회에 등록된 이메일로 인증번호를 보내드려요.'}
+              </p>
+            </div>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-800">
+                {loginPageText.emailLabel}
+              </span>
+              <input
+                autoComplete="email"
+                aria-invalid={Boolean(emailError)}
+                aria-describedby={emailError ? 'login-email-error' : undefined}
+                className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
+                disabled={isSubmitting}
+                placeholder={loginPageText.emailPlaceholder}
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  const nextEmail = event.target.value;
+                  setEmail(nextEmail);
+                  if (emailError) setEmailError('');
+                  if (
+                    otpRequested &&
+                    requestedOtpEmail &&
+                    nextEmail.trim() !== requestedOtpEmail
+                  ) {
+                    resetOtpAfterEmailChange();
+                  }
+                }}
+              />
+            </label>
+            {emailError && (
+              <p
+                id="login-email-error"
+                role="alert"
+                className="text-sm font-medium text-red-700"
+              >
+                {emailError}
+              </p>
+            )}
+
+            <button
+              className={
+                otpRequested ? 'login-action is-secondary' : 'login-action'
+              }
+              disabled={!canRequestOtp}
+              onClick={otpRequested ? requestOtp : undefined}
+              type={otpRequested ? 'button' : 'submit'}
+            >
+              <svg
+                aria-hidden="true"
+                className="size-5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h10A2.5 2.5 0 0 1 17.5 5v10a2.5 2.5 0 0 1-2.5 2.5H5A2.5 2.5 0 0 1 2.5 15V5Zm2.2-.5 5.3 4.25L15.3 4.5H4.7Zm10.8 2.1-5.03 4.03a.75.75 0 0 1-.94 0L4.5 6.6V15c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V6.6Z" />
+              </svg>
+              {cooldownSeconds > 0
+                ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
+                : otpRequested
+                  ? '인증번호 다시 받기'
+                  : loginPageText.otpRequestButton}
+            </button>
+
+            {otpRequested && (
+              <>
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-slate-800">
+                    {loginPageText.otpLabel}
+                  </span>
+                  <input
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    disabled={isSubmitting}
+                    className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder={loginPageText.otpPlaceholder}
+                    ref={otpInputRef}
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value)}
+                  />
+                </label>
+                <button
+                  className="login-action"
+                  disabled={isSubmitting || otpExpiresSeconds <= 0}
+                  type="submit"
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="size-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M10 1.5 17 4v5.25c0 4.12-2.96 7.94-7 9.25-4.04-1.31-7-5.13-7-9.25V4l7-2.5Zm3.53 6.97a.75.75 0 0 0-1.06-1.06L9 10.88 7.53 9.41a.75.75 0 0 0-1.06 1.06l2 2c.3.3.77.3 1.06 0l4-4Z" />
+                  </svg>
+                  {isSubmitting
+                    ? loginPageText.loginSubmitting
+                    : loginPageText.loginButton}
+                </button>
+                <p className="login-expiry">
+                  {loginPageText.otpExpiryLabel}:{' '}
+                  {otpExpiresSeconds > 0
+                    ? formatSeconds(otpExpiresSeconds)
+                    : loginPageText.otpExpiredLabel}
+                </p>
+              </>
+            )}
+
+            <PageNotice message={message} status={messageStatus} />
+            <p className="login-spam-help">{loginPageText.spamHelp}</p>
+          </form>
+        </div>
+      </PublicHero>
+      <section
+        className="experience-container login-help"
+        aria-labelledby="login-help-title"
+      >
+        <div>
+          <p className="experience-eyebrow">A LITTLE HELP</p>
+          <h2 id="login-help-title">로그인 전에 알아두세요.</h2>
+          <p>
+            처음 방문하셨나요?
+            <br />
+            궁금한 내용을 펼쳐 확인해 보세요.
+          </p>
+        </div>
+        <div className="login-help-details">
+          {loginGuideSections.map((section) => (
+            <details key={section.title}>
+              <summary>
+                {section.title}
+                <span aria-hidden="true">+</span>
+              </summary>
+              <ul>
                 {section.items.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </section>
+            </details>
           ))}
-        </aside>
-      </div>
-    </PageLayout>
+          <Link to="/support?tab=contact" className="experience-text-link">
+            해결되지 않았다면, 서비스 문의 <ExperienceArrow />
+          </Link>
+        </div>
+      </section>
+    </div>
   );
 }

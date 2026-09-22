@@ -1352,3 +1352,19 @@
     font-size: 9px;
   }
 }
+
+/* Keep the introduction preview within the shared public hero proportions. */
+.about-hero .about-window .about-code-lines {
+  font-size: 11px;
+  line-height: 1.7;
+  padding-block: 12px;
+}
+.about-hero .about-window .about-demo-toolbar {
+  padding-block: 12px;
+}
+.about-hero .about-window .about-code-footer {
+  padding-block: 10px;
+}
+.about-hero .about-window .about-test-strip {
+  padding-block: 12px;
+}

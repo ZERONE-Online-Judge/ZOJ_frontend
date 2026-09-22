@@ -1,3 +1,5 @@
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -23,6 +25,7 @@ const emptyContactForm = {
 };
 
 export default function SupportGuidePage() {
+  const motion = usePublicMotion();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = supportSections.some(
     (section) => section.id === searchParams.get('tab'),
@@ -68,60 +71,62 @@ export default function SupportGuidePage() {
   }
 
   return (
-    <div className="public-experience support-experience">
-      <section className="experience-hero support-hero">
-        <div className="experience-container">
-          <div className="experience-topline">
-            <span>ZOJ / 지원 안내</span>
-            <Link to="/about">ZOJ 알아보기 ↗</Link>
+    <div
+      data-motion={motion.paused ? 'off' : 'on'}
+      className="public-experience support-experience"
+    >
+      <PublicHero
+        label="지원 안내"
+        motion={motion}
+        className="support-hero"
+        scrollTo="#support-content"
+      >
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">HERE FOR YOUR NEXT STEP</p>
+            <h1>
+              도전은 가볍게.
+              <br />
+              도움은 가까이<span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              첫 로그인부터 마지막 제출까지.
+              <br />
+              당신의 대회가 편안하게 이어지도록.
+            </p>
+            <a className="experience-text-link" href="#support-content">
+              필요한 안내 찾아보기 <ExperienceArrow />
+            </a>
           </div>
-          <div className="experience-hero-grid">
-            <div className="experience-hero-copy">
-              <p className="experience-eyebrow">HERE FOR YOUR NEXT STEP</p>
-              <h1>
-                도전은 가볍게.
-                <br />
-                도움은 가까이<span className="experience-lime">.</span>
-              </h1>
-              <p className="experience-lead">
-                첫 로그인부터 마지막 제출까지.
-                <br />
-                당신의 대회가 편안하게 이어지도록.
-              </p>
-              <a className="experience-text-link" href="#support-content">
-                필요한 안내 찾아보기 <ExperienceArrow />
-              </a>
+          <div className="support-art" aria-hidden="true">
+            <div className="support-art-orbit" />
+            <div className="support-art-card back">
+              <span>ZOJ GUIDE</span>
+              <i />
+              <i />
+              <i />
             </div>
-            <div className="support-art" aria-hidden="true">
-              <div className="support-art-orbit" />
-              <div className="support-art-card back">
-                <span>ZOJ GUIDE</span>
-                <i />
-                <i />
-                <i />
+            <div className="support-art-card front">
+              <span className="support-art-mark">?</span>
+              <strong>혼자 고민하지 마세요.</strong>
+              <p>다음 한 걸음, 함께 찾아요.</p>
+              <div>
+                <span>로그인</span>
+                <span>대회 참여</span>
+                <span>코드 제출</span>
               </div>
-              <div className="support-art-card front">
-                <span className="support-art-mark">?</span>
-                <strong>혼자 고민하지 마세요.</strong>
-                <p>다음 한 걸음, 함께 찾아요.</p>
-                <div>
-                  <span>로그인</span>
-                  <span>대회 참여</span>
-                  <span>코드 제출</span>
-                </div>
-              </div>
-              <div className="support-art-ticket">
-                <span>✓</span>
-                <div>
-                  준비됐나요?<small>LET’S GET STARTED</small>
-                </div>
-                <span>↗</span>
-              </div>
-              <i className="support-spark">✳</i>
             </div>
+            <div className="support-art-ticket">
+              <span>✓</span>
+              <div>
+                준비됐나요?<small>LET’S GET STARTED</small>
+              </div>
+              <span>↗</span>
+            </div>
+            <i className="support-spark">✳</i>
           </div>
         </div>
-      </section>
+      </PublicHero>
 
       <div className="support-navigation">
         <div className="experience-container">

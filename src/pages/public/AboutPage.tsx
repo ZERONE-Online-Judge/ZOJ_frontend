@@ -1,3 +1,5 @@
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import './AboutPage.css';
@@ -211,11 +213,8 @@ function ScorePreview() {
 export default function AboutPage() {
   const root = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState(0);
-  const [paused, setPaused] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-  );
+  const motion = usePublicMotion();
+  const { paused } = motion;
 
   useEffect(() => {
     const page = root.current;
@@ -239,13 +238,6 @@ export default function AboutPage() {
   }, []);
 
   useEffect(() => {
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setPaused(preference.matches);
-    preference.addEventListener('change', update);
-    return () => preference.removeEventListener('change', update);
-  }, []);
-
-  useEffect(() => {
     const previousTitle = document.title;
     document.title = 'ZOJ 소개 · Zerone Online Judge';
     window.scrollTo(0, 0);
@@ -261,102 +253,81 @@ export default function AboutPage() {
   }
 
   return (
-    <div className="about-page" data-motion={paused ? 'off' : 'on'} ref={root}>
-      <section className="about-hero" aria-labelledby="about-heading">
-        <div className="about-orbit about-orbit-one" aria-hidden="true" />
-        <div className="about-orbit about-orbit-two" aria-hidden="true" />
-        <div className="about-container">
-          <div className="about-topline">
-            <span>ZERONE ONLINE JUDGE</span>
-            <button
-              type="button"
-              onClick={() => setPaused(!paused)}
-              aria-pressed={paused}
-            >
-              <span aria-hidden="true">{paused ? '▷' : 'Ⅱ'}</span>
-              {paused ? '애니메이션 켜기' : '애니메이션 끄기'}
-            </button>
-          </div>
-          <div className="about-hero-grid">
-            <div className="about-hero-copy">
-              <p className="about-eyebrow">
-                <span /> FROM ZERO TO YOUR CONTEST
-              </p>
-              <h1 id="about-heading">
-                좋은 문제에서,
-                <br />
-                <span>멋진 대회까지.</span>
-              </h1>
-              <p className="about-lead">
-                준비하는 사람도, 도전하는 사람도.
-                <br />
-                대회에 집중할 수 있도록 ZOJ가 함께합니다.
-              </p>
-              <div className="about-actions">
-                <Link className="about-button about-button-lime" to="/contests">
-                  대회 둘러보기 <Arrow />
-                </Link>
-                <a className="about-text-link" href="#about-experience">
-                  ZOJ 알아보기 <span aria-hidden="true">↓</span>
-                </a>
-              </div>
-              <div className="about-hero-proof">
-                <span className="about-proof-mark">H</span>
-                <div>
-                  <strong>HEPC 2026에서 함께한 플랫폼</strong>
-                  <span>실제 대회를 운영하며 시작했습니다.</span>
-                </div>
-              </div>
+    <div
+      className="public-experience about-page"
+      data-motion={paused ? 'off' : 'on'}
+      ref={root}
+    >
+      <PublicHero
+        label="ZOJ 소개"
+        motion={motion}
+        className="about-hero"
+        scrollTo="#about-experience"
+      >
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">FROM ZERO TO YOUR CONTEST</p>
+            <h1 id="about-heading">
+              좋은 문제에서,
+              <br />
+              멋진 대회까지<span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              준비하는 사람도, 도전하는 사람도.
+              <br />
+              대회에 집중할 수 있도록 ZOJ가 함께합니다.
+            </p>
+            <div className="experience-actions">
+              <Link className="experience-button is-lime" to="/contests">
+                대회 둘러보기 <Arrow />
+              </Link>
+              <a className="experience-text-link" href="#about-experience">
+                ZOJ 알아보기 <span aria-hidden="true">↓</span>
+              </a>
             </div>
-            <div
-              className="about-hero-media"
-              aria-label="코드와 테스트케이스를 함께 검증하는 기능 미리보기"
-            >
-              <div className="about-window">
-                <div className="about-window-title">
-                  <span className="about-window-dots">
-                    <i />
-                    <i />
-                    <i />
+          </div>
+          <div
+            className="about-hero-media"
+            aria-label="코드와 테스트케이스를 함께 검증하는 기능 미리보기"
+          >
+            <div className="about-window">
+              <div className="about-window-title">
+                <span className="about-window-dots">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span>ZOJ / Problem workspace</span>
+                <span>↗</span>
+              </div>
+              <CodePreview compact />
+              <div className="about-test-strip">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span style={{ '--step': n } as CSSProperties} key={n}>
+                    <Check />
+                    <small>TEST {String(n).padStart(2, '0')}</small>
                   </span>
-                  <span>ZOJ / Problem workspace</span>
-                  <span>↗</span>
-                </div>
-                <CodePreview compact />
-                <div className="about-test-strip">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <span style={{ '--step': n } as CSSProperties} key={n}>
-                      <Check />
-                      <small>TEST {String(n).padStart(2, '0')}</small>
-                    </span>
-                  ))}
-                </div>
+                ))}
               </div>
-              <div className="about-floating-result">
-                <span className="about-result-icon">
-                  <Check />
-                </span>
-                <div>
-                  <small>검증이 끝났습니다</small>
-                  <strong>다음은, 당신의 대회.</strong>
-                </div>
-                <span className="about-result-spark" aria-hidden="true">
-                  ✳
-                </span>
-              </div>
-              <p className="about-media-caption">
-                문제 준비부터 채점까지 · 기능 미리보기
-              </p>
             </div>
-          </div>
-          <div className="about-hero-bottom">
-            <span>BUILD. COMPETE. CELEBRATE.</span>
-            <a href="#about-experience">
-              SCROLL TO EXPLORE <span aria-hidden="true">↓</span>
-            </a>
+            <div className="about-floating-result">
+              <span className="about-result-icon">
+                <Check />
+              </span>
+              <div>
+                <small>검증이 끝났습니다</small>
+                <strong>다음은, 당신의 대회.</strong>
+              </div>
+              <span className="about-result-spark" aria-hidden="true">
+                ✳
+              </span>
+            </div>
+            <p className="about-media-caption">
+              문제 준비부터 채점까지 · 기능 미리보기
+            </p>
           </div>
         </div>
-      </section>
+      </PublicHero>
 
       <section
         className="about-experience about-section"

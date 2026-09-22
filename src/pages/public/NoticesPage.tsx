@@ -1,3 +1,5 @@
+import PublicHero from '@/components/common/PublicHero';
+import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -15,6 +17,7 @@ import './NoticesPage.css';
 const NOTICE_PAGE_SIZE = 20;
 
 export default function NoticesPage() {
+  const motion = usePublicMotion();
   const [params, setParams] = useSearchParams();
   const visible = useDocumentVisibility();
   const requestedId = params.get('noticeId') ?? '';
@@ -120,58 +123,60 @@ export default function NoticesPage() {
   }
 
   return (
-    <div className="public-experience notices-experience">
-      <section className="experience-hero notices-hero">
-        <div className="experience-container">
-          <div className="experience-topline">
-            <span>ZOJ / 공지사항</span>
-            <span>NEWS & UPDATES</span>
+    <div
+      data-motion={motion.paused ? 'off' : 'on'}
+      className="public-experience notices-experience"
+    >
+      <PublicHero
+        label="공지사항"
+        motion={motion}
+        className="notices-hero"
+        scrollTo="#notice-list"
+      >
+        <div className="experience-hero-grid">
+          <div className="experience-hero-copy">
+            <p className="experience-eyebrow">KEEP IN THE LOOP</p>
+            <h1>
+              새로운 소식,
+              <br />
+              놓치지 않도록<span className="experience-lime">.</span>
+            </h1>
+            <p className="experience-lead">
+              서비스 소식부터 꼭 알아둘 안내까지.
+              <br />
+              ZOJ의 이야기를 한곳에서 확인하세요.
+            </p>
+            <a className="experience-text-link" href="#notice-list">
+              공지사항 살펴보기 <ExperienceArrow />
+            </a>
           </div>
-          <div className="experience-hero-grid">
-            <div className="experience-hero-copy">
-              <p className="experience-eyebrow">KEEP IN THE LOOP</p>
-              <h1>
-                새로운 소식,
-                <br />
-                놓치지 않도록<span className="experience-lime">.</span>
-              </h1>
-              <p className="experience-lead">
-                서비스 소식부터 꼭 알아둘 안내까지.
-                <br />
-                ZOJ의 이야기를 한곳에서 확인하세요.
-              </p>
-              <a className="experience-text-link" href="#notice-list">
-                공지사항 살펴보기 <ExperienceArrow />
-              </a>
-            </div>
-            <div className="notices-art" aria-hidden="true">
-              <div className="notices-art-orbit" />
-              <div className="notices-art-sheet">
-                <div>
-                  <span>ZOJ NEWS</span>
-                  <i>↗</i>
-                </div>
-                <span className="notices-art-line is-wide" />
-                <span className="notices-art-line" />
-                <div className="notices-art-body">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <div className="notices-art-stamp">
-                  새로운 소식이
-                  <br />
-                  도착했어요.
-                </div>
+          <div className="notices-art" aria-hidden="true">
+            <div className="notices-art-orbit" />
+            <div className="notices-art-sheet">
+              <div>
+                <span>ZOJ NEWS</span>
+                <i>↗</i>
               </div>
-              <div className="notices-art-tag">
-                <span>✳</span> 알아두면 좋은 이야기
+              <span className="notices-art-line is-wide" />
+              <span className="notices-art-line" />
+              <div className="notices-art-body">
+                <span />
+                <span />
+                <span />
               </div>
-              <span className="notices-art-spark">✦</span>
+              <div className="notices-art-stamp">
+                새로운 소식이
+                <br />
+                도착했어요.
+              </div>
             </div>
+            <div className="notices-art-tag">
+              <span>✳</span> 알아두면 좋은 이야기
+            </div>
+            <span className="notices-art-spark">✦</span>
           </div>
         </div>
-      </section>
+      </PublicHero>
 
       <section
         className="experience-container experience-section notices-content"
