@@ -1,3 +1,4 @@
+import useConfirmation from '@/shared/ui/useConfirmation';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -78,7 +79,10 @@ export default function OperatorParticipantsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -94,6 +98,9 @@ function OperatorParticipantsContent({
   contestId: string;
   token: string;
 }) {
+  const { confirm: confirmAction, dialog: confirmationDialog } =
+    useConfirmation();
+
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const teamEditorRef = useRef<HTMLDivElement | null>(null);
@@ -330,9 +337,9 @@ function OperatorParticipantsContent({
     );
   }
 
-  function confirmDeleteTeam(team: ParticipantTeam) {
+  async function confirmDeleteTeam(team: ParticipantTeam) {
     if (
-      window.confirm(
+      await confirmAction(
         `${team.team_name} 참가팀을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`,
       )
     ) {
@@ -352,11 +359,14 @@ function OperatorParticipantsContent({
 
   return (
     <PageLayout
+      variant="management"
       description="참가팀, 멤버, 상태, 세션을 관리합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 참가팀`}
       width="full"
     >
+      {confirmationDialog}
+
       <OperatorTabs contestId={contestId} />
 
       {dashboardQuery.error || teamsQuery.error ? (
@@ -369,237 +379,243 @@ function OperatorParticipantsContent({
       <div className="grid gap-6">
         <div className="grid gap-6">
           <div ref={teamEditorRef}>
-          <OperatorPanel
-            description="팀 정보, 팀장, 팀원을 한 카드에서 함께 등록하거나 수정합니다."
-            title={teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
-          >
-            <form className="grid gap-4" onSubmit={submitTeam}>
-              <div className="grid gap-4 rounded border border-slate-200 bg-slate-50/70 p-4">
-                <p className="text-xs font-black text-slate-500 uppercase">
-                  팀 설정
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput
-                    label="팀명"
-                    onChange={(value) =>
-                      setTeamForm((prev) => ({ ...prev, teamName: value }))
-                    }
-                    value={teamForm.teamName}
-                  />
-                  <SelectInput
-                    label="참가 유형"
-                    onChange={(value) =>
-                      setTeamForm((prev) => ({ ...prev, divisionId: value }))
-                    }
-                    options={divisions.map((division) => ({
-                      label: division.name,
-                      value: division.division_id,
-                    }))}
-                    placeholder="유형 선택"
-                    value={teamForm.divisionId}
-                  />
-                </div>
-                {teamForm.teamId ? (
-                  <SelectInput
-                    label="상태"
-                    onChange={(value) =>
-                      setTeamForm((prev) => ({ ...prev, status: value }))
-                    }
-                    options={participantStatusOptions.map(([value, label]) => ({
-                      label,
-                      value,
-                    }))}
-                    value={teamForm.status}
-                  />
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                <p className="text-xs font-black text-indigo-700 uppercase">
-                  팀장 설정
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput
-                    label="팀장 이름"
-                    onChange={(value) =>
-                      setTeamForm((prev) => ({ ...prev, leaderName: value }))
-                    }
-                    value={teamForm.leaderName}
-                  />
-                  <TextInput
-                    label="팀장 이메일"
-                    onChange={(value) =>
-                      setTeamForm((prev) => ({ ...prev, leaderEmail: value }))
-                    }
-                    value={teamForm.leaderEmail}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-3 rounded border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black text-slate-500 uppercase">
-                      팀원
-                    </p>
-                    <p className="mt-1 text-xs font-bold text-slate-500">
-                      1인팀이면 비워두고, 여러 명이면 필요한 만큼 추가합니다.
-                    </p>
-                  </div>
-                  <button
-                    className="rounded border border-indigo-200 bg-white px-3 py-2 text-xs font-black text-indigo-700"
-                    onClick={addDraftMember}
-                    type="button"
-                  >
-                    팀원 추가
-                  </button>
-                </div>
-                {draftMembers.length > 0 ? (
-                  <div className="grid gap-3">
-                    {draftMembers.map((member, index) => (
-                      <div
-                        className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-                        key={`${member.team_member_id ?? 'new'}-${index}`}
-                      >
-                        <TextInput
-                          label={`팀원 ${index + 1} 이름`}
-                          onChange={(value) =>
-                            updateDraftMember(index, { name: value })
-                          }
-                          value={member.name}
-                        />
-                        <TextInput
-                          label={`팀원 ${index + 1} 이메일`}
-                          onChange={(value) =>
-                            updateDraftMember(index, { email: value })
-                          }
-                          value={member.email}
-                        />
-                        <button
-                          className="self-end rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600 disabled:text-slate-300"
-                          disabled={Boolean(member.team_member_id)}
-                          onClick={() => removeDraftMember(index)}
-                          title={
-                            member.team_member_id
-                              ? '이미 등록된 팀원은 이 화면에서 제거할 수 없습니다.'
-                              : undefined
-                          }
-                          type="button"
-                        >
-                          제거
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-bold text-slate-500">
-                    추가 팀원이 없습니다.
+            <OperatorPanel
+              description="팀 정보, 팀장, 팀원을 한 카드에서 함께 등록하거나 수정합니다."
+              title={teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
+            >
+              <form className="grid gap-4" onSubmit={submitTeam}>
+                <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">
+                    팀 설정
                   </p>
-                )}
-              </div>
-
-              {teamForm.teamId ? (
-                <div className="flex flex-wrap gap-2">
-                  {participantStatusOptions.map(([status, label]) => (
-                    <button
-                      className="rounded border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:border-indigo-200 hover:bg-indigo-50"
-                      key={status}
-                      onClick={() =>
-                        setTeamForm((prev) => ({ ...prev, status }))
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextInput
+                      label="팀명"
+                      onChange={(value) =>
+                        setTeamForm((prev) => ({ ...prev, teamName: value }))
                       }
+                      value={teamForm.teamName}
+                    />
+                    <SelectInput
+                      label="참가 유형"
+                      onChange={(value) =>
+                        setTeamForm((prev) => ({ ...prev, divisionId: value }))
+                      }
+                      options={divisions.map((division) => ({
+                        label: division.name,
+                        value: division.division_id,
+                      }))}
+                      placeholder="유형 선택"
+                      value={teamForm.divisionId}
+                    />
+                  </div>
+                  {teamForm.teamId ? (
+                    <SelectInput
+                      label="상태"
+                      onChange={(value) =>
+                        setTeamForm((prev) => ({ ...prev, status: value }))
+                      }
+                      options={participantStatusOptions.map(
+                        ([value, label]) => ({
+                          label,
+                          value,
+                        }),
+                      )}
+                      value={teamForm.status}
+                    />
+                  ) : null}
+                </div>
+
+                <div className="grid gap-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+                  <p className="text-xs font-semibold text-indigo-700 uppercase">
+                    팀장 설정
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextInput
+                      label="팀장 이름"
+                      onChange={(value) =>
+                        setTeamForm((prev) => ({ ...prev, leaderName: value }))
+                      }
+                      value={teamForm.leaderName}
+                    />
+                    <TextInput
+                      label="팀장 이메일"
+                      onChange={(value) =>
+                        setTeamForm((prev) => ({ ...prev, leaderEmail: value }))
+                      }
+                      value={teamForm.leaderEmail}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 rounded-lg border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase">
+                        팀원
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">
+                        1인팀이면 비워두고, 여러 명이면 필요한 만큼 추가합니다.
+                      </p>
+                    </div>
+                    <button
+                      className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700"
+                      onClick={addDraftMember}
                       type="button"
                     >
-                      {label}로 표시
+                      팀원 추가
                     </button>
-                  ))}
+                  </div>
+                  {draftMembers.length > 0 ? (
+                    <div className="grid gap-3">
+                      {draftMembers.map((member, index) => (
+                        <div
+                          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                          key={`${member.team_member_id ?? 'new'}-${index}`}
+                        >
+                          <TextInput
+                            label={`팀원 ${index + 1} 이름`}
+                            onChange={(value) =>
+                              updateDraftMember(index, { name: value })
+                            }
+                            value={member.name}
+                          />
+                          <TextInput
+                            label={`팀원 ${index + 1} 이메일`}
+                            onChange={(value) =>
+                              updateDraftMember(index, { email: value })
+                            }
+                            value={member.email}
+                          />
+                          <button
+                            className="self-end rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:text-slate-300"
+                            disabled={Boolean(member.team_member_id)}
+                            onClick={() => removeDraftMember(index)}
+                            title={
+                              member.team_member_id
+                                ? '이미 등록된 팀원은 이 화면에서 제거할 수 없습니다.'
+                                : undefined
+                            }
+                            type="button"
+                          >
+                            제거
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-medium text-slate-500">
+                      추가 팀원이 없습니다.
+                    </p>
+                  )}
                 </div>
-              ) : null}
-              {formError || saveTeamMutation.error ? (
+
+                {teamForm.teamId ? (
+                  <div className="flex flex-wrap gap-2">
+                    {participantStatusOptions.map(([status, label]) => (
+                      <button
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-200 hover:bg-indigo-50"
+                        key={status}
+                        onClick={() =>
+                          setTeamForm((prev) => ({ ...prev, status }))
+                        }
+                        type="button"
+                      >
+                        {label}로 표시
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {formError || saveTeamMutation.error ? (
+                  <ErrorBox
+                    error={saveTeamMutation.error}
+                    fallback={
+                      formError ||
+                      formatParticipantTeamError(
+                        saveTeamMutation.error,
+                        '참가팀 저장에 실패했습니다',
+                      )
+                    }
+                  />
+                ) : null}
+                <button
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
+                  disabled={saveTeamMutation.isPending}
+                  type="submit"
+                >
+                  <TeamIcon />
+                  {saveTeamMutation.isPending
+                    ? '저장 중…'
+                    : teamForm.teamId
+                      ? '변경사항 저장'
+                      : '참가팀 등록'}
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="h-11 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-600"
+                    onClick={resetTeamEditor}
+                    disabled={saveTeamMutation.isPending}
+                    type="button"
+                  >
+                    {teamForm.teamId ? '수정 취소 · 새 팀 등록' : '입력 초기화'}
+                  </button>
+                </div>
+              </form>
+            </OperatorPanel>
+          </div>
+
+          <OperatorPanel
+            description="CSV/TSV 헤더: team_name, division, leader_name, leader_email, member1_name, member1_email, member2_name, member2_email..."
+            title="일괄 등록"
+          >
+            <form
+              className="grid gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                bulkCreateMutation.mutate();
+              }}
+            >
+              <input
+                accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
+                className="block w-full text-xs font-medium text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
+                onChange={readBulkFile}
+                type="file"
+              />
+              <textarea
+                className="min-h-44 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => setBulkText(event.target.value)}
+                placeholder={
+                  'team_name,division,leader_name,leader_email,member1_name,member1_email,member2_name,member2_email\nTeam A,일반,홍길동,a@example.com,김철수,b@example.com,이영희,c@example.com'
+                }
+                value={bulkText}
+              />
+              {bulkCreateMutation.error ? (
                 <ErrorBox
-                  error={saveTeamMutation.error}
-                  fallback={
-                    formError ||
-                    formatParticipantTeamError(
-                      saveTeamMutation.error,
-                      '참가팀 저장에 실패했습니다',
-                    )
-                  }
+                  error={bulkCreateMutation.error}
+                  fallback="참가팀 일괄 등록에 실패했습니다"
                 />
               ) : null}
+              {bulkCreateMutation.data ? (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                  {bulkCreateMutation.data.created.length}팀 등록,{' '}
+                  {bulkCreateMutation.data.errors.length}건 실패
+                </p>
+              ) : null}
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:opacity-50"
-                disabled={saveTeamMutation.isPending}
+                className="h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700"
                 type="submit"
               >
-                <TeamIcon />
-                {saveTeamMutation.isPending ? '저장 중…' : teamForm.teamId ? '변경사항 저장' : '참가팀 등록'}
+                일괄 등록 실행
               </button>
-              <div className="flex gap-2">
-                <button
-                  className="h-11 rounded border border-slate-200 px-4 text-sm font-black text-slate-600"
-                  onClick={resetTeamEditor}
-                  disabled={saveTeamMutation.isPending}
-                  type="button"
-                >
-                  {teamForm.teamId ? '수정 취소 · 새 팀 등록' : '입력 초기화'}
-                </button>
-              </div>
             </form>
           </OperatorPanel>
         </div>
 
         <OperatorPanel
-          description="CSV/TSV 헤더: team_name, division, leader_name, leader_email, member1_name, member1_email, member2_name, member2_email..."
-          title="일괄 등록"
-        >
-          <form
-            className="grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              bulkCreateMutation.mutate();
-            }}
-          >
-            <input
-              accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
-              className="block w-full text-xs font-bold text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-indigo-950 file:px-3 file:py-2 file:text-xs file:font-black file:text-white"
-              onChange={readBulkFile}
-              type="file"
-            />
-            <textarea
-              className="min-h-44 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              onChange={(event) => setBulkText(event.target.value)}
-              placeholder={
-                'team_name,division,leader_name,leader_email,member1_name,member1_email,member2_name,member2_email\nTeam A,일반,홍길동,a@example.com,김철수,b@example.com,이영희,c@example.com'
-              }
-              value={bulkText}
-            />
-            {bulkCreateMutation.error ? (
-              <ErrorBox
-                error={bulkCreateMutation.error}
-                fallback="참가팀 일괄 등록에 실패했습니다"
-              />
-            ) : null}
-            {bulkCreateMutation.data ? (
-              <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
-                {bulkCreateMutation.data.created.length}팀 등록,{' '}
-                {bulkCreateMutation.data.errors.length}건 실패
-              </p>
-            ) : null}
-            <button
-              className="h-11 rounded border border-indigo-200 bg-indigo-50 px-4 text-sm font-black text-indigo-700"
-              type="submit"
-            >
-              일괄 등록 실행
-              </button>
-            </form>
-          </OperatorPanel>
-          </div>
-
-          <OperatorPanel
           actions={
             <>
               <select
-                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => setDivisionFilter(event.target.value)}
                 value={divisionFilter}
               >
@@ -614,7 +630,7 @@ function OperatorParticipantsContent({
                 ))}
               </select>
               <input
-                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="팀/이름/이메일/상태 검색"
                 value={search}
@@ -624,9 +640,9 @@ function OperatorParticipantsContent({
           description="등록된 참가팀과 팀원 상태입니다."
           title="참가팀 목록"
         >
-          <div className="overflow-x-auto rounded border border-slate-200">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-black text-slate-500">
+              <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
                 <tr>
                   <th className="w-56 border-r border-b border-slate-200 px-4 py-3">
                     팀
@@ -654,14 +670,14 @@ function OperatorParticipantsContent({
                     >
                       <td className="border-r border-slate-100 px-4 py-4 align-top">
                         <strong
-                          className="zoj-break-anywhere font-black text-slate-950"
+                          className="zoj-break-anywhere font-semibold text-slate-950"
                           title={team.team_name}
                         >
                           {team.team_name}
                         </strong>
                         <StatusPill status={team.status} />
                       </td>
-                      <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
+                      <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-700">
                         {divisionById.get(team.division_id)?.name ??
                           team.division?.name ??
                           '-'}
@@ -670,30 +686,30 @@ function OperatorParticipantsContent({
                         <div className="grid gap-2">
                           {team.members.map((member) => (
                             <div
-                              className="grid min-w-0 gap-1 rounded border border-slate-100 bg-slate-50 px-3 py-2"
+                              className="grid min-w-0 gap-1 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
                               key={member.team_member_id ?? member.email}
                             >
                               <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <span
-                                  className="zoj-break-anywhere min-w-0 font-bold text-slate-800"
+                                  className="zoj-break-anywhere min-w-0 font-medium text-slate-800"
                                   title={member.name}
                                 >
                                   {member.name}
                                 </span>
                                 <span
-                                  className="zoj-break-anywhere min-w-0 text-xs font-bold text-slate-400"
+                                  className="zoj-break-anywhere min-w-0 text-xs font-medium text-slate-400"
                                   title={member.email}
                                 >
                                   {member.email}
                                 </span>
-                                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600">
+                                <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-600">
                                   {member.role === 'leader' ? '팀장' : '팀원'}
                                 </span>
                               </div>
-                              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
                                 <span
                                   className={[
-                                    'rounded-full px-2 py-1 font-black',
+                                    'rounded-full px-2 py-1 font-semibold',
                                     (member.active_sessions ?? 0) > 0
                                       ? 'bg-emerald-50 text-emerald-700'
                                       : 'bg-slate-100 text-slate-500',
@@ -706,7 +722,9 @@ function OperatorParticipantsContent({
                                 <span>
                                   마지막 사용{' '}
                                   {member.last_session_seen_at
-                                    ? formatDateTime(member.last_session_seen_at)
+                                    ? formatDateTime(
+                                        member.last_session_seen_at,
+                                      )
                                     : member.last_login_at
                                       ? formatDateTime(member.last_login_at)
                                       : '-'}
@@ -714,7 +732,7 @@ function OperatorParticipantsContent({
                                 {member.team_member_id &&
                                 (member.active_sessions ?? 0) > 0 ? (
                                   <button
-                                    className="rounded border border-amber-200 bg-white px-2 py-1 text-xs font-black text-amber-700 transition hover:bg-amber-50"
+                                    className="rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-50"
                                     onClick={() =>
                                       revokeSessionMutation.mutate({
                                         memberId: member.team_member_id!,
@@ -731,20 +749,20 @@ function OperatorParticipantsContent({
                           ))}
                         </div>
                       </td>
-                      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-500">
+                      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-500">
                         {formatDateTime(team.created_at)}
                       </td>
                       <td className="px-4 py-4 align-top">
                         <div className="flex flex-wrap gap-2">
                           <button
-                            className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                            className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700"
                             onClick={() => editTeam(team)}
                             type="button"
                           >
                             팀/팀원 편집
                           </button>
                           <button
-                            className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
+                            className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600"
                             onClick={() => confirmDeleteTeam(team)}
                             type="button"
                           >
@@ -757,7 +775,7 @@ function OperatorParticipantsContent({
                 ) : (
                   <tr>
                     <td
-                      className="px-4 py-10 text-center text-sm font-bold text-slate-500"
+                      className="px-4 py-10 text-center text-sm font-medium text-slate-500"
                       colSpan={5}
                     >
                       표시할 참가팀이 없습니다.
@@ -785,7 +803,7 @@ function StatusPill({ status }: { status: string }) {
 
   return (
     <span
-      className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-black ${tone}`}
+      className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${tone}`}
     >
       {label}
     </span>
@@ -802,10 +820,10 @@ function TextInput({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <input
-        className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
@@ -827,10 +845,10 @@ function SelectInput({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <select
-        className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -847,7 +865,7 @@ function SelectInput({
 
 function ErrorBox({ error, fallback }: { error: unknown; fallback: string }) {
   return (
-    <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+    <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
       {error ? formatApiError(error, fallback) : fallback}
     </p>
   );

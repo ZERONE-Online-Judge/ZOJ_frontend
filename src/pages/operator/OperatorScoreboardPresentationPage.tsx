@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import ScoreboardReleaseControl from '@/components/operator/ScoreboardReleaseControl';
 import { OperatorAccessGate } from '@/components/operator/OperatorShell';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorPresentationScoreboard } from '@/domains/submissionScoreboard/api';
+import { subscribeScoreboardUpdates } from '@/domains/submissionScoreboard/presentationSync';
 import type {
   OperatorPresentationScoreboardSection,
   ScoreboardProblemScore,
@@ -265,8 +265,7 @@ function OperatorScoreboardPresentationContent({
   now: number;
   token: string;
 }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [showControls, setShowControls] = useState(true);
+  const [searchParams] = useSearchParams();
   const queryIdentity = tokenQueryIdentity(token);
   const presentationQuery = useQuery({
     queryKey: [
@@ -280,6 +279,15 @@ function OperatorScoreboardPresentationContent({
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   });
+  const { refetch } = presentationQuery;
+
+  useEffect(
+    () =>
+      subscribeScoreboardUpdates(contestId, () => {
+        void refetch();
+      }),
+    [contestId, refetch],
+  );
   const contest = presentationQuery.data?.contest;
   const sections = presentationQuery.data?.sections ?? [];
   const selectedDivisionId = searchParams.get('divisionId') ?? '';
@@ -287,11 +295,6 @@ function OperatorScoreboardPresentationContent({
     (section) => section.division.division_id === selectedDivisionId,
   );
   const visibleSections = selectedSection ? [selectedSection] : sections;
-  const ended = Boolean(
-    contest &&
-    (['ended', 'finalized', 'archived'].includes(contest.status ?? '') ||
-      new Date(contest.end_at).getTime() <= now),
-  );
   const titleParts = splitContestTitle(contest?.title);
   const startsAt = contest?.start_at ? new Date(contest.start_at).getTime() : 0;
   const isBeforeContestStart = Boolean(startsAt && startsAt > now);
@@ -414,59 +417,6 @@ function OperatorScoreboardPresentationContent({
             )}
           </div>
         </header>
-
-        {ended ? (
-          <div className="grid gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="flex items-center gap-3 text-sm font-bold">
-                공개할 유형
-                <select
-                  className="rounded border border-white/20 bg-slate-900 px-3 py-2 text-white"
-                  value={selectedSection ? selectedDivisionId : ''}
-                  onChange={(event) =>
-                    setSearchParams(
-                      event.target.value
-                        ? { divisionId: event.target.value }
-                        : {},
-                    )
-                  }
-                >
-                  <option value="">전체 유형 보기</option>
-                  {sections.map((section) => (
-                    <option
-                      key={section.division.division_id}
-                      value={section.division.division_id}
-                    >
-                      {section.division.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="rounded border border-white/20 px-3 py-2 text-sm"
-                aria-expanded={showControls}
-                onClick={() => setShowControls((value) => !value)}
-              >
-                {showControls ? '공개 컨트롤 숨기기' : '공개 컨트롤 표시'}
-              </button>
-            </div>
-            {showControls && selectedSection ? (
-              <ScoreboardReleaseControl
-                key={selectedDivisionId}
-                contestId={contestId}
-                divisionId={selectedDivisionId}
-                divisionName={selectedSection.division.name}
-                token={token}
-              />
-            ) : showControls ? (
-              <p className="text-sm text-white/60">
-                순위를 공개할 유형을 선택하세요. 다른 유형의 공개 상태는
-                유지됩니다.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
 
         {presentationQuery.error && contest ? (
           <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">

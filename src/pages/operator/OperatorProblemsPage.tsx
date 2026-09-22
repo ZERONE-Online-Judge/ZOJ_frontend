@@ -1,3 +1,5 @@
+import useConfirmation from '@/shared/ui/useConfirmation';
+import Modal from '@/shared/ui/Modal';
 import VerificationCodeSection from '@/components/operator/VerificationCodeSection';
 import useVerificationCodeRuns, {
   VERIFICATION_CODE_KINDS,
@@ -632,7 +634,10 @@ export default function OperatorProblemsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -648,6 +653,9 @@ function OperatorProblemsContent({
   contestId: string;
   token: string;
 }) {
+  const { confirm: confirmAction, dialog: confirmationDialog } =
+    useConfirmation();
+
   const queryIdentity = tokenQueryIdentity(token);
   const queryClient = useQueryClient();
   const [editorMode, setEditorMode] = useState<ProblemEditorMode>('idle');
@@ -1487,10 +1495,10 @@ function OperatorProblemsContent({
     saveProblemMutation.mutate(normalized.form);
   }
 
-  function handleDeleteProblem() {
+  async function handleDeleteProblem() {
     if (!selectedProblem || deleteProblemMutation.isPending) return;
 
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `${selectedProblem.problem_code}. ${selectedProblem.title} 문제를 삭제할까요?\n\n채점 파일, 테스트케이스, 제출 기록도 함께 삭제됩니다.`,
     );
     if (!confirmed) return;
@@ -1520,11 +1528,14 @@ function OperatorProblemsContent({
 
   return (
     <PageLayout
+      variant="management"
       description="문제 본문, 예제, 채점 파일, 테스트케이스를 관리합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 문제 관리`}
       width="full"
     >
+      {confirmationDialog}
+
       <OperatorTabs contestId={contestId} />
 
       {dashboardQuery.error || problemsQuery.error ? (
@@ -1534,20 +1545,20 @@ function OperatorProblemsContent({
         />
       ) : null}
 
-      <div className="grid items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col gap-4 rounded border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black text-indigo-600 uppercase">
+              <p className="text-xs font-semibold text-indigo-600 uppercase">
                 문제 목록
               </p>
-              <h2 className="text-base font-black text-slate-950">
+              <h2 className="text-base font-semibold text-slate-950">
                 {filteredProblems.length}개
               </h2>
             </div>
             <div className="flex shrink-0 gap-2">
               <button
-                className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={
                   !activeDivisionId ||
                   saveProblemMutation.isPending ||
@@ -1562,9 +1573,9 @@ function OperatorProblemsContent({
               <button
                 aria-expanded={isCopyPanelOpen}
                 className={[
-                  'rounded border px-3 py-2 text-xs font-black transition',
+                  'rounded-lg border px-3 py-2 text-xs font-semibold transition',
                   isCopyPanelOpen
-                    ? 'border-indigo-300 bg-indigo-950 text-white'
+                    ? 'border-indigo-300 bg-indigo-600 text-white'
                     : 'border-slate-200 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
                 ].join(' ')}
                 onClick={() => setIsCopyPanelOpen((current) => !current)}
@@ -1574,10 +1585,10 @@ function OperatorProblemsContent({
               </button>
             </div>
           </div>
-          <label className="grid gap-2 text-xs font-bold text-slate-600">
+          <label className="grid gap-2 text-xs font-medium text-slate-600">
             문제 검색
             <input
-              className="h-10 min-w-0 rounded border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              className="h-10 min-w-0 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               type="search"
               placeholder="문제 번호 또는 제목"
               value={problemSearch}
@@ -1588,7 +1599,7 @@ function OperatorProblemsContent({
             {divisions.map((division) => (
               <button
                 className={[
-                  'h-8 shrink-0 rounded-full px-4 text-xs font-black transition',
+                  'h-8 shrink-0 rounded-full px-4 text-xs font-semibold transition',
                   activeDivisionId === division.division_id
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-slate-500 hover:text-slate-900',
@@ -1608,17 +1619,17 @@ function OperatorProblemsContent({
             ))}
           </div>
           {isCopyPanelOpen ? (
-            <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-3">
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div>
-                <p className="text-xs font-black text-slate-700">
+                <p className="text-xs font-semibold text-slate-700">
                   다른 유형 문제 가져오기
                 </p>
-                <p className="mt-1 text-[11px] font-bold text-slate-500">
+                <p className="mt-1 text-[11px] font-medium text-slate-500">
                   채점 파일과 테스트케이스까지 현재 유형으로 복사합니다.
                 </p>
               </div>
               <select
-                className="h-10 rounded border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 disabled={
                   !copyableProblems.length || copyProblemMutation.isPending
                 }
@@ -1645,7 +1656,7 @@ function OperatorProblemsContent({
                 })}
               </select>
               <button
-                className="h-10 rounded bg-indigo-950 px-3 text-xs font-black text-white disabled:bg-slate-300"
+                className="h-10 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white disabled:bg-slate-300"
                 disabled={
                   !copySourceProblemId ||
                   !activeDivisionId ||
@@ -1673,11 +1684,11 @@ function OperatorProblemsContent({
               ) : null}
             </div>
           ) : null}
-          <div className="grid min-h-0 gap-2 overflow-y-auto pr-1 xl:flex-1">
+          <div className="grid max-h-64 min-h-0 gap-2 overflow-y-auto pr-1 xl:max-h-none xl:flex-1">
             {filteredProblems.map((problem) => (
               <button
                 className={[
-                  'grid gap-1 rounded border px-3 py-3 text-left transition',
+                  'grid gap-1 rounded-lg border px-3 py-3 text-left transition',
                   selectedProblemId === problem.problem_id
                     ? 'border-indigo-300 bg-indigo-50'
                     : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50',
@@ -1687,19 +1698,19 @@ function OperatorProblemsContent({
                 onClick={() => editProblem(problem)}
                 type="button"
               >
-                <span className="font-black text-slate-950">
+                <span className="font-semibold text-slate-950">
                   {problem.problem_code}. {problem.title}
                 </span>
-                <span className="text-xs font-bold text-slate-500">
+                <span className="text-xs font-medium text-slate-500">
                   시간 {problemTimeLimitLabel(problem)}
                 </span>
-                <span className="text-xs font-bold text-slate-500">
+                <span className="text-xs font-medium text-slate-500">
                   메모리 {problemMemoryLimitLabel(problem)}
                 </span>
               </button>
             ))}
             {!filteredProblems.length ? (
-              <p className="rounded border border-dashed border-slate-200 px-3 py-8 text-center text-sm font-bold text-slate-500">
+              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm font-medium text-slate-500">
                 {problemsQuery.isLoading
                   ? '문제를 불러오는 중입니다.'
                   : problemSearch.trim()
@@ -1717,7 +1728,7 @@ function OperatorProblemsContent({
           {savedMessage ? (
             <p
               role="status"
-              className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
             >
               {savedMessage}
             </p>
@@ -1739,9 +1750,9 @@ function OperatorProblemsContent({
             }
           >
             {editorMode === 'idle' ? (
-              <div className="grid justify-items-center gap-4 rounded border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
+              <div className="grid justify-items-center gap-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
                 <ProblemIcon />
-                <h3 className="text-lg font-black text-slate-800">
+                <h3 className="text-lg font-semibold text-slate-800">
                   {!activeDivisionId && !dashboardQuery.isLoading
                     ? '참가 유형을 먼저 추가하세요'
                     : '어떤 문제를 작업할까요?'}
@@ -1752,7 +1763,7 @@ function OperatorProblemsContent({
                 </p>
                 {activeDivisionId ? (
                   <button
-                    className="rounded bg-indigo-950 px-5 py-3 text-sm font-black text-white"
+                    className="rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white"
                     onClick={startCreateMode}
                     type="button"
                   >
@@ -1760,7 +1771,7 @@ function OperatorProblemsContent({
                   </button>
                 ) : !dashboardQuery.isLoading ? (
                   <Link
-                    className="rounded bg-indigo-950 px-5 py-3 text-sm font-black text-white"
+                    className="rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white"
                     to={`/operator/contests/${contestId}/settings`}
                   >
                     설정에서 참가 유형 추가
@@ -1773,14 +1784,14 @@ function OperatorProblemsContent({
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-indigo-100 bg-indigo-50 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
                   <p className="text-xs leading-5 text-indigo-800">
                     {editorMode === 'create'
                       ? '새로 작성 중 · 저장하면 문제 목록에 추가됩니다.'
                       : '수정 중 · 기본 정보, 본문, 해설은 저장해야 반영됩니다. 파일 업로드와 테스트케이스 작업은 즉시 반영됩니다.'}
                   </p>
                   <button
-                    className="shrink-0 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+                    className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 disabled:opacity-50"
                     disabled={
                       saveProblemMutation.isPending ||
                       deleteProblemMutation.isPending ||
@@ -1793,7 +1804,7 @@ function OperatorProblemsContent({
                   </button>
                 </div>
                 {editorMode === 'edit' && !form.problemId ? (
-                  <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                     수정할 문제를 목록에서 가져와 주세요.
                   </p>
                 ) : null}
@@ -1807,9 +1818,9 @@ function OperatorProblemsContent({
                   ].map(([value, label]) => (
                     <button
                       className={[
-                        'h-11 rounded border px-4 text-sm font-black transition',
+                        'h-11 rounded-lg border px-4 text-sm font-semibold transition',
                         authoringTab === value
-                          ? 'border-indigo-300 bg-indigo-950 text-white'
+                          ? 'border-indigo-300 bg-indigo-600 text-white'
                           : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50',
                       ].join(' ')}
                       key={value}
@@ -1837,10 +1848,10 @@ function OperatorProblemsContent({
                   >
                     {authoringTab === 'settings' ? (
                       <>
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           유형
                           <select
-                            className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -1918,13 +1929,13 @@ function OperatorProblemsContent({
                             value={form.memoryLimitMb}
                           />
                         </div>
-                        <div className="rounded border border-slate-200 bg-slate-50 p-4">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                              <h3 className="text-sm font-black text-slate-900">
+                              <h3 className="text-sm font-semibold text-slate-900">
                                 언어별 리소스 제한
                               </h3>
-                              <p className="mt-1 text-xs font-bold text-slate-500">
+                              <p className="mt-1 text-xs font-medium text-slate-500">
                                 비워두면 기본 시간/메모리 제한을 그대로
                                 사용합니다.
                               </p>
@@ -1942,14 +1953,14 @@ function OperatorProblemsContent({
                                 automaticLanguageLimitText(form, language);
                               return (
                                 <div
-                                  className="grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
+                                  className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] md:items-end"
                                   key={language}
                                 >
                                   <div>
-                                    <p className="text-xs font-black tracking-normal text-slate-500 uppercase">
+                                    <p className="text-xs font-semibold tracking-normal text-slate-500 uppercase">
                                       Language
                                     </p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">
+                                    <p className="mt-1 text-sm font-semibold text-slate-950">
                                       {LANGUAGE_LABELS[language]}
                                     </p>
                                   </div>
@@ -2000,7 +2011,7 @@ function OperatorProblemsContent({
                                     value={limit.memoryLimitMb}
                                   />
                                   {automaticLimitText ? (
-                                    <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed font-bold text-amber-800 md:col-span-3">
+                                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed font-medium text-amber-800 md:col-span-3">
                                       {automaticLimitText}
                                     </p>
                                   ) : null}
@@ -2009,10 +2020,10 @@ function OperatorProblemsContent({
                             })}
                           </div>
                         </div>
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           정렬 순서
                           <select
-                            className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             disabled={!form.divisionId}
                             onChange={(event) =>
                               setForm((prev) => ({
@@ -2033,7 +2044,7 @@ function OperatorProblemsContent({
                               </option>
                             ))}
                           </select>
-                          <span className="text-xs font-bold text-slate-500">
+                          <span className="text-xs font-medium text-slate-500">
                             문제 생성 시 선택한 유형의 마지막 순서가 자동으로
                             채워집니다.
                           </span>
@@ -2042,10 +2053,10 @@ function OperatorProblemsContent({
                     ) : null}
                     {authoringTab === 'statement' ? (
                       <>
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           문제 본문
                           <textarea
-                            className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="min-h-72 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -2056,10 +2067,10 @@ function OperatorProblemsContent({
                           />
                         </label>
                         <div className="grid gap-3 md:grid-cols-2">
-                          <label className="grid gap-2 text-sm font-black text-slate-700">
+                          <label className="grid gap-2 text-sm font-semibold text-slate-700">
                             입력 설명
                             <textarea
-                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                               onChange={(event) =>
                                 setForm((prev) => ({
                                   ...prev,
@@ -2069,10 +2080,10 @@ function OperatorProblemsContent({
                               value={form.inputDescription}
                             />
                           </label>
-                          <label className="grid gap-2 text-sm font-black text-slate-700">
+                          <label className="grid gap-2 text-sm font-semibold text-slate-700">
                             출력 설명
                             <textarea
-                              className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                              className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                               onChange={(event) =>
                                 setForm((prev) => ({
                                   ...prev,
@@ -2083,10 +2094,10 @@ function OperatorProblemsContent({
                             />
                           </label>
                         </div>
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           노트
                           <textarea
-                            className="min-h-24 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="min-h-24 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -2096,18 +2107,18 @@ function OperatorProblemsContent({
                             value={form.note}
                           />
                         </label>
-                        <div className="grid gap-3 rounded border border-slate-200 p-4">
+                        <div className="grid gap-3 rounded-lg border border-slate-200 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-black text-slate-800">
+                              <p className="text-sm font-semibold text-slate-800">
                                 예제
                               </p>
-                              <p className="text-xs font-bold text-slate-500">
+                              <p className="text-xs font-medium text-slate-500">
                                 예제 입력, 출력, 설명을 여러 개 관리합니다.
                               </p>
                             </div>
                             <button
-                              className="rounded border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700"
+                              className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700"
                               onClick={addExample}
                               type="button"
                             >
@@ -2116,15 +2127,15 @@ function OperatorProblemsContent({
                           </div>
                           {form.examples.map((example, index) => (
                             <section
-                              className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+                              className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                               key={index}
                             >
                               <div className="flex items-center justify-between gap-3">
-                                <strong className="text-sm font-black text-slate-950">
+                                <strong className="text-sm font-semibold text-slate-950">
                                   예제 {index + 1}
                                 </strong>
                                 <button
-                                  className="rounded border border-rose-200 px-3 py-2 text-xs font-black text-rose-600"
+                                  className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600"
                                   onClick={() => removeExample(index)}
                                   type="button"
                                 >
@@ -2132,10 +2143,10 @@ function OperatorProblemsContent({
                                 </button>
                               </div>
                               <div className="grid gap-3 md:grid-cols-2">
-                                <label className="grid gap-2 text-sm font-black text-slate-700">
+                                <label className="grid gap-2 text-sm font-semibold text-slate-700">
                                   예제 입력
                                   <textarea
-                                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                    className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                     onChange={(event) =>
                                       updateExample(index, {
                                         input: event.target.value,
@@ -2144,10 +2155,10 @@ function OperatorProblemsContent({
                                     value={example.input}
                                   />
                                 </label>
-                                <label className="grid gap-2 text-sm font-black text-slate-700">
+                                <label className="grid gap-2 text-sm font-semibold text-slate-700">
                                   예제 출력
                                   <textarea
-                                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                    className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                     onChange={(event) =>
                                       updateExample(index, {
                                         output: event.target.value,
@@ -2157,10 +2168,10 @@ function OperatorProblemsContent({
                                   />
                                 </label>
                               </div>
-                              <label className="grid gap-2 text-sm font-black text-slate-700">
+                              <label className="grid gap-2 text-sm font-semibold text-slate-700">
                                 예제 설명
                                 <textarea
-                                  className="min-h-20 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                  className="min-h-20 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                   onChange={(event) =>
                                     updateExample(index, {
                                       note: event.target.value,
@@ -2172,21 +2183,21 @@ function OperatorProblemsContent({
                             </section>
                           ))}
                           {!form.examples.length ? (
-                            <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                            <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                               등록된 예제가 없습니다.
                             </p>
                           ) : null}
                         </div>
-                        <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                        <div className="grid gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
                           <div className="grid gap-1">
-                            <p className="text-sm font-black text-indigo-800">
+                            <p className="text-sm font-semibold text-indigo-800">
                               문제/예제 이미지
                             </p>
-                            <p className="text-xs font-bold text-slate-600">
+                            <p className="text-xs font-medium text-slate-600">
                               본문이나 예제 설명에 사용할 이미지를 업로드합니다.
                             </p>
                           </div>
-                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white transition hover:bg-indigo-800">
                             이미지 선택
                             <input
                               accept="image/png,image/jpeg,image/webp"
@@ -2206,7 +2217,7 @@ function OperatorProblemsContent({
                           <div className="grid gap-2">
                             {imageAssets.map((asset) => (
                               <p
-                                className="rounded border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-600"
+                                className="rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs font-medium text-slate-600"
                                 key={asset.asset_id}
                               >
                                 {asset.original_filename}
@@ -2215,7 +2226,7 @@ function OperatorProblemsContent({
                             {effectiveSelectedProblemId &&
                             !assetsQuery.isLoading &&
                             !imageAssets.length ? (
-                              <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                              <p className="rounded-lg border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-medium text-slate-500">
                                 업로드된 이미지가 없습니다.
                               </p>
                             ) : null}
@@ -2231,10 +2242,10 @@ function OperatorProblemsContent({
                     ) : null}
                     {authoringTab === 'editorial' ? (
                       <>
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           해설 본문
                           <textarea
-                            className="min-h-72 resize-y rounded border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                            className="min-h-72 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -2243,23 +2254,23 @@ function OperatorProblemsContent({
                             }
                             value={form.editorial}
                           />
-                          <span className="text-xs font-bold text-slate-500">
+                          <span className="text-xs font-medium text-slate-500">
                             문제 본문과 동일한 Markdown, LaTeX, 이미지 문법을
                             사용할 수 있습니다.
                           </span>
                         </label>
-                        <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                        <div className="grid gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
                           <div className="grid gap-1">
-                            <p className="text-sm font-black text-indigo-800">
+                            <p className="text-sm font-semibold text-indigo-800">
                               해설 PDF / 이미지
                             </p>
-                            <p className="text-xs font-bold text-slate-600">
+                            <p className="text-xs font-medium text-slate-600">
                               해설집 PDF나 본문에 넣을 이미지를 업로드합니다.
                               본문에는 아래 asset 문법을 붙여 넣어 사용할 수
                               있습니다.
                             </p>
                           </div>
-                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded bg-indigo-950 px-4 text-xs font-black text-white transition hover:bg-indigo-800">
+                          <label className="inline-flex h-10 w-fit cursor-pointer items-center rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white transition hover:bg-indigo-800">
                             파일 선택
                             <input
                               accept="application/pdf,image/png,image/jpeg,image/webp"
@@ -2286,13 +2297,13 @@ function OperatorProblemsContent({
                                 : `[${asset.original_filename}](asset://${asset.asset_id})`;
                               return (
                                 <div
-                                  className="grid gap-2 rounded border border-indigo-100 bg-white px-3 py-3 text-xs font-bold text-slate-600"
+                                  className="grid gap-2 rounded-lg border border-indigo-100 bg-white px-3 py-3 text-xs font-medium text-slate-600"
                                   key={asset.asset_id}
                                 >
                                   <div className="flex flex-wrap items-center justify-between gap-2">
                                     <span>{asset.original_filename}</span>
                                     <button
-                                      className="rounded border border-rose-200 px-2 py-1 text-[11px] font-black text-rose-600"
+                                      className="rounded-lg border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-600"
                                       disabled={deleteAssetMutation.isPending}
                                       onClick={() =>
                                         deleteAssetMutation.mutate(asset)
@@ -2302,7 +2313,7 @@ function OperatorProblemsContent({
                                       삭제
                                     </button>
                                   </div>
-                                  <code className="zoj-break-anywhere rounded bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
+                                  <code className="zoj-break-anywhere rounded-lg bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
                                     {snippet}
                                   </code>
                                 </div>
@@ -2311,7 +2322,7 @@ function OperatorProblemsContent({
                             {effectiveSelectedProblemId &&
                             !assetsQuery.isLoading &&
                             !editorialAssets.length ? (
-                              <p className="rounded border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-bold text-slate-500">
+                              <p className="rounded-lg border border-dashed border-indigo-100 bg-white/60 px-3 py-5 text-center text-xs font-medium text-slate-500">
                                 업로드된 해설 파일이 없습니다.
                               </p>
                             ) : null}
@@ -2323,7 +2334,7 @@ function OperatorProblemsContent({
                             />
                           ) : null}
                         </div>
-                        <div className="overflow-hidden rounded border border-slate-200">
+                        <div className="overflow-hidden rounded-lg border border-slate-200">
                           <ProblemEditorialPanel
                             assets={assetsQuery.data ?? []}
                             problem={previewProblem}
@@ -2332,7 +2343,7 @@ function OperatorProblemsContent({
                       </>
                     ) : null}
                     {authoringTab === 'tests' ? (
-                      <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
+                      <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700">
                         아래 영역에서 채점 보조 파일과 .in/.out 테스트케이스를
                         관리합니다.
                       </p>
@@ -2354,14 +2365,14 @@ function OperatorProblemsContent({
                       />
                     ) : null}
                     {formNotice ? (
-                      <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                         {formNotice}
                       </p>
                     ) : null}
                     {authoringTab !== 'tests' ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <button
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white disabled:bg-slate-300"
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:bg-slate-300"
                           disabled={
                             (editorMode === 'edit' && !form.problemId) ||
                             saveProblemMutation.isPending ||
@@ -2378,7 +2389,7 @@ function OperatorProblemsContent({
                         </button>
                         {editorMode === 'edit' && selectedProblem ? (
                           <button
-                            className="inline-flex h-11 items-center justify-center rounded border border-rose-200 bg-white px-5 text-sm font-black text-rose-700 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
+                            className="inline-flex h-11 items-center justify-center rounded-lg border border-rose-200 bg-white px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
                             disabled={
                               deleteProblemMutation.isPending ||
                               saveProblemMutation.isPending
@@ -2409,13 +2420,13 @@ function OperatorProblemsContent({
               title="채점 파일과 테스트케이스"
             >
               {!effectiveSelectedProblemId ? (
-                <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                   채점 파일을 확인할 문제를 먼저 선택해 주세요.
                 </p>
               ) : (
                 <>
                   {packageStatusQuery.isLoading ? (
-                    <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
                       채점 파일 상태를 불러오는 중입니다.
                     </p>
                   ) : null}
@@ -2423,7 +2434,7 @@ function OperatorProblemsContent({
                     {packageStatusQuery.data ? (
                       <p
                         className={[
-                          'rounded border px-4 py-3 text-sm font-black',
+                          'rounded-lg border px-4 py-3 text-sm font-semibold',
                           packageStatusQuery.data.ready
                             ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                             : 'border-amber-200 bg-amber-50 text-amber-700',
@@ -2435,7 +2446,7 @@ function OperatorProblemsContent({
                       </p>
                     ) : null}
                     {packageStatusQuery.data?.warnings.length ? (
-                      <ul className="grid gap-1 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
+                      <ul className="grid gap-1 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
                         {packageStatusQuery.data.warnings.map((warning) => (
                           <li key={warning}>{warning}</li>
                         ))}
@@ -2447,7 +2458,7 @@ function OperatorProblemsContent({
 
                         return (
                           <div
-                            className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
+                            className="grid gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto]"
                             key={file.role}
                           >
                             <span className="grid min-w-0 gap-1">
@@ -2456,13 +2467,13 @@ function OperatorProblemsContent({
                                 {file.required ? ' *' : ''}
                               </span>
                               {file.detail ? (
-                                <span className="text-[11px] font-bold text-slate-400">
+                                <span className="text-[11px] font-medium text-slate-400">
                                   {file.detail}
                                 </span>
                               ) : null}
                               <button
                                 className={[
-                                  'w-fit max-w-full truncate text-left font-black',
+                                  'w-fit max-w-full truncate text-left font-semibold',
                                   asset
                                     ? 'text-indigo-700 hover:text-indigo-950'
                                     : file.status === 'ready'
@@ -2488,7 +2499,7 @@ function OperatorProblemsContent({
                             </span>
                             <div className="flex flex-wrap gap-2">
                               <button
-                                className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
+                                className="h-9 rounded-lg border border-indigo-200 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
                                 disabled={!asset}
                                 onClick={() =>
                                   asset
@@ -2503,16 +2514,16 @@ function OperatorProblemsContent({
                                 보기
                               </button>
                               <button
-                                className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
+                                className="h-9 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-300"
                                 disabled={
                                   !asset || deleteAssetMutation.isPending
                                 }
-                                onClick={() => {
+                                onClick={async () => {
                                   if (
                                     asset &&
-                                    window.confirm(
+                                    (await confirmAction(
                                       `${asset.original_filename} 파일을 삭제할까요?`,
-                                    )
+                                    ))
                                   ) {
                                     deleteAssetMutation.mutate(asset);
                                   }
@@ -2521,7 +2532,7 @@ function OperatorProblemsContent({
                               >
                                 삭제
                               </button>
-                              <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded border border-slate-200 bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
+                              <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-slate-950 px-3 text-xs font-semibold text-white transition hover:bg-slate-800">
                                 파일 선택
                                 <input
                                   className="sr-only"
@@ -2549,13 +2560,13 @@ function OperatorProblemsContent({
                       })}
                     </div>
                   </div>
-                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                    <p className="text-sm font-black text-indigo-800">
+                  <div className="grid gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+                    <p className="text-sm font-semibold text-indigo-800">
                       테스트케이스 파일 추가
                     </p>
                     <div
                       className={[
-                        'grid gap-3 rounded border border-dashed px-4 py-6 text-center transition',
+                        'grid gap-3 rounded-lg border border-dashed px-4 py-6 text-center transition',
                         isCaseDropActive
                           ? 'border-indigo-400 bg-white'
                           : 'border-indigo-200 bg-white/70',
@@ -2575,17 +2586,17 @@ function OperatorProblemsContent({
                         );
                       }}
                     >
-                      <p className="text-sm font-black text-slate-800">
+                      <p className="text-sm font-semibold text-slate-800">
                         테스트케이스 파일을 이 영역에 드롭
                       </p>
-                      <p className="text-xs font-bold text-slate-500">
+                      <p className="text-xs font-medium text-slate-500">
                         같은 이름의 입력 파일(.in)과 출력 파일(.out)을 함께
                         선택하거나 드롭해 주세요. 파일명 기준으로 짝지어 한 번에
                         반영합니다.
                       </p>
                       <label
                         className={[
-                          'mx-auto inline-flex h-10 items-center rounded px-4 text-xs font-black text-white transition',
+                          'mx-auto inline-flex h-10 items-center rounded-lg px-4 text-xs font-semibold text-white transition',
                           uploadMatchedTestcasesMutation.isPending
                             ? 'cursor-not-allowed bg-slate-300'
                             : 'cursor-pointer bg-emerald-700 hover:bg-emerald-800',
@@ -2613,7 +2624,7 @@ function OperatorProblemsContent({
                     {uploadProgress ? (
                       <p
                         aria-live="polite"
-                        className="text-xs font-bold text-slate-600"
+                        className="text-xs font-medium text-slate-600"
                       >
                         {uploadProgress}
                       </p>
@@ -2638,11 +2649,11 @@ function OperatorProblemsContent({
                   <div className="grid gap-2">
                     {latestTestcaseSet ? (
                       <div
-                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-3 text-xs font-bold text-slate-600"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-3 text-xs font-medium text-slate-600"
                         key={latestTestcaseSet.testcase_set_id}
                       >
                         <button
-                          className="text-left font-black text-indigo-700 hover:text-indigo-950"
+                          className="text-left font-semibold text-indigo-700 hover:text-indigo-950"
                           onClick={() => setIsTestcaseModalOpen(true)}
                           type="button"
                         >
@@ -2652,7 +2663,7 @@ function OperatorProblemsContent({
                         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                           <span
                             className={[
-                              'inline-flex h-7 max-w-full items-center rounded border px-2 text-[11px] font-black',
+                              'inline-flex h-7 max-w-full items-center rounded-lg border px-2 text-[11px] font-semibold',
                               judgeBundleStatusClassName(
                                 packageStatusQuery.data?.judge_bundle,
                               ),
@@ -2666,7 +2677,7 @@ function OperatorProblemsContent({
                             )}
                           </span>
                           <button
-                            className="h-7 rounded border border-indigo-200 px-2 text-[11px] font-black text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
+                            className="h-7 rounded-lg border border-indigo-200 px-2 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:border-slate-200 disabled:text-slate-300"
                             disabled={
                               !effectiveSelectedProblemId ||
                               warmJudgeBundleMutation.isPending ||
@@ -2682,7 +2693,7 @@ function OperatorProblemsContent({
                               ? '예약 중'
                               : '번들 재생성'}
                           </button>
-                          <span className="min-w-0 truncate text-xs font-bold text-slate-400">
+                          <span className="min-w-0 truncate text-xs font-medium text-slate-400">
                             {judgeBundleStatusDetail(
                               packageStatusQuery.data?.judge_bundle,
                             )}
@@ -2690,16 +2701,16 @@ function OperatorProblemsContent({
                         </div>
                       </div>
                     ) : (
-                      <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                      <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                         업로드된 테스트케이스가 없습니다.
                       </p>
                     )}
                   </div>
                   <VerificationCodeSection
                     assetsByKind={verificationAssetsByKind}
-                    onDelete={(asset) => {
+                    onDelete={async (asset) => {
                       if (
-                        window.confirm(
+                        await confirmAction(
                           `${asset.original_filename} 검증 코드를 삭제할까요?`,
                         )
                       ) {
@@ -2736,10 +2747,12 @@ function OperatorProblemsContent({
             setIsTestcaseModalOpen(false);
             setTestcaseFilePreview(null);
           }}
-          onDeleteTestcase={(testcaseId) => {
+          onDeleteTestcase={async (testcaseId) => {
             if (!latestTestcaseSet) return;
             if (
-              window.confirm('이 테스트케이스 입력/출력 세트를 삭제할까요?')
+              await confirmAction(
+                '이 테스트케이스 입력/출력 세트를 삭제할까요?',
+              )
             ) {
               deleteTestcaseMutation.mutate({
                 testcaseId,
@@ -2847,19 +2860,19 @@ function TestcaseSetModal({
   }
 
   return (
-    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
-      <section className="zoj-modal-shell grid h-full grid-rows-[auto_minmax(0,1fr)]">
+    <Modal aria-label="테스트케이스" onClose={onClose}>
+      <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Testcases
             </p>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-semibold text-slate-950">
               현재 테스트케이스 {testcases.length}개
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -2868,9 +2881,9 @@ function TestcaseSetModal({
         </header>
 
         <div className="min-h-0 overflow-hidden">
-          <div className="h-full min-w-0 overflow-x-scroll overflow-y-auto [scrollbar-gutter:stable]">
-            <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs font-black text-slate-500">
+          <div className="h-full min-w-0 overflow-x-auto overflow-y-auto [scrollbar-gutter:stable]">
+            <table className="w-full min-w-[38rem] border-collapse text-left text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-xs font-semibold text-slate-500">
                 <tr>
                   <th className="w-20 border-r border-b border-slate-200 px-4 py-3">
                     번호
@@ -2900,11 +2913,11 @@ function TestcaseSetModal({
                   return (
                     <Fragment key={testcase.testcase_id}>
                       <tr className="hover:bg-indigo-50/40">
-                        <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                        <td className="border-r border-slate-100 px-4 py-3 font-semibold text-slate-950">
                           {testcase.display_order}
                         </td>
                         <td
-                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
+                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-medium whitespace-nowrap text-slate-600"
                           title={storageFileName(testcase.input_storage_key)}
                         >
                           {testcaseFileLabel(
@@ -2914,7 +2927,7 @@ function TestcaseSetModal({
                           )}
                         </td>
                         <td
-                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-bold whitespace-nowrap text-slate-600"
+                          className="border-r border-slate-100 px-4 py-3 font-mono text-xs font-medium whitespace-nowrap text-slate-600"
                           title={storageFileName(testcase.output_storage_key)}
                         >
                           {testcaseFileLabel(
@@ -2928,7 +2941,7 @@ function TestcaseSetModal({
                             <button
                               aria-expanded={isInputOpen}
                               className={[
-                                'rounded border px-3 py-2 text-xs font-black whitespace-nowrap',
+                                'rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap',
                                 isInputOpen
                                   ? 'border-indigo-600 bg-indigo-600 text-white'
                                   : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50',
@@ -2946,7 +2959,7 @@ function TestcaseSetModal({
                             <button
                               aria-expanded={isOutputOpen}
                               className={[
-                                'rounded border px-3 py-2 text-xs font-black whitespace-nowrap',
+                                'rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap',
                                 isOutputOpen
                                   ? 'border-indigo-600 bg-indigo-600 text-white'
                                   : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50',
@@ -2965,7 +2978,7 @@ function TestcaseSetModal({
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            className="rounded border border-rose-200 px-3 py-2 text-xs font-black whitespace-nowrap text-rose-600 hover:bg-rose-50 disabled:text-slate-300"
+                            className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold whitespace-nowrap text-rose-600 hover:bg-rose-50 disabled:text-slate-300"
                             disabled={
                               deletingTestcaseId === testcase.testcase_id
                             }
@@ -2984,18 +2997,18 @@ function TestcaseSetModal({
                             className="border-t border-slate-100 px-4 py-4"
                             colSpan={5}
                           >
-                            <div className="animate-panel-enter grid gap-3 rounded border border-slate-200 bg-white p-4">
+                            <div className="animate-panel-enter grid gap-3 rounded-lg border border-slate-200 bg-white p-4">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-black text-slate-950">
+                                  <p className="text-sm font-semibold text-slate-950">
                                     {filePreview?.title ?? '파일 내용'}
                                   </p>
-                                  <p className="font-mono text-xs font-bold break-all text-slate-400">
+                                  <p className="font-mono text-xs font-medium break-all text-slate-400">
                                     {filePreview?.storageKey}
                                   </p>
                                 </div>
                                 <button
-                                  className="h-8 rounded border border-slate-200 px-3 text-xs font-black text-slate-600 hover:bg-slate-50"
+                                  className="h-8 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                                   onClick={() => onSelectFile(null)}
                                   type="button"
                                 >
@@ -3003,7 +3016,7 @@ function TestcaseSetModal({
                                 </button>
                               </div>
                               {isFileLoading ? (
-                                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                                <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
                                   파일 내용을 불러오는 중입니다.
                                 </p>
                               ) : fileError ? (
@@ -3012,7 +3025,7 @@ function TestcaseSetModal({
                                   fallback="파일 내용을 불러오지 못했습니다"
                                 />
                               ) : (
-                                <pre className="max-h-96 min-h-32 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+                                <pre className="max-h-96 min-h-32 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
                                   {fileText ?? ''}
                                 </pre>
                               )}
@@ -3026,7 +3039,7 @@ function TestcaseSetModal({
                 {!testcases.length ? (
                   <tr>
                     <td
-                      className="px-4 py-10 text-center text-sm font-bold text-slate-500"
+                      className="px-4 py-10 text-center text-sm font-medium text-slate-500"
                       colSpan={5}
                     >
                       표시할 테스트케이스가 없습니다.
@@ -3038,7 +3051,7 @@ function TestcaseSetModal({
           </div>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -3056,22 +3069,22 @@ function FileContentModal({
   onClose: () => void;
 }) {
   return (
-    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
+    <Modal aria-label="파일 내용" onClose={onClose}>
       <section className="zoj-modal-shell grid h-full max-w-4xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Support file
             </p>
-            <h2 className="truncate text-xl font-black text-slate-950">
+            <h2 className="truncate text-xl font-semibold text-slate-950">
               {filePreview.title}
             </h2>
-            <p className="font-mono text-xs font-bold break-all text-slate-400">
+            <p className="font-mono text-xs font-medium break-all text-slate-400">
               {filePreview.storageKey}
             </p>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -3080,7 +3093,7 @@ function FileContentModal({
         </header>
         <div className="min-h-0 p-5">
           {isFileLoading ? (
-            <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
               파일 내용을 불러오는 중입니다.
             </p>
           ) : fileError ? (
@@ -3089,13 +3102,13 @@ function FileContentModal({
               fallback="파일 내용을 불러오지 못했습니다"
             />
           ) : (
-            <pre className="h-full min-h-72 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+            <pre className="h-full min-h-0 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
               {fileText ?? ''}
             </pre>
           )}
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -3109,16 +3122,16 @@ function UploadProgressModal({
   const safeProgress = Math.max(0, Math.min(100, progress));
 
   return (
-    <div aria-modal="true" className="zoj-modal-backdrop z-[80]" role="dialog">
-      <section className="w-full max-w-md rounded border border-slate-200 bg-white p-6 shadow-2xl">
+    <Modal aria-label="테스트케이스 반영 중">
+      <section className="zoj-modal-card w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="grid gap-2">
-          <p className="text-xs font-black text-indigo-600 uppercase">
+          <p className="text-xs font-semibold text-indigo-600 uppercase">
             Uploading
           </p>
-          <h2 className="text-xl font-black text-slate-950">
+          <h2 className="text-xl font-semibold text-slate-950">
             테스트케이스 반영 중
           </h2>
-          <p className="text-sm font-bold text-slate-500">
+          <p className="text-sm font-medium text-slate-500">
             업로드와 검증이 끝날 때까지 기다려 주세요.
           </p>
         </div>
@@ -3129,13 +3142,13 @@ function UploadProgressModal({
               style={{ width: `${safeProgress}%` }}
             />
           </div>
-          <div className="flex items-center justify-between gap-3 text-xs font-black text-slate-600">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-600">
             <span>{message}</span>
             <span>{safeProgress}%</span>
           </div>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -3146,7 +3159,7 @@ function OperatorPreviewJudgeResult({
 }) {
   if (!submission) {
     return (
-      <section className="mx-7 mb-7 rounded border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-bold text-slate-500">
+      <section className="mx-7 mb-7 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-medium text-slate-500">
         테스트 제출 후 채점 진행률과 실패 케이스 상세가 여기에 표시됩니다.
       </section>
     );
@@ -3165,20 +3178,20 @@ function OperatorPreviewJudgeResult({
   );
 
   return (
-    <section className="mx-7 mb-7 grid gap-4 rounded border border-slate-200 bg-white px-4 py-4">
+    <section className="mx-7 mb-7 grid gap-4 rounded-lg border border-slate-200 bg-white px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-black text-indigo-600 uppercase">
+          <p className="text-xs font-semibold text-indigo-600 uppercase">
             Judge result
           </p>
-          <h3 className="text-lg font-black text-slate-950">
+          <h3 className="text-lg font-semibold text-slate-950">
             {submissionStatusLabel(submission.status)}
             {progressText ? ` · ${progressText}` : ''}
           </h3>
         </div>
         <span
           className={[
-            'rounded-full px-3 py-1 text-xs font-black',
+            'rounded-full px-3 py-1 text-xs font-semibold',
             isSubmissionPending(submission.status)
               ? 'bg-amber-50 text-amber-700'
               : submission.status === 'accepted'
@@ -3200,7 +3213,7 @@ function OperatorPreviewJudgeResult({
               }}
             />
           </div>
-          <p className="text-xs font-bold text-slate-500">
+          <p className="text-xs font-medium text-slate-500">
             채점 서버 응답을 기다리는 중입니다.
           </p>
         </div>
@@ -3243,9 +3256,9 @@ function PreviewJudgeMetric({
   value: string;
 }) {
   return (
-    <div className="grid gap-1 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-      <span className="text-[11px] font-black text-slate-500">{label}</span>
-      <strong className="text-xs font-black break-words text-slate-950">
+    <div className="grid gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+      <span className="text-[11px] font-semibold text-slate-500">{label}</span>
+      <strong className="text-xs font-semibold break-words text-slate-950">
         {value}
       </strong>
     </div>
@@ -3254,9 +3267,9 @@ function PreviewJudgeMetric({
 
 function PreviewJudgeLog({ label, value }: { label: string; value: string }) {
   return (
-    <label className="grid gap-2 text-xs font-black text-slate-700">
+    <label className="grid gap-2 text-xs font-semibold text-slate-700">
       {label}
-      <pre className="max-h-56 overflow-auto rounded border border-slate-200 bg-slate-950 px-3 py-2 font-mono text-[11px] leading-5 whitespace-pre-wrap text-slate-50">
+      <pre className="max-h-56 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-3 py-2 font-mono text-[11px] leading-5 whitespace-pre-wrap text-slate-50">
         {value}
       </pre>
     </label>
@@ -3293,19 +3306,19 @@ function ProblemPreviewModal({
   testLanguage: JudgeLanguage;
 }) {
   return (
-    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
+    <Modal aria-label="문제 미리보기" onClose={onClose}>
       <section className="zoj-modal-shell flex h-full max-w-7xl flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-xs font-black tracking-normal text-indigo-600 uppercase">
+            <p className="text-xs font-semibold tracking-normal text-indigo-600 uppercase">
               Preview
             </p>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-semibold text-slate-950">
               {problem.problem_code}. {problem.title}
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -3313,8 +3326,8 @@ function ProblemPreviewModal({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_28rem]">
-          <div className="min-h-0 overflow-y-auto">
+        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_28rem] lg:overflow-hidden">
+          <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto">
             <ProblemStatementPanel assets={assets} problem={problem} />
             {problem.editorial?.trim() ? (
               <div className="border-t border-slate-200">
@@ -3322,7 +3335,7 @@ function ProblemPreviewModal({
               </div>
             ) : null}
           </div>
-          <div className="min-h-0 overflow-y-auto border-t border-slate-200 lg:border-t-0 lg:border-l">
+          <div className="min-w-0 border-t border-slate-200 lg:min-h-0 lg:overflow-y-auto lg:border-t-0 lg:border-l">
             <ProblemSubmitPanel
               canSubmit={canSubmit}
               editorHeight={360}
@@ -3340,7 +3353,7 @@ function ProblemPreviewModal({
           </div>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -3396,10 +3409,10 @@ function TextInput({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <input
-        className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
         inputMode={inputMode}
         onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}
@@ -3407,7 +3420,7 @@ function TextInput({
         value={value}
       />
       {helperText ? (
-        <span className="text-xs font-bold text-slate-500">{helperText}</span>
+        <span className="text-xs font-medium text-slate-500">{helperText}</span>
       ) : null}
     </label>
   );
@@ -3415,7 +3428,7 @@ function TextInput({
 
 function ErrorBox({ error, fallback }: { error: unknown; fallback: string }) {
   return (
-    <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+    <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
       {error ? formatApiError(error, fallback) : fallback}
     </p>
   );

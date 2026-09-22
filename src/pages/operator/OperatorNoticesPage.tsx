@@ -1,3 +1,4 @@
+import useConfirmation from '@/shared/ui/useConfirmation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -59,7 +60,10 @@ export default function OperatorNoticesPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -75,6 +79,9 @@ function OperatorNoticesContent({
   contestId: string;
   token: string;
 }) {
+  const { confirm: confirmAction, dialog: confirmationDialog } =
+    useConfirmation();
+
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const [form, setForm] = useState(emptyNoticeForm);
@@ -99,13 +106,21 @@ function OperatorNoticesContent({
     queryFn: () => listOperatorContestNotices(contestId, token),
     refetchInterval: 15_000,
   });
-  const noticesQueryKey = ['operator', 'notices', contestId, queryIdentity] as const;
+  const noticesQueryKey = [
+    'operator',
+    'notices',
+    contestId,
+    queryIdentity,
+  ] as const;
 
   const contest = dashboardQuery.data?.contest;
   const notices = noticesQuery.data ?? [];
   const isNoticeListLoading =
     noticesQuery.isPending || (noticesQuery.isFetching && !noticesQuery.data);
-  const totalNoticePages = Math.max(1, Math.ceil(notices.length / NOTICE_PAGE_SIZE));
+  const totalNoticePages = Math.max(
+    1,
+    Math.ceil(notices.length / NOTICE_PAGE_SIZE),
+  );
   const pagedNotices = notices.slice(
     (noticePage - 1) * NOTICE_PAGE_SIZE,
     noticePage * NOTICE_PAGE_SIZE,
@@ -195,7 +210,9 @@ function OperatorNoticesContent({
         setFormError('');
       }
       queryClient.setQueryData<ContestNotice[]>(noticesQueryKey, (current) =>
-        (current ?? []).filter((notice) => notice.contest_notice_id !== noticeId),
+        (current ?? []).filter(
+          (notice) => notice.contest_notice_id !== noticeId,
+        ),
       );
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'notices', contestId],
@@ -227,8 +244,8 @@ function OperatorNoticesContent({
     setEditorMode('notice');
   }
 
-  function removeNotice(notice: ContestNotice) {
-    const confirmed = window.confirm(
+  async function removeNotice(notice: ContestNotice) {
+    const confirmed = await confirmAction(
       `"${notice.title}" 공지를 삭제할까요? 삭제한 공지는 복구할 수 없습니다.`,
     );
     if (!confirmed) return;
@@ -242,11 +259,14 @@ function OperatorNoticesContent({
 
   return (
     <PageLayout
+      variant="management"
       description="대회 참가자에게 보이는 공지와 긴급 공지를 관리합니다."
       eyebrow="Operator"
       title={`${contest?.title ?? '대회'} 공지`}
       width="full"
     >
+      {confirmationDialog}
+
       <OperatorTabs contestId={contestId} />
 
       {dashboardQuery.error || noticesQuery.error ? (
@@ -259,12 +279,12 @@ function OperatorNoticesContent({
       <div className="grid gap-6">
         <OperatorPanel
           actions={
-            <div className="inline-flex rounded border border-slate-200 bg-slate-50 p-1">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
               <button
                 className={[
-                  'h-9 rounded px-4 text-sm font-black transition',
+                  'h-9 rounded-lg px-4 text-sm font-semibold transition',
                   editorMode === 'notice'
-                    ? 'bg-indigo-950 text-white shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-950',
                 ].join(' ')}
                 onClick={() => setEditorMode('notice')}
@@ -274,7 +294,7 @@ function OperatorNoticesContent({
               </button>
               <button
                 className={[
-                  'h-9 rounded px-4 text-sm font-black transition',
+                  'h-9 rounded-lg px-4 text-sm font-semibold transition',
                   editorMode === 'emergency'
                     ? 'bg-rose-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-950',
@@ -303,10 +323,10 @@ function OperatorNoticesContent({
                   }
                   value={form.title}
                 />
-                <label className="grid gap-2 text-sm font-black text-slate-700">
+                <label className="grid gap-2 text-sm font-semibold text-slate-700">
                   공개 범위
                   <select
-                    className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                     onChange={(event) =>
                       setForm((prev) => ({
                         ...prev,
@@ -321,10 +341,10 @@ function OperatorNoticesContent({
                   </select>
                 </label>
               </div>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 본문
                 <textarea
-                  className="min-h-36 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                  className="min-h-36 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, body: event.target.value }))
                   }
@@ -349,7 +369,7 @@ function OperatorNoticesContent({
                   />
                 </div>
                 <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
                   disabled={saveNoticeMutation.isPending}
                   type="submit"
                 >
@@ -367,28 +387,28 @@ function OperatorNoticesContent({
           ) : (
             <div className="grid gap-4">
               {contest?.emergency_notice ? (
-                <div className="grid gap-2 rounded border border-rose-200 bg-rose-50 px-4 py-3">
+                <div className="grid gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-black text-rose-600 uppercase">
+                    <span className="text-xs font-semibold text-rose-600 uppercase">
                       현재 표시 중
                     </span>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-rose-600">
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-rose-600">
                       전광판 노출
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm leading-6 font-bold text-rose-700">
+                  <p className="text-sm leading-6 font-medium whitespace-pre-wrap text-rose-700">
                     {contest.emergency_notice}
                   </p>
                 </div>
               ) : (
-                <p className="rounded border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-bold text-slate-500">
+                <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-medium text-slate-500">
                   현재 표시 중인 긴급공지 문구가 없습니다.
                 </p>
               )}
-              <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 font-bold text-slate-500">
-                일반 공지를 긴급 공지로 저장하면 이 문구가 해당 공지
-                본문으로 자동 교체됩니다. 이후 문구 수정과 내리기는 이
-                관리 창에서 따로 처리할 수 있습니다.
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 font-medium text-slate-500">
+                일반 공지를 긴급 공지로 저장하면 이 문구가 해당 공지 본문으로
+                자동 교체됩니다. 이후 문구 수정과 내리기는 이 관리 창에서 따로
+                처리할 수 있습니다.
               </p>
               <form
                 className="grid gap-4"
@@ -397,13 +417,11 @@ function OperatorNoticesContent({
                   saveEmergencyMutation.mutate(emergencyNotice);
                 }}
               >
-                <label className="grid gap-2 text-sm font-black text-slate-700">
+                <label className="grid gap-2 text-sm font-semibold text-slate-700">
                   긴급공지 문구
                   <textarea
-                    className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    onChange={(event) =>
-                      setEmergencyNotice(event.target.value)
-                    }
+                    className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                    onChange={(event) => setEmergencyNotice(event.target.value)}
                     placeholder="전광판에 표시할 긴급공지 문구를 입력하세요."
                     value={emergencyNotice}
                   />
@@ -416,7 +434,7 @@ function OperatorNoticesContent({
                 ) : null}
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
-                    className="h-10 rounded border border-rose-200 bg-white px-4 text-sm font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                    className="h-10 rounded-lg border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
                     disabled={
                       saveEmergencyMutation.isPending ||
                       !contest?.emergency_notice
@@ -427,10 +445,9 @@ function OperatorNoticesContent({
                     긴급공지 내리기
                   </button>
                   <button
-                    className="h-10 rounded bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700 disabled:bg-slate-300"
+                    className="h-10 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:bg-slate-300"
                     disabled={
-                      saveEmergencyMutation.isPending ||
-                      !emergencyNotice.trim()
+                      saveEmergencyMutation.isPending || !emergencyNotice.trim()
                     }
                     type="submit"
                   >
@@ -446,10 +463,13 @@ function OperatorNoticesContent({
           description="참가자 화면 상단에 표시될 대회 공지입니다."
           title="공지 목록"
         >
-          <div className="divide-y divide-slate-100 rounded border border-slate-200">
+          <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {isNoticeListLoading ? (
               <div className="px-4 py-6">
-                <PageNotice message="공지 목록을 불러오는 중입니다." status="loading" />
+                <PageNotice
+                  message="공지 목록을 불러오는 중입니다."
+                  status="loading"
+                />
               </div>
             ) : notices.length > 0 ? (
               pagedNotices.map((notice) => (
@@ -459,19 +479,19 @@ function OperatorNoticesContent({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     {notice.pinned ? (
-                      <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                      <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
                         상단
                       </span>
                     ) : null}
                     {notice.emergency ? (
-                      <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">
+                      <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
                         긴급
                       </span>
                     ) : null}
-                    <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">
+                    <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                       {notice.visibility === 'public' ? '공개' : '참가자'}
                     </span>
-                    <time className="text-xs font-bold text-slate-400">
+                    <time className="text-xs font-medium text-slate-400">
                       {formatDateTime(notice.published_at)}
                     </time>
                   </div>
@@ -487,19 +507,19 @@ function OperatorNoticesContent({
                       }
                       type="button"
                     >
-                      <strong className="text-lg font-black break-keep text-slate-950">
+                      <strong className="text-lg font-semibold break-keep text-slate-950">
                         {notice.title}
                       </strong>
                     </button>
                     <button
-                      className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"
+                      className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       onClick={() => editNotice(notice)}
                       type="button"
                     >
                       수정
                     </button>
                     <button
-                      className="h-9 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                      className="h-9 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
                       disabled={deleteNoticeMutation.isPending}
                       onClick={() => removeNotice(notice)}
                       type="button"
@@ -508,14 +528,14 @@ function OperatorNoticesContent({
                     </button>
                   </div>
                   {expandedNoticeId === notice.contest_notice_id ? (
-                    <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 whitespace-pre-wrap text-slate-700">
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 whitespace-pre-wrap text-slate-700">
                       {notice.body}
                     </p>
                   ) : null}
                 </article>
               ))
             ) : (
-              <p className="px-4 py-10 text-center text-sm font-bold text-slate-500">
+              <p className="px-4 py-10 text-center text-sm font-medium text-slate-500">
                 등록된 공지가 없습니다.
               </p>
             )}
@@ -556,7 +576,7 @@ function Pagination({
         (page) => (
           <button
             className={[
-              'h-9 min-w-9 rounded border px-3 text-sm font-black transition',
+              'h-9 min-w-9 rounded-lg border px-3 text-sm font-semibold transition',
               currentPage === page
                 ? 'border-slate-950 bg-slate-950 text-white'
                 : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
@@ -583,10 +603,10 @@ function TextInput({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <input
-        className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
@@ -604,7 +624,7 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-black text-slate-700">
+    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
       <input
         checked={checked}
         className="size-4 accent-indigo-600"
@@ -618,7 +638,7 @@ function Toggle({
 
 function ErrorBox({ error, fallback }: { error: unknown; fallback: string }) {
   return (
-    <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+    <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
       {error ? formatApiError(error, fallback) : fallback}
     </p>
   );

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type PageHeadingVariant = 'page' | 'contest' | 'section';
+type PageHeadingVariant = 'page' | 'contest' | 'section' | 'management';
 type PageWidth = '5xl' | '6xl' | '7xl' | 'full';
 
 type PageHeadingProps = {
@@ -18,6 +18,7 @@ type PageLayoutProps = {
   eyebrow?: ReactNode;
   title?: ReactNode;
   width?: PageWidth;
+  variant?: 'page' | 'management';
 };
 
 const widthClasses: Record<PageWidth, string> = {
@@ -28,18 +29,23 @@ const widthClasses: Record<PageWidth, string> = {
 };
 
 const headingClasses: Record<PageHeadingVariant, string> = {
+  management:
+    'break-keep text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl',
   page: 'break-keep text-2xl font-black tracking-normal text-slate-950 sm:text-3xl',
-  contest: 'break-keep text-3xl font-black tracking-normal text-slate-950 sm:text-4xl',
+  contest:
+    'break-keep text-3xl font-black tracking-normal text-slate-950 sm:text-4xl',
   section: 'break-keep text-xl font-black text-slate-950 sm:text-2xl',
 };
 
 const descriptionClasses: Record<PageHeadingVariant, string> = {
+  management: 'max-w-4xl text-sm leading-6 font-normal text-slate-500',
   page: 'text-sm leading-6 text-slate-600 sm:text-base sm:leading-7',
   contest: 'text-sm leading-6 font-medium text-slate-400 sm:text-base',
   section: 'text-sm leading-6 text-slate-600',
 };
 
 const eyebrowClasses: Record<PageHeadingVariant, string> = {
+  management: 'text-xs font-medium tracking-wide text-indigo-600',
   page: 'text-sm font-bold text-zoj-blue',
   contest: 'text-sm font-bold text-zoj-blue',
   section:
@@ -75,11 +81,15 @@ export default function PageLayout({
   eyebrow,
   title,
   width = '7xl',
+  variant = 'page',
 }: PageLayoutProps) {
   return (
     <section
       className={[
-        'animate-page-enter mx-auto grid w-full min-w-0 gap-6 px-4 py-10 font-sans sm:gap-8 sm:px-6 sm:py-14 lg:px-8',
+        'animate-page-enter mx-auto grid w-full min-w-0 px-4 font-sans sm:px-6 lg:px-8',
+        variant === 'management'
+          ? 'zoj-management gap-5 py-6 sm:gap-6 sm:py-8'
+          : 'gap-6 py-10 sm:gap-8 sm:py-14',
         widthClasses[width],
       ].join(' ')}
     >
@@ -88,7 +98,7 @@ export default function PageLayout({
           description={description}
           eyebrow={eyebrow}
           title={title}
-          variant="page"
+          variant={variant}
         />
       ) : null}
       {children}

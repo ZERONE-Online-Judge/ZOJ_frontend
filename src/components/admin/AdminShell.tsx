@@ -38,12 +38,16 @@ const adminTabs = [
     icon: ContestIcon,
   },
   { label: routeText.adminJudge, path: '/admin/judge', icon: JudgeIcon },
-  { label: routeText.adminAuditLogs, path: '/admin/audit-logs', icon: NoticeIcon },
+  {
+    label: routeText.adminAuditLogs,
+    path: '/admin/audit-logs',
+    icon: NoticeIcon,
+  },
   { label: '문의', path: '/admin/inquiries', icon: NoticeIcon },
 ] as const;
 
 const accentClassNames = {
-  violet: 'border-violet-200 bg-violet-50 text-violet-700',
+  violet: 'border-indigo-200 bg-indigo-50 text-indigo-700',
   amber: 'border-amber-200 bg-amber-50 text-amber-700',
   emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   rose: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -60,7 +64,7 @@ export function AdminIconBadge({
   return (
     <span
       className={[
-        'inline-flex size-11 shrink-0 items-center justify-center rounded border',
+        'inline-flex size-9 shrink-0 items-center justify-center rounded-lg border',
         accentClassNames[tone],
       ].join(' ')}
     >
@@ -76,11 +80,12 @@ export function AdminAccessGate({ children }: AdminAccessGateProps) {
   if (!staffSession) {
     return (
       <PageLayout
+        variant="management"
         description={accessText.adminLoginDescription}
         title={accessText.adminLoginTitle}
       >
         <Link
-          className="w-fit rounded border border-violet-200 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-violet-700"
+          className="w-fit rounded-lg border border-indigo-200 bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
           to="/login"
         >
           {accessText.loginPageLink}
@@ -92,10 +97,11 @@ export function AdminAccessGate({ children }: AdminAccessGateProps) {
   if (!isServiceMaster(generalSession)) {
     return (
       <PageLayout
+        variant="management"
         description={accessText.adminNoPermissionDescription}
         title={accessText.adminNoPermissionTitle}
       >
-        <div className="rounded border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
           {accessText.adminNoPermissionMessage}
         </div>
       </PageLayout>
@@ -109,7 +115,7 @@ export function AdminTabs() {
   return (
     <nav
       aria-label="관리자 메뉴"
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+      className="zoj-management-tabs flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
     >
       {adminTabs.map((tab) => {
         const Icon = tab.icon;
@@ -118,11 +124,11 @@ export function AdminTabs() {
           <NavLink
             className={({ isActive }) =>
               [
-                'inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
+                'inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
                 'shrink-0 whitespace-nowrap',
                 isActive
-                  ? 'border-violet-900 bg-violet-950 text-white shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700',
+                  ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                  : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900',
               ].join(' ')
             }
             end={'end' in tab ? tab.end : undefined}
@@ -146,15 +152,17 @@ export function AdminMetricCard({
   value,
 }: AdminMetricCardProps) {
   return (
-    <article className="grid min-h-36 gap-5 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <article className="flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid sm:p-5">
       <AdminIconBadge tone={accent}>{icon}</AdminIconBadge>
-      <div className="grid gap-1">
-        <p className="text-sm font-black text-slate-500">{label}</p>
-        <strong className="text-3xl font-black tracking-normal text-slate-950">
+      <div className="grid min-w-0 gap-1">
+        <p className="text-sm font-semibold text-slate-500">{label}</p>
+        <strong className="text-2xl font-semibold tracking-tight text-slate-950 tabular-nums">
           {value}
         </strong>
         {description ? (
-          <p className="text-sm font-medium text-slate-500">{description}</p>
+          <p className="text-sm leading-6 font-normal text-slate-500">
+            {description}
+          </p>
         ) : null}
       </div>
     </article>
@@ -168,16 +176,18 @@ export function AdminPanel({
   title,
 }: AdminPanelProps) {
   return (
-    <section className="grid gap-5 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="zoj-management-panel grid min-w-0 gap-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h2 className="text-xl font-black text-slate-950">{title}</h2>
+        <div className="grid min-w-0 gap-1">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           {description ? (
-            <p className="text-sm font-medium text-slate-500">{description}</p>
+            <p className="text-sm leading-6 font-normal text-slate-500">
+              {description}
+            </p>
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+          <div className="flex min-w-0 flex-wrap gap-2">{actions}</div>
         ) : null}
       </header>
       {children}

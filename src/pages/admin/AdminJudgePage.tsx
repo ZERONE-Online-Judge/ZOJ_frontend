@@ -1,3 +1,4 @@
+import Modal from '@/shared/ui/Modal';
 import { useEffect, useRef, useState } from 'react';
 import {
   keepPreviousData,
@@ -286,6 +287,7 @@ function AdminJudgeContent({ token }: { token: string }) {
 
   return (
     <PageLayout
+      variant="management"
       description="채점 노드, 큐, 최근 제출을 실시간에 가깝게 확인합니다."
       eyebrow="Service Master"
       title="채점 관리"
@@ -297,7 +299,7 @@ function AdminJudgeContent({ token }: { token: string }) {
       contestsQuery.error ||
       divisionsQuery.error ||
       submissionsQuery.error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {formatApiError(
             dashboardQuery.error ||
               contestsQuery.error ||
@@ -367,27 +369,27 @@ function AdminJudgeContent({ token }: { token: string }) {
       </div>
 
       <div className="grid gap-6">
-        <details className="group rounded border border-slate-200 bg-white shadow-sm">
+        <details className="group rounded-lg border border-slate-200 bg-white shadow-sm">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 transition hover:bg-slate-50">
             <span>
-              <span className="block text-xl font-black text-slate-950">
+              <span className="block text-xl font-semibold text-slate-950">
                 채점 노드 현황
               </span>
               <span className="mt-1 block text-sm font-medium text-slate-500">
                 노드 heartbeat와 slot 상태를 확인합니다.
               </span>
             </span>
-            <span className="text-sm font-black text-violet-700 group-open:hidden">
+            <span className="text-sm font-semibold text-indigo-700 group-open:hidden">
               펼치기
             </span>
-            <span className="hidden text-sm font-black text-slate-500 group-open:inline">
+            <span className="hidden text-sm font-semibold text-slate-500 group-open:inline">
               접기
             </span>
           </summary>
           <div className="border-t border-slate-100 p-6">
-            <div className="overflow-x-auto rounded border border-slate-200">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="w-72 border-r border-b border-slate-200 px-4 py-3">
                       노드
@@ -416,18 +418,18 @@ function AdminJudgeContent({ token }: { token: string }) {
                   {(dashboard?.nodes ?? []).length > 0 ? (
                     (dashboard?.nodes ?? []).map((node) => (
                       <tr
-                        className="hover:bg-violet-50/40"
+                        className="hover:bg-indigo-50/40"
                         key={node.judge_node_id}
                       >
                         <td className="border-r border-slate-100 px-4 py-4">
                           <strong
-                            className="zoj-truncate-safe max-w-full font-black text-slate-950"
+                            className="zoj-truncate-safe max-w-full font-semibold text-slate-950"
                             title={node.node_name}
                           >
                             {node.node_name}
                           </strong>
                           <p
-                            className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400"
+                            className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-400"
                             title={node.judge_node_id}
                           >
                             {node.judge_node_id}
@@ -436,7 +438,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                         <td className="border-r border-slate-100 px-4 py-4">
                           <span
                             className={[
-                              'rounded-full px-3 py-1 text-xs font-black',
+                              'rounded-full px-3 py-1 text-xs font-semibold',
                               node.is_active && node.schedulable
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-rose-50 text-rose-600',
@@ -447,27 +449,29 @@ function AdminJudgeContent({ token }: { token: string }) {
                               : '비활성'}
                           </span>
                         </td>
-                        <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+                        <td className="border-r border-slate-100 px-4 py-4 font-medium text-slate-700">
                           {node.free_slots}/{node.total_slots}
                         </td>
-                        <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-700">
+                        <td className="border-r border-slate-100 px-4 py-4 font-medium text-slate-700">
                           {node.actual_running_job_count ??
                             node.running_job_count}
                           {node.running_job_count_mismatch ? (
-                            <span className="ml-2 rounded bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">
-                              보고 {node.reported_running_job_count ?? node.running_job_count}
+                            <span className="ml-2 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                              보고{' '}
+                              {node.reported_running_job_count ??
+                                node.running_job_count}
                             </span>
                           ) : null}
                         </td>
-                        <td className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-bold text-slate-600">
+                        <td className="border-r border-slate-100 px-4 py-4 font-mono text-xs font-medium text-slate-600">
                           {node.agent_version || '-'}
                         </td>
-                        <td className="border-r border-slate-100 px-4 py-4 font-bold text-slate-500">
+                        <td className="border-r border-slate-100 px-4 py-4 font-medium text-slate-500">
                           {formatRelativeTime(node.last_heartbeat_at)}
                         </td>
                         <td className="px-4 py-4 text-center align-top">
                           <button
-                            className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black whitespace-nowrap text-violet-700 transition hover:bg-violet-50"
+                            className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold whitespace-nowrap text-indigo-700 transition hover:bg-indigo-50"
                             onClick={() =>
                               setSelectedLogNodeId(node.judge_node_id)
                             }
@@ -481,7 +485,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                   ) : (
                     <tr>
                       <td
-                        className="px-4 py-8 text-center text-sm font-bold text-slate-500"
+                        className="px-4 py-8 text-center text-sm font-medium text-slate-500"
                         colSpan={7}
                       >
                         등록된 채점 노드가 없습니다.
@@ -498,7 +502,7 @@ function AdminJudgeContent({ token }: { token: string }) {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <select
-                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => updateContestFilter(event.target.value)}
                 value={contestFilter}
               >
@@ -510,7 +514,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                 ))}
               </select>
               <select
-                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 disabled={!contestFilter}
                 onChange={(event) => updateDivisionFilter(event.target.value)}
                 value={divisionFilter}
@@ -528,7 +532,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                 ))}
               </select>
               <button
-                className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
                 disabled={cursorHistory.length === 0}
                 onClick={goPreviousPage}
                 type="button"
@@ -536,7 +540,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                 이전
               </button>
               <button
-                className="h-9 rounded border border-violet-200 bg-violet-50 px-3 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:text-slate-300"
+                className="h-9 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:text-slate-300"
                 disabled={!nextCursor}
                 onClick={goNextPage}
                 type="button"
@@ -548,7 +552,7 @@ function AdminJudgeContent({ token }: { token: string }) {
           description="결과는 간단히 보고, 보기 버튼으로 소스와 채점 로그를 확인합니다."
           title="최근 제출"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-600">
             <span>
               {page?.total_count === undefined || page.total_count === null
                 ? `${Number(page?.current_cursor ?? cursor ?? 0) + (submissions.length ? 1 : 0)}-${Number(page?.current_cursor ?? cursor ?? 0) + submissions.length}`
@@ -557,9 +561,9 @@ function AdminJudgeContent({ token }: { token: string }) {
             </span>
             <span>페이지당 {ADMIN_JUDGE_PAGE_SIZE}개</span>
           </div>
-          <div className="zoj-horizontal-scroll rounded border border-slate-200">
+          <div className="zoj-horizontal-scroll rounded-lg border border-slate-200">
             <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-black text-slate-500">
+              <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
                 <tr>
                   <th className="w-28 border-r border-b border-slate-200 px-4 py-3">
                     제출
@@ -604,7 +608,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                 ) : (
                   <tr>
                     <td
-                      className="px-4 py-10 text-center text-sm font-bold text-slate-500"
+                      className="px-4 py-10 text-center text-sm font-medium text-slate-500"
                       colSpan={8}
                     >
                       표시할 제출이 없습니다.
@@ -656,25 +660,21 @@ function JudgeNodeLogsModal({
   onRefresh: () => void;
 }) {
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <Modal aria-label="채점기 로그" onClose={onClose}>
       <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-violet-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Judge agent logs
             </p>
             <h2
-              className="zoj-break-anywhere text-xl font-black text-slate-950"
+              className="zoj-break-anywhere text-xl font-semibold text-slate-950"
               title={node?.node_name ?? ''}
             >
               {node?.node_name ?? '채점기 로그'}
             </h2>
             <p
-              className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400"
+              className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-400"
               title={node?.judge_node_id ?? ''}
             >
               {node?.judge_node_id ?? '노드 정보를 불러오는 중입니다.'}
@@ -682,7 +682,7 @@ function JudgeNodeLogsModal({
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="rounded border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:text-slate-300"
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:text-slate-300"
               disabled={isFetching}
               onClick={onRefresh}
               type="button"
@@ -690,7 +690,7 @@ function JudgeNodeLogsModal({
               {isFetching ? '갱신 중' : '새로고침'}
             </button>
             <button
-              className="rounded border border-slate-200 px-3 py-2 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
               onClick={onClose}
               type="button"
             >
@@ -699,20 +699,20 @@ function JudgeNodeLogsModal({
           </div>
         </header>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-medium text-slate-500">
           <span>최신 로그가 위에 표시됩니다.</span>
           <span>{logs.length.toLocaleString('ko-KR')}개 표시</span>
         </div>
 
         <div className="min-h-0 overflow-auto bg-slate-950 p-4">
           {error ? (
-            <div className="rounded border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm font-bold text-rose-100">
+            <div className="rounded-lg border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm font-medium text-rose-100">
               {formatApiError(error, '채점기 로그를 불러오지 못했습니다')}
             </div>
           ) : null}
 
           {!error && logs.length === 0 ? (
-            <div className="rounded border border-slate-800 bg-slate-900 px-4 py-10 text-center text-sm font-bold text-slate-400">
+            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-10 text-center text-sm font-medium text-slate-400">
               아직 수집된 채점기 로그가 없습니다.
             </div>
           ) : null}
@@ -721,15 +721,15 @@ function JudgeNodeLogsModal({
             <ol className="grid gap-1 font-mono text-xs leading-5">
               {logs.map((log) => (
                 <li
-                  className="grid gap-2 rounded border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-100 md:grid-cols-[10rem_4rem_minmax(0,1fr)]"
+                  className="grid gap-2 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-100 md:grid-cols-[10rem_4rem_minmax(0,1fr)]"
                   key={log.judge_agent_log_id}
                 >
-                  <time className="font-bold whitespace-nowrap text-slate-500">
+                  <time className="font-medium whitespace-nowrap text-slate-500">
                     {formatDateTime(log.created_at)}
                   </time>
                   <span
                     className={[
-                      'font-black uppercase',
+                      'font-semibold uppercase',
                       log.level === 'error'
                         ? 'text-rose-300'
                         : log.level === 'warning'
@@ -748,7 +748,7 @@ function JudgeNodeLogsModal({
           ) : null}
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -768,7 +768,8 @@ function entryOwner(entry: AdminJudgeSubmissionEntry) {
 }
 
 function entryOwnerDetail(entry: AdminJudgeSubmissionEntry) {
-  if (entry.submission.submitted_by_email) return entry.submission.submitted_by_email;
+  if (entry.submission.submitted_by_email)
+    return entry.submission.submitted_by_email;
   return (
     entry.member?.email ??
     entry.submission.member_email ??
@@ -792,9 +793,7 @@ function entryContestDivisionLabel(entry: AdminJudgeSubmissionEntry) {
 
 function entryJudgeNodeLabel(entry: AdminJudgeSubmissionEntry) {
   return (
-    entry.judge_node?.node_name ??
-    entry.judge_job?.assigned_node_id ??
-    '-'
+    entry.judge_node?.node_name ?? entry.judge_job?.assigned_node_id ?? '-'
   );
 }
 
@@ -821,13 +820,13 @@ function SubmissionRow({
   const contestDivision = entryContestDivisionLabel(entry);
 
   return (
-    <tr className={isSelected ? 'bg-violet-50/70' : 'hover:bg-violet-50/40'}>
+    <tr className={isSelected ? 'bg-indigo-50/70' : 'hover:bg-indigo-50/40'}>
       <td
-        className="border-r border-slate-100 px-4 py-4 align-top font-mono text-xs font-bold text-slate-700"
+        className="border-r border-slate-100 px-4 py-4 align-top font-mono text-xs font-medium text-slate-700"
         title={`${submission.submission_id} · ${formatDateTime(submission.submitted_at)}`}
       >
         {shortSubmissionId(submission.submission_id)}
-        <span className="mt-1 block font-sans text-[11px] font-bold text-slate-400">
+        <span className="mt-1 block font-sans text-[11px] font-medium text-slate-400">
           {formatRelativeTime(submission.submitted_at)}
         </span>
       </td>
@@ -835,25 +834,25 @@ function SubmissionRow({
         className="border-r border-slate-100 px-4 py-4 align-top"
         title={`${contestDivision.contest} / ${contestDivision.division}`}
       >
-        <strong className="zoj-truncate-safe max-w-full font-black text-slate-950">
+        <strong className="zoj-truncate-safe max-w-full font-semibold text-slate-950">
           {contestDivision.contest}
         </strong>
-        <span className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-400">
+        <span className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-400">
           {contestDivision.division}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-700">
         {submission.language}
       </td>
       <td className="border-r border-slate-100 px-4 py-4 align-top">
         <strong
-          className="zoj-truncate-safe max-w-full text-xs font-black text-slate-700"
+          className="zoj-truncate-safe max-w-full text-xs font-semibold text-slate-700"
           title={entryJudgeNodeLabel(entry)}
         >
           {entryJudgeNodeLabel(entry)}
         </strong>
         <span
-          className="zoj-truncate-safe mt-1 max-w-full font-mono text-[11px] font-bold text-slate-400"
+          className="zoj-truncate-safe mt-1 max-w-full font-mono text-[11px] font-medium text-slate-400"
           title={entry.judge_job?.assigned_node_id ?? '-'}
         >
           {entry.judge_job?.assigned_node_id ?? '-'}
@@ -864,19 +863,19 @@ function SubmissionRow({
           submission={progressSubmission}
           status={submission.status}
         />
-        <span className="zoj-break-anywhere mt-1 block text-xs font-bold text-slate-500">
+        <span className="zoj-break-anywhere mt-1 block text-xs font-medium text-slate-500">
           {submissionProgressText(progressSubmission) || '-'}
         </span>
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-700">
         {formatDuration(runtime)}
       </td>
-      <td className="border-r border-slate-100 px-4 py-4 align-top font-bold text-slate-700">
+      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-700">
         {formatMemoryKb(memory)}
       </td>
       <td className="px-4 py-4 text-center align-top">
         <button
-          className="rounded border border-violet-200 bg-white px-3 py-2 text-xs font-black whitespace-nowrap text-violet-700 transition hover:bg-violet-50"
+          className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold whitespace-nowrap text-indigo-700 transition hover:bg-indigo-50"
           onClick={onSelect}
           type="button"
         >
@@ -901,27 +900,22 @@ function SubmissionDetailModal({
   const submissionId = entry?.submission.submission_id;
 
   return (
-    <div
-      aria-labelledby="admin-submission-detail-title"
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <Modal aria-labelledby="admin-submission-detail-title" onClose={onClose}>
       <div className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div className="grid gap-1">
             <h2
-              className="text-xl font-black text-slate-950"
+              className="text-xl font-semibold text-slate-950"
               id="admin-submission-detail-title"
             >
               제출 상세
             </h2>
-            <p className="zoj-break-anywhere text-sm font-bold text-slate-500">
+            <p className="zoj-break-anywhere text-sm font-medium text-slate-500">
               {submissionId ?? '제출 정보를 불러오는 중입니다.'}
             </p>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+            className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
             onClick={onClose}
             type="button"
           >
@@ -932,7 +926,7 @@ function SubmissionDetailModal({
           <SubmissionDetail entry={entry} error={error} isLoading={isLoading} />
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -947,7 +941,7 @@ function SubmissionDetail({
 }) {
   if (error) {
     return (
-      <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+      <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
         {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
       </div>
     );
@@ -955,7 +949,7 @@ function SubmissionDetail({
 
   if (isLoading && !entry) {
     return (
-      <p className="rounded border border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+      <p className="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
         불러오는 중입니다.
       </p>
     );
@@ -988,7 +982,10 @@ function SubmissionDetail({
         <DetailCard label="팀/계정" value={entryOwner(entry)} />
         <DetailCard label="계정 정보" value={entryOwnerDetail(entry)} />
         <DetailCard label="문제" value={entryProblemLabel(entry)} />
-        <DetailCard label="결과" value={submissionStatusLabel(submission.status)} />
+        <DetailCard
+          label="결과"
+          value={submissionStatusLabel(submission.status)}
+        />
         <DetailCard label="언어" value={String(submission.language)} />
         <DetailCard
           label="진행"
@@ -1007,7 +1004,7 @@ function SubmissionDetail({
       </div>
 
       <div className="grid gap-2">
-        <p className="text-sm font-black text-slate-700">결과</p>
+        <p className="text-sm font-semibold text-slate-700">결과</p>
         <ContestSubmissionResultBadge
           submission={progressSubmission}
           status={submission.status}
@@ -1016,16 +1013,16 @@ function SubmissionDetail({
 
       {submission.compile_message ? (
         <div className="grid gap-2">
-          <p className="text-sm font-black text-slate-700">컴파일 메시지</p>
-          <pre className="max-h-48 overflow-auto rounded border border-amber-200 bg-amber-50 p-3 text-xs leading-5 font-bold text-amber-900">
+          <p className="text-sm font-semibold text-slate-700">컴파일 메시지</p>
+          <pre className="max-h-48 overflow-auto rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 font-medium text-amber-900">
             {submission.compile_message}
           </pre>
         </div>
       ) : null}
 
       <div className="grid gap-2">
-        <p className="text-sm font-black text-slate-700">채점 로그</p>
-        <pre className="max-h-48 overflow-auto rounded border border-slate-200 bg-slate-950 p-3 text-xs leading-5 font-bold text-slate-50">
+        <p className="text-sm font-semibold text-slate-700">채점 로그</p>
+        <pre className="max-h-48 overflow-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-xs leading-5 font-medium text-slate-50">
           {submission.judge_message || '-'}
         </pre>
       </div>
@@ -1037,8 +1034,8 @@ function SubmissionDetail({
       </div>
 
       <div className="grid gap-2">
-        <p className="text-sm font-black text-slate-700">소스 코드</p>
-        <pre className="max-h-[560px] overflow-auto rounded border border-slate-800 bg-slate-950 p-4 text-xs leading-5 text-slate-100">
+        <p className="text-sm font-semibold text-slate-700">소스 코드</p>
+        <pre className="max-h-[560px] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs leading-5 text-slate-100">
           <code>{sourceCode || '소스 코드가 포함되지 않은 응답입니다.'}</code>
         </pre>
       </div>
@@ -1057,9 +1054,9 @@ function formatDuration(value?: number | null) {
 
 function DetailCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="text-xs font-black text-slate-500">{label}</span>
-      <strong className="zoj-break-anywhere text-sm font-black text-slate-950">
+    <div className="grid min-w-0 gap-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <span className="text-xs font-semibold text-slate-500">{label}</span>
+      <strong className="zoj-break-anywhere text-sm font-semibold text-slate-950">
         {value}
       </strong>
     </div>
@@ -1068,9 +1065,9 @@ function DetailCard({ label, value }: { label: string; value: string }) {
 
 function LogBlock({ label, value }: { label: string; value: string }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
-      <pre className="max-h-96 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+      <pre className="max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
         {value}
       </pre>
     </label>

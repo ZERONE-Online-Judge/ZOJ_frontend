@@ -1,3 +1,4 @@
+import useConfirmation from '@/shared/ui/useConfirmation';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,8 +44,8 @@ function normalizedEmail(value?: string | null) {
 }
 
 function authorContext(teamName?: string | null, divisionName?: string | null) {
-  const parts = [teamName, divisionName].filter(
-    (item): item is string => Boolean(item),
+  const parts = [teamName, divisionName].filter((item): item is string =>
+    Boolean(item),
   );
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -63,14 +64,18 @@ function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
   const name = answer.created_by_name || answer.created_by_email || '참가자';
   const answerEmail = normalizedEmail(answer.created_by_email);
   const isQuestionAuthor =
-    answerEmail !== '' && answerEmail === normalizedEmail(question.author_email);
+    answerEmail !== '' &&
+    answerEmail === normalizedEmail(question.author_email);
 
   return isQuestionAuthor ? `${name} (글쓴이)` : name;
 }
 
 function answerAuthorContext(answer: ContestAnswer) {
   if (answer.created_by_role === 'operator') return null;
-  return authorContext(answer.created_by_team_name, answer.created_by_division_name);
+  return authorContext(
+    answer.created_by_team_name,
+    answer.created_by_division_name,
+  );
 }
 
 function answerCountLabel(count: number) {
@@ -92,7 +97,10 @@ export default function OperatorBoardPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -108,6 +116,9 @@ function OperatorBoardContent({
   contestId: string;
   token: string;
 }) {
+  const { confirm: confirmAction, dialog: confirmationDialog } =
+    useConfirmation();
+
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const [expandedQuestionId, setExpandedQuestionId] = useState('');
@@ -260,8 +271,8 @@ function OperatorBoardContent({
     });
   }
 
-  function removeQuestion(question: ContestQuestion) {
-    const confirmed = window.confirm(
+  async function removeQuestion(question: ContestQuestion) {
+    const confirmed = await confirmAction(
       `"${question.title}" 게시글을 삭제할까요? 답변도 함께 삭제되며 복구할 수 없습니다.`,
     );
     if (!confirmed) return;
@@ -279,8 +290,11 @@ function OperatorBoardContent({
     });
   }
 
-  function removeAnswer(question: ContestQuestion, answer: ContestAnswer) {
-    const confirmed = window.confirm('이 댓글/답변을 삭제할까요?');
+  async function removeAnswer(
+    question: ContestQuestion,
+    answer: ContestAnswer,
+  ) {
+    const confirmed = await confirmAction('이 댓글/답변을 삭제할까요?');
     if (!confirmed) return;
     deleteAnswerMutation.mutate({
       answerId: answer.contest_answer_id,
@@ -298,11 +312,14 @@ function OperatorBoardContent({
 
   return (
     <PageLayout
+      variant="management"
       description="참가자가 남긴 질문을 확인하고 운영자 답변을 등록합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 게시판`}
       width="full"
     >
+      {confirmationDialog}
+
       <OperatorTabs contestId={contestId} />
 
       {dashboardQuery.error || questionsQuery.error ? (
@@ -335,18 +352,18 @@ function OperatorBoardContent({
                   <span className="flex min-w-0 flex-wrap items-center gap-3">
                     <StatusBadge answered={question.answers.length > 0} />
                     <VisibilityBadge visibility={question.visibility} />
-                    <strong className="min-w-0 text-base font-black break-keep text-slate-950 sm:truncate">
+                    <strong className="min-w-0 text-base font-semibold break-keep text-slate-950 sm:truncate">
                       {question.title}
                     </strong>
                     <AnswerCountBadge count={question.answers.length} />
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                    <span className="text-sm font-black text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700">
                       {questionAuthorName(question)} ·{' '}
                       {formatDateTime(question.created_at)}
                     </span>
                     {questionAuthorContext(question) ? (
-                      <span className="text-xs font-bold text-slate-500">
+                      <span className="text-xs font-medium text-slate-500">
                         {questionAuthorContext(question)}
                       </span>
                     ) : null}
@@ -393,7 +410,7 @@ function OperatorBoardContent({
           })}
         </ul>
         {!questionsQuery.isLoading && questions.length === 0 ? (
-          <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+          <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
             표시할 질문이 없습니다.
           </p>
         ) : null}
@@ -406,7 +423,7 @@ function StatusBadge({ answered }: { answered: boolean }) {
   return (
     <span
       className={[
-        'rounded-full px-2 py-1 text-xs font-black',
+        'rounded-full px-2 py-1 text-xs font-semibold',
         answered
           ? 'bg-emerald-100 text-emerald-700'
           : 'bg-amber-100 text-amber-700',
@@ -423,7 +440,7 @@ function VisibilityBadge({
   visibility: ContestQuestion['visibility'];
 }) {
   return (
-    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
+    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
       {visibility === 'private' ? '비공개' : '공개'}
     </span>
   );
@@ -433,9 +450,9 @@ function AnswerCountBadge({ count }: { count: number }) {
   return (
     <span
       className={[
-        'rounded-full px-2 py-1 text-xs font-black',
+        'rounded-full px-2 py-1 text-xs font-semibold',
         count > 0
-          ? 'bg-violet-100 text-violet-700'
+          ? 'bg-indigo-100 text-indigo-700'
           : 'bg-amber-100 text-amber-700',
       ].join(' ')}
     >
@@ -491,14 +508,14 @@ function QuestionInlineDetail({
 
   return (
     <article className="grid gap-5 bg-white px-4 pb-6">
-      <div className="grid gap-4 rounded border border-slate-200 bg-white px-5 py-4">
+      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
         <QuestionMeta question={question} />
         <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
           {question.body}
         </p>
         <div className="flex flex-wrap gap-2">
           <button
-            className="inline-flex h-9 items-center gap-2 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:bg-slate-300"
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
             onClick={onStartAnswer}
             type="button"
           >
@@ -506,7 +523,7 @@ function QuestionInlineDetail({
             답변 작성
           </button>
           <button
-            className="h-9 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+            className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
             disabled={updatePending}
             onClick={onToggleVisibility}
             type="button"
@@ -514,7 +531,7 @@ function QuestionInlineDetail({
             {question.visibility === 'public' ? '비공개 전환' : '공개 전환'}
           </button>
           <button
-            className="h-9 rounded border border-rose-200 bg-white px-4 text-sm font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+            className="h-9 rounded-lg border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
             disabled={deletePending}
             onClick={onDelete}
             type="button"
@@ -532,22 +549,22 @@ function QuestionInlineDetail({
       ) : null}
 
       <section className="grid gap-3 pl-4 sm:pl-8">
-        <h3 className="text-sm font-black text-slate-700">답변</h3>
+        <h3 className="text-sm font-semibold text-slate-700">답변</h3>
         {question.answers.map((answer) => (
           <article
             className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
             key={answer.contest_answer_id}
           >
-            <span className="pt-2 text-2xl leading-none font-black text-slate-300">
+            <span className="pt-2 text-2xl leading-none font-semibold text-slate-300">
               ㄴ
             </span>
-            <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-5 py-4">
-              <div className="flex flex-wrap gap-2 text-xs font-black text-slate-500">
+            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                 <span
                   className={[
                     'rounded-full px-3 py-1',
                     answer.created_by_role === 'operator'
-                      ? 'bg-violet-100 text-violet-700'
+                      ? 'bg-indigo-100 text-indigo-700'
                       : 'bg-slate-100 text-slate-700',
                   ].join(' ')}
                 >
@@ -570,7 +587,7 @@ function QuestionInlineDetail({
               </p>
               <div className="flex flex-wrap justify-end gap-2">
                 <button
-                  className="h-8 rounded border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                  className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
                   disabled={answerActionPending}
                   onClick={() => onToggleAnswerVisibility(answer)}
                   type="button"
@@ -578,7 +595,7 @@ function QuestionInlineDetail({
                   {answer.visibility === 'public' ? '비공개 전환' : '공개 전환'}
                 </button>
                 <button
-                  className="h-8 rounded border border-rose-200 bg-white px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                  className="h-8 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
                   disabled={answerActionPending}
                   onClick={() => onDeleteAnswer(answer)}
                   type="button"
@@ -590,7 +607,7 @@ function QuestionInlineDetail({
           </article>
         ))}
         {question.answers.length === 0 ? (
-          <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
             아직 등록된 답변이 없습니다.
           </p>
         ) : null}
@@ -604,13 +621,13 @@ function QuestionInlineDetail({
 
       {isAnswerFormOpen ? (
         <form
-          className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4"
+          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4"
           onSubmit={onSubmitAnswer}
         >
-          <label className="grid gap-2 text-sm font-black text-slate-700">
+          <label className="grid gap-2 text-sm font-semibold text-slate-700">
             공개 범위
             <select
-              className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-500"
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-500"
               disabled={forcedPrivateAnswer}
               onChange={(event) =>
                 onAnswerChange({
@@ -627,12 +644,12 @@ function QuestionInlineDetail({
             </select>
           </label>
           {forcedPrivateAnswer ? (
-            <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
               비공개 질문에는 비공개 답변만 등록할 수 있습니다.
             </p>
           ) : null}
           <textarea
-            className="min-h-32 resize-y rounded border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+            className="min-h-32 resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
             onChange={(event) =>
               onAnswerChange({ ...answerForm, body: event.target.value })
             }
@@ -646,14 +663,14 @@ function QuestionInlineDetail({
           ) : null}
           <div className="flex justify-end gap-2">
             <button
-              className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-black text-slate-600"
+              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600"
               onClick={onCancelAnswer}
               type="button"
             >
               취소
             </button>
             <button
-              className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:bg-slate-300"
+              className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
               disabled={isAnswerSubmitting}
               type="submit"
             >
@@ -668,7 +685,7 @@ function QuestionInlineDetail({
 
 function QuestionMeta({ question }: { question: ContestQuestion }) {
   return (
-    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold text-slate-500">
+    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium text-slate-500">
       <span>작성자: {questionAuthorName(question)}</span>
       <span>팀: {question.team_name ?? '-'}</span>
       <span>유형: {question.division_name ?? '-'}</span>
@@ -679,7 +696,7 @@ function QuestionMeta({ question }: { question: ContestQuestion }) {
 
 function ErrorBox({ error, fallback }: { error: unknown; fallback: string }) {
   return (
-    <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+    <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
       {error ? formatApiError(error, fallback) : fallback}
     </p>
   );

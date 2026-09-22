@@ -33,7 +33,10 @@ export default function OperatorAuditLogsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -128,6 +131,7 @@ function OperatorAuditLogsContent({
 
   return (
     <PageLayout
+      variant="management"
       description="이 대회에서 운영자와 서비스 관리자가 수행한 변경 작업을 확인합니다."
       eyebrow="Operator Audit"
       title="운영 로그"
@@ -142,7 +146,7 @@ function OperatorAuditLogsContent({
         title={logType === 'operations' ? '대회 작업 기록' : '대회 접속 기록'}
         actions={
           <button
-            className="rounded border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
             onClick={() =>
               logType === 'operations'
                 ? auditLogsQuery.refetch()
@@ -154,14 +158,14 @@ function OperatorAuditLogsContent({
           </button>
         }
       >
-        <div className="inline-flex rounded border border-slate-200 bg-slate-50 p-1">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
           {[
             ['operations', '작업 로그'],
             ['access', '접속 로그'],
           ].map(([value, label]) => (
             <button
               className={[
-                'rounded px-4 py-2 text-sm font-black transition',
+                'rounded-lg px-4 py-2 text-sm font-semibold transition',
                 logType === value
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800',
@@ -175,17 +179,17 @@ function OperatorAuditLogsContent({
           ))}
         </div>
         <form
-          className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
+          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
           onSubmit={applyFilters}
         >
           <input
-            className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+            className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
             onChange={(event) => setActorDraft(event.target.value)}
             placeholder="계정 이메일로 필터"
             value={actorDraft}
           />
           <button
-            className="h-11 rounded bg-indigo-950 px-5 text-sm font-black text-white transition hover:bg-indigo-800"
+            className="h-11 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-800"
             type="submit"
           >
             필터 적용
@@ -201,9 +205,14 @@ function OperatorAuditLogsContent({
               ['고유 계정', accessStats.unique_account_count],
               ['활성 세션', accessStats.active_session_count],
             ].map(([label, value]) => (
-              <div className="rounded border border-slate-200 bg-white px-4 py-3" key={label}>
-                <div className="text-xs font-black text-slate-500">{label}</div>
-                <div className="mt-1 text-xl font-black text-slate-900">
+              <div
+                className="rounded-lg border border-slate-200 bg-white px-4 py-3"
+                key={label}
+              >
+                <div className="text-xs font-semibold text-slate-500">
+                  {label}
+                </div>
+                <div className="mt-1 text-xl font-semibold text-slate-900">
                   {Number(value).toLocaleString('ko-KR')}
                 </div>
               </div>
@@ -211,13 +220,19 @@ function OperatorAuditLogsContent({
           </div>
         ) : null}
         {logType === 'operations' && auditLogsQuery.error ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-            {formatApiError(auditLogsQuery.error, '운영 로그를 불러오지 못했습니다')}
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formatApiError(
+              auditLogsQuery.error,
+              '운영 로그를 불러오지 못했습니다',
+            )}
           </div>
         ) : null}
         {logType === 'access' && accessLogsQuery.error ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-            {formatApiError(accessLogsQuery.error, '접속 로그를 불러오지 못했습니다')}
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formatApiError(
+              accessLogsQuery.error,
+              '접속 로그를 불러오지 못했습니다',
+            )}
           </div>
         ) : null}
         {logType === 'operations' ? (
@@ -231,7 +246,7 @@ function OperatorAuditLogsContent({
             logs={accessLogs}
           />
         )}
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-500">
+        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-500">
           {logType === 'operations' ? (
             <span>
               전체 {page?.total_count ?? logs.length}건 중 {logs.length}건 표시
@@ -244,7 +259,7 @@ function OperatorAuditLogsContent({
           )}
           <div className="flex gap-2">
             <button
-              className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={
                 logType === 'operations'
                   ? cursorHistory.length === 0
@@ -268,8 +283,10 @@ function OperatorAuditLogsContent({
               이전
             </button>
             <button
-              className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={logType === 'operations' ? !nextCursor : !accessNextCursor}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                logType === 'operations' ? !nextCursor : !accessNextCursor
+              }
               onClick={() => {
                 if (logType === 'operations') {
                   setCursorHistory((history) => [...history, cursor]);

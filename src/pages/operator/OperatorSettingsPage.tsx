@@ -143,7 +143,10 @@ export default function OperatorSettingsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -376,6 +379,7 @@ function OperatorSettingsContent({
 
   return (
     <PageLayout
+      variant="management"
       description="대회 일정, 공개 범위, 참가 유형, 운영자 권한을 조정합니다."
       eyebrow="Operator"
       title={`${contest?.title ?? '대회'} 설정`}
@@ -398,15 +402,15 @@ function OperatorSettingsContent({
           {settingsForm ? (
             <form className="grid gap-4" onSubmit={handleSettingsSubmit}>
               {operationLocked ? (
-                <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                   대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
                   일정, 공개 범위와 채점 진행률 설정은 계속 조정할 수 있습니다.
                 </p>
               ) : null}
-              <label className="grid gap-2 text-sm font-black text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 상태
                 <select
-                  className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                  className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
                   disabled={operationLocked}
                   onChange={(event) =>
                     setSettingsForm((prev) =>
@@ -427,10 +431,10 @@ function OperatorSettingsContent({
                 aria-describedby={
                   scheduleDisabled ? 'schedule-locked-help' : undefined
                 }
-                className={`grid min-w-0 gap-4 rounded border px-4 py-4 md:grid-cols-3 ${scheduleDisabled ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-indigo-50/60'}`}
+                className={`grid min-w-0 gap-4 rounded-lg border px-4 py-4 md:grid-cols-3 ${scheduleDisabled ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-indigo-50/60'}`}
               >
                 <div className="grid gap-1 md:col-span-3">
-                  <h3 className="text-sm font-black text-slate-800">
+                  <h3 className="text-sm font-semibold text-slate-800">
                     대회 일정
                   </h3>
                   {scheduleDisabled ? (
@@ -495,10 +499,10 @@ function OperatorSettingsContent({
                   value={settingsForm.organization_name}
                 />
               </div>
-              <label className="grid gap-2 text-sm font-black text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 개요
                 <textarea
-                  className="min-h-28 resize-y rounded border border-slate-200 px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                  className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
                   disabled={operationLocked}
                   onChange={(event) =>
                     setSettingsForm((prev) =>
@@ -508,9 +512,9 @@ function OperatorSettingsContent({
                   value={settingsForm.overview}
                 />
               </label>
-              <div className="grid gap-3 rounded border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
                 <div className="grid gap-2 md:col-span-2 xl:col-span-3">
-                  <h3 className="text-sm font-black text-slate-800">
+                  <h3 className="text-sm font-semibold text-slate-800">
                     자료 공개 범위
                   </h3>
                   <p className="text-xs leading-5 text-slate-600">
@@ -521,13 +525,13 @@ function OperatorSettingsContent({
                   </p>
                   <dl className="grid gap-2 text-xs leading-5 sm:grid-cols-3">
                     <div>
-                      <dt className="font-bold text-slate-700">비공개</dt>
+                      <dt className="font-medium text-slate-700">비공개</dt>
                       <dd className="text-slate-500">
                         종료 후 참가자와 일반 방문자의 열람을 막습니다.
                       </dd>
                     </div>
                     <div>
-                      <dt className="font-bold text-slate-700">
+                      <dt className="font-medium text-slate-700">
                         참가자 공개 유지
                       </dt>
                       <dd className="text-slate-500">
@@ -536,7 +540,7 @@ function OperatorSettingsContent({
                       </dd>
                     </div>
                     <div>
-                      <dt className="font-bold text-slate-700">
+                      <dt className="font-medium text-slate-700">
                         비로그인 공개
                       </dt>
                       <dd className="text-slate-500">
@@ -632,10 +636,10 @@ function OperatorSettingsContent({
                 />
               </div>
 
-              <div className="grid gap-3 rounded border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+              <div className="grid gap-3 rounded-lg border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
                 <div className="grid gap-1">
-                  <span className="font-black">참가자 채점 진행률</span>
-                  <span className="font-bold text-slate-500">
+                  <span className="font-semibold">참가자 채점 진행률</span>
+                  <span className="font-medium text-slate-500">
                     가리면 참가자 화면에는 테스트케이스 진행률이나 큐 순번을
                     보여주지 않고 채점 경과 시간만 표시합니다. 최종 채점 결과는
                     계속 표시되며, 스코어보드 프리즈와는 별도 설정입니다.
@@ -644,7 +648,7 @@ function OperatorSettingsContent({
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label
                     className={[
-                      'flex items-center gap-3 rounded border px-4 py-3 font-black transition',
+                      'flex items-center gap-3 rounded-lg border px-4 py-3 font-semibold transition',
                       settingsForm.participant_progress_visible
                         ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
                         : 'border-slate-200 bg-white text-slate-600',
@@ -671,7 +675,7 @@ function OperatorSettingsContent({
                   </label>
                   <label
                     className={[
-                      'flex items-center gap-3 rounded border px-4 py-3 font-black transition',
+                      'flex items-center gap-3 rounded-lg border px-4 py-3 font-semibold transition',
                       !settingsForm.participant_progress_visible
                         ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
                         : 'border-slate-200 bg-white text-slate-600',
@@ -697,7 +701,7 @@ function OperatorSettingsContent({
                   </label>
                 </div>
                 {!settingsForm.participant_progress_visible ? (
-                  <label className="flex items-start gap-3 rounded border border-slate-200 bg-slate-50 px-4 py-3">
+                  <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                     <input
                       checked={settingsForm.mock_judging_progress_visible}
                       className="mt-1 size-4 accent-indigo-600"
@@ -715,8 +719,10 @@ function OperatorSettingsContent({
                       type="checkbox"
                     />
                     <span className="grid gap-1">
-                      <span className="font-black">모의채점 진행률 보이기</span>
-                      <span className="font-bold text-slate-500">
+                      <span className="font-semibold">
+                        모의채점 진행률 보이기
+                      </span>
+                      <span className="font-medium text-slate-500">
                         정규 제출의 진행률은 가린 채 모의채점 진행률만
                         보여줍니다. 꺼두면 모의채점도 채점 경과 시간만
                         표시합니다.
@@ -726,7 +732,7 @@ function OperatorSettingsContent({
                 ) : null}
               </div>
 
-              <label className="flex items-start gap-3 rounded border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+              <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
                 <input
                   checked={settingsForm.board_write_after_end}
                   className="mt-1 size-4 accent-indigo-600"
@@ -743,10 +749,10 @@ function OperatorSettingsContent({
                   type="checkbox"
                 />
                 <span className="grid gap-1">
-                  <span className="font-black">
+                  <span className="font-semibold">
                     대회 종료 후 게시판 작성 허용
                   </span>
-                  <span className="font-bold text-slate-500">
+                  <span className="font-medium text-slate-500">
                     켜면 종료 이후에도 참가자가 질문과 댓글을 작성할 수
                     있습니다. 게시판 공개 범위가 비공개면 작성도 차단됩니다.
                   </span>
@@ -754,7 +760,7 @@ function OperatorSettingsContent({
               </label>
 
               {settingsForm.problem_access_after_end !== 'private' ? (
-                <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                   <input
                     checked={settingsForm.mock_judging_enabled}
                     className="mt-1 size-4 accent-amber-500"
@@ -771,8 +777,8 @@ function OperatorSettingsContent({
                     type="checkbox"
                   />
                   <span className="grid gap-1">
-                    <span className="font-black">모의채점</span>
-                    <span className="font-bold text-amber-800">
+                    <span className="font-semibold">모의채점</span>
+                    <span className="font-medium text-amber-800">
                       종료된 대회에서 문제집 접근자가 제출 필드로 채점 결과만
                       확인할 수 있습니다. 일반 채점현황과 스코어보드에는
                       기록하지 않습니다.
@@ -780,7 +786,7 @@ function OperatorSettingsContent({
                   </span>
                 </label>
               ) : (
-                <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
                   모의채점은 종료 후 연습 제출 기능입니다. 사용하려면 문제집을
                   ‘참가자 공개 유지’ 또는 ‘비로그인 공개’로 바꾸세요. 모의채점
                   결과는 대회 순위에 반영되지 않습니다.
@@ -794,13 +800,13 @@ function OperatorSettingsContent({
                 />
               ) : null}
               {savedMessage ? (
-                <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
                   {savedMessage}
                 </p>
               ) : null}
 
               <button
-                className="inline-flex h-11 w-fit items-center gap-2 rounded bg-indigo-950 px-5 text-sm font-black text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
+                className="inline-flex h-11 w-fit items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
                 disabled={updateSettingsMutation.isPending}
                 type="submit"
               >
@@ -809,7 +815,7 @@ function OperatorSettingsContent({
               </button>
             </form>
           ) : (
-            <p className="text-sm font-bold text-slate-500">
+            <p className="text-sm font-medium text-slate-500">
               대회 설정을 불러오는 중입니다.
             </p>
           )}
@@ -845,7 +851,7 @@ function OperatorSettingsContent({
                 />
               ) : null}
               <button
-                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:opacity-50"
+                className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={
                   saveDivisionMutation.isPending || !divisionForm.name.trim()
                 }
@@ -859,7 +865,7 @@ function OperatorSettingsContent({
               </button>
               {divisionForm.divisionId ? (
                 <button
-                  className="h-10 rounded border border-slate-200 text-sm font-bold text-slate-600"
+                  className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
                   disabled={saveDivisionMutation.isPending}
                   onClick={() => {
                     setDivisionForm(emptyDivisionForm);
@@ -916,7 +922,7 @@ function OperatorSettingsContent({
                 />
               ) : null}
               <button
-                className="h-10 rounded bg-indigo-950 px-4 text-sm font-black text-white disabled:opacity-50"
+                className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={
                   saveOperatorMutation.isPending || !operatorForm.email.trim()
                 }
@@ -930,7 +936,7 @@ function OperatorSettingsContent({
               </button>
               {operatorForm.editingEmail ? (
                 <button
-                  className="h-10 rounded border border-slate-200 text-sm font-bold text-slate-600"
+                  className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
                   disabled={saveOperatorMutation.isPending}
                   onClick={() => {
                     setOperatorForm(emptyOperatorForm);
@@ -977,11 +983,11 @@ function TextInput({
 }) {
   const helpId = useId();
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <input
         aria-describedby={helperText ? helpId : undefined}
-        className="h-11 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}
@@ -1012,10 +1018,10 @@ function DateInput({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <input
-        className="h-11 w-full min-w-0 rounded border border-slate-200 px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+        className="h-11 w-full min-w-0 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         onChange={(event) =>
           setForm((prev) =>
             prev ? { ...prev, [name]: event.target.value } : prev,
@@ -1043,11 +1049,11 @@ function AccessSelect({
 }) {
   const helpId = useId();
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
       <select
         aria-describedby={helperText ? helpId : undefined}
-        className="h-10 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
         disabled={disabled}
         onChange={(event) =>
           onChange(event.target.value as ContestResourceAccess)
@@ -1099,12 +1105,12 @@ function QuickActions({
   ] as const;
 
   return (
-    <div className="grid gap-3 rounded border border-slate-200 bg-slate-50 px-4 py-4">
+    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-sm font-black text-slate-800">
+        <strong className="text-sm font-semibold text-slate-800">
           빠른 운영 액션
         </strong>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
           선택한 상태: {contestStatusLabel(currentStatus)}
         </span>
       </div>
@@ -1115,7 +1121,7 @@ function QuickActions({
       <div className="flex flex-wrap gap-2">
         {actions.map(([action, label]) => (
           <button
-            className="h-9 rounded border border-indigo-200 bg-white px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-9 rounded-lg border border-indigo-200 bg-white px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
             key={action}
             disabled={disabled}
             onClick={() => onAction(action)}
@@ -1140,7 +1146,7 @@ function DivisionList({
     <div className="grid gap-2">
       {divisions.map((division) => (
         <button
-          className="min-w-0 rounded border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-indigo-200 hover:bg-indigo-50"
+          className="min-w-0 rounded-lg border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-indigo-200 hover:bg-indigo-50"
           key={division.division_id}
           onClick={() =>
             onEdit({
@@ -1152,19 +1158,19 @@ function DivisionList({
           type="button"
         >
           <strong
-            className="zoj-break-anywhere font-black text-slate-950"
+            className="zoj-break-anywhere font-semibold text-slate-950"
             title={division.name}
           >
             {division.name}
           </strong>
           <span
-            className="zoj-truncate-safe mt-1 max-w-full text-xs font-bold text-slate-500"
+            className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-500"
             title={division.description || '설명 없음'}
           >
             {division.description || '설명 없음'}
           </span>
           <span
-            className="mt-2 inline-flex w-fit rounded bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500"
+            className="mt-2 inline-flex w-fit rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500"
             title={division.code || '코드 없음'}
           >
             코드 {division.code || '-'}
@@ -1188,31 +1194,31 @@ function OperatorList({
     <div className="grid gap-2">
       {operators.map((operator) => (
         <div
-          className="min-w-0 rounded border border-slate-200 px-3 py-3"
+          className="min-w-0 rounded-lg border border-slate-200 px-3 py-3"
           key={operator.email}
         >
           <strong
-            className="zoj-break-anywhere block font-black text-slate-950"
+            className="zoj-break-anywhere block font-semibold text-slate-950"
             title={operator.display_name}
           >
             {operator.display_name}
           </strong>
           <span
-            className="zoj-break-anywhere block text-xs font-bold text-slate-500"
+            className="zoj-break-anywhere block text-xs font-medium text-slate-500"
             title={operator.email}
           >
             {operator.email}
           </span>
           <div className="mt-3 flex gap-2">
             <button
-              className="rounded border border-indigo-200 px-3 py-1 text-xs font-black text-indigo-700"
+              className="rounded-lg border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700"
               onClick={() => onEdit(operator)}
               type="button"
             >
               수정
             </button>
             <button
-              className="rounded border border-rose-200 px-3 py-1 text-xs font-black text-rose-600"
+              className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600"
               onClick={() => onRemove(operator)}
               type="button"
             >
@@ -1227,7 +1233,7 @@ function OperatorList({
 
 function ErrorBox({ error, fallback }: { error: unknown; fallback: string }) {
   return (
-    <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+    <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
       {error ? formatApiError(error, fallback) : fallback}
     </p>
   );

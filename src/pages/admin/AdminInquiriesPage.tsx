@@ -73,6 +73,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
 
   return (
     <PageLayout
+      variant="management"
       description="서비스 문의를 최근순으로 확인하고 답변 메일을 발송합니다."
       eyebrow="Service Master"
       title="문의 관리"
@@ -81,7 +82,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
       <AdminTabs />
 
       {inquiriesQuery.error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {formatApiError(
             inquiriesQuery.error,
             '문의 목록을 불러오지 못했습니다',
@@ -93,7 +94,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
         description={`최근 접수된 문의입니다. 답변 필요 ${pendingCount.toLocaleString('ko-KR')}건`}
         title="서비스 문의"
       >
-        <label className="flex w-fit items-center gap-2 rounded border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">
+        <label className="flex w-fit items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
           <input
             className="size-4 accent-violet-600"
             type="checkbox"
@@ -102,7 +103,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
           />
           답변 필요한 문의만 보기 ({pendingCount}건)
         </label>
-        <div className="divide-y divide-slate-100 rounded border border-slate-200">
+        <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
           {visibleInquiries.length > 0 ? (
             visibleInquiries.map((inquiry) => {
               const expanded = expandedId === inquiry.contact_inquiry_id;
@@ -110,7 +111,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                 <article key={inquiry.contact_inquiry_id}>
                   <button
                     aria-expanded={expanded}
-                    className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-violet-50/40"
+                    className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-indigo-50/40"
                     onClick={() =>
                       setExpandedId(expanded ? '' : inquiry.contact_inquiry_id)
                     }
@@ -120,18 +121,18 @@ function AdminInquiriesContent({ token }: { token: string }) {
                       <span className="flex flex-wrap items-center gap-2">
                         <StatusBadge status={inquiry.status} />
                         <strong
-                          className="zoj-break-anywhere min-w-0 text-base font-black text-slate-950"
+                          className="zoj-break-anywhere min-w-0 text-base font-semibold text-slate-950"
                           title={inquiry.title}
                         >
                           {inquiry.title}
                         </strong>
                       </span>
-                      <span className="zoj-break-anywhere mt-1 block text-sm font-bold text-slate-500">
+                      <span className="zoj-break-anywhere mt-1 block text-sm font-medium text-slate-500">
                         {inquiry.sender_name} · {inquiry.sender_email} ·{' '}
                         {formatDateTime(inquiry.created_at)}
                       </span>
                     </span>
-                    <span className="text-sm font-black text-violet-700">
+                    <span className="text-sm font-semibold text-indigo-700">
                       {expanded ? '접기' : '보기'}
                     </span>
                   </button>
@@ -145,7 +146,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                             label="답변 내역"
                             value={inquiry.answer_body}
                           />
-                          <p className="zoj-break-anywhere text-xs font-bold text-slate-500">
+                          <p className="zoj-break-anywhere text-xs font-medium text-slate-500">
                             {inquiry.answered_by_email ?? '-'} ·{' '}
                             {inquiry.answered_at
                               ? formatDateTime(inquiry.answered_at)
@@ -160,10 +161,10 @@ function AdminInquiriesContent({ token }: { token: string }) {
                           submitAnswer(event, inquiry.contact_inquiry_id)
                         }
                       >
-                        <label className="grid gap-2 text-sm font-black text-slate-700">
+                        <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           답변 작성
                           <textarea
-                            className="min-h-32 resize-y rounded border border-slate-200 bg-white px-3 py-3 text-sm leading-6 font-bold text-slate-950 transition outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                            className="min-h-32 resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                             onChange={(event) =>
                               setAnswers((prev) => ({
                                 ...prev,
@@ -175,7 +176,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                           />
                         </label>
                         <button
-                          className="h-10 w-fit rounded bg-violet-950 px-4 text-sm font-black text-white transition hover:bg-violet-800 disabled:bg-slate-300"
+                          className="h-10 w-fit rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:bg-slate-300"
                           disabled={
                             answerMutation.isPending ||
                             !(answers[inquiry.contact_inquiry_id] ?? '').trim()
@@ -185,7 +186,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
                           {answerMutation.isPending ? '발송 중' : '답변 발송'}
                         </button>
                         {answerMutation.error ? (
-                          <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                          <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                             {formatApiError(
                               answerMutation.error,
                               '답변 발송에 실패했습니다',
@@ -199,7 +200,7 @@ function AdminInquiriesContent({ token }: { token: string }) {
               );
             })
           ) : (
-            <p className="px-4 py-10 text-center text-sm font-bold text-slate-500">
+            <p className="px-4 py-10 text-center text-sm font-medium text-slate-500">
               {inquiriesQuery.isLoading
                 ? '문의를 불러오는 중입니다.'
                 : pendingOnly
@@ -218,7 +219,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={[
-        'rounded-full px-3 py-1 text-xs font-black',
+        'rounded-full px-3 py-1 text-xs font-semibold',
         answered
           ? 'bg-emerald-50 text-emerald-700'
           : 'bg-amber-50 text-amber-700',
@@ -232,8 +233,8 @@ function StatusBadge({ status }: { status: string }) {
 function InquiryBlock({ label, value }: { label: string; value: string }) {
   return (
     <section className="grid min-w-0 gap-2">
-      <h3 className="text-sm font-black text-slate-700">{label}</h3>
-      <div className="zoj-break-anywhere rounded border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-bold whitespace-pre-wrap text-slate-700">
+      <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
+      <div className="zoj-break-anywhere rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-6 font-medium whitespace-pre-wrap text-slate-700">
         {value}
       </div>
     </section>

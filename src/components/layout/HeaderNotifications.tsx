@@ -1,3 +1,4 @@
+import Modal from '@/shared/ui/Modal';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMatch, useNavigate } from 'react-router-dom';
@@ -477,11 +478,10 @@ export default function HeaderNotifications() {
       ) : null}
 
       {isPanelOpen ? (
-        <div
+        <Modal
           aria-labelledby="notification-panel-title"
-          aria-modal="true"
-          className="fixed inset-0 z-[70] bg-slate-950/40"
-          role="dialog"
+          onClose={() => setIsPanelOpen(false)}
+          drawer
         >
           <button
             aria-label="알림 닫기"
@@ -493,18 +493,18 @@ export default function HeaderNotifications() {
             <header className="border-b border-slate-200 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="grid gap-1">
-                  <p className="text-xs font-black text-indigo-600 uppercase">
+                  <p className="text-xs font-semibold text-indigo-600 uppercase">
                     Notifications
                   </p>
                   <h2
-                    className="text-xl font-black text-slate-950"
+                    className="text-xl font-semibold text-slate-950"
                     id="notification-panel-title"
                   >
                     알림
                   </h2>
                 </div>
                 <button
-                  className="h-9 rounded border border-slate-200 px-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                  className="h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                   onClick={() => setIsPanelOpen(false)}
                   type="button"
                 >
@@ -519,17 +519,17 @@ export default function HeaderNotifications() {
                   {panelNotifications.map((notification) => (
                     <li key={notification.id}>
                       <button
-                        className="grid w-full gap-1 rounded border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
+                        className="grid w-full gap-1 rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
                         onClick={() => openNotification(notification)}
                         type="button"
                       >
-                        <span className="text-sm font-black text-slate-950">
+                        <span className="text-sm font-semibold text-slate-950">
                           {notification.title}
                         </span>
-                        <span className="line-clamp-2 text-xs leading-5 font-bold text-slate-600">
+                        <span className="line-clamp-2 text-xs leading-5 font-medium text-slate-600">
                           {notification.body}
                         </span>
-                        <span className="text-xs font-bold text-slate-400">
+                        <span className="text-xs font-medium text-slate-400">
                           {formatNotificationAge(notification.createdAt, now)}
                           {notification.dismissedAt
                             ? ` · 닫음 ${formatTime(notification.dismissedAt)}`
@@ -540,13 +540,13 @@ export default function HeaderNotifications() {
                   ))}
                 </ul>
               ) : (
-                <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                   받은 알림이 없습니다.
                 </p>
               )}
             </div>
           </aside>
-        </div>
+        </Modal>
       ) : null}
     </>
   );

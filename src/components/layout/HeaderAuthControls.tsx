@@ -1,3 +1,4 @@
+import Modal from '@/shared/ui/Modal';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
@@ -170,11 +171,10 @@ export default function HeaderAuthControls({
         <span className="hidden sm:inline">내 정보</span>
       </button>
       {isAccountPanelOpen ? (
-        <div
+        <Modal
           aria-labelledby="account-panel-title"
-          aria-modal="true"
-          className="fixed inset-0 z-[70] bg-slate-950/40"
-          role="dialog"
+          onClose={() => setIsAccountPanelOpen(false)}
+          drawer
         >
           <button
             aria-label="내 정보 닫기"
@@ -186,28 +186,28 @@ export default function HeaderAuthControls({
             <header className="border-b border-slate-200 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="grid min-w-0 gap-1">
-                  <p className="text-xs font-black text-indigo-600 uppercase">
+                  <p className="text-xs font-semibold text-indigo-600 uppercase">
                     Account
                   </p>
                   <h2
-                    className="text-xl font-black text-slate-950"
+                    className="text-xl font-semibold text-slate-950"
                     id="account-panel-title"
                   >
                     내 정보
                   </h2>
                 </div>
                 <button
-                  className="h-9 rounded border border-slate-200 px-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                  className="h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                   onClick={() => setIsAccountPanelOpen(false)}
                   type="button"
                 >
                   닫기
                 </button>
               </div>
-              <div className="mt-5 rounded border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-black text-slate-500">이메일</p>
+              <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500">이메일</p>
                 <p
-                  className="mt-1 truncate text-sm font-black text-slate-950"
+                  className="mt-1 truncate text-sm font-semibold text-slate-950"
                   title={accountEmail}
                 >
                   {accountEmail}
@@ -218,10 +218,10 @@ export default function HeaderAuthControls({
             <div className="min-h-0 overflow-y-auto px-6 py-5">
               <div className="grid gap-5">
                 <div className="grid gap-1">
-                  <h3 className="text-base font-black text-slate-950">
+                  <h3 className="text-base font-semibold text-slate-950">
                     내가 참가한 대회
                   </h3>
-                  <p className="text-xs font-bold text-slate-500">
+                  <p className="text-xs font-medium text-slate-500">
                     진행중, 예정, 종료 순서로 표시합니다.
                   </p>
                 </div>
@@ -230,28 +230,28 @@ export default function HeaderAuthControls({
                   section.contests.length > 0 ? (
                     <section className="grid gap-2" key={section.key}>
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-black text-slate-800">
+                        <h4 className="text-sm font-semibold text-slate-800">
                           {section.title}
                         </h4>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
                           {section.contests.length}개
                         </span>
                       </div>
                       <div className="grid gap-2">
                         {section.contests.map((item) => (
                           <Link
-                            className="grid gap-1 rounded border border-slate-200 px-3 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
+                            className="grid gap-1 rounded-lg border border-slate-200 px-3 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
                             key={item.contest.contest_id}
                             onClick={() => setIsAccountPanelOpen(false)}
                             to={`/contests/${item.contest.contest_id}`}
                           >
-                            <span className="truncate text-sm font-black text-slate-950">
+                            <span className="truncate text-sm font-semibold text-slate-950">
                               {item.contest.title}
                             </span>
-                            <span className="truncate text-xs font-bold text-slate-500">
+                            <span className="truncate text-xs font-medium text-slate-500">
                               {item.division.name} · {item.team.team_name}
                             </span>
-                            <span className="text-xs font-bold text-slate-400">
+                            <span className="text-xs font-medium text-slate-400">
                               {formatContestMoment(item.contest.start_at)} -{' '}
                               {formatContestMoment(item.contest.end_at)}
                             </span>
@@ -263,7 +263,7 @@ export default function HeaderAuthControls({
                 )}
 
                 {generalSession.participantContests.length === 0 ? (
-                  <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                  <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                     참가 중인 대회가 없습니다.
                   </p>
                 ) : null}
@@ -272,7 +272,7 @@ export default function HeaderAuthControls({
 
             <footer className="border-t border-slate-200 px-6 py-5">
               <button
-                className="flex h-11 w-full items-center justify-center gap-2 rounded bg-red-600 px-5 text-sm font-black text-white transition hover:bg-red-700 disabled:bg-slate-300"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-slate-300"
                 disabled={isLoggingOut}
                 onClick={() => setIsLogoutConfirmOpen(true)}
                 type="button"
@@ -284,23 +284,23 @@ export default function HeaderAuthControls({
               </button>
             </footer>
           </aside>
-        </div>
+        </Modal>
       ) : null}
       {isLogoutConfirmOpen ? (
-        <div
+        <Modal
           aria-labelledby="logout-confirm-title"
-          aria-modal="true"
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 px-4"
-          role="dialog"
+          onClose={
+            isLoggingOut ? undefined : () => setIsLogoutConfirmOpen(false)
+          }
         >
-          <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="zoj-modal-card w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-start gap-4">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
                 <LogoutIcon />
               </span>
               <div className="grid gap-2">
                 <h2
-                  className="text-xl font-black text-slate-950"
+                  className="text-xl font-semibold text-slate-950"
                   id="logout-confirm-title"
                 >
                   {headerText.logoutConfirmTitle}
@@ -312,7 +312,7 @@ export default function HeaderAuthControls({
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                className="h-10 rounded border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+                className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
                 disabled={isLoggingOut}
                 onClick={() => setIsLogoutConfirmOpen(false)}
                 type="button"
@@ -320,7 +320,7 @@ export default function HeaderAuthControls({
                 {headerText.logoutCancel}
               </button>
               <button
-                className="h-10 rounded bg-red-600 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:bg-slate-300"
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-slate-300"
                 disabled={isLoggingOut}
                 onClick={() => void handleLogout()}
                 type="button"
@@ -331,7 +331,7 @@ export default function HeaderAuthControls({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </>
   );

@@ -1,3 +1,4 @@
+import Modal from '@/shared/ui/Modal';
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -57,17 +58,20 @@ function writeStoredValue(key: string, value: string) {
 
 function openPresentationPopup(contestId: string, divisionId: string) {
   const url = `/operator/contests/${contestId}/scoreboard/presentation?divisionId=${encodeURIComponent(divisionId)}`;
+  const width = Math.min(1600, window.screen.availWidth || window.innerWidth);
+  const height = Math.min(
+    1000,
+    Math.max(320, (window.screen.availHeight || window.innerHeight) - 80),
+  );
   const popup = window.open(
     url,
     `zoj-scoreboard-presentation-${contestId}`,
-    'popup=yes,width=1600,height=1000,menubar=no,toolbar=no,location=no,status=no',
+    `popup=yes,width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`,
   );
 
-  if (!popup) {
-    window.location.assign(url);
-    return;
-  }
+  if (!popup) return false;
   popup.focus();
+  return true;
 }
 
 function freezeRemainingLabel(freezeAt?: string | null) {
@@ -148,19 +152,19 @@ function PenaltyBreakdownModal({
     .reduce((sum, score) => sum + score.attempts, 0);
 
   return (
-    <div aria-modal="true" className="zoj-modal-backdrop" role="dialog">
+    <Modal aria-label="총시간 계산 상세" onClose={onClose}>
       <section className="zoj-modal-shell grid max-w-4xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Penalty breakdown
             </p>
-            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
+            <h2 className="zoj-break-anywhere text-xl font-semibold text-slate-950">
               {row.team_name} · 총시간 {formatPenalty(row.penalty)}
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -169,10 +173,10 @@ function PenaltyBreakdownModal({
         </header>
         <div className="min-h-0 overflow-y-auto p-5">
           <div className="grid gap-4">
-            <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50 px-4 py-4 text-sm font-bold text-indigo-900">
+            <div className="grid gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-4 text-sm font-medium text-indigo-900">
               <p>
-                총시간은 스코어보드 응답의 <code>row.penalty</code> 값입니다.
-                문제별로 <code>problem_scores[].penalty</code>가 더해집니다.
+                총시간은 정답을 맞힌 문제들의 시간과 오답 패널티를 합산한
+                값입니다.
               </p>
               <p className="text-indigo-700">
                 문제별 계산: 정답 제출까지 걸린 분 + 정답 전 실패 횟수 × 20분
@@ -180,9 +184,9 @@ function PenaltyBreakdownModal({
             </div>
 
             {solvedScores.length ? (
-              <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+              <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                 <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                  <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
                     <tr>
                       <th className="border-r border-slate-200 px-4 py-3">
                         문제
@@ -205,22 +209,22 @@ function PenaltyBreakdownModal({
                       const wrongPenalty = score.wrong_attempts * 20;
                       return (
                         <tr key={score.problem_id ?? score.problem_code}>
-                          <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                          <td className="border-r border-slate-100 px-4 py-3 font-semibold text-slate-950">
                             {problemLabel(score, problemById)}
                           </td>
-                          <td className="border-r border-slate-100 px-4 py-3 font-bold text-slate-500">
+                          <td className="border-r border-slate-100 px-4 py-3 font-medium text-slate-500">
                             {formatDateTime(score.solved_at ?? undefined)}
                           </td>
-                          <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                          <td className="border-r border-slate-100 px-4 py-3 text-right font-medium text-slate-700">
                             {elapsed === null
                               ? '-'
                               : `${elapsed.toLocaleString('ko-KR')}분`}
                           </td>
-                          <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                          <td className="border-r border-slate-100 px-4 py-3 text-right font-medium text-slate-700">
                             {score.wrong_attempts.toLocaleString('ko-KR')}회 ×
                             20 = {wrongPenalty.toLocaleString('ko-KR')}분
                           </td>
-                          <td className="px-4 py-3 text-right font-black text-indigo-700">
+                          <td className="px-4 py-3 text-right font-semibold text-indigo-700">
                             {formatPenalty(score.penalty)}
                           </td>
                         </tr>
@@ -230,12 +234,12 @@ function PenaltyBreakdownModal({
                 </table>
               </div>
             ) : (
-              <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+              <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                 해결한 문제가 없어 총시간은 0입니다.
               </p>
             )}
 
-            <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
               <p>
                 합계: {solvedScores.length}개 해결, 총시간{' '}
                 {formatPenalty(row.penalty)}
@@ -249,7 +253,7 @@ function PenaltyBreakdownModal({
           </div>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -296,21 +300,21 @@ function ProblemStatsBlock({
     <section className="mt-5 grid gap-3 border-t border-slate-200 pt-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-xs font-black text-indigo-600 uppercase">
+          <p className="text-xs font-semibold text-indigo-600 uppercase">
             Problem statistics
           </p>
-          <h3 className="text-base font-black text-slate-950">
+          <h3 className="text-base font-semibold text-slate-950">
             문제별 제출 통계
           </h3>
         </div>
-        <p className="text-xs font-bold text-slate-500">
+        <p className="text-xs font-medium text-slate-500">
           정답률은 정답 제출 수 / 총 제출 수 기준입니다.
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-black text-slate-500">
+          <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
             <tr>
               <th className="border-r border-slate-200 px-4 py-3">문제</th>
               <th className="border-r border-slate-200 px-4 py-3 text-right">
@@ -331,30 +335,30 @@ function ProblemStatsBlock({
           <tbody className="divide-y divide-slate-100">
             {rows.map(({ problem, stat }) => (
               <tr key={stat.problem_id}>
-                <td className="border-r border-slate-100 px-4 py-3 font-black text-slate-950">
+                <td className="border-r border-slate-100 px-4 py-3 font-semibold text-slate-950">
                   {problem
                     ? `${problem.problem_code}. ${problem.title}`
                     : stat.problem_code}
                 </td>
-                <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-medium text-slate-700">
                   {stat.total_submissions.toLocaleString('ko-KR')}
                 </td>
-                <td className="border-r border-slate-100 px-4 py-3 text-right font-black text-indigo-700">
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-semibold text-indigo-700">
                   {formatAcceptanceRate(stat.acceptance_rate)}
                 </td>
-                <td className="border-r border-slate-100 px-4 py-3 text-right font-bold text-slate-700">
+                <td className="border-r border-slate-100 px-4 py-3 text-right font-medium text-slate-700">
                   {stat.accepted_team_count.toLocaleString('ko-KR')}
-                  <span className="ml-1 text-xs font-bold text-slate-400">
+                  <span className="ml-1 text-xs font-medium text-slate-400">
                     / {(stat.total_team_count ?? 0).toLocaleString('ko-KR')}팀
                   </span>
                 </td>
-                <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-3 font-bold text-slate-700">
+                <td className="zoj-break-anywhere border-r border-slate-100 px-4 py-3 font-medium text-slate-700">
                   {stat.first_accepted_team_name ?? '아직 없음'}
                 </td>
-                <td className="px-4 py-3 font-bold text-slate-600">
+                <td className="px-4 py-3 font-medium text-slate-600">
                   {stat.first_accepted_at ? (
                     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-black text-slate-950">
+                      <span className="font-semibold text-slate-950">
                         {formatElapsedMinuteLabel(
                           stat.first_accepted_elapsed_minutes,
                         )}
@@ -392,7 +396,10 @@ export default function OperatorScoreboardPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -439,21 +446,21 @@ function ScoreboardFreezeControl({
   ];
 
   return (
-    <section className="grid gap-3 rounded border border-slate-200 bg-white px-4 py-4">
+    <section className="grid gap-3 rounded-lg border border-slate-200 bg-white px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-black text-indigo-600 uppercase">
+          <p className="text-xs font-semibold text-indigo-600 uppercase">
             Public scoreboard
           </p>
-          <h2 className="text-base font-black text-slate-950">
+          <h2 className="text-base font-semibold text-slate-950">
             공개 스코어보드 표시
           </h2>
         </div>
-        <div className="grid gap-1 rounded border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:grid-cols-3">
+        <div className="grid gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:grid-cols-3">
           {options.map((option) => (
             <button
               className={[
-                'h-10 rounded px-5 text-sm font-black transition disabled:cursor-not-allowed',
+                'h-10 rounded-lg px-5 text-sm font-semibold transition disabled:cursor-not-allowed',
                 mode === option.value
                   ? 'bg-slate-950 text-white shadow-sm'
                   : 'text-slate-500 hover:bg-white hover:text-slate-950',
@@ -470,13 +477,13 @@ function ScoreboardFreezeControl({
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs font-bold text-slate-500">
+        <p className="text-xs font-medium text-slate-500">
           기본 운용은 프리즈 시간 자동 적용입니다. 라이브와 프리즈는 수동 유지
           모드입니다.
         </p>
         <span
           className={[
-            'rounded-full border px-3 py-1 text-xs font-black',
+            'rounded-full border px-3 py-1 text-xs font-semibold',
             publicFrozen
               ? 'border-amber-200 bg-amber-50 text-amber-700'
               : 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -485,25 +492,27 @@ function ScoreboardFreezeControl({
           공개 화면: {publicFrozen ? '프리즈 적용 중' : '라이브'}
         </span>
       </div>
-      <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+      <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
         <div>
-          <p className="text-xs font-black text-slate-500">프리즈 기준 시각</p>
-          <p className="mt-1 font-black text-slate-950">
+          <p className="text-xs font-semibold text-slate-500">
+            프리즈 기준 시각
+          </p>
+          <p className="mt-1 font-semibold text-slate-950">
             {formatDateTime(freezeAt ?? undefined)}
           </p>
         </div>
-        <p className="rounded-full border border-indigo-100 bg-white px-3 py-1 text-xs font-black text-indigo-700">
+        <p className="rounded-full border border-indigo-100 bg-white px-3 py-1 text-xs font-semibold text-indigo-700">
           {freezeRemainingLabel(freezeAt)}
         </p>
       </div>
       {mode !== 'auto' ? (
-        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
           현재 공개 스코어보드가 오토가 아닙니다. 프리즈 시각 기준으로 자동
           전환하려면 오토로 변경해 주세요.
         </p>
       ) : null}
       {error ? (
-        <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
           {formatApiError(error, '스코어보드 공개 상태를 변경하지 못했습니다')}
         </p>
       ) : null}
@@ -527,6 +536,8 @@ function OperatorScoreboardContent({
   );
   const [selectedPenaltyRow, setSelectedPenaltyRow] =
     useState<ScoreboardRow | null>(null);
+  const [presentationPopupBlocked, setPresentationPopupBlocked] =
+    useState(false);
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -581,6 +592,7 @@ function OperatorScoreboardContent({
 
   return (
     <PageLayout
+      variant="management"
       description="운영자용 내부 순위입니다. 프리즈 이후에도 live view를 확인할 수 있습니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 스코어보드`}
@@ -600,7 +612,7 @@ function OperatorScoreboardContent({
       ) : null}
 
       {dashboardQuery.error || problemsQuery.error || scoreboardQuery.error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {formatApiError(
             dashboardQuery.error ||
               problemsQuery.error ||
@@ -614,17 +626,21 @@ function OperatorScoreboardContent({
         actions={
           <>
             <button
-              className="zoj-pressable inline-flex h-10 items-center gap-2 rounded border border-indigo-200 bg-indigo-600 px-4 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700"
-              onClick={() => openPresentationPopup(contestId, divisionId)}
+              className="zoj-pressable inline-flex h-10 items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              onClick={() =>
+                setPresentationPopupBlocked(
+                  !openPresentationPopup(contestId, divisionId),
+                )
+              }
               type="button"
             >
               <ScoreboardIcon />
               프레젠테이션 팝업
             </button>
-            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               <ScoreboardIcon />
               <select
-                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => {
                   setDivisionId(event.target.value);
                   writeStoredValue(divisionStorageKey, event.target.value);
@@ -646,6 +662,23 @@ function OperatorScoreboardContent({
         description="유형별 스코어보드를 확인합니다."
         title="순위표"
       >
+        {presentationPopupBlocked ? (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            브라우저에서 팝업이 차단되었습니다. 팝업을 허용하거나{' '}
+            <a
+              className="font-medium underline underline-offset-4"
+              href={`/operator/contests/${contestId}/scoreboard/presentation?divisionId=${encodeURIComponent(divisionId)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              새 탭에서 프레젠테이션 열기
+            </a>
+            를 선택하세요.
+          </p>
+        ) : null}
         {contest && isContestEnded(contest) && divisionId ? (
           <ScoreboardReleaseControl
             key={divisionId}
@@ -659,7 +692,7 @@ function OperatorScoreboardContent({
           />
         ) : null}
         {scoreboardQuery.data?.frozen_public_view ? (
-          <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
             공개 스코어보드는 프리즈 상태입니다. 이 화면은 운영자 live
             view입니다.
           </p>
@@ -673,7 +706,7 @@ function OperatorScoreboardContent({
           <ProblemStatsBlock problemStats={problemStats} problems={problems} />
         ) : null}
         {!scoreboardQuery.isLoading && rows.length === 0 ? (
-          <p className="mt-4 rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+          <p className="mt-4 rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
             표시할 스코어보드가 없습니다.
           </p>
         ) : null}

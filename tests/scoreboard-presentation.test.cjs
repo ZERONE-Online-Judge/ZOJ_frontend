@@ -1,0 +1,381 @@
+const { test, beforeEach, afterEach, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const ts = require('typescript');
+const { JSDOM } = require('jsdom');
+
+const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+  url: 'https://judge.test/',
+});
+global.window = dom.window;
+global.document = dom.window.document;
+global.IS_REACT_ACT_ENVIRONMENT = true;
+dom.window.HTMLDialogElement.prototype.showModal = function () {
+  this.open = true;
+};
+dom.window.HTMLDialogElement.prototype.close = function () {
+  this.open = false;
+};
+const React = require('react');
+const { act } = React;
+const { createRoot } = require('react-dom/client');
+const { MemoryRouter, Routes, Route } = require('react-router-dom');
+const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
+const h = React.createElement;
+
+const contest = {
+  contest_id: 'contest',
+  title: 'ZOAC Test',
+  status: 'ended',
+  start_at: '2020-01-01T00:00:00Z',
+  freeze_at: '2020-01-01T01:00:00Z',
+  end_at: '2020-01-01T02:00:00Z',
+};
+const divisions = [
+  { division_id: 'a', name: 'A 유형' },
+  { division_id: 'b', name: 'B 유형' },
+];
+let releases, updateCalls, presentationReads, releaseReads, rejectUpdate;
+
+function board(divisionId) {
+  return {
+    division: divisions.find((item) => item.division_id === divisionId),
+    release: releases[divisionId],
+    frozen: releases[divisionId].mode !== 'all',
+    problems: [],
+    rows: releases[divisionId].ranks.map(({ rank, revealed }) => ({
+      rank,
+      team_id: `${divisionId}-${rank}`,
+      team_name: revealed ? `${divisionId}-team-${rank}` : '',
+      solved: 1,
+      penalty: 30,
+      problem_scores: [],
+      is_revealed: revealed,
+    })),
+  };
+}
+const mocks = {
+  '@/domains/identityAccess/queryIdentity': {
+    tokenQueryIdentity: () => 'test-session',
+  },
+  '@/components/operator/OperatorShell': {
+    OperatorAccessGate: ({ children }) => children({ accessToken: 'token' }),
+    OperatorPanel: ({ title, description, actions, children }) =>
+      h('section', null, h('h2', null, title), description, actions, children),
+    OperatorTabs: () => null,
+    ScoreboardIcon: () => null,
+  },
+  '@/components/contest/scoreboard/ContestScoreboardTable': {
+    __esModule: true,
+    default: () => null,
+  },
+  '@/domains/contestAdministration/api': {
+    getOperatorContestDashboard: async () => ({ contest, divisions }),
+  },
+  '@/domains/problemManagement/api': { getOperatorProblems: async () => [] },
+  '@/domains/submissionScoreboard/api': {
+    getOperatorDivisionScoreboard: async () => ({
+      rows: [],
+      problem_stats: [],
+      frozen_public_view: true,
+    }),
+    getOperatorPresentationScoreboard: async () => {
+      presentationReads += 1;
+      return global.structuredClone({
+        contest,
+        sections: divisions.map(({ division_id }) => board(division_id)),
+      });
+    },
+    getScoreboardRelease: async (_contestId, divisionId) => {
+      releaseReads += 1;
+      return global.structuredClone(releases[divisionId]);
+    },
+    updateScoreboardRelease: async (contestId, divisionId, token, body) => {
+      updateCalls.push({ contestId, divisionId, token, body });
+      if (rejectUpdate) throw new Error('save failed');
+      const release = releases[divisionId];
+      release.ranks = release.ranks.map((item) => ({
+        ...item,
+        revealed:
+          item.revealed || body.action === 'all' || item.rank === body.rank,
+      }));
+      release.revealed_count = release.ranks.filter(
+        (item) => item.revealed,
+      ).length;
+      release.mode =
+        release.revealed_count === release.total_count ? 'all' : 'partial';
+      return global.structuredClone(release);
+    },
+  },
+};
+const cache = new Map();
+function source(relative) {
+  const filename = path.resolve(__dirname, '../src', relative);
+  if (cache.has(filename)) return cache.get(filename).exports;
+  const loaded = new Module(filename, module);
+  loaded.filename = filename;
+  loaded.paths = Module._nodeModulePaths(path.dirname(filename));
+  const nativeRequire = loaded.require.bind(loaded);
+  loaded.require = (id) => {
+    if (mocks[id]) return mocks[id];
+    if (!id.startsWith('@/')) return nativeRequire(id);
+    return source(
+      ['.ts', '.tsx']
+        .map((ext) => id.slice(2) + ext)
+        .find((file) => fs.existsSync(path.resolve(__dirname, '../src', file))),
+    );
+  };
+  cache.set(filename, loaded);
+  loaded._compile(
+    ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        jsx: ts.JsxEmit.ReactJSX,
+        target: ts.ScriptTarget.ES2022,
+      },
+    }).outputText,
+    filename,
+  );
+  return loaded.exports;
+}
+const Presentation = source(
+  'pages/operator/OperatorScoreboardPresentationPage.tsx',
+).default;
+const OperatorPage = source(
+  'pages/operator/OperatorScoreboardPage.tsx',
+).default;
+const { notifyScoreboardUpdate } = source(
+  'domains/submissionScoreboard/presentationSync.ts',
+);
+let roots, clients;
+
+beforeEach(() => {
+  roots = [];
+  clients = [];
+  releases = Object.fromEntries(
+    divisions.map(({ division_id }) => [
+      division_id,
+      {
+        mode: 'partial',
+        revealed_count: 0,
+        total_count: 2,
+        ranks: [1, 2].map((rank) => ({ rank, revealed: false, team_count: 1 })),
+      },
+    ]),
+  );
+  updateCalls = [];
+  presentationReads = 0;
+  releaseReads = 0;
+  rejectUpdate = false;
+  window.localStorage.clear();
+  document.body.innerHTML = '';
+});
+afterEach(async () => {
+  await act(async () => roots.forEach((root) => root.unmount()));
+  clients.forEach((client) => client.clear());
+});
+after(() => dom.window.close());
+
+async function flush() {
+  await act(async () => new Promise((done) => global.setTimeout(done, 10)));
+}
+async function renderPage(Component, url) {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
+    },
+  });
+  roots.push(root);
+  clients.push(client);
+  await act(async () =>
+    root.render(
+      h(
+        QueryClientProvider,
+        { client },
+        h(
+          MemoryRouter,
+          { initialEntries: [url] },
+          h(
+            Routes,
+            null,
+            h(Route, {
+              path: '/operator/contests/:contestId/scoreboard/*',
+              element: h(Component),
+            }),
+          ),
+        ),
+      ),
+    ),
+  );
+  await flush();
+  return container;
+}
+function button(container, text) {
+  return [...container.querySelectorAll('button')].find(
+    (item) => item.textContent === text,
+  );
+}
+async function dispatchUpdate(contestId = 'contest') {
+  const key = `zoj.scoreboard.updated.${contestId}`;
+  await act(async () =>
+    window.dispatchEvent(
+      new dom.window.StorageEvent('storage', {
+        key,
+        newValue: window.localStorage.getItem(key) ?? 'external-update',
+      }),
+    ),
+  );
+  await flush();
+}
+
+test('ended presentation displays the selected division without any release controls', async () => {
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  assert.match(display.textContent, /A 유형/);
+  assert.doesNotMatch(
+    display.textContent,
+    /B 유형|공개할 유형|공개 컨트롤|개별 순위 공개 시작/,
+  );
+  assert.equal(display.querySelectorAll('button, select, input').length, 0);
+  assert.equal(releaseReads, 0);
+  assert.equal(updateCalls.length, 0);
+  assert.match(display.textContent, /공개 대기/);
+});
+
+test('operator rank release refreshes a separate presentation client and leaves other ranks hidden', async () => {
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  assert.match(operator.textContent, /A 유형 · 종료 후 순위 공개/);
+  const displayTitle = display.querySelector('h1');
+  const readsBeforeRelease = presentationReads;
+  await act(async () => button(operator, '2위 공개').click());
+  await flush();
+  assert.deepEqual(updateCalls[0], {
+    contestId: 'contest',
+    divisionId: 'a',
+    token: 'token',
+    body: { action: 'rank', rank: 2 },
+  });
+  assert.equal(button(operator, '2위 공개 완료').disabled, true);
+  assert.ok(window.localStorage.getItem('zoj.scoreboard.updated.contest'));
+  // Browser storage events arrive in the other window, whose query cache is separate.
+  await dispatchUpdate();
+  assert.ok(presentationReads > readsBeforeRelease);
+  assert.match(display.textContent, /a-team-2/);
+  assert.doesNotMatch(display.textContent, /a-team-1|b-team/);
+  assert.match(display.textContent, /공개 대기/);
+  assert.equal(display.querySelector('h1'), displayTitle);
+  assert.equal(display.querySelectorAll('button, select, input').length, 0);
+  assert.equal(releases.b.revealed_count, 0);
+});
+
+test('presentation without a division filter displays all divisions and ignores other contests', async () => {
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation',
+  );
+  assert.match(display.textContent, /A 유형/);
+  assert.match(display.textContent, /B 유형/);
+  const readsBeforeUpdate = presentationReads;
+  await dispatchUpdate('another-contest');
+  assert.equal(presentationReads, readsBeforeUpdate);
+  assert.equal(display.querySelectorAll('button, select, input').length, 0);
+});
+
+test('failed release does not broadcast or reveal ranks', async () => {
+  rejectUpdate = true;
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  await act(async () => button(operator, '2위 공개').click());
+  await flush();
+  assert.match(
+    operator.querySelector('[role="alert"]').textContent,
+    /순위 공개 상태를 변경하지 못했습니다/,
+  );
+  assert.equal(
+    window.localStorage.getItem('zoj.scoreboard.updated.contest'),
+    null,
+  );
+  assert.equal(releases.a.revealed_count, 0);
+});
+
+test('unavailable browser storage does not fail a successful release', async () => {
+  const original = dom.window.Storage.prototype.setItem;
+  dom.window.Storage.prototype.setItem = () => {
+    throw new Error('storage blocked');
+  };
+  try {
+    assert.doesNotThrow(() => notifyScoreboardUpdate('contest'));
+    const operator = await renderPage(
+      OperatorPage,
+      '/operator/contests/contest/scoreboard',
+    );
+    await flush();
+    await act(async () => button(operator, '2위 공개').click());
+    await flush();
+    assert.equal(releases.a.revealed_count, 1);
+    assert.equal(operator.querySelector('[role="alert"]'), null);
+  } finally {
+    dom.window.Storage.prototype.setItem = original;
+  }
+});
+
+test('publishing all ranks waits for confirmation and cancel preserves release state', async () => {
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  await act(async () => button(operator, '이 유형 전체 공개').click());
+  assert.equal(updateCalls.length, 0);
+  assert.match(document.querySelector('dialog').textContent, /순위 공개 확인/);
+  await act(async () =>
+    button(document.querySelector('dialog'), '취소').click(),
+  );
+  assert.equal(updateCalls.length, 0);
+  await act(async () => button(operator, '이 유형 전체 공개').click());
+  await act(async () =>
+    button(document.querySelector('dialog'), '공개').click(),
+  );
+  await flush();
+  assert.deepEqual(updateCalls[0].body, { action: 'all' });
+  assert.equal(releases.a.revealed_count, 2);
+  assert.equal(releases.b.revealed_count, 0);
+});
+
+test('blocked presentation popup keeps operator controls available and offers a new tab', async () => {
+  const original = window.open;
+  window.open = () => null;
+  try {
+    const operator = await renderPage(
+      OperatorPage,
+      '/operator/contests/contest/scoreboard',
+    );
+    await flush();
+    await act(async () => button(operator, '프레젠테이션 팝업').click());
+    const link = operator.querySelector('a[target="_blank"]');
+    assert.match(link.href, /presentation\?divisionId=a$/);
+    assert.match(operator.textContent, /팝업이 차단/);
+    assert.ok(button(operator, '2위 공개'));
+  } finally {
+    window.open = original;
+  }
+});

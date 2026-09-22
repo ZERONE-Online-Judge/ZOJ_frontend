@@ -408,3 +408,65 @@ test('unmounting stops further polling after the in-flight request returns', asy
   await new Promise((done) => global.setTimeout(done, 120));
   assert.equal(waits.length, 1);
 });
+
+test('judge details preserve output whitespace and omit internal metadata from the readable message', () => {
+  const { parseVerificationDetails } = source(
+    'domains/problemManagement/verificationDetails.ts',
+  );
+  const detail = parseVerificationDetails(
+    'testcase #2 (2.in / 2.out): wrong answer\r\n[source_sha256] abc123\r\n[input_storage_key] internal/key\r\n[output_storage_key] internal/output\r\n[input]\r\n 4 5\r\n\r\n[expected]\r\n6 \r\n\r\n[actual]\r\n',
+  );
+  assert.equal(detail.testcaseOrder, 2);
+  assert.equal(detail.message, 'wrong answer');
+  assert.equal(detail.input, ' 4 5\n');
+  assert.equal(detail.expected, '6 \n');
+  assert.equal(detail.actual, '');
+  assert.equal(
+    parseVerificationDetails('runtime failed').message,
+    'runtime failed',
+  );
+  assert.equal(parseVerificationDetails().input, undefined);
+});
+
+test('compact results keep long logs collapsed and separate input, expected and actual output', async () => {
+  await select('오답 코드', [file('readable.cpp')]);
+  await resolve(
+    uploads[0].gate,
+    asset('readable', 'readable.cpp', 'wrong_answer'),
+  );
+  const judgeMessage =
+    'testcase #2 (2.in / 2.out): wrong answer expected 6, found 5\n[source_sha256] abc123\n[input]\n4 5\n[expected]\n6\n[actual]\n5';
+  await resolve(
+    submissions[0].gate,
+    submission('readable-submission', 'wrong_answer', {
+      judge_message: judgeMessage,
+      failed_testcase_order: 2,
+    }),
+  );
+  const entry = row('readable.cpp');
+  const summary = entry.querySelector('[aria-live="polite"]');
+  assert.match(summary.textContent, /통과.*판정.*틀렸습니다.*테스트케이스 #2/);
+  assert.doesNotMatch(
+    summary.textContent,
+    /source_sha256|wrong answer expected/,
+  );
+  const details = entry.querySelector('details');
+  assert.equal(details.open, false);
+  await act(async () => details.querySelector('summary').click());
+  assert.equal(details.open, true);
+  assert.equal(
+    details.querySelector('pre[aria-label="입력"]').textContent,
+    '4 5',
+  );
+  assert.equal(
+    details.querySelector('pre[aria-label="기대 출력"]').textContent,
+    '6',
+  );
+  assert.equal(
+    details.querySelector('pre[aria-label="실제 출력"]').textContent,
+    '5',
+  );
+  const raw = details.querySelector('details');
+  assert.equal(raw.open, false);
+  assert.equal(raw.querySelector('pre').textContent, judgeMessage);
+});

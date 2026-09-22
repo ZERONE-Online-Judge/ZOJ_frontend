@@ -120,7 +120,8 @@ function staffSessionFromGeneralSession(
 ): StaffSession | null {
   if (!session) return null;
   if (session.operatorSession) return session.operatorSession;
-  if (!session.operatorContests.length && !isServiceMaster(session)) return null;
+  if (!session.operatorContests.length && !isServiceMaster(session))
+    return null;
 
   return {
     accessToken: session.accessToken,
@@ -151,11 +152,12 @@ export function OperatorAccessGate({
   if (!staffSession) {
     return (
       <PageLayout
+        variant="management"
         description={accessText.operatorLoginDescription}
         title={accessText.operatorLoginTitle}
       >
         <Link
-          className="w-fit rounded border border-indigo-200 bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700"
+          className="w-fit rounded-lg border border-indigo-200 bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
           to="/login"
         >
           {accessText.loginPageLink}
@@ -170,10 +172,11 @@ export function OperatorAccessGate({
   ) {
     return (
       <PageLayout
+        variant="management"
         description={accessText.operatorNoPermissionDescription}
         title={accessText.operatorNoPermissionTitle}
       >
-        <div className="grid gap-3 rounded border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+        <div className="grid gap-3 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
           <p>{accessText.operatorNoPermissionMessage}</p>
           <Link className="w-fit underline underline-offset-4" to="/operator">
             {accessText.operatorReturnLink}
@@ -253,7 +256,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   return (
     <nav
       aria-label="운영자 메뉴"
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+      className="zoj-management-tabs flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
     >
       {operatorTabs
         .filter((tab) =>
@@ -271,11 +274,11 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
             <NavLink
               className={({ isActive }) =>
                 [
-                  'zoj-pressable inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-black transition',
+                  'zoj-pressable inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
                   'shrink-0 whitespace-nowrap',
                   isActive
-                    ? 'border-indigo-900 bg-indigo-950 text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
+                    ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                    : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900',
                 ].join(' ')
               }
               end={'end' in tab ? tab.end : undefined}
@@ -305,7 +308,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
 
 function TabCountBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-black text-current">
+    <span className="rounded-md bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
       {children}
     </span>
   );
@@ -318,16 +321,18 @@ export function OperatorPanel({
   title,
 }: OperatorPanelProps) {
   return (
-    <section className="animate-panel-enter zoj-surface grid gap-5 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="zoj-management-panel grid min-w-0 gap-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h2 className="text-xl font-black text-slate-950">{title}</h2>
+        <div className="grid min-w-0 gap-1">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           {description ? (
-            <p className="text-sm font-medium text-slate-500">{description}</p>
+            <p className="text-sm leading-6 font-normal text-slate-500">
+              {description}
+            </p>
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+          <div className="flex min-w-0 flex-wrap gap-2">{actions}</div>
         ) : null}
       </header>
       {children}
@@ -343,22 +348,24 @@ export function OperatorMetricCard({
   value,
 }: OperatorMetricCardProps) {
   return (
-    <article className="animate-panel-enter zoj-surface zoj-surface-hover grid min-h-32 gap-4 rounded border border-slate-200 bg-white p-6 shadow-sm">
+    <article className="flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid sm:p-5">
       <span
         className={[
-          'inline-flex size-10 items-center justify-center rounded border',
+          'inline-flex size-9 items-center justify-center rounded-lg border',
           toneClassNames[tone],
         ].join(' ')}
       >
         {icon}
       </span>
-      <div className="grid gap-1">
-        <p className="text-sm font-black text-slate-500">{label}</p>
-        <strong className="text-3xl font-black tracking-normal text-slate-950">
+      <div className="grid min-w-0 gap-1">
+        <p className="text-sm font-semibold text-slate-500">{label}</p>
+        <strong className="text-2xl font-semibold tracking-tight text-slate-950 tabular-nums">
           {value}
         </strong>
         {description ? (
-          <p className="text-sm font-medium text-slate-500">{description}</p>
+          <p className="text-sm leading-6 font-normal text-slate-500">
+            {description}
+          </p>
         ) : null}
       </div>
     </article>

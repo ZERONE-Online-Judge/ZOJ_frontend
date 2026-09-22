@@ -1,3 +1,4 @@
+import Modal from '@/shared/ui/Modal';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -85,7 +86,10 @@ export default function OperatorSubmissionsPage() {
             token={session.accessToken}
           />
         ) : (
-          <PageLayout title={sharedUiText.contestSelectionRequiredTitle}>
+          <PageLayout
+            variant="management"
+            title={sharedUiText.contestSelectionRequiredTitle}
+          >
             {sharedUiText.contestSelectionRequiredBody}
           </PageLayout>
         )
@@ -296,6 +300,7 @@ function OperatorSubmissionsContent({
 
   return (
     <PageLayout
+      variant="management"
       description="대회 전체 제출과 채점 진행 상태를 운영자 기준으로 확인합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 제출`}
@@ -307,7 +312,7 @@ function OperatorSubmissionsContent({
       problemsQuery.error ||
       submissionsQuery.error ||
       teamsQuery.error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {formatApiError(
             dashboardQuery.error ||
               problemsQuery.error ||
@@ -347,10 +352,10 @@ function OperatorSubmissionsContent({
       <OperatorPanel
         actions={
           <div className="flex flex-wrap gap-3">
-            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               유형
               <select
-                className="h-10 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => {
                   const nextDivisionId = event.target.value;
                   setDivisionId(nextDivisionId);
@@ -373,10 +378,10 @@ function OperatorSubmissionsContent({
                 ))}
               </select>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               문제
               <select
-                className="h-10 min-w-52 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 min-w-52 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => {
                   const nextProblemId = event.target.value;
                   setProblemId(nextProblemId);
@@ -393,10 +398,10 @@ function OperatorSubmissionsContent({
                 ))}
               </select>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               팀
               <select
-                className="h-10 min-w-52 rounded border border-slate-200 px-3 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                className="h-10 min-w-52 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => {
                   const nextTeamId = event.target.value;
                   setTeamId(nextTeamId);
@@ -448,7 +453,7 @@ function OperatorSubmissionsContent({
           hasPrevious={cursorStack.length > 0}
         />
         {!submissionsQuery.isLoading && submissions.length === 0 ? (
-          <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+          <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
             표시할 제출이 없습니다.
           </p>
         ) : null}
@@ -573,9 +578,9 @@ function OperatorSubmissionsTable({
     'border-r border-slate-100 px-4 py-4 align-top last:border-r-0';
 
   return (
-    <div className="zoj-horizontal-scroll rounded border border-slate-200 bg-white">
+    <div className="zoj-horizontal-scroll rounded-lg border border-slate-200 bg-white">
       <table className="w-full min-w-[1180px] table-fixed border-collapse text-left text-sm">
-        <thead className="bg-slate-50 text-xs font-black text-slate-500">
+        <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
           <tr>
             <th className={`${headerClass} w-28`}>제출</th>
             <th className={`${headerClass} w-44`}>팀/계정</th>
@@ -598,12 +603,12 @@ function OperatorSubmissionsTable({
                 key={submission.submission_id}
               >
                 <td
-                  className={`${cellClass} font-mono text-xs font-bold`}
+                  className={`${cellClass} font-mono text-xs font-medium`}
                   title={submission.submission_id}
                 >
                   {displaySubmissionId(submission.submission_id)}
                 </td>
-                <td className={`${cellClass} font-bold text-slate-800`}>
+                <td className={`${cellClass} font-medium text-slate-800`}>
                   <button
                     className="zoj-truncate-safe max-w-full text-left text-indigo-700 hover:text-indigo-950"
                     onClick={() => onSelectOwner(submission.submission_id)}
@@ -613,7 +618,7 @@ function OperatorSubmissionsTable({
                     {submissionOwner(submission)}
                   </button>
                 </td>
-                <td className={`${cellClass} font-bold`}>
+                <td className={`${cellClass} font-medium`}>
                   {problem ? (
                     <button
                       className="zoj-truncate-safe max-w-full text-left text-indigo-700 hover:text-indigo-950"
@@ -635,10 +640,12 @@ function OperatorSubmissionsTable({
                 <td className={cellClass}>
                   <SubmissionStatusBadge submission={submission} compact />
                 </td>
-                <td className={`${cellClass} font-bold`}>
+                <td className={`${cellClass} font-medium`}>
                   {submission.language}
                 </td>
-                <td className={`${cellClass} text-xs font-bold text-slate-500`}>
+                <td
+                  className={`${cellClass} text-xs font-medium text-slate-500`}
+                >
                   {submissionProgressText(submission) || '-'}
                 </td>
                 <td className={cellClass}>
@@ -656,14 +663,14 @@ function OperatorSubmissionsTable({
                   )}
                 </td>
                 <td
-                  className={`${cellClass} text-xs font-bold text-slate-500`}
+                  className={`${cellClass} text-xs font-medium text-slate-500`}
                   title={formatDateTime(submission.submitted_at)}
                 >
                   {formatRelativeTime(submission.submitted_at)}
                 </td>
                 <td className={cellClass}>
                   <button
-                    className="rounded border border-indigo-200 px-3 py-2 text-xs font-black whitespace-nowrap text-indigo-700 hover:bg-indigo-50"
+                    className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold whitespace-nowrap text-indigo-700 hover:bg-indigo-50"
                     onClick={() => onSelectSubmission(submission.submission_id)}
                     type="button"
                   >
@@ -706,7 +713,7 @@ function PaginationControls({
   const end = Number(currentCursor ?? 0) + currentCount;
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-600">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-600">
       <span>
         {totalCount === null
           ? `${start}-${end}`
@@ -715,7 +722,7 @@ function PaginationControls({
       </span>
       <div className="flex gap-2">
         <button
-          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
           disabled={!hasPrevious || isFetching}
           onClick={onPrevious}
           type="button"
@@ -723,7 +730,7 @@ function PaginationControls({
           이전
         </button>
         <button
-          className="h-9 rounded border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+          className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
           disabled={!hasNext || isFetching || currentCount < pageSize}
           onClick={onNext}
           type="button"
@@ -743,23 +750,19 @@ function ProblemPreviewModal({
   problem: Problem;
 }) {
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <Modal aria-label="문제 미리보기" onClose={onClose}>
       <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Problem preview
             </p>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-semibold text-slate-950">
               {problem.problem_code}. {problem.title}
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -770,7 +773,7 @@ function ProblemPreviewModal({
           <ProblemStatementPanel problem={problem} />
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -789,23 +792,19 @@ function TeamDetailModal({
   const leader = members.find((member) => member.role === 'leader');
 
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <Modal aria-label="팀 정보" onClose={onClose}>
       <section className="zoj-modal-shell grid max-w-2xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Team account
             </p>
-            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
+            <h2 className="zoj-break-anywhere text-xl font-semibold text-slate-950">
               {submissionOwner(submission)}
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -814,7 +813,7 @@ function TeamDetailModal({
         </header>
         <div className="min-h-0 overflow-y-auto p-5">
           {isOperatorTest || isMockJudging ? (
-            <p className="rounded border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-bold text-indigo-700">
+            <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-medium text-indigo-700">
               {isMockJudging
                 ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
                 : '운영자가 문제 검증을 위해 생성한 테스트 제출입니다.'}
@@ -841,26 +840,26 @@ function TeamDetailModal({
                 <DetailCard label="상태" value={team?.status ?? '-'} />
               </div>
               <div className="grid gap-2">
-                <p className="text-sm font-black text-slate-800">팀원</p>
+                <p className="text-sm font-semibold text-slate-800">팀원</p>
                 {members.length ? (
                   members.map((member) => (
                     <div
-                      className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 px-4 py-3 text-sm"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm"
                       key={member.team_member_id ?? member.email}
                     >
-                      <span className="min-w-0 font-black text-slate-950">
+                      <span className="min-w-0 font-semibold text-slate-950">
                         {member.name}
                       </span>
-                      <span className="zoj-break-anywhere min-w-0 font-bold text-slate-500">
+                      <span className="zoj-break-anywhere min-w-0 font-medium text-slate-500">
                         {member.email}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                         {member.role === 'leader' ? '팀장' : '팀원'}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="rounded border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-500">
+                  <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
                     팀 상세 정보를 불러오지 못했습니다.
                   </p>
                 )}
@@ -869,7 +868,7 @@ function TeamDetailModal({
           )}
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -889,25 +888,21 @@ function SubmissionDetailModal({
   const detail = parseJudgeDetail(submission?.judge_message);
 
   return (
-    <div
-      aria-modal="true"
-      className="zoj-modal-backdrop"
-      role="dialog"
-    >
+    <Modal aria-label="제출 상세" onClose={onClose}>
       <section className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-indigo-600 uppercase">
+            <p className="text-xs font-semibold text-indigo-600 uppercase">
               Submission detail
             </p>
-            <h2 className="zoj-break-anywhere text-xl font-black text-slate-950">
+            <h2 className="zoj-break-anywhere text-xl font-semibold text-slate-950">
               {submission
                 ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
                 : '제출 상세'}
             </h2>
           </div>
           <button
-            className="h-10 rounded border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -916,12 +911,12 @@ function SubmissionDetailModal({
         </header>
         <div className="min-h-0 overflow-y-auto p-5">
           {isLoading ? (
-            <p className="rounded border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-500">
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
               제출 상세를 불러오는 중입니다.
             </p>
           ) : null}
           {error ? (
-            <p className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
               {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
             </p>
           ) : null}
@@ -996,15 +991,15 @@ function SubmissionDetailModal({
           ) : null}
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 
 function DetailCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="text-xs font-black text-slate-500">{label}</span>
-      <strong className="zoj-break-anywhere text-sm font-black text-slate-950">
+    <div className="grid min-w-0 gap-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <span className="text-xs font-semibold text-slate-500">{label}</span>
+      <strong className="zoj-break-anywhere text-sm font-semibold text-slate-950">
         {value}
       </strong>
     </div>
@@ -1013,9 +1008,9 @@ function DetailCard({ label, value }: { label: string; value: string }) {
 
 function LogBlock({ label, value }: { label: string; value: string }) {
   return (
-    <label className="grid gap-2 text-sm font-black text-slate-700">
+    <label className="grid gap-2 text-sm font-semibold text-slate-700">
       {label}
-      <pre className="max-h-96 overflow-auto rounded border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
+      <pre className="max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
         {value}
       </pre>
     </label>

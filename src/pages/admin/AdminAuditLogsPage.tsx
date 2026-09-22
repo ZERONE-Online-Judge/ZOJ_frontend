@@ -126,6 +126,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
 
   return (
     <PageLayout
+      variant="management"
       description="서비스 관리자와 운영자 페이지에서 발생한 변경 작업을 시간순으로 추적합니다."
       eyebrow="Admin Audit"
       title="운영 로그"
@@ -140,7 +141,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
         title={logType === 'operations' ? '작업 기록' : '접속 기록'}
         actions={
           <button
-            className="rounded border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
             onClick={() =>
               logType === 'operations'
                 ? auditLogsQuery.refetch()
@@ -152,16 +153,16 @@ function AdminAuditLogsContent({ token }: { token: string }) {
           </button>
         }
       >
-        <div className="inline-flex rounded border border-slate-200 bg-slate-50 p-1">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
           {[
             ['operations', '작업 로그'],
             ['access', '접속 로그'],
           ].map(([value, label]) => (
             <button
               className={[
-                'rounded px-4 py-2 text-sm font-black transition',
+                'rounded-lg px-4 py-2 text-sm font-semibold transition',
                 logType === value
-                  ? 'bg-white text-violet-700 shadow-sm'
+                  ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800',
               ].join(' ')}
               key={value}
@@ -173,12 +174,12 @@ function AdminAuditLogsContent({ token }: { token: string }) {
           ))}
         </div>
         <form
-          className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4 md:grid-cols-[160px_1fr_1fr_auto]"
+          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[160px_1fr_1fr_auto]"
           onSubmit={applyFilters}
         >
           {logType === 'operations' ? (
             <select
-              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+              className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
               onChange={(event) => {
                 setScopeFilter(event.target.value);
                 setCursor(undefined);
@@ -192,7 +193,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
             </select>
           ) : (
             <select
-              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+              className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
               onChange={(event) => {
                 setAccessScopeFilter(event.target.value);
                 setAccessCursor(undefined);
@@ -206,19 +207,19 @@ function AdminAuditLogsContent({ token }: { token: string }) {
             </select>
           )}
           <input
-            className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+            className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
             onChange={(event) => setActorDraft(event.target.value)}
             placeholder="계정 이메일"
             value={actorDraft}
           />
           <input
-            className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+            className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
             onChange={(event) => setContestDraft(event.target.value)}
             placeholder="대회 ID"
             value={contestDraft}
           />
           <button
-            className="h-11 rounded bg-violet-950 px-5 text-sm font-black text-white transition hover:bg-violet-800"
+            className="h-11 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-700"
             type="submit"
           >
             필터 적용
@@ -234,9 +235,14 @@ function AdminAuditLogsContent({ token }: { token: string }) {
               ['고유 계정', accessStats.unique_account_count],
               ['활성 세션', accessStats.active_session_count],
             ].map(([label, value]) => (
-              <div className="rounded border border-slate-200 bg-white px-4 py-3" key={label}>
-                <div className="text-xs font-black text-slate-500">{label}</div>
-                <div className="mt-1 text-xl font-black text-slate-900">
+              <div
+                className="rounded-lg border border-slate-200 bg-white px-4 py-3"
+                key={label}
+              >
+                <div className="text-xs font-semibold text-slate-500">
+                  {label}
+                </div>
+                <div className="mt-1 text-xl font-semibold text-slate-900">
                   {Number(value).toLocaleString('ko-KR')}
                 </div>
               </div>
@@ -244,13 +250,19 @@ function AdminAuditLogsContent({ token }: { token: string }) {
           </div>
         ) : null}
         {logType === 'operations' && auditLogsQuery.error ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-            {formatApiError(auditLogsQuery.error, '운영 로그를 불러오지 못했습니다')}
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formatApiError(
+              auditLogsQuery.error,
+              '운영 로그를 불러오지 못했습니다',
+            )}
           </div>
         ) : null}
         {logType === 'access' && accessLogsQuery.error ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-            {formatApiError(accessLogsQuery.error, '접속 로그를 불러오지 못했습니다')}
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formatApiError(
+              accessLogsQuery.error,
+              '접속 로그를 불러오지 못했습니다',
+            )}
           </div>
         ) : null}
         {logType === 'operations' ? (
@@ -264,7 +276,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
             logs={accessLogs}
           />
         )}
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-slate-500">
+        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-500">
           {logType === 'operations' ? (
             <span>
               전체 {page?.total_count ?? logs.length}건 중 {logs.length}건 표시
@@ -277,7 +289,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
           )}
           <div className="flex gap-2">
             <button
-              className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={
                 logType === 'operations'
                   ? cursorHistory.length === 0
@@ -301,8 +313,10 @@ function AdminAuditLogsContent({ token }: { token: string }) {
               이전
             </button>
             <button
-              className="rounded border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={logType === 'operations' ? !nextCursor : !accessNextCursor}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                logType === 'operations' ? !nextCursor : !accessNextCursor
+              }
               onClick={() => {
                 if (logType === 'operations') {
                   setCursorHistory((history) => [...history, cursor]);
