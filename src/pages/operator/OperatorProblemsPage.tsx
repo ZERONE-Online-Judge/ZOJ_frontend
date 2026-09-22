@@ -1,3 +1,9 @@
+import VerificationCodeSection from '@/components/operator/VerificationCodeSection';
+import useVerificationCodeRuns, {
+  VERIFICATION_CODE_KINDS,
+  verificationKindFromAsset,
+  type VerificationCodeKind,
+} from '@/domains/problemManagement/useVerificationCodeRuns';
 import {
   Fragment,
   type FormEvent,
@@ -80,7 +86,7 @@ import type {
   JudgeLanguage,
   Submission,
 } from '@/domains/submissionScoreboard/types';
-import { formatApiError, formatUserApiError } from '@/shared/api/errors';
+import { formatApiError } from '@/shared/api/errors';
 import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 
@@ -143,73 +149,6 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
-}
-
-type VerificationCodeKind =
-  | 'accepted'
-  | 'wrong_answer'
-  | 'time_limit_exceeded'
-  | 'memory_limit_exceeded';
-
-type VerificationRunResult = {
-  asset?: ProblemAsset;
-  error?: string;
-  expectedStatus: string;
-  filename: string;
-  stage?: 'uploading' | 'loading_source' | 'submitting' | 'judging' | 'done';
-  submission?: Submission;
-};
-
-const VERIFICATION_CODE_KINDS: {
-  description: string;
-  expectedStatus: VerificationCodeKind;
-  label: string;
-}[] = [
-  {
-    description: '정답으로 통과해야 하는 기준 코드입니다.',
-    expectedStatus: 'accepted',
-    label: '정답 코드',
-  },
-  {
-    description: '약한 테스트케이스를 잡기 위한 오답 코드입니다.',
-    expectedStatus: 'wrong_answer',
-    label: '오답 코드',
-  },
-  {
-    description: '시간 제한 검증용 코드입니다.',
-    expectedStatus: 'time_limit_exceeded',
-    label: '시간초과 코드',
-  },
-  {
-    description: '메모리 제한 검증용 코드입니다.',
-    expectedStatus: 'memory_limit_exceeded',
-    label: '메모리 초과 코드',
-  },
-];
-
-function verificationKindFromAsset(
-  asset: ProblemAsset,
-): VerificationCodeKind | null {
-  const match = asset.storage_key.match(/\/verification-solutions\/([^/]+)\//);
-  const value = match?.[1];
-  return VERIFICATION_CODE_KINDS.some((kind) => kind.expectedStatus === value)
-    ? (value as VerificationCodeKind)
-    : null;
-}
-
-function languageFromFilename(filename: string): JudgeLanguage | null {
-  const lower = filename.toLowerCase();
-  if (
-    lower.endsWith('.cpp') ||
-    lower.endsWith('.cc') ||
-    lower.endsWith('.cxx')
-  ) {
-    return 'cpp17';
-  }
-  if (lower.endsWith('.c')) return 'c99';
-  if (lower.endsWith('.py')) return 'python313';
-  if (lower.endsWith('.java')) return 'java8';
-  return null;
 }
 
 function formatRuntime(value?: number | null) {
@@ -740,9 +679,6 @@ function OperatorProblemsContent({
   );
   const [testSourceCode, setTestSourceCode] = useState('');
   const [testSubmission, setTestSubmission] = useState<Submission | null>(null);
-  const [verificationResults, setVerificationResults] = useState<
-    Record<string, VerificationRunResult>
-  >({});
   const [uploadProgress, setUploadProgress] = useState('');
   const [uploadProgressValue, setUploadProgressValue] = useState(0);
   const [formError, setFormError] = useState('');
@@ -790,6 +726,11 @@ function OperatorProblemsContent({
     ? problems.filter((problem) => problem.division_id !== activeDivisionId)
     : [];
   const effectiveSelectedProblemId = selectedProblemId;
+  const verificationRuns = useVerificationCodeRuns({
+    contestId,
+    problemId: effectiveSelectedProblemId,
+    token,
+  });
   const selectedProblem = problems.find(
     (problem) => problem.problem_id === effectiveSelectedProblemId,
   );
@@ -1034,7 +975,7 @@ function OperatorProblemsContent({
         divisionId: activeDivisionId,
       });
       setTestSubmission(null);
-      setVerificationResults({});
+      verificationRuns.removeProblem(problem.problem_id);
       setFormError('');
       setFormNotice('');
       setSavedMessage(
@@ -1173,31 +1114,6 @@ function OperatorProblemsContent({
     },
   });
 
-  async function runOperatorTestSubmission(
-    sourceCode: string,
-    filename: string,
-    onUpdate?: (submission: Submission) => void,
-  ) {
-    const language = languageFromFilename(filename);
-    if (!language) {
-      throw new Error(
-        '지원하지 않는 코드 파일입니다. .c, .cpp, .py, .java 파일을 사용해 주세요.',
-      );
-    }
-
-    const submitted = await createOperatorTestSubmission(
-      contestId,
-      effectiveSelectedProblemId,
-      token,
-      {
-        language,
-        source_code: sourceCode,
-      },
-    );
-
-    return waitForOperatorTestSubmission(submitted, onUpdate);
-  }
-
   async function waitForOperatorTestSubmission(
     submitted: Submission,
     onUpdate?: (submission: Submission) => void,
@@ -1230,173 +1146,6 @@ function OperatorProblemsContent({
     return latest;
   }
 
-  const uploadVerificationCodeMutation = useMutation({
-    mutationFn: async ({
-      expectedStatus,
-      files,
-    }: {
-      expectedStatus: VerificationCodeKind;
-      files: File[];
-    }) => {
-      const results: VerificationRunResult[] = [];
-
-      for (const file of files) {
-        const tempKey = `${expectedStatus}:${file.name}:${file.lastModified}`;
-        setVerificationResults((previous) => ({
-          ...previous,
-          [tempKey]: {
-            expectedStatus,
-            filename: file.name,
-            stage: 'uploading',
-          },
-        }));
-
-        try {
-          const sourceCode = await file.text();
-          const asset = await uploadProblemAsset(
-            contestId,
-            effectiveSelectedProblemId,
-            token,
-            file,
-            `problems/${effectiveSelectedProblemId}/verification-solutions/${expectedStatus}`,
-          );
-          setVerificationResults((previous) => ({
-            ...previous,
-            [tempKey]: {
-              expectedStatus,
-              filename: file.name,
-              stage: 'submitting',
-            },
-          }));
-          const submission = await runOperatorTestSubmission(
-            sourceCode,
-            file.name,
-            (latestSubmission) => {
-              setVerificationResults((previous) => ({
-                ...previous,
-                [tempKey]: {
-                  expectedStatus,
-                  filename: file.name,
-                  stage: 'judging',
-                  submission: latestSubmission,
-                },
-              }));
-            },
-          );
-          const result = {
-            asset,
-            expectedStatus,
-            filename: file.name,
-            stage: 'done' as const,
-            submission,
-          };
-          results.push(result);
-          setVerificationResults((previous) => {
-            const next = { ...previous };
-            delete next[tempKey];
-            next[asset.asset_id] = result;
-            return next;
-          });
-        } catch (error) {
-          const result = {
-            error: formatUserApiError(error, '검증 코드 처리에 실패했습니다.'),
-            expectedStatus,
-            filename: file.name,
-            stage: 'done' as const,
-          };
-          results.push(result);
-          setVerificationResults((previous) => ({
-            ...previous,
-            [tempKey]: result,
-          }));
-        }
-      }
-
-      return results;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: [
-          'operator',
-          'problem-assets',
-          contestId,
-          effectiveSelectedProblemId,
-        ],
-      });
-    },
-  });
-
-  const runVerificationCodeMutation = useMutation({
-    mutationFn: async ({
-      asset,
-      expectedStatus,
-    }: {
-      asset: ProblemAsset;
-      expectedStatus: VerificationCodeKind;
-    }) => {
-      setVerificationResults((previous) => ({
-        ...previous,
-        [asset.asset_id]: {
-          asset,
-          expectedStatus,
-          filename: asset.original_filename,
-          stage: 'loading_source',
-        },
-      }));
-
-      const sourceCode = await getStorageObjectText(asset.storage_key);
-      setVerificationResults((previous) => ({
-        ...previous,
-        [asset.asset_id]: {
-          asset,
-          expectedStatus,
-          filename: asset.original_filename,
-          stage: 'submitting',
-        },
-      }));
-      const submission = await runOperatorTestSubmission(
-        sourceCode,
-        asset.original_filename,
-        (latestSubmission) => {
-          setVerificationResults((previous) => ({
-            ...previous,
-            [asset.asset_id]: {
-              asset,
-              expectedStatus,
-              filename: asset.original_filename,
-              stage: 'judging',
-              submission: latestSubmission,
-            },
-          }));
-        },
-      );
-      const result = {
-        asset,
-        expectedStatus,
-        filename: asset.original_filename,
-        stage: 'done' as const,
-        submission,
-      };
-      setVerificationResults((previous) => ({
-        ...previous,
-        [asset.asset_id]: result,
-      }));
-      return result;
-    },
-    onError: (error, variables) => {
-      setVerificationResults((previous) => ({
-        ...previous,
-        [variables.asset.asset_id]: {
-          asset: variables.asset,
-          error: formatUserApiError(error, '검증 코드 채점에 실패했습니다.'),
-          expectedStatus: variables.expectedStatus,
-          filename: variables.asset.original_filename,
-          stage: 'done',
-        },
-      }));
-    },
-  });
-
   const deleteAssetMutation = useMutation({
     mutationFn: (asset: ProblemAsset) =>
       deleteProblemAsset(
@@ -1409,11 +1158,7 @@ function OperatorProblemsContent({
       if (supportFilePreview?.storageKey === deletedAsset.storage_key) {
         setSupportFilePreview(null);
       }
-      setVerificationResults((previous) => {
-        const next = { ...previous };
-        delete next[deletedAsset.asset_id];
-        return next;
-      });
+      verificationRuns.removeAsset(deletedAsset);
       void queryClient.invalidateQueries({
         queryKey: [
           'operator',
@@ -1677,7 +1422,6 @@ function OperatorProblemsContent({
     setAuthoringTab('settings');
     setForm(emptyProblemForm);
     setTestSubmission(null);
-    setVerificationResults({});
     return true;
   }
 
@@ -2805,6 +2549,92 @@ function OperatorProblemsContent({
                       })}
                     </div>
                   </div>
+                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
+                    <p className="text-sm font-black text-indigo-800">
+                      테스트케이스 파일 추가
+                    </p>
+                    <div
+                      className={[
+                        'grid gap-3 rounded border border-dashed px-4 py-6 text-center transition',
+                        isCaseDropActive
+                          ? 'border-indigo-400 bg-white'
+                          : 'border-indigo-200 bg-white/70',
+                      ].join(' ')}
+                      onDragLeave={() => setIsCaseDropActive(false)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (uploadMatchedTestcasesMutation.isPending) return;
+                        setIsCaseDropActive(true);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setIsCaseDropActive(false);
+                        if (uploadMatchedTestcasesMutation.isPending) return;
+                        handleMatchedFiles(
+                          Array.from(event.dataTransfer.files),
+                        );
+                      }}
+                    >
+                      <p className="text-sm font-black text-slate-800">
+                        테스트케이스 파일을 이 영역에 드롭
+                      </p>
+                      <p className="text-xs font-bold text-slate-500">
+                        같은 이름의 입력 파일(.in)과 출력 파일(.out)을 함께
+                        선택하거나 드롭해 주세요. 파일명 기준으로 짝지어 한 번에
+                        반영합니다.
+                      </p>
+                      <label
+                        className={[
+                          'mx-auto inline-flex h-10 items-center rounded px-4 text-xs font-black text-white transition',
+                          uploadMatchedTestcasesMutation.isPending
+                            ? 'cursor-not-allowed bg-slate-300'
+                            : 'cursor-pointer bg-emerald-700 hover:bg-emerald-800',
+                        ].join(' ')}
+                      >
+                        파일 선택
+                        <input
+                          accept=".in,.out,text/plain"
+                          className="sr-only"
+                          disabled={
+                            !effectiveSelectedProblemId ||
+                            uploadMatchedTestcasesMutation.isPending
+                          }
+                          multiple
+                          onChange={(event) => {
+                            handleMatchedFiles(
+                              Array.from(event.currentTarget.files ?? []),
+                            );
+                            event.currentTarget.value = '';
+                          }}
+                          type="file"
+                        />
+                      </label>
+                    </div>
+                    {uploadProgress ? (
+                      <p
+                        aria-live="polite"
+                        className="text-xs font-bold text-slate-600"
+                      >
+                        {uploadProgress}
+                      </p>
+                    ) : null}
+                    {uploadRoleFileMutation.error ||
+                    uploadMatchedTestcasesMutation.error ||
+                    deleteTestcaseSetMutation.error ||
+                    deleteTestcaseMutation.error ||
+                    deleteAssetMutation.error ? (
+                      <ErrorBox
+                        error={
+                          uploadRoleFileMutation.error ||
+                          uploadMatchedTestcasesMutation.error ||
+                          deleteTestcaseSetMutation.error ||
+                          deleteTestcaseMutation.error ||
+                          deleteAssetMutation.error
+                        }
+                        fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
+                      />
+                    ) : null}
+                  </div>
                   <div className="grid gap-2">
                     {latestTestcaseSet ? (
                       <div
@@ -2867,10 +2697,6 @@ function OperatorProblemsContent({
                   </div>
                   <VerificationCodeSection
                     assetsByKind={verificationAssetsByKind}
-                    isBusy={
-                      uploadVerificationCodeMutation.isPending ||
-                      runVerificationCodeMutation.isPending
-                    }
                     onDelete={(asset) => {
                       if (
                         window.confirm(
@@ -2886,109 +2712,11 @@ function OperatorProblemsContent({
                         title: `${label} · ${asset.original_filename}`,
                       })
                     }
-                    onRun={(asset, expectedStatus) =>
-                      runVerificationCodeMutation.mutate({
-                        asset,
-                        expectedStatus,
-                      })
-                    }
-                    onUpload={(expectedStatus, files) =>
-                      uploadVerificationCodeMutation.mutate({
-                        expectedStatus,
-                        files,
-                      })
-                    }
-                    results={verificationResults}
+                    onDismiss={verificationRuns.dismiss}
+                    onRun={verificationRuns.rerun}
+                    onUpload={verificationRuns.upload}
+                    results={verificationRuns.results}
                   />
-                  <div className="grid gap-3 rounded border border-indigo-100 bg-indigo-50/60 p-4">
-                    <p className="text-sm font-black text-indigo-800">
-                      .in/.out 파일 묶음
-                    </p>
-                    <div
-                      className={[
-                        'grid gap-3 rounded border border-dashed px-4 py-6 text-center transition',
-                        isCaseDropActive
-                          ? 'border-indigo-400 bg-white'
-                          : 'border-indigo-200 bg-white/70',
-                      ].join(' ')}
-                      onDragLeave={() => setIsCaseDropActive(false)}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (uploadMatchedTestcasesMutation.isPending) return;
-                        setIsCaseDropActive(true);
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        setIsCaseDropActive(false);
-                        if (uploadMatchedTestcasesMutation.isPending) return;
-                        handleMatchedFiles(
-                          Array.from(event.dataTransfer.files),
-                        );
-                      }}
-                    >
-                      <p className="text-sm font-black text-slate-800">
-                        .in/.out 파일을 이 영역에 드롭
-                      </p>
-                      <p className="text-xs font-bold text-slate-500">
-                        같은 파일명 기준으로 입력과 출력을 짝지어 한 번에
-                        반영합니다.
-                      </p>
-                      <label
-                        className={[
-                          'mx-auto inline-flex h-10 items-center rounded px-4 text-xs font-black text-white transition',
-                          uploadMatchedTestcasesMutation.isPending
-                            ? 'cursor-not-allowed bg-slate-300'
-                            : 'cursor-pointer bg-emerald-700 hover:bg-emerald-800',
-                        ].join(' ')}
-                      >
-                        파일 선택
-                        <input
-                          accept=".in,.out,text/plain"
-                          className="sr-only"
-                          disabled={
-                            !effectiveSelectedProblemId ||
-                            uploadMatchedTestcasesMutation.isPending
-                          }
-                          multiple
-                          onChange={(event) => {
-                            handleMatchedFiles(
-                              Array.from(event.currentTarget.files ?? []),
-                            );
-                            event.currentTarget.value = '';
-                          }}
-                          type="file"
-                        />
-                      </label>
-                    </div>
-                    {uploadProgress ? (
-                      <p
-                        aria-live="polite"
-                        className="text-xs font-bold text-slate-600"
-                      >
-                        {uploadProgress}
-                      </p>
-                    ) : null}
-                    {uploadRoleFileMutation.error ||
-                    uploadMatchedTestcasesMutation.error ||
-                    deleteTestcaseSetMutation.error ||
-                    deleteTestcaseMutation.error ||
-                    deleteAssetMutation.error ||
-                    uploadVerificationCodeMutation.error ||
-                    runVerificationCodeMutation.error ? (
-                      <ErrorBox
-                        error={
-                          uploadRoleFileMutation.error ||
-                          uploadMatchedTestcasesMutation.error ||
-                          deleteTestcaseSetMutation.error ||
-                          deleteTestcaseMutation.error ||
-                          deleteAssetMutation.error ||
-                          uploadVerificationCodeMutation.error ||
-                          runVerificationCodeMutation.error
-                        }
-                        fallback="채점 파일 또는 테스트케이스 처리에 실패했습니다"
-                      />
-                    ) : null}
-                  </div>
                 </>
               )}
             </OperatorPanel>
@@ -3409,291 +3137,6 @@ function UploadProgressModal({
       </section>
     </div>
   );
-}
-
-function VerificationCodeSection({
-  assetsByKind,
-  isBusy,
-  onDelete,
-  onPreview,
-  onRun,
-  onUpload,
-  results,
-}: {
-  assetsByKind: Map<VerificationCodeKind, ProblemAsset[]>;
-  isBusy: boolean;
-  onDelete: (asset: ProblemAsset) => void;
-  onPreview: (asset: ProblemAsset, label: string) => void;
-  onRun: (asset: ProblemAsset, expectedStatus: VerificationCodeKind) => void;
-  onUpload: (expectedStatus: VerificationCodeKind, files: File[]) => void;
-  results: Record<string, VerificationRunResult>;
-}) {
-  const pendingResults = Object.entries(results).filter(
-    ([assetId, result]) => !result.asset && assetId.includes(':'),
-  );
-
-  return (
-    <section className="grid gap-4 rounded border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid gap-1">
-          <h3 className="text-sm font-black text-slate-950">검증 코드 채점</h3>
-          <p className="text-xs leading-5 font-bold text-slate-500">
-            정답/오답/시간초과/메모리초과 코드를 여러 개 올려 테스트케이스가
-            의도대로 판정하는지 확인합니다.
-          </p>
-        </div>
-        {isBusy ? (
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">
-            채점 중
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid gap-3">
-        {VERIFICATION_CODE_KINDS.map((kind) => {
-          const assets = assetsByKind.get(kind.expectedStatus) ?? [];
-
-          return (
-            <section
-              className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-3"
-              key={kind.expectedStatus}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="grid gap-1">
-                  <p className="text-sm font-black text-slate-900">
-                    {kind.label}
-                  </p>
-                  <p className="text-xs font-bold text-slate-500">
-                    기대 결과: {submissionStatusLabel(kind.expectedStatus)} ·{' '}
-                    {kind.description}
-                  </p>
-                </div>
-                <label className="inline-flex h-9 cursor-pointer items-center rounded bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800">
-                  파일 선택
-                  <input
-                    accept=".c,.cc,.cpp,.cxx,.py,.java,text/plain"
-                    className="sr-only"
-                    disabled={isBusy}
-                    multiple
-                    onChange={(event) => {
-                      const files = Array.from(event.currentTarget.files ?? []);
-                      if (files.length) onUpload(kind.expectedStatus, files);
-                      event.currentTarget.value = '';
-                    }}
-                    type="file"
-                  />
-                </label>
-              </div>
-
-              {assets.length ? (
-                <div className="grid gap-2">
-                  {assets.map((asset) => (
-                    <VerificationCodeRow
-                      asset={asset}
-                      expectedStatus={kind.expectedStatus}
-                      key={asset.asset_id}
-                      label={kind.label}
-                      onDelete={onDelete}
-                      onPreview={onPreview}
-                      onRun={onRun}
-                      result={results[asset.asset_id]}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs font-bold text-slate-500">
-                  등록된 {kind.label}가 없습니다.
-                </p>
-              )}
-            </section>
-          );
-        })}
-      </div>
-
-      {pendingResults.length ? (
-        <div className="grid gap-2">
-          {pendingResults.map(([key, result]) => (
-            <VerificationResultSummary key={key} result={result} />
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function VerificationCodeRow({
-  asset,
-  expectedStatus,
-  label,
-  onDelete,
-  onPreview,
-  onRun,
-  result,
-}: {
-  asset: ProblemAsset;
-  expectedStatus: VerificationCodeKind;
-  label: string;
-  onDelete: (asset: ProblemAsset) => void;
-  onPreview: (asset: ProblemAsset, label: string) => void;
-  onRun: (asset: ProblemAsset, expectedStatus: VerificationCodeKind) => void;
-  result?: VerificationRunResult;
-}) {
-  return (
-    <div className="grid gap-3 rounded border border-slate-200 bg-white px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <div className="grid min-w-0 gap-2">
-        <button
-          className="w-fit max-w-full truncate text-left text-xs font-black text-indigo-700 hover:text-indigo-950"
-          onClick={() => onPreview(asset, label)}
-          title={asset.original_filename}
-          type="button"
-        >
-          {asset.original_filename}
-        </button>
-        {result ? <VerificationResultSummary result={result} /> : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          className="h-9 rounded border border-indigo-200 px-3 text-xs font-black text-indigo-700 transition hover:bg-indigo-50"
-          onClick={() => onPreview(asset, label)}
-          type="button"
-        >
-          보기
-        </button>
-        <button
-          className="h-9 rounded border border-emerald-200 px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50"
-          onClick={() => onRun(asset, expectedStatus)}
-          type="button"
-        >
-          채점
-        </button>
-        <button
-          className="h-9 rounded border border-rose-200 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-50"
-          onClick={() => onDelete(asset)}
-          type="button"
-        >
-          삭제
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function VerificationResultSummary({
-  result,
-}: {
-  result: VerificationRunResult;
-}) {
-  const actualStatus = result.submission?.status;
-  const isPending = actualStatus ? isSubmissionPending(actualStatus) : false;
-  const passed =
-    actualStatus && !isPending && actualStatus === result.expectedStatus;
-  const failed =
-    actualStatus && !isPending && actualStatus !== result.expectedStatus;
-  const progressText = submissionProgressText(result.submission);
-  const progressPercent = submissionProgressPercent(result.submission);
-  const isWorking =
-    !result.error &&
-    (isPending ||
-      result.stage === 'uploading' ||
-      result.stage === 'loading_source' ||
-      result.stage === 'submitting' ||
-      result.stage === 'judging');
-  const progressWidth =
-    typeof progressPercent === 'number'
-      ? progressPercent
-      : actualStatus === 'waiting'
-        ? 12
-        : isWorking
-          ? 6
-          : 0;
-  const currentLabel = actualStatus
-    ? submissionStatusLabel(actualStatus)
-    : verificationStageLabel(result.stage);
-
-  return (
-    <div
-      className={[
-        'grid gap-1 rounded px-3 py-2 text-xs font-bold',
-        result.error
-          ? 'border border-rose-200 bg-rose-50 text-rose-700'
-          : passed
-            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-            : failed
-              ? 'border border-amber-200 bg-amber-50 text-amber-800'
-              : isWorking
-                ? 'border border-indigo-200 bg-indigo-50 text-indigo-800'
-                : 'border border-slate-200 bg-slate-50 text-slate-600',
-      ].join(' ')}
-    >
-      <p className="font-black">
-        {result.filename} · 기대 {submissionStatusLabel(result.expectedStatus)}
-        {` / 현재 ${currentLabel}`}
-        {passed ? ' · 통과' : failed ? ' · 확인 필요' : ''}
-      </p>
-      {isWorking ? (
-        <div className="grid gap-1">
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/70">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all duration-300"
-              style={{ width: `${Math.max(0, Math.min(100, progressWidth))}%` }}
-            />
-          </div>
-          <p className="text-[11px] leading-5">
-            {progressText || verificationStageHelp(result.stage, actualStatus)}
-          </p>
-        </div>
-      ) : null}
-      {result.submission?.judge_message ? (
-        <p className="text-[11px] leading-5 break-words">
-          {result.submission.judge_message}
-        </p>
-      ) : null}
-      {result.submission?.compile_message ? (
-        <p className="text-[11px] leading-5 break-words">
-          {result.submission.compile_message}
-        </p>
-      ) : null}
-      {result.error ? (
-        <p className="text-[11px] leading-5 break-words">{result.error}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function verificationStageLabel(stage?: VerificationRunResult['stage']) {
-  switch (stage) {
-    case 'uploading':
-      return '업로드 중';
-    case 'loading_source':
-      return '코드 불러오는 중';
-    case 'submitting':
-      return '채점 제출 중';
-    case 'judging':
-      return '채점 중';
-    case 'done':
-      return '채점 완료';
-    default:
-      return '채점 대기';
-  }
-}
-
-function verificationStageHelp(
-  stage?: VerificationRunResult['stage'],
-  status?: string | null,
-) {
-  if (status === 'waiting') return '채점 큐에서 순서를 기다리는 중입니다.';
-  if (status === 'preparing') return '채점 환경을 준비하는 중입니다.';
-  if (status === 'judging') return '테스트케이스를 실행하는 중입니다.';
-  switch (stage) {
-    case 'uploading':
-      return '검증 코드를 등록하는 중입니다.';
-    case 'loading_source':
-      return '저장된 검증 코드를 불러오는 중입니다.';
-    case 'submitting':
-      return '채점 큐에 제출하는 중입니다.';
-    default:
-      return '채점 서버 응답을 기다리는 중입니다.';
-  }
 }
 
 function OperatorPreviewJudgeResult({
