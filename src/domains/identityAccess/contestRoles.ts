@@ -19,8 +19,13 @@ export const CONTEST_ROLES = [
   },
   {
     value: 'posts_manager',
-    label: '대회 운영진 · 게시글 관리',
-    description: '공지와 게시판을 관리하고 질문에 답변합니다.',
+    label: '대회 운영진 · 게시판 관리',
+    description: '게시판의 글과 답변을 관리하고 참가자의 질문에 답변합니다.',
+  },
+  {
+    value: 'notices_manager',
+    label: '대회 운영진 · 공지 작성',
+    description: '공지를 작성·수정·삭제하고 긴급 공지를 게시합니다.',
   },
   {
     value: 'staff_manager',
@@ -44,6 +49,11 @@ export const CONTEST_ROLES = [
     description: '스코어보드 상태를 관리하고 프레젠테이션의 순위를 공개합니다.',
   },
   {
+    value: 'audit_viewer',
+    label: '대회 운영진 · 운영로그 보기',
+    description: '대회 운영 감사로그와 참가자 접속 기록을 확인합니다.',
+  },
+  {
     value: 'problem_author',
     label: '출제진',
     description:
@@ -61,14 +71,88 @@ export type ContestRole = (typeof CONTEST_ROLES)[number]['value'];
 const roleScopes: Record<Exclude<ContestRole, 'master'>, string> = {
   settings_manager: 'contest.settings.manage',
   participants_manager: 'contest.participant.manage',
-  posts_manager: 'contest.notice.manage',
+  posts_manager: 'contest.board.question.manage',
+  notices_manager: 'contest.notice.manage',
   staff_manager: 'contest.staff.manage',
   submissions_viewer: 'contest.submission.view',
   scoreboard_viewer: 'contest.scoreboard.view',
   scoreboard_manager: 'contest.scoreboard.manage',
+  audit_viewer: 'contest.audit.view',
   problem_author: 'contest.problem.manage',
   problem_reviewer: 'contest.problem.review',
 };
+
+export type ContestRoleTitle = '마스터' | '출제자' | '운영자' | '검수자';
+
+export function contestRoleTitle(
+  roles: readonly ContestRole[],
+): ContestRoleTitle | null {
+  if (roles.includes('master')) return '마스터';
+  if (roles.includes('problem_author')) return '출제자';
+  if (roles.some((role) => role !== 'problem_reviewer')) return '운영자';
+  return roles.includes('problem_reviewer') ? '검수자' : null;
+}
+
+export function contestRoleTitleForScopes(
+  scopes: readonly string[],
+): ContestRoleTitle | null {
+  if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
+    return '마스터';
+  const authorScopes = [
+    'contest.problem',
+    'contest.problem.*',
+    'contest.problem.view',
+    roleScopes.problem_author,
+    'contest.problem.create',
+    'contest.problem.update',
+    'contest.problem.delete',
+    'contest.problem.reorder',
+  ];
+  const authorScopeGroups = [
+    'contest.problem.resource',
+    'contest.testcase',
+    'contest.generator',
+  ];
+  if (
+    scopes.some(
+      (scope) =>
+        authorScopes.includes(scope) ||
+        authorScopeGroups.some(
+          (group) => scope === group || scope.startsWith(`${group}.`),
+        ),
+    )
+  )
+    return '출제자';
+  const reviewScopes = [
+    'contest.view',
+    'contest.problem.review',
+    'contest.problem.test',
+  ];
+  if (
+    scopes.some(
+      (scope) => scope.startsWith('contest.') && !reviewScopes.includes(scope),
+    )
+  )
+    return '운영자';
+  if (
+    scopes.some((scope) =>
+      ['contest.problem.review', 'contest.problem.test'].includes(scope),
+    )
+  )
+    return '검수자';
+  return scopes.includes('contest.view') ? '운영자' : null;
+}
+
+export function contestRoleTitleForAccount(
+  account: StaffAccount,
+  contestId: string,
+): ContestRoleTitle | null {
+  if (account.is_service_master) return '마스터';
+  const configured = account.contest_roles?.[contestId];
+  return configured?.length
+    ? contestRoleTitle(configured)
+    : contestRoleTitleForScopes(account.contest_scopes[contestId] ?? []);
+}
 
 export function contestRolesForAccount(
   account: StaffAccount,

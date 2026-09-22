@@ -37,15 +37,17 @@ const roleScopes = {
     'contest.access_log.view',
   ],
   posts_manager: [
+    'contest.board.question.view',
+    'contest.board.question.manage',
+    'contest.board.answer.create',
+  ],
+  notices_manager: [
     'contest.notice.view',
     'contest.notice.manage',
     'contest.notice.create',
     'contest.notice.update',
     'contest.notice.delete',
     'contest.notice.emergency_publish',
-    'contest.board.question.view',
-    'contest.board.question.manage',
-    'contest.board.answer.create',
   ],
   staff_manager: ['contest.staff.view', 'contest.staff.manage'],
   submissions_viewer: [
@@ -60,6 +62,7 @@ const roleScopes = {
     'contest.scoreboard.unfreeze',
     'contest.scoreboard.setting',
   ],
+  audit_viewer: ['contest.audit.view', 'contest.access_log.view'],
   problem_author: [
     'contest.problem.view',
     'contest.problem.manage',
@@ -81,11 +84,13 @@ const roleScopes = {
 const roleTabs = {
   settings_manager: ['', 'settings'],
   participants_manager: ['', 'participants', 'audit-logs'],
-  posts_manager: ['', 'notices', 'board'],
+  posts_manager: ['', 'board'],
+  notices_manager: ['', 'notices'],
   staff_manager: ['', 'operators'],
   submissions_viewer: ['', 'submissions'],
   scoreboard_viewer: ['', 'scoreboard'],
   scoreboard_manager: ['', 'scoreboard'],
+  audit_viewer: ['', 'audit-logs'],
   problem_author: ['', 'problems', 'problem-review'],
   problem_reviewer: ['problem-review'],
 };
@@ -177,8 +182,14 @@ const {
   isServiceMaster,
   contestScopesFor,
 } = source('domains/identityAccess/permissions.ts');
-const { CONTEST_ROLES, contestRolesForAccount, isAssignedContestMaster } =
-  source('domains/identityAccess/contestRoles.ts');
+const {
+  CONTEST_ROLES,
+  contestRoleTitle,
+  contestRoleTitleForScopes,
+  contestRoleTitleForAccount,
+  contestRolesForAccount,
+  isAssignedContestMaster,
+} = source('domains/identityAccess/contestRoles.ts');
 const { OperatorAccessGate, OperatorTabs } = source(
   'components/operator/OperatorShell.tsx',
 );
@@ -329,16 +340,19 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
       role === 'participants_manager'
         ? ['dashboard']
         : role === 'posts_manager'
-          ? ['notices', 'questions']
-          : role === 'problem_author'
-            ? ['problems']
-            : [];
+          ? ['questions']
+          : role === 'notices_manager'
+            ? ['notices']
+            : role === 'problem_author'
+              ? ['problems']
+              : [];
     assert.deepEqual(reads.sort(), expectedReads.sort());
     for (const permission of [
       'contest.settings.manage',
       'contest.staff.manage',
       'contest.participant.manage',
       'contest.notice.manage',
+      'contest.board.question.manage',
       'contest.submission.view',
       'contest.submission.source.view',
       'contest.scoreboard.view',
@@ -349,6 +363,7 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
       'contest.problem.resource.manage',
       'contest.testcase.manage',
       'contest.audit.view',
+      'contest.access_log.view',
     ]) {
       assert.equal(
         hasContestPermission(session, 'contest', permission),
@@ -359,6 +374,13 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
     }
     assert.equal(isContestMaster(session, 'contest'), false);
     assert.equal(isServiceMaster(session), false);
+    const title =
+      role === 'problem_author'
+        ? '출제자'
+        : role === 'problem_reviewer'
+          ? '검수자'
+          : '운영자';
+    assert.match(container.textContent, new RegExp(`운영진 / ${title}`));
   });
 }
 
@@ -395,6 +417,21 @@ test('multiple roles combine permissions and navigation without granting unrelat
   );
   await render(h(OperatorTabs, { contestId: 'other' }));
   assert.equal(container.querySelectorAll('nav a').length, 0);
+});
+
+test('board and notice roles combine independent tabs without granting staff or audit powers', async () => {
+  session = forRoles('posts_manager', 'notices_manager');
+  await render();
+  assert.deepEqual(tabs(), ['', 'notices', 'board']);
+  assert.deepEqual(reads.sort(), ['notices', 'questions']);
+  assert.equal(
+    hasContestPermission(session, 'contest', 'contest.staff.manage'),
+    false,
+  );
+  assert.equal(
+    hasContestPermission(session, 'contest', 'contest.audit.view'),
+    false,
+  );
 });
 
 test('settings and staff roles expose separate tabs with operators immediately after settings', async () => {
@@ -507,6 +544,152 @@ test('role labels cover every supported role and preserve configured multi-role 
   assert.deepEqual(
     contestRolesForAccount(staffWith(['contest.*']), 'contest'),
     ['master'],
+  );
+});
+
+test('role titles use master, author, operator, reviewer priority for every role pair in either order', () => {
+  const titles = {
+    master: '마스터',
+    problem_author: '출제자',
+    settings_manager: '운영자',
+    participants_manager: '운영자',
+    posts_manager: '운영자',
+    notices_manager: '운영자',
+    staff_manager: '운영자',
+    submissions_viewer: '운영자',
+    scoreboard_viewer: '운영자',
+    scoreboard_manager: '운영자',
+    audit_viewer: '운영자',
+    problem_reviewer: '검수자',
+  };
+  const priority = ['마스터', '출제자', '운영자', '검수자'];
+  for (const [left, leftTitle] of Object.entries(titles)) {
+    assert.equal(contestRoleTitle([left]), leftTitle);
+    for (const [right, rightTitle] of Object.entries(titles)) {
+      const expected =
+        priority[
+          Math.min(priority.indexOf(leftTitle), priority.indexOf(rightTitle))
+        ];
+      assert.equal(
+        contestRoleTitle([left, right]),
+        expected,
+        `${left} + ${right}`,
+      );
+    }
+  }
+  assert.equal(contestRoleTitle([]), null);
+});
+
+test('mixed role title is stable across all selection permutations', () => {
+  function permutations(values) {
+    return values.length
+      ? values.flatMap((value, index) =>
+          permutations(values.filter((_, i) => i !== index)).map(
+            (remaining) => [value, ...remaining],
+          ),
+        )
+      : [[]];
+  }
+  for (const [roles, expected] of [
+    [
+      ['problem_reviewer', 'notices_manager', 'problem_author', 'master'],
+      '마스터',
+    ],
+    [
+      ['audit_viewer', 'problem_reviewer', 'problem_author', 'posts_manager'],
+      '출제자',
+    ],
+    [
+      ['problem_reviewer', 'notices_manager', 'audit_viewer', 'posts_manager'],
+      '운영자',
+    ],
+  ]) {
+    for (const ordered of permutations(roles))
+      assert.equal(contestRoleTitle(ordered), expected, ordered.join(' + '));
+  }
+});
+
+test('legacy partial scopes derive titles without requiring modern role assignments', () => {
+  for (const scope of ['master', '*', 'contest.*'])
+    assert.equal(
+      contestRoleTitleForScopes(['contest.problem.manage', scope]),
+      '마스터',
+    );
+  for (const scope of [
+    'contest.problem.view',
+    'contest.problem.manage',
+    'contest.problem.create',
+    'contest.problem.update',
+    'contest.problem.delete',
+    'contest.problem.reorder',
+    'contest.problem.resource.view',
+    'contest.problem.resource.manage',
+    'contest.testcase.view',
+    'contest.testcase.manage',
+    'contest.generator.view',
+    'contest.generator.manage',
+  ])
+    assert.equal(
+      contestRoleTitleForScopes([
+        'contest.notice.view',
+        'contest.problem.review',
+        scope,
+      ]),
+      '출제자',
+      scope,
+    );
+  for (const scope of [
+    'contest.view',
+    'contest.notice.view',
+    'contest.notice.create',
+    'contest.board.answer.create',
+    'contest.access_log.view',
+    'contest.audit.view',
+    'contest.participant.update',
+    'contest.update_schedule',
+  ])
+    assert.equal(contestRoleTitleForScopes([scope]), '운영자', scope);
+  assert.equal(
+    contestRoleTitleForScopes([
+      'contest.view',
+      'contest.problem.review',
+      'contest.problem.test',
+    ]),
+    '검수자',
+  );
+  assert.equal(contestRoleTitleForScopes(['contest.problem.test']), '검수자');
+  assert.equal(contestRoleTitleForScopes([]), null);
+  assert.equal(contestRoleTitleForScopes(['service.logs.view']), null);
+});
+
+test('account role titles respect explicit assignments, legacy empty roles, and contest boundaries', () => {
+  const account = {
+    ...staffWith(['contest.*']),
+    contest_roles: {
+      contest: ['problem_reviewer', 'problem_author'],
+      legacy: [],
+    },
+    contest_scopes: {
+      contest: ['contest.*'],
+      legacy: ['contest.notice.create'],
+    },
+  };
+  assert.equal(contestRoleTitleForAccount(account, 'contest'), '출제자');
+  assert.equal(contestRoleTitleForAccount(account, 'legacy'), '운영자');
+  assert.equal(contestRoleTitleForAccount(account, 'unassigned'), null);
+  assert.equal(
+    contestRoleTitleForAccount(
+      staffWith(['contest.problem.review']),
+      'contest',
+    ),
+    '검수자',
+  );
+  assert.equal(
+    contestRoleTitleForAccount(
+      { ...account, is_service_master: true },
+      'unassigned',
+    ),
+    '마스터',
   );
 });
 

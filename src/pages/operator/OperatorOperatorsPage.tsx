@@ -18,6 +18,7 @@ import {
 } from '@/domains/contestAdministration/api';
 import {
   CONTEST_ROLES,
+  contestRoleTitleForAccount,
   contestRolesForAccount,
   isAssignedContestMaster,
   type ContestRole,
@@ -339,6 +340,7 @@ function OperatorList({
     <div className="grid gap-3 lg:grid-cols-2">
       {operators.map((operator) => {
         const roles = contestRolesForAccount(operator, contestId);
+        const roleTitle = contestRoleTitleForAccount(operator, contestId);
         const assignedMaster = isAssignedContestMaster(operator, contestId);
         const protectedOperator =
           assignedMaster || (!canAssignMaster && roles.includes('master'));
@@ -350,6 +352,12 @@ function OperatorList({
             <div className="grid gap-1">
               <strong className="zoj-break-anywhere font-semibold text-slate-950">
                 {operator.display_name}
+                {roleTitle ? (
+                  <span className="font-medium text-slate-500">
+                    {' '}
+                    / {roleTitle}
+                  </span>
+                ) : null}
               </strong>
               <span className="zoj-break-anywhere text-xs text-slate-500">
                 {operator.email}

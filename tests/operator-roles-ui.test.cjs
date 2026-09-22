@@ -257,6 +257,68 @@ test('new operator requires name and roles, allows multiple roles, and treats ma
   assert.equal(inputByLabel('이름 (필수)').value, '');
 });
 
+test('notice, board, and audit roles can be selected independently and saved together', async () => {
+  await render();
+  await input(inputByLabel('이메일 (필수)'), 'operations@example.test');
+  await input(inputByLabel('이름 (필수)'), '운영 담당자');
+  await click(role('게시판 관리'));
+  assert.equal(role('공지 작성').checked, false);
+  assert.equal(role('운영로그 보기').checked, false);
+  await click(role('공지 작성'));
+  await click(role('운영로그 보기'));
+  await click(role('게시판 관리'));
+  assert.equal(role('공지 작성').checked, true);
+  assert.equal(role('운영로그 보기').checked, true);
+  await click(button('운영자 추가'));
+  assert.deepEqual(creates[0].body.roles, ['notices_manager', 'audit_viewer']);
+});
+
+test('operator list shows one prioritized title beside each name while retaining assigned role details', async () => {
+  operators = [
+    { ...staff('master@example.test', ['master']), display_name: '대회 총괄' },
+    {
+      ...staff('author@example.test', [
+        'problem_reviewer',
+        'notices_manager',
+        'problem_author',
+      ]),
+      display_name: '손동열',
+    },
+    {
+      ...staff('operations@example.test', ['audit_viewer', 'problem_reviewer']),
+      display_name: '운영 담당자',
+    },
+    {
+      ...staff('reviewer@example.test', ['problem_reviewer']),
+      display_name: '문제 검수자',
+    },
+    {
+      ...staff('legacy@example.test', []),
+      display_name: '기존 운영자',
+      contest_scopes: { contest: ['contest.notice.create'] },
+    },
+  ];
+  await render();
+  for (const [email, label] of [
+    ['master@example.test', '대회 총괄 / 마스터'],
+    ['author@example.test', '손동열 / 출제자'],
+    ['operations@example.test', '운영 담당자 / 운영자'],
+    ['reviewer@example.test', '문제 검수자 / 검수자'],
+    ['legacy@example.test', '기존 운영자 / 운영자'],
+  ])
+    assert.equal(
+      operatorCard(email).querySelector('strong').textContent,
+      label,
+    );
+  const permissions = operatorCard('author@example.test').querySelector(
+    '[aria-label="부여된 권한"]',
+  );
+  assert.match(permissions.textContent, /검수진/);
+  assert.match(permissions.textContent, /공지 작성/);
+  assert.match(permissions.textContent, /출제진/);
+  assert.match(container.textContent, /운영자 \/ 마스터/);
+});
+
 test('settings manager sees settings and divisions without fetching or exposing staff controls', async () => {
   setActor(['contest.view', 'contest.settings.manage']);
   await render(SettingsPage, 'settings');

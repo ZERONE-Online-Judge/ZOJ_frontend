@@ -436,6 +436,20 @@ test('operation-only audit permission never fetches participant access logs', as
   assert.equal(requests('access-stats').length, 0);
 });
 
+test('audit viewers can switch between operation and access logs without unrelated participant access', async () => {
+  session = withScopes(['contest.audit.view', 'contest.access_log.view']);
+  await render(AuditPage, '/audit-logs');
+  assert.ok(button('작업 로그'));
+  assert.ok(button('접속 로그'));
+  assert.equal(requests('operations').length, 1);
+  assert.equal(requests('access').length, 0);
+  await click(button('접속 로그'));
+  assert.equal(requests('access').length, 1);
+  assert.equal(requests('access-stats').length, 1);
+  assert.equal(requests('participants').length, 0);
+  assert.equal(requests('dashboard').length, 0);
+});
+
 test('reviewer-only home redirects straight to problem review without requesting dashboard or unrelated data', async () => {
   session = withScopes(['contest.problem.review', 'contest.problem.test']);
   await render(HomePage, '');

@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
 import { accessText, operatorNavText } from '@/data/uiText';
+import { contestRoleTitleForAccount } from '@/domains/identityAccess/contestRoles';
 import {
   hasContestPermission,
   isServiceMaster,
@@ -217,7 +218,8 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
     }
   }, [pathname, contestId]);
   const generalSession = useSessionStore((state) => state.generalSession);
-  const token = staffSessionFromGeneralSession(generalSession)?.accessToken;
+  const staffSession = staffSessionFromGeneralSession(generalSession);
+  const token = staffSession?.accessToken;
   const canViewParticipants = Boolean(
     contestId &&
     hasContestPermission(generalSession, contestId, 'contest.participant.view'),
@@ -264,6 +266,9 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   });
 
   if (!contestId) return null;
+  const roleTitle = staffSession
+    ? contestRoleTitleForAccount(staffSession.staff, contestId)
+    : null;
   const basePath = `/operator/contests/${contestId}`;
   const questions = questionsQuery.data ?? [];
   const notices = noticesQuery.data ?? [];
@@ -280,52 +285,62 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
       : '';
 
   return (
-    <nav
-      ref={navRef}
-      aria-label="운영자 메뉴"
-      className="zoj-management-tabs flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
-    >
-      {operatorTabs
-        .filter((tab) =>
-          hasContestPermission(generalSession, contestId, tab.permission),
-        )
-        .map((tab) => {
-          const Icon = tab.icon;
-          const to = tab.path ? `${basePath}/${tab.path}` : basePath;
+    <div className="grid min-w-0 gap-2">
+      {staffSession ? (
+        <p className="zoj-break-anywhere text-right text-sm font-medium text-slate-700">
+          {staffSession.staff.display_name}
+          {roleTitle ? (
+            <span className="text-slate-500"> / {roleTitle}</span>
+          ) : null}
+        </p>
+      ) : null}
+      <nav
+        ref={navRef}
+        aria-label="운영자 메뉴"
+        className="zoj-management-tabs flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
+      >
+        {operatorTabs
+          .filter((tab) =>
+            hasContestPermission(generalSession, contestId, tab.permission),
+          )
+          .map((tab) => {
+            const Icon = tab.icon;
+            const to = tab.path ? `${basePath}/${tab.path}` : basePath;
 
-          return (
-            <NavLink
-              className={({ isActive }) =>
-                [
-                  'zoj-pressable inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
-                  'shrink-0 whitespace-nowrap',
-                  isActive
-                    ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
-                    : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900',
-                ].join(' ')
-              }
-              end={'end' in tab ? tab.end : undefined}
-              key={tab.label}
-              to={to}
-            >
-              <Icon />
-              {tab.label}
-              {tab.path === 'notices' && noticeCountLabel ? (
-                <TabCountBadge>{noticeCountLabel}</TabCountBadge>
-              ) : null}
-              {tab.path === 'board' && boardCountLabel ? (
-                <TabCountBadge>{boardCountLabel}</TabCountBadge>
-              ) : null}
-              {tab.path === 'participants' && participantCountLabel ? (
-                <TabCountBadge>{participantCountLabel}</TabCountBadge>
-              ) : null}
-              {tab.path === 'problems' && problemCountLabel ? (
-                <TabCountBadge>{problemCountLabel}</TabCountBadge>
-              ) : null}
-            </NavLink>
-          );
-        })}
-    </nav>
+            return (
+              <NavLink
+                className={({ isActive }) =>
+                  [
+                    'zoj-pressable inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
+                    'shrink-0 whitespace-nowrap',
+                    isActive
+                      ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                      : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+                  ].join(' ')
+                }
+                end={'end' in tab ? tab.end : undefined}
+                key={tab.label}
+                to={to}
+              >
+                <Icon />
+                {tab.label}
+                {tab.path === 'notices' && noticeCountLabel ? (
+                  <TabCountBadge>{noticeCountLabel}</TabCountBadge>
+                ) : null}
+                {tab.path === 'board' && boardCountLabel ? (
+                  <TabCountBadge>{boardCountLabel}</TabCountBadge>
+                ) : null}
+                {tab.path === 'participants' && participantCountLabel ? (
+                  <TabCountBadge>{participantCountLabel}</TabCountBadge>
+                ) : null}
+                {tab.path === 'problems' && problemCountLabel ? (
+                  <TabCountBadge>{problemCountLabel}</TabCountBadge>
+                ) : null}
+              </NavLink>
+            );
+          })}
+      </nav>
+    </div>
   );
 }
 
