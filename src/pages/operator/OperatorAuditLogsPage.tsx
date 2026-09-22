@@ -16,6 +16,7 @@ import {
   listOperatorOperationalAuditLogs,
 } from '@/domains/auditMonitoring/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import { formatApiError } from '@/shared/api/errors';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 
@@ -25,12 +26,25 @@ export default function OperatorAuditLogsPage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate contestId={contestId} permission="contest.view">
+    <OperatorAccessGate
+      contestId={contestId}
+      permission={['contest.audit.view', 'contest.access_log.view']}
+    >
       {(session) =>
         contestId ? (
           <OperatorAuditLogsContent
             contestId={contestId}
             token={session.accessToken}
+            canViewOperations={hasContestPermission(
+              session,
+              contestId,
+              'contest.audit.view',
+            )}
+            canViewAccess={hasContestPermission(
+              session,
+              contestId,
+              'contest.access_log.view',
+            )}
           />
         ) : (
           <PageLayout
@@ -48,13 +62,24 @@ export default function OperatorAuditLogsPage() {
 function OperatorAuditLogsContent({
   contestId,
   token,
+  canViewOperations,
+  canViewAccess,
 }: {
   contestId: string;
   token: string;
+  canViewOperations: boolean;
+  canViewAccess: boolean;
 }) {
   const isVisible = useDocumentVisibility();
   const queryIdentity = tokenQueryIdentity(token);
-  const [logType, setLogType] = useState<'operations' | 'access'>('operations');
+  const [selectedLogType, setLogType] = useState<'operations' | 'access'>(
+    'operations',
+  );
+  const logType = !canViewOperations
+    ? 'access'
+    : !canViewAccess
+      ? 'operations'
+      : selectedLogType;
   const [actorDraft, setActorDraft] = useState('');
   const [actorFilter, setActorFilter] = useState('');
   const [cursor, setCursor] = useState<string | undefined>();
@@ -67,6 +92,7 @@ function OperatorAuditLogsContent({
   >([]);
 
   const auditLogsQuery = useQuery({
+    enabled: canViewOperations && logType === 'operations',
     queryKey: [
       'operator',
       'audit-logs',
@@ -100,7 +126,7 @@ function OperatorAuditLogsContent({
         email: actorFilter || undefined,
         limit: AUDIT_LOG_PAGE_SIZE,
       }),
-    enabled: logType === 'access',
+    enabled: canViewAccess && logType === 'access',
     refetchInterval: isVisible && logType === 'access' ? 10_000 : false,
     placeholderData: keepPreviousData,
   });
@@ -108,7 +134,7 @@ function OperatorAuditLogsContent({
   const accessStatsQuery = useQuery({
     queryKey: ['operator', 'access-log-stats', contestId, queryIdentity],
     queryFn: () => getOperatorAccessLogStats(contestId, token),
-    enabled: logType === 'access',
+    enabled: canViewAccess && logType === 'access',
     refetchInterval: isVisible && logType === 'access' ? 10_000 : false,
   });
 
@@ -132,7 +158,11 @@ function OperatorAuditLogsContent({
   return (
     <PageLayout
       variant="management"
-      description="이 대회에서 운영자와 서비스 관리자가 수행한 변경 작업을 확인합니다."
+      description={
+        canViewOperations
+          ? '이 대회에서 수행한 변경 작업과 접속 기록을 확인합니다.'
+          : '이 대회 참가자의 접속 기록을 확인합니다.'
+      }
       eyebrow="Operator Audit"
       title="운영 로그"
       width="full"
@@ -163,21 +193,25 @@ function OperatorAuditLogsContent({
           {[
             ['operations', '작업 로그'],
             ['access', '접속 로그'],
-          ].map(([value, label]) => (
-            <button
-              className={[
-                'rounded-lg px-4 py-2 text-sm font-semibold transition',
-                logType === value
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800',
-              ].join(' ')}
-              key={value}
-              onClick={() => setLogType(value as 'operations' | 'access')}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
+          ]
+            .filter(([value]) =>
+              value === 'operations' ? canViewOperations : canViewAccess,
+            )
+            .map(([value, label]) => (
+              <button
+                className={[
+                  'rounded-lg px-4 py-2 text-sm font-semibold transition',
+                  logType === value
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800',
+                ].join(' ')}
+                key={value}
+                onClick={() => setLogType(value as 'operations' | 'access')}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
         </div>
         <form
           className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"

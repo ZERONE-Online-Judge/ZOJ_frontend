@@ -1,4 +1,5 @@
 import type { Contest } from '@/domains/contestAdministration/types';
+import type { ContestRole } from '@/domains/identityAccess/contestRoles';
 import type { GeneralParticipantContest } from '@/domains/teamParticipation/types';
 
 export type StaffAccount = {
@@ -6,6 +7,8 @@ export type StaffAccount = {
   display_name: string;
   is_service_master: boolean;
   contest_scopes: Record<string, string[]>;
+  contest_roles?: Record<string, ContestRole[]>;
+  protected_master_contests?: string[];
 };
 
 export type StaffSession = {

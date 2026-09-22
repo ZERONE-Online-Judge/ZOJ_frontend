@@ -15,6 +15,12 @@ import {
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import {
+  hasContestPermission,
+  operatorHomePermissions,
+  type ContestPermissionCode,
+} from '@/domains/identityAccess/permissions';
+import type { StaffSession } from '@/domains/identityAccess/types';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
@@ -28,23 +34,32 @@ export default function OperatorHomePage() {
 
   return (
     <OperatorAccessGate contestId={contestId} permission="contest.view">
-      {(session) => (
-        <OperatorHomeContent
-          contestId={contestId}
-          token={session.accessToken}
-        />
-      )}
+      {(session) =>
+        !hasContestPermission(session, contestId, operatorHomePermissions) &&
+        hasContestPermission(session, contestId, 'contest.problem.review') ? (
+          <Navigate
+            replace
+            to={`/operator/contests/${contestId}/problem-review`}
+          />
+        ) : (
+          <OperatorHomeContent contestId={contestId} session={session} />
+        )
+      }
     </OperatorAccessGate>
   );
 }
 
 function OperatorHomeContent({
   contestId,
-  token,
+  session,
 }: {
   contestId: string;
-  token: string;
+  session: StaffSession;
 }) {
+  const token = session.accessToken;
+  const can = (
+    permission: ContestPermissionCode | readonly ContestPermissionCode[],
+  ) => hasContestPermission(session, contestId, permission);
   const queryIdentity = tokenQueryIdentity(token);
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
@@ -75,27 +90,37 @@ function OperatorHomeContent({
 
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <OperatorMetricCard
-            description="전체 참가팀"
-            icon={<TeamIcon />}
-            label="참가팀"
-            tone="indigo"
-            value={<AnimatedNumber value={dashboard?.participant_count ?? 0} />}
-          />
-          <OperatorMetricCard
-            description="전체 제출 수"
-            icon={<JudgeIcon />}
-            label="제출"
-            tone="cyan"
-            value={<AnimatedNumber value={dashboard?.submission_count ?? 0} />}
-          />
-          <OperatorMetricCard
-            description="대기 중인 채점"
-            icon={<JudgeIcon />}
-            label="대기 채점"
-            tone="amber"
-            value={<AnimatedNumber value={dashboard?.pending_jobs ?? 0} />}
-          />
+          {can('contest.participant.view') ? (
+            <OperatorMetricCard
+              description="전체 참가팀"
+              icon={<TeamIcon />}
+              label="참가팀"
+              tone="indigo"
+              value={
+                <AnimatedNumber value={dashboard?.participant_count ?? 0} />
+              }
+            />
+          ) : null}
+          {can('contest.submission.view') ? (
+            <OperatorMetricCard
+              description="전체 제출 수"
+              icon={<JudgeIcon />}
+              label="제출"
+              tone="cyan"
+              value={
+                <AnimatedNumber value={dashboard?.submission_count ?? 0} />
+              }
+            />
+          ) : null}
+          {can('contest.submission.view') ? (
+            <OperatorMetricCard
+              description="대기 중인 채점"
+              icon={<JudgeIcon />}
+              label="대기 채점"
+              tone="amber"
+              value={<AnimatedNumber value={dashboard?.pending_jobs ?? 0} />}
+            />
+          ) : null}
           <OperatorMetricCard
             description="등록된 유형"
             icon={<SettingsIcon />}
@@ -110,31 +135,69 @@ function OperatorHomeContent({
           title="운영 작업"
         >
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <OperatorQuickLink
-              icon={<SettingsIcon />}
-              label="대회 설정"
-              to={`/operator/contests/${contestId}/settings`}
-            />
-            <OperatorQuickLink
-              icon={<TeamIcon />}
-              label="참가팀 관리"
-              to={`/operator/contests/${contestId}/participants`}
-            />
-            <OperatorQuickLink
-              icon={<ProblemIcon />}
-              label="문제 관리"
-              to={`/operator/contests/${contestId}/problems`}
-            />
-            <OperatorQuickLink
-              icon={<ScoreboardIcon />}
-              label="스코어보드"
-              to={`/operator/contests/${contestId}/scoreboard`}
-            />
+            {can(['contest.settings.manage', 'contest.staff.manage']) ? (
+              <OperatorQuickLink
+                icon={<SettingsIcon />}
+                label={
+                  can('contest.settings.manage') ? '대회 설정' : '운영자 관리'
+                }
+                to={`/operator/contests/${contestId}/settings`}
+              />
+            ) : null}
+            {can('contest.participant.view') ? (
+              <OperatorQuickLink
+                icon={<TeamIcon />}
+                label="참가팀 관리"
+                to={`/operator/contests/${contestId}/participants`}
+              />
+            ) : null}
+            {can('contest.problem.manage') ? (
+              <OperatorQuickLink
+                icon={<ProblemIcon />}
+                label="문제 관리"
+                to={`/operator/contests/${contestId}/problems`}
+              />
+            ) : null}
+            {can('contest.problem.review') ? (
+              <OperatorQuickLink
+                icon={<ProblemIcon />}
+                label="문제 모아보기"
+                to={`/operator/contests/${contestId}/problem-review`}
+              />
+            ) : null}
+            {can('contest.submission.view') ? (
+              <OperatorQuickLink
+                icon={<JudgeIcon />}
+                label="제출 확인"
+                to={`/operator/contests/${contestId}/submissions`}
+              />
+            ) : null}
+            {can('contest.notice.view') ? (
+              <OperatorQuickLink
+                icon={<SettingsIcon />}
+                label="공지 관리"
+                to={`/operator/contests/${contestId}/notices`}
+              />
+            ) : null}
+            {can('contest.board.question.view') ? (
+              <OperatorQuickLink
+                icon={<SettingsIcon />}
+                label="게시글 관리"
+                to={`/operator/contests/${contestId}/board`}
+              />
+            ) : null}
+            {can('contest.scoreboard.view') ? (
+              <OperatorQuickLink
+                icon={<ScoreboardIcon />}
+                label="스코어보드"
+                to={`/operator/contests/${contestId}/scoreboard`}
+              />
+            ) : null}
           </div>
         </OperatorPanel>
 
         <OperatorPanel
-          description="대회 일정과 유형별 참가팀 현황입니다."
+          description="대회 일정과 참가 유형을 확인합니다."
           title="대회 상태"
         >
           {contest ? (
@@ -166,9 +229,11 @@ function OperatorHomeContent({
                   <th className="border-r border-b border-slate-200 px-4 py-3">
                     코드
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3">
-                    참가팀
-                  </th>
+                  {can('contest.participant.view') ? (
+                    <th className="border-b border-slate-200 px-4 py-3">
+                      참가팀
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -186,12 +251,14 @@ function OperatorHomeContent({
                     <td className="border-r border-slate-100 px-4 py-4 font-medium text-slate-600">
                       {division.code || '-'}
                     </td>
-                    <td className="px-4 py-4 font-medium text-slate-700">
-                      {dashboard?.participant_count_by_division[
-                        division.division_id
-                      ] ?? 0}
-                      팀
-                    </td>
+                    {can('contest.participant.view') ? (
+                      <td className="px-4 py-4 font-medium text-slate-700">
+                        {dashboard?.participant_count_by_division[
+                          division.division_id
+                        ] ?? 0}
+                        팀
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

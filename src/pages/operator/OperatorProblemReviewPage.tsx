@@ -34,7 +34,10 @@ import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 export default function OperatorProblemReviewPage() {
   const { contestId } = useParams();
   return (
-    <OperatorAccessGate contestId={contestId} permission="contest.problem.view">
+    <OperatorAccessGate
+      contestId={contestId}
+      permission="contest.problem.review"
+    >
       {(session) =>
         contestId ? (
           <ProblemReviewContent
@@ -395,14 +398,16 @@ function ReviewWorkspace({
         >
           <ProblemStatementPanel problem={problem} assets={assets.data} />
         </section>
-        <details className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <summary className="cursor-pointer px-4 py-4 text-sm font-medium text-slate-600">
-            해설 확인
-          </summary>
-          <div className="border-t border-slate-100 [&>article]:px-4 sm:[&>article]:px-6">
-            <ProblemEditorialPanel problem={problem} assets={assets.data} />
-          </div>
-        </details>
+        {problem.editorial?.trim() ? (
+          <details className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-4 py-4 text-sm font-medium text-slate-600">
+              해설 확인
+            </summary>
+            <div className="border-t border-slate-100 [&>article]:px-4 sm:[&>article]:px-6">
+              <ProblemEditorialPanel problem={problem} assets={assets.data} />
+            </div>
+          </details>
+        ) : null}
       </div>
       <div className="grid min-w-0 gap-4">
         <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 [&_h2]:text-base">

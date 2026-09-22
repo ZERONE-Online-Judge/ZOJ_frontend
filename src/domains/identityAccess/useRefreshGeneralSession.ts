@@ -7,37 +7,79 @@ const refreshRequests = new Map<string, ReturnType<typeof getGeneralMe>>();
 export function useRefreshGeneralSession() {
   const generalSession = useSessionStore((state) => state.generalSession);
   const setGeneralSession = useSessionStore((state) => state.setGeneralSession);
-  const [isRefreshingGeneralSession, setIsRefreshingGeneralSession] =
-    useState(false);
+  const token = generalSession?.accessToken;
+  const email = generalSession?.account.email;
+  const identity = `${email ?? ''}:${token ?? ''}`;
+  const [completedIdentity, setCompletedIdentity] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
-    if (!generalSession?.accessToken) return;
+    if (!token || !email) return;
 
-    const token = generalSession.accessToken;
     let cancelled = false;
-    let request = refreshRequests.get(token);
+    let pending = false;
 
-    if (!request) {
-      request = getGeneralMe(token, generalSession).finally(() => {
-        refreshRequests.delete(token);
-      });
-      refreshRequests.set(token, request);
+    function currentSession() {
+      const current = useSessionStore.getState().generalSession;
+      return current &&
+        current.accessToken === token &&
+        current.account.email === email
+        ? current
+        : null;
     }
 
-    setIsRefreshingGeneralSession(true);
-    void request
-      .then((session) => {
-        if (!cancelled) setGeneralSession(session);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setIsRefreshingGeneralSession(false);
-      });
+    function refresh() {
+      const current = currentSession();
+      if (cancelled || pending || !current) return;
+      pending = true;
+      let request = refreshRequests.get(current.accessToken);
+
+      if (!request) {
+        request = getGeneralMe(current.accessToken, current).finally(() => {
+          refreshRequests.delete(current.accessToken);
+        });
+        refreshRequests.set(current.accessToken, request);
+      }
+
+      void request
+        .then((session) => {
+          if (
+            !cancelled &&
+            currentSession() &&
+            session.account.email === email
+          ) {
+            setGeneralSession(session);
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          pending = false;
+          if (!cancelled) setCompletedIdentity(identity);
+        });
+    }
+
+    function refreshWhenVisible() {
+      if (!document.hidden) refresh();
+    }
+
+    refresh();
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    const interval = window.setInterval(() => {
+      const current = currentSession();
+      if (current?.operatorSession || current?.operatorContests.length) {
+        refreshWhenVisible();
+      }
+    }, 60_000);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.clearInterval(interval);
     };
-  }, [generalSession?.accessToken, setGeneralSession]);
+  }, [token, email, identity, setGeneralSession]);
 
-  return isRefreshingGeneralSession;
+  return Boolean(token && completedIdentity !== identity);
 }

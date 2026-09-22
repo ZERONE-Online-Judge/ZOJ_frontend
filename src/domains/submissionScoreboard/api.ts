@@ -8,6 +8,27 @@ import type {
 } from '@/domains/submissionScoreboard/types';
 import { apiPageRequest, apiRequest } from '@/shared/api/client';
 
+export type OperatorSubmissionFilters = {
+  problems: {
+    problem_id: string;
+    problem_code: string;
+    title: string;
+    division_id: string;
+  }[];
+  teams: {
+    participant_team_id: string;
+    team_name: string;
+    division_id: string;
+  }[];
+};
+
+export function getOperatorSubmissionFilters(contestId: string, token: string) {
+  return apiRequest<OperatorSubmissionFilters>(
+    `/operator/contests/${contestId}/submission-filters`,
+    token,
+  );
+}
+
 export function createSubmission(
   contestId: string,
   problemId: string,

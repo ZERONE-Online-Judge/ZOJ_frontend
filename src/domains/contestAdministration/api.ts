@@ -8,6 +8,7 @@ import type {
   PublicHomeReadModel,
 } from '@/domains/contestAdministration/types';
 import type { StaffAccount } from '@/domains/identityAccess/types';
+import type { ContestRole } from '@/domains/identityAccess/contestRoles';
 import { apiRequest } from '@/shared/api/client';
 
 export function getPublicHome() {
@@ -23,11 +24,21 @@ export function getPublicContest(contestId: string) {
 }
 
 export function getContestWorkspace(contestId: string, token?: string) {
-  return apiRequest<ContestWorkspace>(`/contests/${contestId}/workspace`, token);
+  return apiRequest<ContestWorkspace>(
+    `/contests/${contestId}/workspace`,
+    token,
+  );
 }
 
-export function getDivisionWorkspace(contestId: string, divisionId: string, token?: string) {
-  return apiRequest<ContestWorkspace>(`/contests/${contestId}/divisions/${divisionId}/workspace`, token);
+export function getDivisionWorkspace(
+  contestId: string,
+  divisionId: string,
+  token?: string,
+) {
+  return apiRequest<ContestWorkspace>(
+    `/contests/${contestId}/divisions/${divisionId}/workspace`,
+    token,
+  );
 }
 
 export function getOperatorContests(token: string) {
@@ -35,11 +46,17 @@ export function getOperatorContests(token: string) {
 }
 
 export function getOperatorContestDashboard(contestId: string, token: string) {
-  return apiRequest<OperatorDashboard>(`/operator/contests/${contestId}/dashboard`, token);
+  return apiRequest<OperatorDashboard>(
+    `/operator/contests/${contestId}/dashboard`,
+    token,
+  );
 }
 
 export function getOperatorDivisions(contestId: string, token: string) {
-  return apiRequest<Division[]>(`/operator/contests/${contestId}/divisions`, token);
+  return apiRequest<Division[]>(
+    `/operator/contests/${contestId}/divisions`,
+    token,
+  );
 }
 
 export function createOperatorDivision(
@@ -47,10 +64,14 @@ export function createOperatorDivision(
   token: string,
   body: Pick<Division, 'name'> & Partial<Pick<Division, 'description'>>,
 ) {
-  return apiRequest<Division>(`/operator/contests/${contestId}/divisions`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Division>(
+    `/operator/contests/${contestId}/divisions`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function updateOperatorDivision(
@@ -59,39 +80,58 @@ export function updateOperatorDivision(
   token: string,
   body: Partial<Pick<Division, 'name' | 'description'>>,
 ) {
-  return apiRequest<Division>(`/operator/contests/${contestId}/divisions/${divisionId}`, token, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<Division>(
+    `/operator/contests/${contestId}/divisions/${divisionId}`,
+    token,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
-export function updateContestSettings(contestId: string, token: string, body: ContestSettingsPatch) {
-  return apiRequest<Contest>(`/operator/contests/${contestId}/settings`, token, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+export function updateContestSettings(
+  contestId: string,
+  token: string,
+  body: ContestSettingsPatch,
+) {
+  return apiRequest<Contest>(
+    `/operator/contests/${contestId}/settings`,
+    token,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function listContestOperators(contestId: string, token: string) {
-  return apiRequest<StaffAccount[]>(`/operator/contests/${contestId}/operators`, token);
+  return apiRequest<StaffAccount[]>(
+    `/operator/contests/${contestId}/operators`,
+    token,
+  );
 }
 
 export function createContestOperator(
   contestId: string,
   token: string,
-  body: { email: string; display_name?: string; permission_overrides?: string[] },
+  body: { email: string; display_name: string; roles: ContestRole[] },
 ) {
-  return apiRequest<StaffAccount>(`/operator/contests/${contestId}/operators`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<StaffAccount>(
+    `/operator/contests/${contestId}/operators`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function updateContestOperator(
   contestId: string,
   operatorEmail: string,
   token: string,
-  body: { display_name?: string; permission_overrides?: string[] },
+  body: { display_name: string; roles: ContestRole[] },
 ) {
   return apiRequest<StaffAccount>(
     `/operator/contests/${contestId}/operators/${encodeURIComponent(operatorEmail)}`,
@@ -103,7 +143,11 @@ export function updateContestOperator(
   );
 }
 
-export function removeContestOperator(contestId: string, operatorEmail: string, token: string) {
+export function removeContestOperator(
+  contestId: string,
+  operatorEmail: string,
+  token: string,
+) {
   return apiRequest<StaffAccount>(
     `/operator/contests/${contestId}/operators/${encodeURIComponent(operatorEmail)}`,
     token,
@@ -144,8 +188,12 @@ export function assignAdminContestOperator(
   token: string,
   body: { email: string; display_name?: string },
 ) {
-  return apiRequest<StaffAccount>(`/admin/contests/${contestId}/operators`, token, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiRequest<StaffAccount>(
+    `/admin/contests/${contestId}/operators`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
 }

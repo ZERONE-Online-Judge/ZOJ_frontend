@@ -129,7 +129,9 @@ function AdminContestsContent({ token }: { token: string }) {
         email: operatorForm.email.trim(),
       }),
     onSuccess: () => {
-      setOperatorNotice(`${operatorForm.email.trim()} 운영자를 배정했습니다.`);
+      setOperatorNotice(
+        `${operatorForm.email.trim()} 계정을 대회 마스터로 배정했습니다.`,
+      );
       setOperatorForm(emptyOperatorForm);
       setOperatorFormError('');
     },
@@ -173,7 +175,7 @@ function AdminContestsContent({ token }: { token: string }) {
   return (
     <PageLayout
       variant="management"
-      description="서비스 마스터가 대회를 만들고 운영자를 배정합니다."
+      description="서비스 마스터가 대회를 만들고 모든 권한을 가진 대회 마스터를 배정합니다."
       eyebrow="Service Master"
       title="대회 관리"
       width="full"
@@ -295,8 +297,8 @@ function AdminContestsContent({ token }: { token: string }) {
         </AdminPanel>
 
         <AdminPanel
-          description="대회를 먼저 선택한 뒤 운영자가 로그인할 이메일을 입력하세요. 배정 버튼을 누르면 해당 대회에 운영 권한이 부여됩니다."
-          title="운영자 배정"
+          description="여기에서 배정하는 계정은 항상 모든 권한을 가진 대회 마스터가 됩니다. 다른 운영자의 이름과 담당 권한은 대회 운영 설정에서 관리합니다."
+          title="대회 마스터 배정"
         >
           <form
             className="grid gap-4 lg:grid-cols-3"
@@ -323,7 +325,7 @@ function AdminContestsContent({ token }: { token: string }) {
               </select>
             </label>
             <label className="grid gap-2 text-sm font-semibold text-slate-700">
-              운영자 이메일
+              대회 마스터 이메일
               <input
                 disabled={
                   !operatorForm.contestId || assignOperatorMutation.isPending
@@ -341,7 +343,7 @@ function AdminContestsContent({ token }: { token: string }) {
               />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-slate-700">
-              표시 이름
+              표시 이름 (선택)
               <input
                 disabled={
                   !operatorForm.contestId || assignOperatorMutation.isPending
@@ -378,7 +380,9 @@ function AdminContestsContent({ token }: { token: string }) {
                 }
                 type="submit"
               >
-                {assignOperatorMutation.isPending ? '배정 중' : '운영자 배정'}
+                {assignOperatorMutation.isPending
+                  ? '배정 중'
+                  : '대회 마스터 배정'}
               </button>
             </div>
           </form>
@@ -399,7 +403,8 @@ function AdminContestsContent({ token }: { token: string }) {
           >
             <form className="grid gap-4" onSubmit={handleCreateContest}>
               <p className="text-sm text-slate-500">
-                주최 기관은 필수입니다. 초기 운영자는 나중에 배정할 수 있습니다.
+                주최 기관은 필수입니다. 초기 계정은 모든 권한을 가진 대회
+                마스터로 등록되며, 나중에 배정할 수도 있습니다.
               </p>
               <div className="grid gap-4 lg:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -431,7 +436,7 @@ function AdminContestsContent({ token }: { token: string }) {
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                  초기 운영자 이메일
+                  초기 대회 마스터 이메일 (선택)
                   <input
                     className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                     onChange={(event) =>

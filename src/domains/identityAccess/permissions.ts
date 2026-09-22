@@ -5,6 +5,18 @@ import type {
 
 export type ContestPermissionCode =
   | 'contest.view'
+  | 'contest.settings.manage'
+  | 'contest.staff.view'
+  | 'contest.staff.manage'
+  | 'contest.audit.view'
+  | 'contest.access_log.view'
+  | 'contest.problem.review'
+  | 'contest.problem.test'
+  | 'contest.problem.manage'
+  | 'contest.participant.manage'
+  | 'contest.notice.manage'
+  | 'contest.board.question.manage'
+  | 'contest.scoreboard.manage'
   | 'contest.update_overview'
   | 'contest.update_organization'
   | 'contest.update_rule'
@@ -41,6 +53,18 @@ export type ContestPermissionCode =
   | 'contest.board.answer.create';
 
 type PermissionSession = GeneralSession | StaffSession | null | undefined;
+
+export const operatorHomePermissions = [
+  'contest.settings.manage',
+  'contest.staff.manage',
+  'contest.participant.view',
+  'contest.notice.view',
+  'contest.board.question.view',
+  'contest.problem.manage',
+  'contest.submission.view',
+  'contest.scoreboard.view',
+  'contest.audit.view',
+] as const satisfies readonly ContestPermissionCode[];
 
 function isStaffSession(session: PermissionSession): session is StaffSession {
   return Boolean(session && 'staff' in session);
@@ -84,9 +108,15 @@ export function contestScopesFor(
 export function isServiceMaster(session: PermissionSession) {
   if (isStaffSession(session)) return session.staff.is_service_master;
 
-  return Boolean(
-    session?.operatorSession?.staff.is_service_master ||
-    session?.operatorContests.some((entry) => entry.scopes.includes('master')),
+  return Boolean(session?.operatorSession?.staff.is_service_master);
+}
+
+export function isContestMaster(session: PermissionSession, contestId: string) {
+  return (
+    isServiceMaster(session) ||
+    contestScopesFor(session, contestId).some((scope) =>
+      ['*', 'master', 'contest.*'].includes(scope),
+    )
   );
 }
 
@@ -102,12 +132,17 @@ export function hasContestAccess(
 export function hasContestPermission(
   session: PermissionSession,
   contestId: string,
-  permission?: ContestPermissionCode,
-) {
+  permission?: ContestPermissionCode | readonly ContestPermissionCode[],
+): boolean {
   if (!permission) return hasContestAccess(session, contestId);
+  if (Array.isArray(permission)) {
+    return permission.some((entry) =>
+      hasContestPermission(session, contestId, entry),
+    );
+  }
   if (isServiceMaster(session)) return true;
 
   return contestScopesFor(session, contestId).some((scope) =>
-    scopeMatches(scope, permission),
+    scopeMatches(scope, permission as ContestPermissionCode),
   );
 }

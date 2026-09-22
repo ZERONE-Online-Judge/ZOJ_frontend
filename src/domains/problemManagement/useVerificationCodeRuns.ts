@@ -132,7 +132,7 @@ export default function useVerificationCodeRuns({
       }
       const sourceCode = file
         ? await file.text()
-        : await getStorageObjectText(run.asset!.storage_key);
+        : await getStorageObjectText(run.asset!.storage_key, token);
       if (!isActive()) return;
 
       if (file) {

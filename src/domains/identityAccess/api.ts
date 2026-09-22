@@ -75,7 +75,6 @@ export async function getGeneralMe(token: string, previous?: GeneralSession | nu
     data,
     loadStoredGeneralSession() ?? previous,
   );
-  saveGeneralSession(session);
   return session;
 }
 

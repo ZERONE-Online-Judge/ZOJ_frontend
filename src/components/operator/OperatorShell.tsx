@@ -6,6 +6,7 @@ import { accessText, operatorNavText } from '@/data/uiText';
 import {
   hasContestPermission,
   isServiceMaster,
+  operatorHomePermissions,
   type ContestPermissionCode,
 } from '@/domains/identityAccess/permissions';
 import type {
@@ -23,7 +24,7 @@ import {
 type OperatorAccessGateProps = {
   children: (session: StaffSession) => ReactNode;
   contestId?: string;
-  permission?: ContestPermissionCode;
+  permission?: ContestPermissionCode | readonly ContestPermissionCode[];
 };
 
 type OperatorTabsProps = {
@@ -59,13 +60,13 @@ const operatorTabs = [
     path: '',
     icon: DashboardIcon,
     end: true,
-    permission: 'contest.view',
+    permission: operatorHomePermissions,
   },
   {
     label: operatorNavText.settings,
     path: 'settings',
     icon: SettingsIcon,
-    permission: 'contest.view',
+    permission: ['contest.settings.manage', 'contest.staff.manage'],
   },
   {
     label: operatorNavText.notices,
@@ -89,13 +90,13 @@ const operatorTabs = [
     label: operatorNavText.problems,
     path: 'problems',
     icon: ProblemIcon,
-    permission: 'contest.problem.view',
+    permission: 'contest.problem.manage',
   },
   {
     label: operatorNavText.problemReview,
     path: 'problem-review',
     icon: ProblemIcon,
-    permission: 'contest.problem.view',
+    permission: 'contest.problem.review',
   },
   {
     label: operatorNavText.submissions,
@@ -113,7 +114,7 @@ const operatorTabs = [
     label: operatorNavText.auditLogs,
     path: 'audit-logs',
     icon: NoticeIcon,
-    permission: 'contest.view',
+    permission: ['contest.audit.view', 'contest.access_log.view'],
   },
 ] as const;
 
@@ -280,11 +281,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
     >
       {operatorTabs
         .filter((tab) =>
-          hasContestPermission(
-            generalSession,
-            contestId,
-            tab.permission as ContestPermissionCode,
-          ),
+          hasContestPermission(generalSession, contestId, tab.permission),
         )
         .map((tab) => {
           const Icon = tab.icon;
@@ -306,7 +303,14 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
               to={to}
             >
               <Icon />
-              {tab.label}
+              {tab.path === 'settings' &&
+              !hasContestPermission(
+                generalSession,
+                contestId,
+                'contest.settings.manage',
+              )
+                ? '운영자 관리'
+                : tab.label}
               {tab.path === 'notices' && noticeCountLabel ? (
                 <TabCountBadge>{noticeCountLabel}</TabCountBadge>
               ) : null}

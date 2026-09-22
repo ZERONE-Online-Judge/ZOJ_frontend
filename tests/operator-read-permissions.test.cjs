@@ -1,0 +1,477 @@
+const { test, beforeEach, afterEach, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const ts = require('typescript');
+const { JSDOM } = require('jsdom');
+const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+  url: 'https://judge.test/',
+});
+global.window = dom.window;
+global.document = dom.window.document;
+global.IS_REACT_ACT_ENVIRONMENT = true;
+dom.window.HTMLDialogElement.prototype.showModal = function () {
+  this.open = true;
+};
+dom.window.HTMLDialogElement.prototype.close = function () {
+  this.open = false;
+};
+const React = require('react');
+const { act } = React;
+const { createRoot } = require('react-dom/client');
+const {
+  MemoryRouter,
+  Routes,
+  Route,
+  useLocation,
+} = require('react-router-dom');
+const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
+const h = React.createElement;
+const divisions = [
+  { division_id: 'division', name: '일반부', code: 'general' },
+];
+const problem = {
+  problem_id: 'problem',
+  division_id: 'division',
+  problem_code: 'A',
+  title: '필터 문제',
+};
+const team = {
+  participant_team_id: 'team',
+  division_id: 'division',
+  team_name: '필터 팀',
+};
+const submission = {
+  submission_id: 'submission-one',
+  problem_id: 'problem',
+  participant_team_id: 'team',
+  team_name: '필터 팀',
+  member_name: '제출자',
+  member_email: 'member@test',
+  language: 'cpp',
+  status: 'wrong_answer',
+  submitted_at: '2026-09-22T00:00:00Z',
+  runtime_ms: 12,
+  memory_kb: 1024,
+  failed_testcase_order: 2,
+};
+let session, reads, location;
+function withScopes(scopes) {
+  return {
+    account: { email: 'staff@test' },
+    operatorContests: [],
+    operatorSession: {
+      accessToken: 'token',
+      staff: {
+        email: 'staff@test',
+        is_service_master: false,
+        contest_scopes: { contest: ['contest.view', ...scopes] },
+      },
+    },
+  };
+}
+function record(kind, args = {}) {
+  reads.push({ kind, ...args });
+}
+function requests(kind) {
+  return reads.filter((request) => request.kind === kind);
+}
+const mocks = {
+  '@/utils/Icons': { SvgIcon: () => null },
+  '@/domains/identityAccess/queryIdentity': {
+    tokenQueryIdentity: (token) => token,
+  },
+  '@/domains/identityAccess/sessionStore': {
+    useSessionStore: (selector) => selector({ generalSession: session }),
+  },
+  '@/shared/ui/AnimatedNumber': { default: ({ value }) => String(value ?? 0) },
+  '@/components/contest/problem/ProblemStatementPanel': {
+    default: ({ problem }) => h('article', null, problem.statement),
+  },
+  '@/domains/contestAdministration/api': {
+    getOperatorContestDashboard: async () => {
+      record('dashboard');
+      return {
+        contest: {
+          contest_id: 'contest',
+          title: '권한 대회',
+          start_at: '2026-09-22T00:00:00Z',
+          end_at: '2026-09-22T10:00:00Z',
+          freeze_at: '2026-09-22T09:00:00Z',
+        },
+        divisions,
+        participant_count: 1,
+        submission_count: 1,
+        pending_jobs: 0,
+        participant_count_by_division: { division: 1 },
+      };
+    },
+  },
+  '@/domains/problemManagement/api': {
+    getOperatorProblems: async () => {
+      record('problems');
+      return [{ ...problem, statement: '출제진에게만 보이는 문제 본문' }];
+    },
+  },
+  '@/domains/teamParticipation/api': {
+    listParticipantTeams: async () => {
+      record('participants');
+      return [
+        {
+          ...team,
+          status: 'active',
+          members: [
+            {
+              team_member_id: 'leader',
+              name: '비공개 팀장',
+              email: 'leader@test',
+              role: 'leader',
+            },
+          ],
+        },
+      ];
+    },
+  },
+  '@/domains/serviceCommunication/api': {
+    listOperatorContestNotices: async () => {
+      record('notices');
+      return [];
+    },
+    listOperatorContestQuestions: async () => {
+      record('questions');
+      return [];
+    },
+  },
+  '@/domains/submissionScoreboard/api': {
+    getOperatorSubmissionFilters: async (contestId, token) => {
+      record('filters', { contestId, token });
+      return { problems: [problem], teams: [team] };
+    },
+    listOperatorSubmissionsPage: async (contestId, token, filters) => {
+      record('submissions', { contestId, token, filters });
+      return {
+        data: [submission],
+        page: { total_count: 1, current_cursor: null, next_cursor: null },
+      };
+    },
+    getOperatorSubmission: async (contestId, submissionId, token) => {
+      record('detail', { contestId, submissionId, token });
+      return {
+        ...submission,
+        source_code: 'int main() { return 0; }',
+        compile_message: '컴파일 성공',
+        judge_message:
+          'testcase #2 (2.in / 2.out): wrong answer\n[input]\n1 2\n[expected]\n3\n[actual]\n0',
+      };
+    },
+    waitOperatorSubmissionStatus: async () => {
+      record('wait');
+      return submission;
+    },
+  },
+  '@/domains/auditMonitoring/api': {
+    listOperatorAccessLogs: async (contestId, token, filters) => {
+      record('access', { contestId, token, filters });
+      return {
+        data: [
+          {
+            access_log_id: 'access',
+            email: 'participant@test',
+            member_name: '참가자',
+            contest_id: 'contest',
+            account_scope: 'participant',
+            actor_role: 'participant',
+            event_type: 'participant_login',
+            created_at: '2026-09-22T00:00:00Z',
+          },
+        ],
+        page: { total_count: 51, next_cursor: filters.cursor ? null : '50' },
+      };
+    },
+    getOperatorAccessLogStats: async () => {
+      record('access-stats');
+      return {
+        total_count: 51,
+        success_count: 50,
+        failed_count: 1,
+        conflict_count: 0,
+        unique_account_count: 10,
+        active_session_count: 10,
+      };
+    },
+    listOperatorOperationalAuditLogs: async (contestId, token, filters) => {
+      record('operations', { contestId, token, filters });
+      return { data: [], page: { total_count: 0, next_cursor: null } };
+    },
+  },
+};
+for (const mock of Object.values(mocks))
+  if ('default' in mock) mock.__esModule = true;
+const cache = new Map();
+function source(relative) {
+  const filename = path.resolve(__dirname, '../src', relative);
+  if (cache.has(filename)) return cache.get(filename).exports;
+  const loaded = new Module(filename, module);
+  loaded.filename = filename;
+  loaded.paths = Module._nodeModulePaths(path.dirname(filename));
+  const native = loaded.require.bind(loaded);
+  loaded.require = (id) => {
+    if (mocks[id]) return mocks[id];
+    if (!id.startsWith('@/')) return native(id);
+    return source(
+      ['.ts', '.tsx']
+        .map((ext) => id.slice(2) + ext)
+        .find((file) => fs.existsSync(path.resolve(__dirname, '../src', file))),
+    );
+  };
+  cache.set(filename, loaded);
+  loaded._compile(
+    ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        jsx: ts.JsxEmit.ReactJSX,
+        target: ts.ScriptTarget.ES2022,
+      },
+    }).outputText,
+    filename,
+  );
+  return loaded.exports;
+}
+const SubmissionsPage = source(
+  'pages/operator/OperatorSubmissionsPage.tsx',
+).default;
+const AuditPage = source('pages/operator/OperatorAuditLogsPage.tsx').default;
+const HomePage = source('pages/operator/OperatorHomePage.tsx').default;
+let root, container, client;
+beforeEach(() => {
+  session = withScopes([
+    'contest.submission.view',
+    'contest.submission.source.view',
+  ]);
+  reads = [];
+  location = '';
+  document.body.innerHTML = '';
+  window.localStorage.clear();
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  client.clear();
+});
+after(() => dom.window.close());
+function Observer() {
+  location = useLocation().pathname;
+  return null;
+}
+async function render(page, suffix) {
+  await act(async () =>
+    root.render(
+      h(
+        QueryClientProvider,
+        { client },
+        h(
+          MemoryRouter,
+          { initialEntries: [`/operator/contests/contest${suffix}`] },
+          h(Observer),
+          h(
+            Routes,
+            null,
+            h(Route, {
+              path: `/operator/contests/:contestId${suffix}`,
+              element: h(page),
+            }),
+            h(Route, {
+              path: '/operator/contests/:contestId/problem-review',
+              element: h('p', null, '검수 페이지'),
+            }),
+          ),
+        ),
+      ),
+    ),
+  );
+  await flush();
+  await flush();
+}
+async function flush() {
+  await act(
+    async () => new Promise((resolve) => global.setTimeout(resolve, 10)),
+  );
+}
+function button(label, scope = document) {
+  return [...scope.querySelectorAll('button')].find(
+    (item) => item.textContent.trim() === label,
+  );
+}
+async function click(element) {
+  assert.ok(element);
+  await act(async () => element.click());
+  await flush();
+}
+async function input(element, value) {
+  assert.ok(element);
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(element),
+      'value',
+    ).set;
+    setter.call(element, value);
+    element.dispatchEvent(
+      new dom.window.Event(element.tagName === 'SELECT' ? 'change' : 'input', {
+        bubbles: true,
+      }),
+    );
+  });
+  await flush();
+}
+
+test('submission viewers use safe filter labels and inspect source/results without fetching full teams or problems', async () => {
+  await render(SubmissionsPage, '/submissions');
+  const selects = [...container.querySelectorAll('select')];
+  assert.equal(selects.length, 3);
+  assert.match(selects[1].textContent, /A\. 필터 문제/);
+  assert.match(selects[2].textContent, /필터 팀/);
+  assert.equal(requests('filters').length, 1);
+  assert.equal(requests('problems').length, 0);
+  assert.equal(requests('participants').length, 0);
+  assert.equal(button('A. 필터 문제'), undefined);
+  await input(selects[1], 'problem');
+  await input(selects[2], 'team');
+  assert.deepEqual(requests('submissions').at(-1).filters, {
+    cursor: undefined,
+    divisionId: 'division',
+    limit: 20,
+    problemId: 'problem',
+    teamId: 'team',
+  });
+  await click(button('보기'));
+  const detail = document.querySelector('dialog[aria-label="제출 상세"]');
+  assert.ok(detail?.open);
+  assert.match(detail.textContent, /틀렸습니다/);
+  assert.match(detail.textContent, /int main\(\) \{ return 0; \}/);
+  assert.match(detail.textContent, /컴파일 성공/);
+  assert.match(detail.textContent, /실패 입력1 2/);
+  assert.match(detail.textContent, /기대 출력3/);
+  assert.match(detail.textContent, /실제 출력0/);
+  assert.deepEqual(requests('detail'), [
+    {
+      kind: 'detail',
+      contestId: 'contest',
+      submissionId: 'submission-one',
+      token: 'token',
+    },
+  ]);
+  await click(button('닫기', detail));
+  await click(button('필터 팀(제출자)'));
+  const owner = document.querySelector('dialog[aria-label="팀 정보"]');
+  assert.match(owner.textContent, /member@test/);
+  assert.doesNotMatch(owner.textContent, /팀장|팀원|leader@test/);
+  assert.equal(requests('problems').length, 0);
+  assert.equal(requests('participants').length, 0);
+});
+
+test('combined problem and participant permissions retain authorized previews in submissions', async () => {
+  session = withScopes([
+    'contest.submission.view',
+    'contest.submission.source.view',
+    'contest.problem.view',
+    'contest.problem.manage',
+    'contest.participant.view',
+  ]);
+  await render(SubmissionsPage, '/submissions');
+  assert.ok(requests('problems').length > 0);
+  assert.ok(requests('participants').length > 0);
+  await click(button('A. 필터 문제'));
+  const preview = document.querySelector('dialog[aria-label="문제 미리보기"]');
+  assert.match(preview.textContent, /출제진에게만 보이는 문제 본문/);
+  await click(button('닫기', preview));
+  await click(button('필터 팀(제출자)'));
+  assert.match(
+    document.querySelector('dialog[aria-label="팀 정보"]').textContent,
+    /비공개 팀장/,
+  );
+});
+
+test('participant managers browse, filter, refresh and paginate only access logs', async () => {
+  session = withScopes([
+    'contest.participant.view',
+    'contest.participant.manage',
+    'contest.access_log.view',
+  ]);
+  await render(AuditPage, '/audit-logs');
+  assert.ok(button('접속 로그'));
+  assert.equal(button('작업 로그'), undefined);
+  assert.match(container.textContent, /participant@test/);
+  assert.match(container.textContent, /활성 세션/);
+  assert.equal(requests('operations').length, 0);
+  assert.equal(requests('access-stats').length, 1);
+  await click(button('다음'));
+  assert.equal(requests('access').at(-1).filters.cursor, '50');
+  await input(
+    container.querySelector('input[placeholder="계정 이메일로 필터"]'),
+    'PARTICIPANT@Test',
+  );
+  await click(button('필터 적용'));
+  assert.equal(requests('access').at(-1).filters.email, 'participant@test');
+  assert.equal(requests('access').at(-1).filters.cursor, undefined);
+  const beforeRefresh = requests('access').length;
+  await click(button('새로고침'));
+  assert.equal(requests('access').length, beforeRefresh + 1);
+  assert.equal(requests('operations').length, 0);
+});
+
+test('operation-only audit permission never fetches participant access logs', async () => {
+  session = withScopes(['contest.audit.view']);
+  await render(AuditPage, '/audit-logs');
+  assert.ok(button('작업 로그'));
+  assert.equal(button('접속 로그'), undefined);
+  await click(button('새로고침'));
+  assert.ok(requests('operations').length > 0);
+  assert.equal(requests('access').length, 0);
+  assert.equal(requests('access-stats').length, 0);
+});
+
+test('reviewer-only home redirects straight to problem review without requesting dashboard or unrelated data', async () => {
+  session = withScopes(['contest.problem.review', 'contest.problem.test']);
+  await render(HomePage, '');
+  assert.equal(location, '/operator/contests/contest/problem-review');
+  assert.match(container.textContent, /검수 페이지/);
+  assert.deepEqual(reads, []);
+});
+
+test('reviewer and submission roles share a home with only their authorized quick links and statistics', async () => {
+  session = withScopes([
+    'contest.problem.review',
+    'contest.problem.test',
+    'contest.submission.view',
+    'contest.submission.source.view',
+  ]);
+  await render(HomePage, '');
+  assert.equal(location, '/operator/contests/contest');
+  const links = [...container.querySelectorAll('a')].map((link) =>
+    link.textContent.trim(),
+  );
+  assert.ok(links.includes('문제 모아보기'));
+  assert.ok(links.includes('제출 확인'));
+  for (const label of [
+    '대회 설정',
+    '운영자 관리',
+    '참가팀 관리',
+    '문제 관리',
+    '공지 관리',
+    '게시글 관리',
+    '스코어보드',
+  ])
+    assert.equal(links.includes(label), false, label);
+  assert.match(container.textContent, /전체 제출 수/);
+  assert.doesNotMatch(container.textContent, /전체 참가팀/);
+  assert.deepEqual(
+    reads.map((request) => request.kind),
+    ['dashboard'],
+  );
+});

@@ -166,10 +166,10 @@ export async function uploadToPresignedUrl(
   }
 }
 
-export async function getStorageObjectText(storageKey: string) {
+export async function getStorageObjectText(storageKey: string, token: string) {
   const response = await fetch(
     `${API_BASE_URL}/storage/objects/${encodeStorageKey(storageKey)}`,
-    { credentials: 'include' },
+    { credentials: 'include', headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!response.ok) {

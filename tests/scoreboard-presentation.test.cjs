@@ -61,7 +61,16 @@ const mocks = {
     tokenQueryIdentity: () => 'test-session',
   },
   '@/components/operator/OperatorShell': {
-    OperatorAccessGate: ({ children }) => children({ accessToken: 'token' }),
+    OperatorAccessGate: ({ children }) =>
+      children({
+        accessToken: 'token',
+        staff: {
+          email: 'master@example.test',
+          display_name: '마스터',
+          is_service_master: false,
+          contest_scopes: { contest: ['contest.*'] },
+        },
+      }),
     OperatorPanel: ({ title, description, actions, children }) =>
       h('section', null, h('h2', null, title), description, actions, children),
     OperatorTabs: () => null,

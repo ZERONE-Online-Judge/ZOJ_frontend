@@ -96,6 +96,8 @@ export function mapStaffSession(data: StaffSessionApi): StaffSession {
       display_name: staff.display_name,
       is_service_master: staff.is_service_master,
       contest_scopes: staff.contest_scopes ?? {},
+      contest_roles: staff.contest_roles,
+      protected_master_contests: staff.protected_master_contests,
     },
     defaultRedirect: data.default_redirect,
   };
@@ -126,7 +128,9 @@ export function mapGeneralSession(
     operatorContests: data.operator_contests ?? [],
     operatorSession: data.operator_session
       ? mapStaffSession(data.operator_session)
-      : (previous?.operatorSession ?? null),
+      : data.operator_session === null
+        ? null
+        : (previous?.operatorSession ?? null),
   };
 }
 
@@ -139,11 +143,7 @@ export function loadStoredGeneralSession(): GeneralSession | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<GeneralSession>;
-    if (
-      !parsed ||
-      typeof parsed.accessToken !== 'string' ||
-      !parsed.account
-    ) {
+    if (!parsed || typeof parsed.accessToken !== 'string' || !parsed.account) {
       removeStoredSessionValue(GENERAL_SESSION_KEY);
       return null;
     }

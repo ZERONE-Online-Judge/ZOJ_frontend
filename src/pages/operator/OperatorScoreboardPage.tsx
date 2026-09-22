@@ -24,6 +24,7 @@ import {
 } from '@/domains/contestAdministration/api';
 import type { ScoreboardFreezeMode } from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
@@ -392,6 +393,16 @@ export default function OperatorScoreboardPage() {
         contestId ? (
           <OperatorScoreboardContent
             key={contestId}
+            canManage={hasContestPermission(
+              session,
+              contestId,
+              'contest.scoreboard.manage',
+            )}
+            canReadProblems={hasContestPermission(
+              session,
+              contestId,
+              'contest.problem.view',
+            )}
             contestId={contestId}
             token={session.accessToken}
           />
@@ -409,6 +420,7 @@ export default function OperatorScoreboardPage() {
 }
 
 function ScoreboardFreezeControl({
+  canManage,
   disabled,
   error,
   freezeAt,
@@ -416,6 +428,7 @@ function ScoreboardFreezeControl({
   onChange,
   publicFrozen,
 }: {
+  canManage: boolean;
   disabled: boolean;
   error: unknown;
   freezeAt?: string | null;
@@ -456,25 +469,31 @@ function ScoreboardFreezeControl({
             공개 스코어보드 표시
           </h2>
         </div>
-        <div className="grid gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:grid-cols-3">
-          {options.map((option) => (
-            <button
-              className={[
-                'h-10 rounded-lg px-5 text-sm font-semibold transition disabled:cursor-not-allowed',
-                mode === option.value
-                  ? 'bg-slate-950 text-white shadow-sm'
-                  : 'text-slate-500 hover:bg-white hover:text-slate-950',
-              ].join(' ')}
-              disabled={disabled}
-              key={option.value}
-              onClick={() => onChange(option.value)}
-              type="button"
-              title={option.description}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        {canManage ? (
+          <div className="grid gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:grid-cols-3">
+            {options.map((option) => (
+              <button
+                className={[
+                  'h-10 rounded-lg px-5 text-sm font-semibold transition disabled:cursor-not-allowed',
+                  mode === option.value
+                    ? 'bg-slate-950 text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-950',
+                ].join(' ')}
+                disabled={disabled}
+                key={option.value}
+                onClick={() => onChange(option.value)}
+                type="button"
+                title={option.description}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
+            표시 모드: {options.find((option) => option.value === mode)?.label}
+          </span>
+        )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-medium text-slate-500">
@@ -507,8 +526,11 @@ function ScoreboardFreezeControl({
       </div>
       {mode !== 'auto' ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-          현재 공개 스코어보드가 오토가 아닙니다. 프리즈 시각 기준으로 자동
-          전환하려면 오토로 변경해 주세요.
+          현재 공개 스코어보드는 수동 {mode === 'live' ? '라이브' : '프리즈'}{' '}
+          모드입니다.
+          {canManage
+            ? ' 프리즈 시각 기준으로 자동 전환하려면 오토로 변경해 주세요.'
+            : ''}
         </p>
       ) : null}
       {error ? (
@@ -521,9 +543,13 @@ function ScoreboardFreezeControl({
 }
 
 function OperatorScoreboardContent({
+  canManage,
+  canReadProblems,
   contestId,
   token,
 }: {
+  canManage: boolean;
+  canReadProblems: boolean;
   contestId: string;
   token: string;
 }) {
@@ -545,6 +571,7 @@ function OperatorScoreboardContent({
     placeholderData: keepPreviousData,
   });
   const problemsQuery = useQuery({
+    enabled: canReadProblems,
     queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
     placeholderData: keepPreviousData,
@@ -563,10 +590,14 @@ function OperatorScoreboardContent({
     refetchIntervalInBackground: false,
   });
   const freezeModeMutation = useMutation({
-    mutationFn: (mode: ScoreboardFreezeMode) =>
-      updateContestSettings(contestId, token, {
+    mutationFn: (mode: ScoreboardFreezeMode) => {
+      if (!canManage) {
+        return Promise.reject(new Error('스코어보드 관리 권한이 없습니다.'));
+      }
+      return updateContestSettings(contestId, token, {
         scoreboard_freeze_mode: mode,
-      }),
+      });
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
@@ -579,8 +610,8 @@ function OperatorScoreboardContent({
 
   const contest = dashboardQuery.data?.contest;
   const freezeMode = contest?.scoreboard_freeze_mode ?? 'auto';
-  const problems = (problemsQuery.data ?? []).filter((problem) =>
-    divisionId ? problem.division_id === divisionId : true,
+  const problems = (canReadProblems ? (problemsQuery.data ?? []) : []).filter(
+    (problem) => (divisionId ? problem.division_id === divisionId : true),
   );
   const problemById = useMemo(
     () => new Map(problems.map((problem) => [problem.problem_id, problem])),
@@ -602,11 +633,14 @@ function OperatorScoreboardContent({
 
       {contest && !isContestEnded(contest) ? (
         <ScoreboardFreezeControl
+          canManage={canManage}
           disabled={freezeModeMutation.isPending}
           error={freezeModeMutation.error}
           freezeAt={contest?.freeze_at}
           mode={freezeMode}
-          onChange={(mode) => freezeModeMutation.mutate(mode)}
+          onChange={(mode) => {
+            if (canManage) freezeModeMutation.mutate(mode);
+          }}
           publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
         />
       ) : null}
@@ -679,7 +713,7 @@ function OperatorScoreboardContent({
             를 선택하세요.
           </p>
         ) : null}
-        {contest && isContestEnded(contest) && divisionId ? (
+        {canManage && contest && isContestEnded(contest) && divisionId ? (
           <ScoreboardReleaseControl
             key={divisionId}
             contestId={contestId}

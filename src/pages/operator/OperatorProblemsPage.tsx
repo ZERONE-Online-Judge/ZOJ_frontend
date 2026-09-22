@@ -625,7 +625,10 @@ export default function OperatorProblemsPage() {
   const { contestId } = useParams();
 
   return (
-    <OperatorAccessGate contestId={contestId} permission="contest.problem.view">
+    <OperatorAccessGate
+      contestId={contestId}
+      permission="contest.problem.manage"
+    >
       {(session) =>
         contestId ? (
           <OperatorProblemsContent
@@ -909,10 +912,15 @@ function OperatorProblemsContent({
   const testcaseFileStorageKey = testcaseFilePreview?.storageKey ?? '';
   const testcaseFileQuery = useQuery({
     enabled: Boolean(testcaseFileStorageKey),
-    queryKey: ['operator', 'testcase-file', testcaseFileStorageKey],
+    queryKey: [
+      'operator',
+      'testcase-file',
+      testcaseFileStorageKey,
+      queryIdentity,
+    ],
     queryFn: async () => ({
       storageKey: testcaseFileStorageKey,
-      text: await getStorageObjectText(testcaseFileStorageKey),
+      text: await getStorageObjectText(testcaseFileStorageKey, token),
     }),
   });
   const isTestcaseFileSettled =
@@ -927,8 +935,9 @@ function OperatorProblemsContent({
       'operator',
       'support-file',
       supportFilePreview?.storageKey ?? '',
+      queryIdentity,
     ],
-    queryFn: () => getStorageObjectText(supportFilePreview!.storageKey),
+    queryFn: () => getStorageObjectText(supportFilePreview!.storageKey, token),
   });
 
   const saveProblemMutation = useMutation({

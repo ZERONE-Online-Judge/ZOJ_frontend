@@ -52,9 +52,9 @@ export function serializeProblemDocument(document: ProblemDocument) {
   };
   const hasMeta = Boolean(
     meta.inputDescription.trim() ||
-      meta.outputDescription.trim() ||
-      meta.note.trim() ||
-      meta.examples.length,
+    meta.outputDescription.trim() ||
+    meta.note.trim() ||
+    meta.examples.length,
   );
 
   if (!hasMeta) return document.statement;
@@ -63,10 +63,41 @@ export function serializeProblemDocument(document: ProblemDocument) {
 
 export function resolveAssetSource(url: string, assets: ProblemAsset[]) {
   const match = url.match(/^asset:\/\/(.+)$/);
-  if (match) return assets.find((asset) => asset.asset_id === match[1])?.download_url ?? '';
-  if (/^(https?:|data:|blob:|\/api\/storage\/objects\/)/.test(url)) return url;
+  if (match)
+    return (
+      assets.find((asset) => asset.asset_id === match[1])?.download_url ?? ''
+    );
 
-  const cleanUrl = decodeURIComponent(url.split(/[?#]/)[0] ?? url).replace(/^\.?\//, '');
+  // Stored markdown may contain an old unsigned or expired storage URL. Refresh
+  // it only when this response includes the exact object in its authorized assets.
+  if (/^(?:https?:\/\/|\/(?:api\/)?storage\/objects\/)/i.test(url)) {
+    try {
+      const pathname = new URL(url, 'https://zoj.invalid').pathname;
+      const storagePath = pathname.match(
+        /^\/(?:api\/)?storage\/objects\/(.+)$/,
+      );
+      if (storagePath) {
+        const storageKey = decodeURIComponent(storagePath[1]);
+        return (
+          assets.find((asset) => asset.storage_key === storageKey)
+            ?.download_url ?? url
+        );
+      }
+    } catch {
+      return url;
+    }
+  }
+  if (/^(https?:|data:|blob:|\/\/)/i.test(url)) return url;
+
+  let cleanUrl: string;
+  try {
+    cleanUrl = decodeURIComponent(url.split(/[?#]/)[0] ?? url).replace(
+      /^\.?\//,
+      '',
+    );
+  } catch {
+    return url;
+  }
   const basename = cleanUrl.split('/').pop() ?? cleanUrl;
   const asset = assets.find((item) => {
     const storageKey = item.storage_key.replace(/^\.?\//, '');
@@ -85,7 +116,9 @@ export function resolveAssetSource(url: string, assets: ProblemAsset[]) {
 }
 
 export function packageFileRole(asset: ProblemAsset): PackageFileRole | null {
-  const matched = PACKAGE_FILE_ROLES.find((role) => asset.storage_key.includes(`/package-files/${role.value}/`));
+  const matched = PACKAGE_FILE_ROLES.find((role) =>
+    asset.storage_key.includes(`/package-files/${role.value}/`),
+  );
   return matched?.value ?? null;
 }
 
@@ -114,4 +147,3 @@ export function editorLanguageForJudgeLanguage(language: string) {
   if (language === 'java8') return 'java';
   return 'plaintext';
 }
-

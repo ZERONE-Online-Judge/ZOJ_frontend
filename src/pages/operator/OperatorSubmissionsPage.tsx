@@ -18,12 +18,14 @@ import {
 } from '@/components/operator/OperatorShell';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
 import { listParticipantTeams } from '@/domains/teamParticipation/api';
 import type { ParticipantTeam } from '@/domains/teamParticipation/types';
 import {
   getOperatorSubmission,
+  getOperatorSubmissionFilters,
   listOperatorSubmissionsPage,
   waitOperatorSubmissionStatus,
 } from '@/domains/submissionScoreboard/api';
@@ -42,6 +44,11 @@ import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 import SubmissionStatusBadge from '@/shared/ui/SubmissionStatusBadge';
 
 const SUBMISSIONS_PAGE_SIZE = 20;
+type SubmissionProblem = Pick<
+  Problem,
+  'problem_id' | 'problem_code' | 'title'
+> &
+  Partial<Problem>;
 
 function operatorSubmissionDivisionStorageKey(contestId: string) {
   return `zoj.operator.submissions.division.${contestId}`;
@@ -84,6 +91,16 @@ export default function OperatorSubmissionsPage() {
           <OperatorSubmissionsContent
             contestId={contestId}
             token={session.accessToken}
+            canViewProblems={hasContestPermission(
+              session,
+              contestId,
+              'contest.problem.view',
+            )}
+            canViewParticipants={hasContestPermission(
+              session,
+              contestId,
+              'contest.participant.view',
+            )}
           />
         ) : (
           <PageLayout
@@ -101,9 +118,13 @@ export default function OperatorSubmissionsPage() {
 function OperatorSubmissionsContent({
   contestId,
   token,
+  canViewProblems,
+  canViewParticipants,
 }: {
   contestId: string;
   token: string;
+  canViewProblems: boolean;
+  canViewParticipants: boolean;
 }) {
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
@@ -131,8 +152,13 @@ function OperatorSubmissionsContent({
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const problemsQuery = useQuery({
+    enabled: canViewProblems,
     queryKey: ['operator', 'problems', contestId, queryIdentity],
     queryFn: () => getOperatorProblems(contestId, token),
+  });
+  const filtersQuery = useQuery({
+    queryKey: ['operator', 'submission-filters', contestId, queryIdentity],
+    queryFn: () => getOperatorSubmissionFilters(contestId, token),
   });
   const submissionsQuery = useQuery({
     enabled: Boolean(divisionId),
@@ -167,24 +193,25 @@ function OperatorSubmissionsContent({
     refetchIntervalInBackground: false,
   });
   const teamsQuery = useQuery({
+    enabled: canViewParticipants,
     queryKey: ['operator', 'participants', contestId, queryIdentity],
     queryFn: () => listParticipantTeams(contestId, token),
     placeholderData: keepPreviousData,
   });
 
   const divisions = dashboardQuery.data?.divisions ?? [];
-  const problems = problemsQuery.data ?? [];
+  const problems = filtersQuery.data?.problems ?? [];
   const filteredProblems = divisionId
     ? problems.filter((problem) => problem.division_id === divisionId)
     : problems;
   const filteredTeams = useMemo(
     () =>
       divisionId
-        ? (teamsQuery.data ?? []).filter(
+        ? (filtersQuery.data?.teams ?? []).filter(
             (team) => team.division_id === divisionId,
           )
-        : (teamsQuery.data ?? []),
-    [divisionId, teamsQuery.data],
+        : (filtersQuery.data?.teams ?? []),
+    [divisionId, filtersQuery.data?.teams],
   );
 
   useEffect(() => {
@@ -262,24 +289,30 @@ function OperatorSubmissionsContent({
   ).length;
   const problemById = useMemo(
     () =>
-      new Map(
-        (problemsQuery.data ?? []).map((problem) => [
-          problem.problem_id,
-          problem,
-        ]),
+      new Map<string, SubmissionProblem>(
+        [
+          ...(filtersQuery.data?.problems ?? []),
+          ...(canViewProblems ? (problemsQuery.data ?? []) : []),
+        ].map((problem) => [problem.problem_id, problem]),
       ),
-    [problemsQuery.data],
+    [filtersQuery.data?.problems, canViewProblems, problemsQuery.data],
   );
   const teamById = useMemo(
     () =>
       new Map(
-        (teamsQuery.data ?? []).map((team) => [team.participant_team_id, team]),
+        (canViewParticipants ? (teamsQuery.data ?? []) : []).map((team) => [
+          team.participant_team_id,
+          team,
+        ]),
       ),
-    [teamsQuery.data],
+    [canViewParticipants, teamsQuery.data],
   );
-  const selectedProblemPreview = selectedProblemPreviewId
-    ? (problemById.get(selectedProblemPreviewId) ?? null)
-    : null;
+  const selectedProblemPreview =
+    selectedProblemPreviewId && canViewProblems
+      ? (problemsQuery.data?.find(
+          (problem) => problem.problem_id === selectedProblemPreviewId,
+        ) ?? null)
+      : null;
   const selectedOwnerSubmission = selectedOwnerSubmissionId
     ? (submissions.find(
         (submission) => submission.submission_id === selectedOwnerSubmissionId,
@@ -309,12 +342,14 @@ function OperatorSubmissionsContent({
       <OperatorTabs contestId={contestId} />
 
       {dashboardQuery.error ||
+      filtersQuery.error ||
       problemsQuery.error ||
       submissionsQuery.error ||
       teamsQuery.error ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {formatApiError(
             dashboardQuery.error ||
+              filtersQuery.error ||
               problemsQuery.error ||
               submissionsQuery.error ||
               teamsQuery.error,
@@ -478,6 +513,7 @@ function OperatorSubmissionsContent({
         <TeamDetailModal
           onClose={() => setSelectedOwnerSubmissionId('')}
           submission={selectedOwnerSubmission}
+          canViewParticipants={canViewParticipants}
           team={
             selectedOwnerSubmission.participant_team_id
               ? teamById.get(selectedOwnerSubmission.participant_team_id)
@@ -508,14 +544,14 @@ function displaySubmissionId(submissionId: string) {
 
 function submissionProblem(
   submission: Submission,
-  problemById: Map<string, Problem>,
+  problemById: Map<string, SubmissionProblem>,
 ) {
   return submission.problem ?? problemById.get(submission.problem_id) ?? null;
 }
 
 function submissionProblemLabel(
   submission: Submission,
-  problemById: Map<string, Problem>,
+  problemById: Map<string, SubmissionProblem>,
 ) {
   const problem = submissionProblem(submission, problemById);
   if (problem) return `${problem.problem_code}. ${problem.title}`;
@@ -570,7 +606,7 @@ function OperatorSubmissionsTable({
   onSelectOwner: (submissionId: string) => void;
   onSelectProblem: (problemId: string) => void;
   onSelectSubmission: (submissionId: string) => void;
-  problemById: Map<string, Problem>;
+  problemById: Map<string, SubmissionProblem>;
   submissions: Submission[];
 }) {
   const headerClass = 'border-r border-slate-200 px-4 py-3 last:border-r-0';
@@ -619,7 +655,9 @@ function OperatorSubmissionsTable({
                   </button>
                 </td>
                 <td className={`${cellClass} font-medium`}>
-                  {problem ? (
+                  {problem &&
+                  problemById.get(problem.problem_id)?.statement !==
+                    undefined ? (
                     <button
                       className="zoj-truncate-safe max-w-full text-left text-indigo-700 hover:text-indigo-950"
                       onClick={() => onSelectProblem(problem.problem_id)}
@@ -781,10 +819,12 @@ function TeamDetailModal({
   onClose,
   submission,
   team,
+  canViewParticipants,
 }: {
   onClose: () => void;
   submission: Submission;
   team?: ParticipantTeam;
+  canViewParticipants: boolean;
 }) {
   const isOperatorTest = isOperatorTestSubmission(submission);
   const isMockJudging = isMockJudgingSubmission(submission);
@@ -829,41 +869,47 @@ function TeamDetailModal({
                   label="제출자"
                   value={`${submissionMemberName(submission)} / ${submissionMemberEmail(submission)}`}
                 />
-                <DetailCard
-                  label="팀장"
-                  value={
-                    leader
-                      ? `${leader.name} / ${leader.email}`
-                      : '팀장 정보 없음'
-                  }
-                />
-                <DetailCard label="상태" value={team?.status ?? '-'} />
+                {canViewParticipants ? (
+                  <DetailCard
+                    label="팀장"
+                    value={
+                      leader
+                        ? `${leader.name} / ${leader.email}`
+                        : '팀장 정보 없음'
+                    }
+                  />
+                ) : null}
+                {canViewParticipants ? (
+                  <DetailCard label="상태" value={team?.status ?? '-'} />
+                ) : null}
               </div>
-              <div className="grid gap-2">
-                <p className="text-sm font-semibold text-slate-800">팀원</p>
-                {members.length ? (
-                  members.map((member) => (
-                    <div
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm"
-                      key={member.team_member_id ?? member.email}
-                    >
-                      <span className="min-w-0 font-semibold text-slate-950">
-                        {member.name}
-                      </span>
-                      <span className="zoj-break-anywhere min-w-0 font-medium text-slate-500">
-                        {member.email}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                        {member.role === 'leader' ? '팀장' : '팀원'}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
-                    팀 상세 정보를 불러오지 못했습니다.
-                  </p>
-                )}
-              </div>
+              {canViewParticipants ? (
+                <div className="grid gap-2">
+                  <p className="text-sm font-semibold text-slate-800">팀원</p>
+                  {members.length ? (
+                    members.map((member) => (
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm"
+                        key={member.team_member_id ?? member.email}
+                      >
+                        <span className="min-w-0 font-semibold text-slate-950">
+                          {member.name}
+                        </span>
+                        <span className="zoj-break-anywhere min-w-0 font-medium text-slate-500">
+                          {member.email}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                          {member.role === 'leader' ? '팀장' : '팀원'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
+                      팀 상세 정보를 불러오지 못했습니다.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -882,7 +928,7 @@ function SubmissionDetailModal({
   error: unknown;
   isLoading: boolean;
   onClose: () => void;
-  problemById: Map<string, Problem>;
+  problemById: Map<string, SubmissionProblem>;
   submission?: Submission;
 }) {
   const detail = parseJudgeDetail(submission?.judge_message);
