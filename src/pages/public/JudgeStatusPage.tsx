@@ -1,100 +1,348 @@
+import { type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import PageLayout from '@/components/common/PageLayout';
-import { publicPageText } from '@/data/uiText';
+import { Link } from 'react-router-dom';
+import {
+  ExperienceArrow,
+  ExperienceReveal,
+} from '@/components/common/PublicExperience';
 import { getPublicJudgeStatus } from '@/domains/auditMonitoring/api';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
-import AnimatedNumber from '@/shared/ui/AnimatedNumber';
-import PageNotice from '@/shared/ui/PageNotice';
-
-function policyLabel(policy?: string) {
-  if (!policy) return '-';
-
-  const labels: Record<string, string> = {
-    round_robin: 'Round Robin',
-    least_loaded: 'Least Loaded',
-    fifo: 'FIFO',
-  };
-
-  return labels[policy] ?? policy;
-}
+import './PublicExperience.css';
 
 export default function JudgeStatusPage() {
   const isDocumentVisible = useDocumentVisibility();
-  const statusQuery = useQuery({
+  const query = useQuery({
     queryKey: ['public-judge-status'],
     queryFn: getPublicJudgeStatus,
     refetchInterval: isDocumentVisible ? 5_000 : false,
     refetchIntervalInBackground: false,
   });
-
-  const status = statusQuery.data;
-  const lastUpdatedAt = statusQuery.dataUpdatedAt
-    ? new Date(statusQuery.dataUpdatedAt)
-    : null;
+  const status = query.data;
+  const unavailable = query.isError;
+  const connected = !!status && status.active_node_count > 0 && !unavailable;
+  const busy = connected && status.total_running_jobs > 0;
+  const tone = unavailable
+    ? 'unknown'
+    : !status
+      ? 'loading'
+      : connected
+        ? 'online'
+        : 'offline';
+  const title = unavailable
+    ? '잠시 연결을 확인하고 있어요.'
+    : !status
+      ? '채점 서버를 만나고 있어요.'
+      : !connected
+        ? '채점 서버를 기다리고 있어요.'
+        : busy
+          ? '지금, 코드를 채점하고 있어요.'
+          : status.total_queue_depth > 0
+            ? '코드가 채점 차례를 기다리고 있어요.'
+            : '다음 도전을 기다리고 있어요.';
+  const description = unavailable
+    ? '최신 상태를 가져오지 못했습니다. 잠시 후 자동으로 다시 확인할게요.'
+    : !status
+      ? '서버 연결과 채점 현황을 확인하고 있습니다.'
+      : !connected
+        ? '현재 연결된 채점 서버가 없습니다. 제출한 코드의 상태는 대회 채점현황에서 확인해 주세요.'
+        : busy
+          ? '제출된 코드를 테스트하며 결과를 확인하는 중입니다.'
+          : status.total_queue_depth > 0
+            ? '접수된 코드가 채점을 기다리고 있습니다. 채점이 시작되면 이곳에 표시됩니다.'
+            : '채점 서버가 연결되어 있습니다. 여러분의 새로운 코드를 기다립니다.';
+  const stateLabel = unavailable
+    ? '연결 확인 필요'
+    : !status
+      ? '상태 확인 중'
+      : connected
+        ? '서버 연결됨'
+        : '서버 연결 대기';
+  const metrics = [
+    {
+      label: '연결된 채점 서버',
+      value: status?.active_node_count,
+      unit: '대',
+      description: '현재 연결을 확인한 서버예요.',
+      icon: '▤',
+    },
+    {
+      label: '지금 채점 중',
+      value: status?.total_running_jobs,
+      unit: '건',
+      description: '제출된 코드를 검사하고 있어요.',
+      icon: '</>',
+    },
+    {
+      label: '차례를 기다리는 코드',
+      value: status?.total_queue_depth,
+      unit: '건',
+      description: '채점 시작을 기다리는 제출이에요.',
+      icon: '···',
+    },
+  ];
 
   return (
-    <PageLayout
-      description={publicPageText.judgeStatus.description}
-      eyebrow={publicPageText.judgeStatus.eyebrow}
-      title={publicPageText.judgeStatus.title}
+    <div
+      className={`public-experience judge-experience is-${tone} ${busy ? 'is-busy' : ''}`}
     >
-      {statusQuery.isLoading && !status ? (
-        <PageNotice
-          message={publicPageText.judgeStatus.loading}
-          status="loading"
-        />
-      ) : null}
-      {statusQuery.isError && !status ? (
-        <PageNotice
-          message={publicPageText.judgeStatus.loadError}
-          status="error"
-        />
-      ) : null}
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <article className="rounded-md border border-slate-200 bg-white p-5">
-          <span className="text-sm font-semibold text-slate-500">
-            {publicPageText.judgeStatus.activeNodes}
-          </span>
-          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
-            <AnimatedNumber value={status?.active_node_count} />
-          </strong>
-        </article>
-        <article className="rounded-md border border-slate-200 bg-white p-5">
-          <span className="text-sm font-semibold text-slate-500">
-            {publicPageText.judgeStatus.runningJobs}
-          </span>
-          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
-            <AnimatedNumber value={status?.total_running_jobs} />
-          </strong>
-        </article>
-        <article className="rounded-md border border-slate-200 bg-white p-5">
-          <span className="text-sm font-semibold text-slate-500">
-            {publicPageText.judgeStatus.queueDepth}
-          </span>
-          <strong className="mt-3 block font-mono text-3xl font-black text-slate-950 tabular-nums">
-            <AnimatedNumber value={status?.total_queue_depth} />
-          </strong>
-        </article>
-        <article className="rounded-md border border-slate-200 bg-white p-5">
-          <span className="text-sm font-semibold text-slate-500">
-            {publicPageText.judgeStatus.allocationPolicy}
-          </span>
-          <strong className="mt-3 block text-xl font-black text-slate-950">
-            {policyLabel(status?.allocation_policy)}
-          </strong>
-        </article>
+      <section className="experience-hero judge-hero">
+        <div className="experience-container">
+          <div className="experience-topline">
+            <span>ZOJ / 채점 상태</span>
+            <span className="experience-live">
+              <i /> {stateLabel}
+            </span>
+          </div>
+          <div className="experience-hero-grid">
+            <div className="experience-hero-copy">
+              <p className="experience-eyebrow">BEHIND EVERY ANSWER</p>
+              <h1>
+                당신의 코드가
+                <br />
+                답을 만나는 곳<span className="experience-lime">.</span>
+              </h1>
+              <p className="experience-lead">
+                제출부터 결과까지, 보이지 않는 곳의 움직임.
+                <br />
+                ZOJ 채점 서버의 지금을 만나보세요.
+              </p>
+              <a className="experience-button is-lime" href="#judge-now">
+                지금 상태 살펴보기 <ExperienceArrow />
+              </a>
+            </div>
+            <div className="judge-room" aria-hidden="true">
+              <div className="judge-room-orbit" />
+              <div className="judge-room-label">
+                <span className="experience-live">
+                  <i /> JUDGE ROOM
+                </span>
+                <span>ZOJ</span>
+              </div>
+              <div className="judge-racks">
+                {[0, 1, 2].map((rack) => (
+                  <div
+                    className="judge-rack"
+                    key={rack}
+                    style={{ '--rack': rack } as CSSProperties}
+                  >
+                    <div className="judge-rack-cap">
+                      <span /> <span />
+                    </div>
+                    {[0, 1, 2, 3].map((slot) => (
+                      <div
+                        className="judge-server"
+                        key={slot}
+                        style={
+                          {
+                            '--delay': `${(rack * 4 + slot) * 0.19}s`,
+                          } as CSSProperties
+                        }
+                      >
+                        <span className="judge-vents">
+                          {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <i key={i} />
+                          ))}
+                        </span>
+                        <span className="judge-lights">
+                          <i />
+                          <i />
+                        </span>
+                      </div>
+                    ))}
+                    <div className="judge-rack-foot" />
+                  </div>
+                ))}
+              </div>
+              <div className="judge-room-floor" />
+              <div className="judge-room-caption">
+                <span>
+                  {busy
+                    ? '코드를 확인하는 중'
+                    : connected
+                      ? status.total_queue_depth > 0
+                        ? '접수된 코드가 기다리는 중'
+                        : '다음 제출을 기다리는 중'
+                      : '서버 연결을 확인하는 중'}
+                </span>
+                <span className="judge-signal">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <i
+                      key={i}
+                      style={{ '--delay': `${i * 0.12}s` } as CSSProperties}
+                    />
+                  ))}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="experience-hero-foot">
+            <span>코드 한 줄의 도전도, 끝까지.</span>
+            <span>SCROLL TO EXPLORE ↓</span>
+          </div>
+        </div>
       </section>
 
-      <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-        <span>{publicPageText.judgeStatus.refreshNotice}</span>
-        <time>
-          {publicPageText.judgeStatus.lastUpdated}:{' '}
-          {lastUpdatedAt
-            ? lastUpdatedAt.toLocaleTimeString('ko-KR', { hour12: false })
-            : '-'}
-        </time>
-      </div>
-    </PageLayout>
+      <section
+        className="experience-section experience-container"
+        id="judge-now"
+      >
+        <ExperienceReveal>
+          <div className="experience-section-heading">
+            <div>
+              <p className="experience-eyebrow">RIGHT NOW</p>
+              <h2>채점실의 지금</h2>
+            </div>
+            <p>상태는 5초마다 자동으로 확인합니다.</p>
+          </div>
+          <div className={`judge-status-note is-${tone}`} role="status">
+            <span className="judge-status-symbol">
+              {connected ? '✓' : unavailable ? '!' : '·'}
+            </span>
+            <div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </div>
+          </div>
+          {unavailable && status ? (
+            <p className="experience-stale">
+              아래 수치는 마지막으로 확인한 상태입니다. 연결이 복구되면
+              갱신됩니다.
+            </p>
+          ) : null}
+          <div className="judge-metrics">
+            {metrics.map((metric) => (
+              <article className="judge-metric" key={metric.label}>
+                <div>
+                  <h3>{metric.label}</h3>
+                  <span aria-hidden="true">{metric.icon}</span>
+                </div>
+                <p>
+                  <strong key={metric.value ?? 'loading'}>
+                    {metric.value === undefined
+                      ? '—'
+                      : metric.value.toLocaleString('ko-KR')}
+                  </strong>
+                  <span>{metric.unit}</span>
+                </p>
+                <p>{metric.description}</p>
+              </article>
+            ))}
+          </div>
+          <div className="judge-refresh">
+            <span>
+              <i
+                className={query.isFetching ? 'is-refreshing' : ''}
+                aria-hidden="true"
+              />
+              {query.isFetching
+                ? '새로운 상태를 확인하고 있어요'
+                : '이 화면이 열려 있는 동안 자동으로 갱신해요'}
+            </span>
+            <span>
+              마지막 확인{' '}
+              <time
+                dateTime={
+                  query.dataUpdatedAt
+                    ? new Date(query.dataUpdatedAt).toISOString()
+                    : undefined
+                }
+              >
+                {query.dataUpdatedAt
+                  ? new Date(query.dataUpdatedAt).toLocaleTimeString('ko-KR', {
+                      hour12: false,
+                    })
+                  : '아직 확인 전'}
+              </time>
+            </span>
+            {unavailable ? (
+              <button
+                className="experience-text-link"
+                disabled={query.isFetching}
+                onClick={() => void query.refetch()}
+                type="button"
+              >
+                다시 확인하기 ↻
+              </button>
+            ) : null}
+          </div>
+        </ExperienceReveal>
+      </section>
+
+      <section className="experience-soft-section">
+        <div className="experience-container experience-section">
+          <ExperienceReveal>
+            <div className="experience-section-heading">
+              <div>
+                <p className="experience-eyebrow">A CODE’S JOURNEY</p>
+                <h2>
+                  제출한 코드는
+                  <br />
+                  이렇게 답을 찾아요.
+                </h2>
+              </div>
+              <p>
+                결과를 기다리는 시간에도,
+                <br />
+                채점은 차근차근 진행됩니다.
+              </p>
+            </div>
+            <ol className="judge-journey">
+              {[
+                [
+                  '01',
+                  '코드를 보내면',
+                  '대회 문제 화면에서 언어와 코드를 선택해 제출합니다.',
+                ],
+                [
+                  '02',
+                  '차례를 기다리고',
+                  '접수된 코드는 채점 서버에서 실행할 준비를 합니다.',
+                ],
+                [
+                  '03',
+                  '하나씩 확인해요',
+                  '테스트케이스로 정답과 실행 시간, 메모리를 확인합니다.',
+                ],
+                [
+                  '04',
+                  '결과가 도착해요',
+                  '대회 채점현황에서 내 제출의 판정을 확인할 수 있습니다.',
+                ],
+              ].map(([n, t, d]) => (
+                <li key={n}>
+                  <span>{n}</span>
+                  <h3>{t}</h3>
+                  <p>{d}</p>
+                </li>
+              ))}
+            </ol>
+          </ExperienceReveal>
+        </div>
+      </section>
+      <section className="experience-container experience-section">
+        <ExperienceReveal className="experience-callout">
+          <div>
+            <p className="experience-eyebrow">NEED A HAND?</p>
+            <h2>
+              결과가 궁금하거나,
+              <br />
+              도움이 필요하다면.
+            </h2>
+            <p>
+              개별 제출은 대회 채점현황에서, 이용 중 궁금한 점은 도움말에서
+              확인하세요.
+            </p>
+          </div>
+          <div className="experience-actions">
+            <Link className="experience-button is-dark" to="/contests">
+              대회 목록 <ExperienceArrow />
+            </Link>
+            <Link className="experience-text-link" to="/support?tab=help">
+              채점 도움말 <ExperienceArrow />
+            </Link>
+          </div>
+        </ExperienceReveal>
+      </section>
+    </div>
   );
 }
