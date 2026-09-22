@@ -52,7 +52,9 @@ export default function ContestRoleSelector({
       </p>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {CONTEST_ROLES.filter(
-          (role) => canAssignMaster || role.value !== 'master',
+          (role) =>
+            role.value !== 'owner' &&
+            (canAssignMaster || role.value !== 'master'),
         ).map((role) => (
           <label
             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${value.includes(role.value) ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white hover:border-indigo-200'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}

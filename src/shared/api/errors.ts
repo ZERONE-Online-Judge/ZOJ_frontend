@@ -99,6 +99,10 @@ function apiErrorUserMessage(error: ApiClientError) {
     return '요청한 정보를 찾을 수 없습니다.';
   }
 
+  if (error.code.startsWith('contest_owner_')) {
+    return error.message;
+  }
+
   if (error.code === 'last_operator') {
     return '마지막 대회 운영자는 제거할 수 없습니다.';
   }
@@ -139,7 +143,10 @@ function apiErrorUserMessage(error: ApiClientError) {
     return '입력 파일과 출력 파일 쌍이 맞지 않습니다. .in/.out 파일 구성을 확인해 주세요.';
   }
 
-  if (error.code === 'archive_file_too_large' || error.code === 'archive_too_large') {
+  if (
+    error.code === 'archive_file_too_large' ||
+    error.code === 'archive_too_large'
+  ) {
     return '업로드한 압축 파일 또는 포함된 파일이 너무 큽니다.';
   }
 

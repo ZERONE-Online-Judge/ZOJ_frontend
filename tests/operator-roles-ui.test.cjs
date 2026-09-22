@@ -24,7 +24,7 @@ const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 const h = React.createElement;
 let session, operators, reads, creates, updates, removals;
 let updateError, sessionClears, currentLocation, apiCalls;
-let contestOverrides, settingsChanges;
+let contestOverrides, settingsChanges, transfers, transferError;
 const mocks = {
   '@/shared/unsaved/useUnsavedForm': {
     default: () => ({ formProps: {}, confirm: (callback) => callback() }),
@@ -86,6 +86,35 @@ const mocks = {
       );
       return result;
     },
+    transferContestOwner: async (contestId, token, email) => {
+      transfers.push({ contestId, token, email });
+      if (transferError) throw transferError;
+      const changed = operators
+        .filter(
+          (operator) =>
+            operator.contest_roles.contest.includes('owner') ||
+            operator.email === email,
+        )
+        .map((operator) => ({
+          ...operator,
+          contest_roles: {
+            contest: [operator.email === email ? 'owner' : 'master'],
+          },
+          contest_scopes: {
+            contest:
+              operator.email === email
+                ? ['contest.*', 'contest.owner']
+                : ['contest.*'],
+          },
+          protected_master_contests:
+            operator.email === email ? ['contest'] : [],
+        }));
+      operators = operators.map(
+        (operator) =>
+          changed.find((item) => item.email === operator.email) ?? operator,
+      );
+      return changed;
+    },
     removeContestOperator: async (contestId, email, token) => {
       removals.push({ contestId, email, token });
       return {};
@@ -97,6 +126,13 @@ const mocks = {
   },
   '@/domains/problemManagement/api': { getOperatorProblems: async () => [] },
 };
+mocks['@/domains/identityAccess/sessionStore'].useSessionStore.getState =
+  () => ({
+    generalSession: session,
+    setGeneralSession: (next) => {
+      session = next;
+    },
+  });
 for (const mock of Object.values(mocks))
   if ('default' in mock) mock.__esModule = true;
 const cache = new Map();
@@ -163,9 +199,11 @@ function staff(email, roles, protectedMaster = false) {
     is_service_master: false,
     contest_roles: { contest: roles },
     contest_scopes: {
-      contest: roles.includes('master')
-        ? ['contest.*']
-        : ['contest.problem.review'],
+      contest: roles.includes('owner')
+        ? ['contest.*', 'contest.owner']
+        : roles.includes('master')
+          ? ['contest.*']
+          : ['contest.problem.review'],
     },
     protected_master_contests: protectedMaster ? ['contest'] : [],
   };
@@ -186,6 +224,8 @@ beforeEach(() => {
   apiCalls = [];
   contestOverrides = {};
   settingsChanges = [];
+  transfers = [];
+  transferError = null;
   window.localStorage.removeItem('zoj.scoreboard.updated.contest');
   container = document.createElement('div');
   document.body.append(container);
@@ -630,3 +670,104 @@ for (const [label, scope, page, suffix] of [
     assert.equal(reads, 0);
   });
 }
+
+async function selectOwner(email) {
+  const select = container.querySelector('select');
+  await act(async () => {
+    select.value = email;
+    select.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  await flush();
+}
+function ownerSetup() {
+  setActor(['contest.*', 'contest.owner']);
+  operators = [
+    staff('actor@example.test', ['owner'], true),
+    staff('reviewer@example.test', ['problem_reviewer']),
+  ];
+  session.operatorSession.staff = operators[0];
+  session.operatorContests = [
+    {
+      contest: { contest_id: 'contest' },
+      scopes: ['contest.*', 'contest.owner'],
+    },
+  ];
+}
+
+test('owner delegation requires reviewing the named recipient and updates the former owner session immediately', async () => {
+  ownerSetup();
+  await render();
+  assert.equal(role('대회 총괄'), undefined);
+  assert.equal(
+    operatorCard('actor@example.test').querySelector('button'),
+    null,
+  );
+  assert.equal(button('위임 내용 확인').disabled, true);
+  await selectOwner('reviewer@example.test');
+  assert.equal(transfers.length, 0);
+  await click(button('위임 내용 확인'));
+  assert.match(
+    container.querySelector('[aria-label="총괄 위임 확인"]').textContent,
+    /reviewer@example.test/,
+  );
+  await click(button('취소'));
+  assert.equal(transfers.length, 0);
+  await click(button('위임 내용 확인'));
+  await click(button('총괄 위임 확정'));
+  assert.deepEqual(transfers, [
+    {
+      contestId: 'contest',
+      token: 'staff-token',
+      email: 'reviewer@example.test',
+    },
+  ]);
+  assert.equal(button('총괄 위임 확정'), undefined);
+  assert.match(
+    operatorCard('reviewer@example.test').textContent,
+    /reviewer \/ 총괄/,
+  );
+  assert.match(
+    operatorCard('actor@example.test').textContent,
+    /actor \/ 마스터/,
+  );
+  assert.deepEqual(session.operatorSession.staff.contest_roles.contest, [
+    'master',
+  ]);
+  assert.deepEqual(session.operatorSession.staff.protected_master_contests, []);
+  assert.deepEqual(session.operatorContests[0].scopes, ['contest.*']);
+});
+
+test('ordinary masters can see the owner but have no delegation control', async () => {
+  operators = [
+    staff('owner@example.test', ['owner'], true),
+    staff('actor@example.test', ['master']),
+  ];
+  await render();
+  assert.match(container.textContent, /owner \/ 총괄/);
+  assert.equal(container.querySelector('select'), null);
+  assert.equal(button('위임 내용 확인'), undefined);
+});
+
+test('failed owner transfer preserves the selected recipient and current owner', async () => {
+  ownerSetup();
+  transferError = new ApiClientError(
+    403,
+    'contest_owner_transfer_denied',
+    '현재 대회 총괄만 위임할 수 있습니다.',
+  );
+  await render();
+  await selectOwner('reviewer@example.test');
+  await click(button('위임 내용 확인'));
+  await click(button('총괄 위임 확정'));
+  assert.match(
+    container.querySelector('[role="alert"]').textContent,
+    /현재 대회 총괄만/,
+  );
+  assert.equal(
+    container.querySelector('select').value,
+    'reviewer@example.test',
+  );
+  assert.deepEqual(session.operatorSession.staff.contest_roles.contest, [
+    'owner',
+  ]);
+});

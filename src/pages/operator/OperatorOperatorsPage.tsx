@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import ContestOwnerPanel from '@/components/operator/ContestOwnerPanel';
 import ContestRoleSelector from '@/components/operator/ContestRoleSelector';
 import {
   OperatorAccessGate,
@@ -16,12 +17,14 @@ import {
   listContestOperators,
   removeContestOperator,
   updateContestOperator,
+  transferContestOwner,
 } from '@/domains/contestAdministration/api';
 import {
   CONTEST_ROLES,
   contestRoleTitleForAccount,
   contestRolesForAccount,
   isAssignedContestMaster,
+  isContestOwner,
   type ContestRole,
 } from '@/domains/identityAccess/contestRoles';
 import {
@@ -154,6 +157,61 @@ function OperatorOperatorsContent({
     },
   });
 
+  const transferMutation = useMutation({
+    mutationFn: (email: string) =>
+      transferContestOwner(contestId, token, email),
+    onSuccess: (changed) => {
+      const current = useSessionStore.getState().generalSession;
+      const ownAccount = changed.find(
+        (item) => item.email === current?.operatorSession?.staff.email,
+      );
+      if (
+        current?.operatorSession &&
+        ownAccount &&
+        current.operatorSession.accessToken === token
+      ) {
+        const previous = current.operatorSession.staff;
+        useSessionStore.getState().setGeneralSession({
+          ...current,
+          operatorContests: current.operatorContests.map((item) =>
+            item.contest.contest_id === contestId
+              ? { ...item, scopes: ownAccount.contest_scopes[contestId] }
+              : item,
+          ),
+          operatorSession: {
+            ...current.operatorSession,
+            staff: {
+              ...previous,
+              contest_scopes: {
+                ...previous.contest_scopes,
+                ...ownAccount.contest_scopes,
+              },
+              contest_roles: {
+                ...previous.contest_roles,
+                ...ownAccount.contest_roles,
+              },
+              protected_master_contests: [
+                ...(previous.protected_master_contests ?? []).filter(
+                  (id) => id !== contestId,
+                ),
+                ...(ownAccount.protected_master_contests ?? []),
+              ],
+            },
+          },
+        });
+      }
+      setSavedMessage(
+        '총괄을 위임했습니다. 기존 총괄은 대회 마스터로 남습니다.',
+      );
+      void queryClient.invalidateQueries({ queryKey: ['operator'] });
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'operators', contestId],
+      });
+    },
+  });
+
   const removeOperatorMutation = useMutation({
     mutationFn: (operator: StaffAccount) =>
       removeContestOperator(contestId, operator.email, token),
@@ -166,7 +224,7 @@ function OperatorOperatorsContent({
 
   function handleOperatorSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saveOperatorMutation.isPending) return;
+    if (saveOperatorMutation.isPending || transferMutation.isPending) return;
     if (!canManageStaff) return;
     if (!operatorForm.email.trim() || !operatorForm.displayName.trim()) {
       setOperatorFormError('운영자의 이메일과 이름을 입력하세요.');
@@ -196,14 +254,29 @@ function OperatorOperatorsContent({
           fallback="운영자 정보를 불러오지 못했습니다"
         />
       ) : null}
+      <ContestOwnerPanel
+        contestId={contestId}
+        actorEmail={session.staff.email}
+        operators={operators}
+        loading={operatorsQuery.isPending}
+        busy={
+          transferMutation.isPending ||
+          saveOperatorMutation.isPending ||
+          removeOperatorMutation.isPending
+        }
+        error={transferMutation.error}
+        onTransfer={(email) => transferMutation.mutate(email)}
+      />
       <OperatorPanel
-        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 서비스 관리자가 배정한 대회 마스터는 이 화면에서 변경하거나 제거할 수 없습니다."
+        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 대회 총괄은 별도의 위임으로만 변경할 수 있습니다."
         title={operatorForm.editingEmail ? '운영자 수정' : '운영자 추가'}
       >
         <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <TextInput
-              disabled={saveOperatorMutation.isPending}
+              disabled={
+                saveOperatorMutation.isPending || transferMutation.isPending
+              }
               helperText="이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다."
               label="이메일 (필수)"
               required
@@ -216,7 +289,9 @@ function OperatorOperatorsContent({
             <TextInput
               label="이름 (필수)"
               required
-              disabled={saveOperatorMutation.isPending}
+              disabled={
+                saveOperatorMutation.isPending || transferMutation.isPending
+              }
               onChange={(value) =>
                 setOperatorForm((prev) => ({ ...prev, displayName: value }))
               }
@@ -225,7 +300,9 @@ function OperatorOperatorsContent({
           </div>
           <ContestRoleSelector
             canAssignMaster={canAssignMaster}
-            disabled={saveOperatorMutation.isPending}
+            disabled={
+              saveOperatorMutation.isPending || transferMutation.isPending
+            }
             value={operatorForm.roles}
             onChange={(roles) =>
               setOperatorForm((prev) => ({ ...prev, roles }))
@@ -248,6 +325,7 @@ function OperatorOperatorsContent({
           <button
             className="h-10 w-fit rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
             disabled={
+              transferMutation.isPending ||
               saveOperatorMutation.isPending ||
               !operatorForm.email.trim() ||
               !operatorForm.displayName.trim() ||
@@ -264,7 +342,9 @@ function OperatorOperatorsContent({
           {operatorForm.editingEmail ? (
             <button
               className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
-              disabled={saveOperatorMutation.isPending}
+              disabled={
+                saveOperatorMutation.isPending || transferMutation.isPending
+              }
               onClick={() => {
                 setOperatorForm(emptyOperatorForm);
                 setOperatorFormError('');
@@ -295,10 +375,13 @@ function OperatorOperatorsContent({
             contestId={contestId}
             canAssignMaster={canAssignMaster}
             disabled={
-              saveOperatorMutation.isPending || removeOperatorMutation.isPending
+              transferMutation.isPending ||
+              saveOperatorMutation.isPending ||
+              removeOperatorMutation.isPending
             }
             onEdit={(operator) => {
-              if (saveOperatorMutation.isPending) return;
+              if (saveOperatorMutation.isPending || transferMutation.isPending)
+                return;
               saveOperatorMutation.reset();
               setOperatorFormError('');
               setSavedMessage('');
@@ -380,7 +463,9 @@ function OperatorList({
       {operators.map((operator) => {
         const roles = contestRolesForAccount(operator, contestId);
         const roleTitle = contestRoleTitleForAccount(operator, contestId);
-        const assignedMaster = isAssignedContestMaster(operator, contestId);
+        const assignedMaster =
+          isContestOwner(operator, contestId) ||
+          isAssignedContestMaster(operator, contestId);
         const protectedOperator =
           assignedMaster || (!canAssignMaster && roles.includes('master'));
         return (
@@ -405,7 +490,7 @@ function OperatorList({
             <div className="flex flex-wrap gap-1.5" aria-label="부여된 권한">
               {roles.map((role) => (
                 <span
-                  className={`rounded-md px-2 py-1 text-xs font-medium ${role === 'master' ? 'bg-amber-50 text-amber-800' : 'bg-indigo-50 text-indigo-700'}`}
+                  className={`rounded-md px-2 py-1 text-xs font-medium ${role === 'master' || role === 'owner' ? 'bg-amber-50 text-amber-800' : 'bg-indigo-50 text-indigo-700'}`}
                   key={role}
                 >
                   {CONTEST_ROLES.find((option) => option.value === role)
@@ -416,7 +501,7 @@ function OperatorList({
             {protectedOperator ? (
               <p className="text-xs leading-5 text-slate-500">
                 {assignedMaster
-                  ? '서비스 관리자가 배정한 대회 마스터입니다.'
+                  ? '총괄은 강등하거나 제거할 수 없습니다. 위임 영역에서 다른 운영자에게 넘길 수 있습니다.'
                   : '대회 마스터만 이 운영자의 권한을 관리할 수 있습니다.'}
               </p>
             ) : (

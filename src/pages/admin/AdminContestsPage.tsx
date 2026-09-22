@@ -22,6 +22,7 @@ import { formatDateTime } from '@/shared/lib/dateTime';
 type ContestFormState = {
   organizationName: string;
   operatorEmail: string;
+  operatorDisplayName: string;
   overview: string;
   title: string;
 };
@@ -35,6 +36,7 @@ type OperatorFormState = {
 const emptyContestForm: ContestFormState = {
   organizationName: '',
   operatorEmail: '',
+  operatorDisplayName: '',
   overview: '',
   title: '',
 };
@@ -106,6 +108,9 @@ function AdminContestsContent({ token }: { token: string }) {
     mutationFn: () =>
       createAdminContest(token, {
         operator_email: contestForm.operatorEmail.trim() || undefined,
+        operator_display_name: contestForm.operatorEmail.trim()
+          ? contestForm.operatorDisplayName.trim() || undefined
+          : undefined,
         organization_name: contestForm.organizationName.trim(),
         overview:
           contestForm.overview.trim() ||
@@ -128,9 +133,9 @@ function AdminContestsContent({ token }: { token: string }) {
         display_name: operatorForm.displayName.trim() || undefined,
         email: operatorForm.email.trim(),
       }),
-    onSuccess: () => {
+    onSuccess: (operator) => {
       setOperatorNotice(
-        `${operatorForm.email.trim()} 계정을 대회 마스터로 배정했습니다.`,
+        `${operatorForm.email.trim()} 계정을 대회 ${operator.contest_roles?.[operatorForm.contestId]?.includes('owner') ? '총괄' : '마스터'}로 배정했습니다.`,
       );
       setOperatorForm(emptyOperatorForm);
       setOperatorFormError('');
@@ -297,7 +302,7 @@ function AdminContestsContent({ token }: { token: string }) {
         </AdminPanel>
 
         <AdminPanel
-          description="여기에서 배정하는 계정은 항상 모든 권한을 가진 대회 마스터가 됩니다. 다른 운영자의 이름과 담당 권한은 대회 운영 설정에서 관리합니다."
+          description="처음 배정하는 계정은 대회 총괄, 이후 배정하는 계정은 대회 마스터가 됩니다. 두 역할 모두 대회의 모든 권한을 가집니다. 총괄 변경은 현재 총괄의 위임으로만 가능합니다."
           title="대회 마스터 배정"
         >
           <form
@@ -403,8 +408,8 @@ function AdminContestsContent({ token }: { token: string }) {
           >
             <form className="grid gap-4" onSubmit={handleCreateContest}>
               <p className="text-sm text-slate-500">
-                주최 기관은 필수입니다. 초기 계정은 모든 권한을 가진 대회
-                마스터로 등록되며, 나중에 배정할 수도 있습니다.
+                주최 기관은 필수입니다. 초기 계정은 모든 권한을 가진 대회 총괄로
+                등록되며, 나중에 배정할 수도 있습니다.
               </p>
               <div className="grid gap-4 lg:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -436,7 +441,7 @@ function AdminContestsContent({ token }: { token: string }) {
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                  초기 대회 마스터 이메일 (선택)
+                  초기 대회 총괄 이메일 (선택)
                   <input
                     className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                     onChange={(event) =>
@@ -449,6 +454,24 @@ function AdminContestsContent({ token }: { token: string }) {
                     type="email"
                     value={contestForm.operatorEmail}
                   />
+                </label>
+                <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                  초기 총괄 표시 이름
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    maxLength={120}
+                    placeholder="예: 손동열"
+                    onChange={(event) =>
+                      setContestForm((prev) => ({
+                        ...prev,
+                        operatorDisplayName: event.target.value,
+                      }))
+                    }
+                    value={contestForm.operatorDisplayName}
+                  />
+                  <span className="text-xs font-normal text-slate-500">
+                    이메일과 함께 입력하세요. 비워 두면 이메일을 표시합니다.
+                  </span>
                 </label>
               </div>
               <label className="grid gap-2 text-sm font-semibold text-slate-700">

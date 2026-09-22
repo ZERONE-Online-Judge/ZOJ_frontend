@@ -165,6 +165,7 @@ export function createAdminContest(
     status: string;
     start_at?: string;
     operator_email?: string;
+    operator_display_name?: string;
     title?: string;
     overview?: string;
   },
@@ -197,6 +198,21 @@ export function assignAdminContestOperator(
     {
       method: 'POST',
       body: JSON.stringify(body),
+    },
+  );
+}
+
+export function transferContestOwner(
+  contestId: string,
+  token: string,
+  email: string,
+) {
+  return apiRequest<StaffAccount[]>(
+    `/operator/contests/${contestId}/owner:transfer`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     },
   );
 }

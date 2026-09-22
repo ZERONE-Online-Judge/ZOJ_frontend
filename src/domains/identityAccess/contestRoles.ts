@@ -2,6 +2,12 @@ import type { StaffAccount } from '@/domains/identityAccess/types';
 
 export const CONTEST_ROLES = [
   {
+    value: 'owner',
+    label: '대회 총괄',
+    description:
+      '대회의 모든 권한을 가지며, 대회마다 한 명만 맡습니다. 위임으로만 변경할 수 있습니다.',
+  },
+  {
     value: 'master',
     label: '대회 마스터',
     description:
@@ -74,7 +80,7 @@ export const CONTEST_ROLES = [
 
 export type ContestRole = (typeof CONTEST_ROLES)[number]['value'];
 
-const roleScopes: Record<Exclude<ContestRole, 'master'>, string> = {
+const roleScopes: Record<Exclude<ContestRole, 'master' | 'owner'>, string> = {
   settings_manager: 'contest.settings.manage',
   participants_manager: 'contest.participant.manage',
   posts_manager: 'contest.board.question.manage',
@@ -90,6 +96,7 @@ const roleScopes: Record<Exclude<ContestRole, 'master'>, string> = {
 };
 
 export type ContestRoleTitle =
+  | '총괄'
   | '마스터'
   | '출제자'
   | '운영자'
@@ -101,6 +108,7 @@ export function contestRoleTitle(
 ): ContestRoleTitle | null {
   if (roles.length === 1 && roles[0] === 'participant_preview')
     return '참가자 미리보기';
+  if (roles.includes('owner')) return '총괄';
   if (roles.includes('master')) return '마스터';
   if (roles.includes('problem_author')) return '출제자';
   if (roles.some((role) => role !== 'problem_reviewer')) return '운영자';
@@ -112,6 +120,7 @@ export function contestRoleTitleForScopes(
 ): ContestRoleTitle | null {
   if (scopes.length === 1 && scopes[0] === roleScopes.participant_preview)
     return '참가자 미리보기';
+  if (scopes.includes('contest.owner')) return '총괄';
   if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
     return '마스터';
   const authorScopes = [
@@ -177,10 +186,16 @@ export function contestRolesForAccount(
   const configured = account.contest_roles?.[contestId];
   if (configured) return configured;
   const scopes = account.contest_scopes[contestId] ?? [];
+  if (scopes.includes('contest.owner')) return ['owner'];
   if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
     return ['master'];
   return CONTEST_ROLES.flatMap(({ value }) => {
-    if (value === 'master' || !scopes.includes(roleScopes[value])) return [];
+    if (
+      value === 'owner' ||
+      value === 'master' ||
+      !scopes.includes(roleScopes[value])
+    )
+      return [];
     if (
       value === 'scoreboard_viewer' &&
       scopes.includes(roleScopes.scoreboard_manager)
@@ -200,4 +215,11 @@ export function isAssignedContestMaster(
   contestId: string,
 ) {
   return account.protected_master_contests?.includes(contestId) ?? false;
+}
+
+export function isContestOwner(account: StaffAccount, contestId: string) {
+  return (
+    !account.is_service_master &&
+    contestRolesForAccount(account, contestId).includes('owner')
+  );
 }

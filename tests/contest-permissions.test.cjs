@@ -552,7 +552,7 @@ test('scopes merge contest-list and staff-session access only for the requested 
 test('role labels cover every supported role and preserve configured multi-role assignments', () => {
   assert.deepEqual(
     CONTEST_ROLES.map((role) => role.value),
-    ['master', ...Object.keys(roleScopes)],
+    ['owner', 'master', ...Object.keys(roleScopes)],
   );
   for (const role of Object.keys(roleScopes)) {
     assert.deepEqual(
@@ -580,6 +580,7 @@ test('role labels cover every supported role and preserve configured multi-role 
 
 test('role titles use master, author, operator, reviewer priority for every role pair in either order', () => {
   const titles = {
+    owner: '총괄',
     master: '마스터',
     problem_author: '출제자',
     settings_manager: '운영자',
@@ -593,7 +594,7 @@ test('role titles use master, author, operator, reviewer priority for every role
     audit_viewer: '운영자',
     problem_reviewer: '검수자',
   };
-  const priority = ['마스터', '출제자', '운영자', '검수자'];
+  const priority = ['총괄', '마스터', '출제자', '운영자', '검수자'];
   for (const [left, leftTitle] of Object.entries(titles)) {
     assert.equal(contestRoleTitle([left]), leftTitle);
     for (const [right, rightTitle] of Object.entries(titles)) {
@@ -825,4 +826,14 @@ test('explicit operator session revocation clears prior contest and service mast
     );
     assert.equal(container.querySelector('[data-protected]'), null);
   }
+});
+
+test('owner scopes preserve full master access with a separate owner title', () => {
+  const account = staffWith(['contest.*', 'contest.owner']);
+  assert.deepEqual(contestRolesForAccount(account, 'contest'), ['owner']);
+  assert.equal(
+    contestRoleTitleForScopes(account.contest_scopes.contest),
+    '총괄',
+  );
+  assert.equal(contestRoleTitleForAccount(account, 'contest'), '총괄');
 });
