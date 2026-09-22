@@ -98,7 +98,10 @@ function source(relative) {
   );
   return loaded.exports;
 }
-const Page = source('pages/operator/OperatorSettingsPage.tsx').default;
+const OperatorsPage = source(
+  'pages/operator/OperatorOperatorsPage.tsx',
+).default;
+const SettingsPage = source('pages/operator/OperatorSettingsPage.tsx').default;
 let root, container, client;
 function setActor(scopes) {
   session = {
@@ -162,7 +165,7 @@ async function flush() {
     async () => new Promise((resolve) => global.setTimeout(resolve, 10)),
   );
 }
-async function render() {
+async function render(page = OperatorsPage, suffix = 'operators') {
   await act(async () =>
     root.render(
       h(
@@ -170,13 +173,13 @@ async function render() {
         { client },
         h(
           MemoryRouter,
-          { initialEntries: ['/operator/contests/contest/settings'] },
+          { initialEntries: [`/operator/contests/contest/${suffix}`] },
           h(
             Routes,
             null,
             h(Route, {
-              path: '/operator/contests/:contestId/settings',
-              element: h(Page),
+              path: `/operator/contests/:contestId/${suffix}`,
+              element: h(page),
             }),
           ),
         ),
@@ -256,7 +259,16 @@ test('new operator requires name and roles, allows multiple roles, and treats ma
 
 test('settings manager sees settings and divisions without fetching or exposing staff controls', async () => {
   setActor(['contest.view', 'contest.settings.manage']);
-  await render();
+  await render(SettingsPage, 'settings');
+  assert.ok(button('설정 저장'));
+  assert.ok(button('유형 추가'));
+  assert.equal(button('운영자 추가'), undefined);
+  assert.equal(reads, 0);
+  assert.equal(container.textContent.includes('assigned@example.test'), false);
+});
+
+test('master settings page keeps staff management on its separate tab without fetching operators', async () => {
+  await render(SettingsPage, 'settings');
   assert.ok(button('설정 저장'));
   assert.ok(button('유형 추가'));
   assert.equal(button('운영자 추가'), undefined);
@@ -309,10 +321,37 @@ test('editing preserves email, submits changed name and roles, and protects assi
   assert.deepEqual(removals, []);
 });
 
-test('review-only staff cannot open settings or fetch operator accounts by direct URL', async () => {
-  setActor(['contest.view', 'contest.problem.review']);
-  await render();
-  assert.equal(button('운영자 추가'), undefined);
-  assert.equal(button('설정 저장'), undefined);
-  assert.equal(reads, 0);
-});
+for (const [label, scope, page, suffix] of [
+  [
+    'staff manager cannot open settings',
+    'contest.staff.manage',
+    SettingsPage,
+    'settings',
+  ],
+  [
+    'settings manager cannot open operators',
+    'contest.settings.manage',
+    OperatorsPage,
+    'operators',
+  ],
+  [
+    'review-only staff cannot open settings',
+    'contest.problem.review',
+    SettingsPage,
+    'settings',
+  ],
+  [
+    'review-only staff cannot open operators',
+    'contest.problem.review',
+    OperatorsPage,
+    'operators',
+  ],
+]) {
+  test(`${label} or fetch operator accounts by direct URL`, async () => {
+    setActor(['contest.view', scope]);
+    await render(page, suffix);
+    assert.equal(button('운영자 추가'), undefined);
+    assert.equal(button('설정 저장'), undefined);
+    assert.equal(reads, 0);
+  });
+}

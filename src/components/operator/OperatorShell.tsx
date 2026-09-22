@@ -66,7 +66,13 @@ const operatorTabs = [
     label: operatorNavText.settings,
     path: 'settings',
     icon: SettingsIcon,
-    permission: ['contest.settings.manage', 'contest.staff.manage'],
+    permission: 'contest.settings.manage',
+  },
+  {
+    label: operatorNavText.operators,
+    path: 'operators',
+    icon: TeamIcon,
+    permission: 'contest.staff.manage',
   },
   {
     label: operatorNavText.notices,
@@ -303,14 +309,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
               to={to}
             >
               <Icon />
-              {tab.path === 'settings' &&
-              !hasContestPermission(
-                generalSession,
-                contestId,
-                'contest.settings.manage',
-              )
-                ? '운영자 관리'
-                : tab.label}
+              {tab.label}
               {tab.path === 'notices' && noticeCountLabel ? (
                 <TabCountBadge>{noticeCountLabel}</TabCountBadge>
               ) : null}

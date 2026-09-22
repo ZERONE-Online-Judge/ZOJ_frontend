@@ -26,6 +26,7 @@ export const routeText = {
   operatorProblemReview: '문제 모아보기',
   operatorScoreboard: '대회 운영 스코어보드',
   operatorSettings: '대회 운영 설정',
+  operatorOperators: '운영자 추가',
   operatorSubmissions: '대회 운영 제출',
   operatorAuditLogs: '대회 운영 로그',
   support: '지원 안내',
@@ -83,6 +84,7 @@ export const operatorNavText = {
   problemReview: '문제 모아보기',
   scoreboard: '스코어보드',
   settings: '설정',
+  operators: '운영자 추가',
   submissions: '제출',
   auditLogs: '운영 로그',
 } as const;

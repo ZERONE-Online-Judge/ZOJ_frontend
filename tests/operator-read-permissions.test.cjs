@@ -460,7 +460,7 @@ test('reviewer and submission roles share a home with only their authorized quic
   assert.ok(links.includes('제출 확인'));
   for (const label of [
     '대회 설정',
-    '운영자 관리',
+    '운영자 추가',
     '참가팀 관리',
     '문제 관리',
     '공지 관리',
@@ -475,3 +475,32 @@ test('reviewer and submission roles share a home with only their authorized quic
     ['dashboard'],
   );
 });
+
+for (const [scopes, expectedLinks] of [
+  [['contest.settings.manage'], ['대회 설정']],
+  [['contest.staff.manage'], ['운영자 추가']],
+  [
+    ['contest.settings.manage', 'contest.staff.manage'],
+    ['대회 설정', '운영자 추가'],
+  ],
+]) {
+  test(`home separates settings and operators quick links for ${scopes.join(' + ')}`, async () => {
+    session = withScopes(scopes);
+    await render(HomePage, '');
+    const links = [...container.querySelectorAll('a')].filter(
+      (link) => !link.closest('nav'),
+    );
+    for (const [label, suffix] of [
+      ['대회 설정', 'settings'],
+      ['운영자 추가', 'operators'],
+    ]) {
+      const link = links.find((item) => item.textContent.trim() === label);
+      assert.equal(Boolean(link), expectedLinks.includes(label), label);
+      if (link)
+        assert.equal(
+          link.getAttribute('href'),
+          `/operator/contests/contest/${suffix}`,
+        );
+    }
+  });
+}

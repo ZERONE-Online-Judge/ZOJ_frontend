@@ -82,7 +82,7 @@ const roleTabs = {
   settings_manager: ['', 'settings'],
   participants_manager: ['', 'participants', 'audit-logs'],
   posts_manager: ['', 'notices', 'board'],
-  staff_manager: ['', 'settings'],
+  staff_manager: ['', 'operators'],
   submissions_viewer: ['', 'submissions'],
   scoreboard_viewer: ['', 'scoreboard'],
   scoreboard_manager: ['', 'scoreboard'],
@@ -395,6 +395,29 @@ test('multiple roles combine permissions and navigation without granting unrelat
   );
   await render(h(OperatorTabs, { contestId: 'other' }));
   assert.equal(container.querySelectorAll('nav a').length, 0);
+});
+
+test('settings and staff roles expose separate tabs with operators immediately after settings', async () => {
+  session = forRoles('settings_manager', 'staff_manager');
+  await render();
+  assert.deepEqual(tabs(), ['', 'settings', 'operators']);
+  assert.deepEqual(reads, []);
+  const links = [
+    ...container.querySelectorAll('nav[aria-label="운영자 메뉴"] a'),
+  ];
+  assert.equal(links[2].textContent.trim(), '운영자 추가');
+  assert.equal(
+    hasContestPermission(session, 'contest', 'contest.settings.manage'),
+    true,
+  );
+  assert.equal(
+    hasContestPermission(session, 'contest', 'contest.staff.manage'),
+    true,
+  );
+  assert.equal(
+    hasContestPermission(session, 'contest', 'contest.problem.manage'),
+    false,
+  );
 });
 
 test('permission arrays provide OR access in the helper and the real access gate', async () => {

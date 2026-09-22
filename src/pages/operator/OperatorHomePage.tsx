@@ -135,13 +135,18 @@ function OperatorHomeContent({
           title="운영 작업"
         >
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {can(['contest.settings.manage', 'contest.staff.manage']) ? (
+            {can('contest.settings.manage') ? (
               <OperatorQuickLink
                 icon={<SettingsIcon />}
-                label={
-                  can('contest.settings.manage') ? '대회 설정' : '운영자 관리'
-                }
+                label="대회 설정"
                 to={`/operator/contests/${contestId}/settings`}
+              />
+            ) : null}
+            {can('contest.staff.manage') ? (
+              <OperatorQuickLink
+                icon={<TeamIcon />}
+                label="운영자 추가"
+                to={`/operator/contests/${contestId}/operators`}
               />
             ) : null}
             {can('contest.participant.view') ? (
