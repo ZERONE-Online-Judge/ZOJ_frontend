@@ -130,6 +130,7 @@ function AdminAuditLogsContent({ token }: { token: string }) {
       description="서비스 관리자와 운영자 페이지에서 발생한 변경 작업을 시간순으로 추적합니다."
       eyebrow="Admin Audit"
       title="운영 로그"
+      width="full"
     >
       <AdminTabs />
       <AdminPanel

@@ -135,6 +135,7 @@ function OperatorAuditLogsContent({
       description="이 대회에서 운영자와 서비스 관리자가 수행한 변경 작업을 확인합니다."
       eyebrow="Operator Audit"
       title="운영 로그"
+      width="full"
     >
       <OperatorTabs contestId={contestId} />
       <OperatorPanel
