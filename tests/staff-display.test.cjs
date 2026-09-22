@@ -57,6 +57,13 @@ const question = {
       body: '마스터 답변',
     },
     {
+      contest_answer_id: 'owner',
+      created_by_role: 'operator',
+      created_by_name: '총괄 담당자',
+      created_by_title: '총괄',
+      body: '총괄 답변',
+    },
+    {
       contest_answer_id: 'legacy',
       created_by_role: 'operator',
       created_by_name: '기존 운영진',
@@ -98,6 +105,14 @@ const submissionCases = [
       submitted_by_title: '출제자',
     },
     '손동열 / 출제자',
+  ],
+  [
+    {
+      submission_kind: 'operator_test',
+      submitted_by_name: '총괄 담당자',
+      submitted_by_title: '총괄',
+    },
+    '총괄 담당자 / 총괄',
   ],
   [
     { submission_kind: 'operator_test', submitted_by_name: '기존 운영진' },
@@ -330,6 +345,7 @@ function assertAnswerLabels() {
   for (const label of [
     '손동열 / 출제자',
     '대회 총괄 / 마스터',
+    '총괄 담당자 / 총괄',
     '기존 운영진 / 운영자',
     '검수자',
     '질문자 (글쓴이)',
