@@ -37,9 +37,15 @@ const divisions = [
   { division_id: 'a', name: 'A 유형' },
   { division_id: 'b', name: 'B 유형' },
 ];
-let releases, updateCalls, presentationReads, releaseReads, rejectUpdate;
+let releases,
+  updateCalls,
+  presentationReads,
+  releaseReads,
+  rejectUpdate,
+  customBoards;
 
 function board(divisionId) {
+  if (customBoards[divisionId]) return customBoards[divisionId];
   return {
     division: divisions.find((item) => item.division_id === divisionId),
     release: releases[divisionId],
@@ -178,6 +184,7 @@ beforeEach(() => {
   presentationReads = 0;
   releaseReads = 0;
   rejectUpdate = false;
+  customBoards = {};
   window.localStorage.clear();
   document.body.innerHTML = '';
 });
@@ -387,4 +394,119 @@ test('blocked presentation popup keeps operator controls available and offers a 
   } finally {
     window.open = original;
   }
+});
+
+test('resolver presentation retains team names and moves existing rows as results arrive without controls', async () => {
+  const baseRow = {
+    division: 'A 유형',
+    submission_count: 1,
+    penalty: 40,
+    problem_scores: [
+      {
+        problem_code: 'A',
+        solved: false,
+        attempts: 0,
+        wrong_attempts: 0,
+        pending_attempts: 1,
+        best_status: null,
+      },
+    ],
+  };
+  customBoards.a = {
+    division: divisions[0],
+    problems: [],
+    frozen: true,
+    release: {
+      strategy: 'resolver',
+      mode: 'partial',
+      ranks: [],
+      revealed_count: 0,
+      total_count: 2,
+      resolver: { step: 0, total_steps: 1, pending_count: 1, last_event: null },
+    },
+    rows: [
+      {
+        ...baseRow,
+        team_id: 'alpha',
+        team_name: 'Alpha',
+        rank: 1,
+        solved: 1,
+        problem_scores: [],
+      },
+      { ...baseRow, team_id: 'beta', team_name: 'Beta', rank: 2, solved: 0 },
+    ],
+  };
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  assert.match(display.textContent, /Alpha/);
+  assert.match(display.textContent, /Beta/);
+  assert.match(display.textContent, /\?1/);
+  assert.match(display.textContent, /결과 공개 0 \/ 1/);
+  assert.doesNotMatch(display.textContent, /공개 대기|아직 공개되지 않은 순위/);
+  assert.equal(display.querySelectorAll('button, input, select').length, 0);
+  const beta = display.querySelector('[data-scoreboard-row="beta"]');
+  customBoards.a.rows = [
+    {
+      ...baseRow,
+      team_id: 'beta',
+      team_name: 'Beta',
+      rank: 1,
+      solved: 2,
+      problem_scores: [
+        {
+          ...baseRow.problem_scores[0],
+          solved: true,
+          pending_attempts: 0,
+          best_status: 'accepted',
+        },
+      ],
+    },
+    {
+      ...baseRow,
+      team_id: 'alpha',
+      team_name: 'Alpha',
+      rank: 2,
+      solved: 1,
+      problem_scores: [],
+    },
+  ];
+  customBoards.a.frozen = false;
+  customBoards.a.release.mode = 'all';
+  customBoards.a.release.resolver = {
+    step: 1,
+    total_steps: 1,
+    pending_count: 0,
+    last_event: {
+      team_id: 'beta',
+      team_name: 'Beta',
+      problem_code: 'A',
+      status: 'accepted',
+      from_rank: 2,
+      to_rank: 1,
+    },
+  };
+  await dispatchUpdate();
+  assert.equal(display.querySelector('[data-scoreboard-row="beta"]'), beta);
+  assert.equal(display.querySelector('tbody tr').dataset.scoreboardRow, 'beta');
+  assert.match(display.textContent, /2위 → 1위/);
+  assert.match(display.textContent, /최종 순위/);
+  assert.doesNotMatch(display.textContent, /\?1/);
+  assert.equal(display.querySelectorAll('button, input, select').length, 0);
+  assert.equal(updateCalls.length, 0);
+});
+
+test('selected division reports fully public even while another division is frozen', async () => {
+  releases.a.mode = 'all';
+  releases.a.ranks.forEach((item) => {
+    item.revealed = true;
+  });
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  assert.match(display.textContent, /최종 순위/);
+  assert.match(display.textContent, /공개됨/);
+  assert.doesNotMatch(display.textContent, /프리즈 \/ 공개 진행/);
 });

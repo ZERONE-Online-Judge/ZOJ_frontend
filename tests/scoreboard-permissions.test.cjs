@@ -17,7 +17,7 @@ const { createRoot } = require('react-dom/client');
 const { MemoryRouter, Routes, Route } = require('react-router-dom');
 const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 const h = React.createElement;
-let session, contest, reads, changes, release;
+let session, contest, reads, changes, release, rejectNext;
 const division = { division_id: 'division', name: '일반부' };
 const row = {
   rank: 1,
@@ -99,6 +99,33 @@ const mocks = {
     },
     updateScoreboardRelease: async (contestId, divisionId, token, body) => {
       changes.push({ kind: 'release', contestId, divisionId, token, body });
+      if (release.strategy === 'resolver') {
+        if (body.action === 'next' && rejectNext) {
+          release = { ...release, resolver: { ...release.resolver, step: 1 } };
+          throw new Error('another operator advanced');
+        }
+        release = {
+          ...release,
+          mode: body.action === 'next' ? 'all' : 'partial',
+          resolver: {
+            ...release.resolver,
+            step: body.action === 'next' ? 1 : 0,
+            pending_count: body.action === 'next' ? 0 : 1,
+            last_event:
+              body.action === 'next'
+                ? {
+                    team_id: 'team',
+                    team_name: '확인할 팀',
+                    problem_code: 'A',
+                    status: 'accepted',
+                    from_rank: 2,
+                    to_rank: 1,
+                  }
+                : null,
+          },
+        };
+        return release;
+      }
       release = {
         ...release,
         mode: 'partial',
@@ -165,6 +192,7 @@ beforeEach(() => {
   };
   reads = { dashboard: 0, problems: 0, scoreboard: 0, release: 0 };
   changes = [];
+  rejectNext = false;
   release = {
     mode: 'not_started',
     ranks: [],
@@ -293,4 +321,131 @@ test('staff without scoreboard view cannot load scoreboard data', async () => {
   assert.equal(reads.dashboard, 0);
   assert.equal(reads.scoreboard, 0);
   assert.equal(button('프레젠테이션 팝업'), undefined);
+});
+
+test('viewers see the selected release flow before and after end without management requests', async () => {
+  contest.scoreboard_release_mode = 'resolver';
+  await render();
+  const summary = container.querySelector(
+    '[aria-label="종료 후 순위 공개 방식"]',
+  );
+  assert.match(summary.textContent, /결과 순차 공개 \(리졸버\)/);
+  assert.match(summary.textContent, /대회가 종료되면/);
+  assert.equal(summary.querySelectorAll('li').length, 3);
+  contest = { ...contest, status: 'ended' };
+  await act(async () =>
+    client.invalidateQueries({ queryKey: ['operator', 'dashboard'] }),
+  );
+  await flush();
+  assert.match(summary.textContent, /관리 권한이 있는 운영자/);
+  assert.equal(button('결과 순차 공개 시작'), undefined);
+  assert.equal(reads.release, 0);
+});
+
+test('immediate release has no manual controls or release requests after end', async () => {
+  manage();
+  contest.status = 'ended';
+  contest.scoreboard_release_mode = 'immediate';
+  await render();
+  assert.match(container.textContent, /종료 즉시 전체 공개/);
+  assert.match(container.textContent, /남은 채점과 재채점 결과/);
+  assert.equal(button('개별 순위 공개 시작'), undefined);
+  assert.equal(button('결과 순차 공개 시작'), undefined);
+  assert.equal(button('이 유형 전체 공개'), undefined);
+  assert.equal(reads.release, 0);
+  assert.deepEqual(changes, []);
+});
+
+test('resolver starts then advances with the expected step and displays the revealed outcome', async () => {
+  manage();
+  contest.status = 'ended';
+  contest.scoreboard_release_mode = 'resolver';
+  release.strategy = 'resolver';
+  release.resolver = {
+    step: 0,
+    total_steps: 1,
+    pending_count: 1,
+    last_event: null,
+  };
+  await render();
+  await click(button('결과 순차 공개 시작'));
+  assert.equal(button('1위 공개'), undefined);
+  await click(button('다음 결과 공개'));
+  assert.deepEqual(
+    changes.map((change) => change.body),
+    [{ action: 'start' }, { action: 'next', expected_step: 0 }],
+  );
+  assert.match(container.textContent, /A번 맞았습니다/);
+  assert.match(container.textContent, /2위 → 1위/);
+  assert.equal(container.querySelector('progress').value, 1);
+  assert.equal(button('다음 결과 공개'), undefined);
+});
+
+test('resolver conflict refreshes the current step before the next attempt', async () => {
+  manage();
+  contest.status = 'ended';
+  contest.scoreboard_release_mode = 'resolver';
+  release = {
+    ...release,
+    strategy: 'resolver',
+    mode: 'partial',
+    resolver: {
+      step: 0,
+      total_steps: 2,
+      pending_count: 1,
+      last_event: null,
+    },
+  };
+  rejectNext = true;
+  await render();
+  const initialReads = reads.release;
+  await click(button('다음 결과 공개'));
+  assert.ok(reads.release > initialReads);
+  assert.ok(container.querySelector('[role="alert"]'));
+  rejectNext = false;
+  await click(button('다음 결과 공개'));
+  assert.equal(changes[1].body.expected_step, 1);
+});
+
+test('live freeze override warns managers preparing a gradual presentation', async () => {
+  manage();
+  contest.scoreboard_release_mode = 'resolver';
+  contest.scoreboard_freeze_mode = 'live';
+  await render();
+  assert.match(container.textContent, /프리즈 이후 성적도 이미 공개됩니다/);
+});
+
+test('manual release explains that live scores remain visible until reveal starts after end', async () => {
+  contest.status = 'ended';
+  contest.scoreboard_freeze_mode = 'live';
+  contest.scoreboard_release_mode = 'manual';
+  await render();
+  assert.match(
+    container.textContent,
+    /공개 시작 전까지 프리즈 없이 최신 성적이 표시/,
+  );
+  assert.equal(button('개별 순위 공개 시작'), undefined);
+});
+
+test('reaching the scheduled end reveals presentation controls without a page refresh', async () => {
+  manage();
+  contest.end_at = new Date(Date.now() + 250).toISOString();
+  const originalHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
+  Object.defineProperty(document, 'hidden', {
+    configurable: true,
+    value: false,
+  });
+  try {
+    await render();
+    assert.equal(button('개별 순위 공개 시작'), undefined);
+    await act(
+      async () => new Promise((resolve) => global.setTimeout(resolve, 1050)),
+    );
+    await flush();
+    assert.ok(button('개별 순위 공개 시작'));
+  } finally {
+    if (originalHidden)
+      Object.defineProperty(document, 'hidden', originalHidden);
+    else delete document.hidden;
+  }
 });

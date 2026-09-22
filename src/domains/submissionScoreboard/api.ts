@@ -300,7 +300,11 @@ export function updateScoreboardRelease(
   contestId: string,
   divisionId: string,
   token: string,
-  body: { action: 'start' | 'rank' | 'all'; rank?: number },
+  body: {
+    action: 'start' | 'rank' | 'all' | 'next';
+    rank?: number;
+    expected_step?: number;
+  },
 ) {
   return apiRequest<ScoreboardRelease>(
     `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/release`,

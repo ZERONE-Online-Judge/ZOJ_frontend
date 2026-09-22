@@ -5,6 +5,8 @@ import { OperatorAccessGate } from '@/components/operator/OperatorShell';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorPresentationScoreboard } from '@/domains/submissionScoreboard/api';
 import { subscribeScoreboardUpdates } from '@/domains/submissionScoreboard/presentationSync';
+import useScoreboardRowMotion from '@/domains/submissionScoreboard/useScoreboardRowMotion';
+import { submissionStatusLabel } from '@/domains/submissionScoreboard/status';
 import type {
   OperatorPresentationScoreboardSection,
   ScoreboardProblemScore,
@@ -98,6 +100,17 @@ function penaltyLabel(value?: number | null) {
 }
 
 function PresentationScoreCell({ score }: { score?: ScoreboardProblemScore }) {
+  if (score?.pending_attempts && !score.solved) {
+    return (
+      <span
+        className="inline-flex h-6 min-w-8 items-center justify-center rounded-full bg-amber-200 px-1.5 text-[0.68rem] font-black text-amber-950"
+        title={`미공개 제출 ${score.pending_attempts}건`}
+        aria-label={`미공개 제출 ${score.pending_attempts}건`}
+      >
+        ?{score.pending_attempts}
+      </span>
+    );
+  }
   const label = solvedLabel(score);
   if (!label) {
     return <span className="text-white/20">-</span>;
@@ -124,6 +137,9 @@ function PresentationDivisionBoard({
 }) {
   const problemCodes = useMemo(() => sortedProblemCodes(section), [section]);
   const gridMinWidth = Math.max(560, 380 + problemCodes.length * 48);
+  const bodyRef = useScoreboardRowMotion(section.rows);
+  const resolver = section.release?.resolver;
+  const lastEvent = resolver?.last_event;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-[0.85rem] border border-indigo-300/15 bg-slate-950/55 p-[clamp(0.8rem,1.4vw,1.2rem)] shadow-[0_1.25rem_4rem_rgba(0,0,0,0.28)] backdrop-blur">
@@ -155,6 +171,43 @@ function PresentationDivisionBoard({
         </span>
       </header>
 
+      {section.release?.strategy === 'resolver' &&
+      section.release.mode !== 'not_started' &&
+      resolver ? (
+        <div
+          className="mb-3 rounded-xl border border-violet-300/20 bg-violet-300/10 px-4 py-3"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-xs font-semibold text-violet-200">
+            {section.release.mode === 'all'
+              ? '모든 결과 공개 완료'
+              : `결과 공개 ${resolver.step} / ${resolver.total_steps}`}
+          </p>
+          {lastEvent ? (
+            <p className="mt-1 text-sm font-semibold text-white">
+              {lastEvent.team_name} · {lastEvent.problem_code}번{' '}
+              <span
+                className={
+                  lastEvent.status === 'accepted'
+                    ? 'text-emerald-300'
+                    : 'text-amber-200'
+                }
+              >
+                {submissionStatusLabel(lastEvent.status)}
+              </span>
+              {lastEvent.from_rank !== lastEvent.to_rank
+                ? ` · ${lastEvent.from_rank}위 → ${lastEvent.to_rank}위`
+                : ''}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-white/65">
+              프리즈 성적을 유지한 채 하위 팀부터 결과를 공개합니다.
+            </p>
+          )}
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto">
         <table
           className="w-full border-collapse text-left"
@@ -173,12 +226,13 @@ function PresentationDivisionBoard({
               <th className="w-20 px-3 py-3 text-center">Time</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={bodyRef}>
             {section.rows.map((row) => {
               if (row.is_revealed === false)
                 return (
                   <tr
                     key={row.team_id}
+                    data-scoreboard-row={row.team_id}
                     className="border-b border-white/10 bg-white/[0.03]"
                   >
                     <td className="px-3 py-4 text-lg font-black text-violet-300">
@@ -196,8 +250,9 @@ function PresentationDivisionBoard({
 
               return (
                 <tr
-                  className={`border-b border-white/5 last:border-b-0 ${row.is_revealed ? 'bg-violet-500/15' : 'odd:bg-white/[0.035]'}`}
+                  className={`border-b border-white/5 last:border-b-0 ${lastEvent?.team_id === row.team_id ? 'bg-violet-500/25' : row.is_revealed ? 'bg-violet-500/15' : 'odd:bg-white/[0.035]'}`}
                   key={`${section.division.division_id}-${row.team_id ?? row.team_name}`}
+                  data-scoreboard-row={row.team_id ?? row.team_name}
                 >
                   <td className="px-3 py-2.5 text-[clamp(0.9rem,1.3vw,1.15rem)] font-black text-violet-300">
                     {row.rank}
@@ -206,6 +261,11 @@ function PresentationDivisionBoard({
                     <span className="block truncate text-[clamp(0.8rem,1vw,0.92rem)] font-semibold text-white">
                       {row.team_name}
                     </span>
+                    {row.is_finalized && section.release?.mode !== 'all' ? (
+                      <span className="mt-0.5 block text-[0.6rem] font-medium text-emerald-300">
+                        결과 공개 완료
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-2 py-2.5 text-center text-[clamp(0.9rem,1.15vw,1.05rem)] font-black text-white/65">
                     {row.solved}
@@ -297,7 +357,13 @@ function OperatorScoreboardPresentationContent({
   const visibleSections = selectedSection ? [selectedSection] : sections;
   const titleParts = splitContestTitle(contest?.title);
   const startsAt = contest?.start_at ? new Date(contest.start_at).getTime() : 0;
-  const isBeforeContestStart = Boolean(startsAt && startsAt > now);
+  const isEnded = Boolean(
+    contest &&
+    (['ended', 'finalized', 'archived'].includes(contest.status ?? '') ||
+      (!['draft', 'schedule_tbd'].includes(contest.status ?? '') &&
+        new Date(contest.end_at).getTime() <= now)),
+  );
+  const isBeforeContestStart = !isEnded && Boolean(startsAt && startsAt > now);
   const shellClassName = isBeforeContestStart
     ? 'mx-auto grid min-h-[calc(100vh-clamp(1.5rem,2.8vw,2.8rem))] w-full max-w-[118rem] content-center gap-[clamp(1rem,2vw,2rem)]'
     : 'mx-auto grid w-full max-w-[118rem] gap-[clamp(0.75rem,1.3vw,1.35rem)]';
@@ -398,9 +464,13 @@ function OperatorScoreboardPresentationContent({
                   time={formatDateTime(contest?.freeze_at)}
                   value={
                     contest && new Date(contest.freeze_at).getTime() <= now
-                      ? sections.every((section) => !section.frozen)
+                      ? visibleSections.every((section) => !section.frozen)
                         ? '공개됨'
-                        : '프리즈 / 공개 진행'
+                        : visibleSections.some(
+                              (section) => section.release?.mode === 'partial',
+                            )
+                          ? '결과 공개 중'
+                          : '프리즈 유지'
                       : timeLeftLabel(contest?.freeze_at, now)
                   }
                 />
@@ -408,9 +478,7 @@ function OperatorScoreboardPresentationContent({
                   label="대회 종료"
                   time={formatDateTime(contest?.end_at)}
                   value={
-                    contest && new Date(contest.end_at).getTime() <= now
-                      ? '대회 종료'
-                      : timeLeftLabel(contest?.end_at, now)
+                    isEnded ? '대회 종료' : timeLeftLabel(contest?.end_at, now)
                   }
                 />
               </div>

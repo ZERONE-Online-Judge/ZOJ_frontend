@@ -26,7 +26,10 @@ import type {
   ContestSettingsPatch,
   ContestResourceAccess,
   Division,
+  ScoreboardReleaseMode,
 } from '@/domains/contestAdministration/types';
+import { SCOREBOARD_RELEASE_OPTIONS } from '@/domains/submissionScoreboard/releaseModes';
+import { notifyScoreboardUpdate } from '@/domains/submissionScoreboard/presentationSync';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
@@ -40,6 +43,7 @@ type SettingsForm = {
   overview: string;
   problem_access_after_end: ContestResourceAccess;
   scoreboard_access_after_end: ContestResourceAccess;
+  scoreboard_release_mode: ScoreboardReleaseMode;
   start_at: string;
   status: string;
   submission_access_after_end: ContestResourceAccess;
@@ -94,6 +98,7 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
     overview: contest.overview,
     problem_access_after_end: contestResourceAccess(contest, 'problem'),
     scoreboard_access_after_end: contestResourceAccess(contest, 'scoreboard'),
+    scoreboard_release_mode: contest.scoreboard_release_mode ?? 'manual',
     start_at: dateTimeLocalValue(contest.start_at),
     status,
     submission_access_after_end: contestResourceAccess(contest, 'submission'),
@@ -200,6 +205,7 @@ function OperatorSettingsContent({
     const body: ContestSettingsPatch = {
       problem_access_after_end: form.problem_access_after_end,
       scoreboard_access_after_end: form.scoreboard_access_after_end,
+      scoreboard_release_mode: form.scoreboard_release_mode,
       submission_access_after_end: form.submission_access_after_end,
       board_access_after_end: form.board_access_after_end,
       board_write_after_end: form.board_write_after_end,
@@ -248,6 +254,7 @@ function OperatorSettingsContent({
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'dashboard', contestId],
       });
+      notifyScoreboardUpdate(contestId);
     },
   });
 
@@ -467,6 +474,69 @@ function OperatorSettingsContent({
                     value={settingsForm.overview}
                   />
                 </label>
+                <fieldset
+                  className="grid min-w-0 gap-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 disabled:opacity-75"
+                  disabled={Boolean(contest?.scoreboard_release_locked)}
+                  aria-describedby="scoreboard-release-help"
+                >
+                  <legend className="px-1 text-sm font-semibold text-slate-900">
+                    종료 후 순위 공개 방식
+                  </legend>
+                  <p
+                    id="scoreboard-release-help"
+                    className="text-xs leading-5 text-slate-600"
+                  >
+                    참가자 스코어보드와 프레젠테이션에 같은 방식이 적용됩니다.
+                    발표 조작은 운영자 스코어보드 탭에서 합니다.
+                  </p>
+                  {SCOREBOARD_RELEASE_OPTIONS.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex min-w-0 items-start gap-3 rounded-xl border p-4 transition ${settingsForm.scoreboard_release_mode === option.value ? 'border-indigo-300 bg-white shadow-sm' : 'border-slate-200 bg-white/60'}`}
+                    >
+                      <input
+                        type="radio"
+                        name="scoreboard_release_mode"
+                        value={option.value}
+                        checked={
+                          settingsForm.scoreboard_release_mode === option.value
+                        }
+                        onChange={() =>
+                          setSettingsForm((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  scoreboard_release_mode: option.value,
+                                }
+                              : prev,
+                          )
+                        }
+                        className="mt-1 size-4 shrink-0 accent-indigo-600"
+                      />
+                      <span className="grid min-w-0 gap-1.5">
+                        <strong className="text-sm font-semibold text-slate-900">
+                          {option.label}
+                        </strong>
+                        <span className="text-xs leading-5 text-slate-600">
+                          {option.description}
+                        </span>
+                        <span className="text-xs leading-5 font-medium text-indigo-700">
+                          {option.flow.join(' → ')}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                  <p className="text-xs leading-5 text-slate-600">
+                    {contest?.scoreboard_release_locked
+                      ? '이미 순위 공개를 시작한 유형이 있어 공개 방식을 변경할 수 없습니다.'
+                      : '아래 설정 저장을 누르면 반영됩니다. 순위별·결과 순차 공개는 발표 시작 시 성적을 고정하며, 이후에는 방식을 변경할 수 없습니다.'}
+                  </p>
+                  <p className="rounded-lg bg-white px-3 py-2 text-xs leading-5 text-slate-600">
+                    누가 볼 수 있는지는 아래 ‘자료 공개 범위 → 스코어보드’에서
+                    별도로 정합니다. 순위를 공개해도 열람 범위가 비공개이면
+                    참가자는 볼 수 없습니다.
+                  </p>
+                </fieldset>
                 <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
                   <div className="grid gap-2 md:col-span-2 xl:col-span-3">
                     <h3 className="text-sm font-semibold text-slate-800">
@@ -530,7 +600,7 @@ function OperatorSettingsContent({
                   />
                   <AccessSelect
                     label="스코어보드"
-                    helperText="순위와 팀별 성적의 열람 범위입니다. 프리즈 해제는 스코어보드 화면에서 별도로 관리합니다."
+                    helperText="순위와 팀별 성적을 누가 볼 수 있는지 정합니다. 위에서 선택한 종료 후 순위 공개 방식과 별도로 적용됩니다."
                     onChange={(value) =>
                       setSettingsForm((prev) =>
                         prev

@@ -22,6 +22,7 @@ export type ContestFormatType =
 
 export type ContestResourceAccess = 'private' | 'participants' | 'public';
 export type ScoreboardFreezeMode = 'auto' | 'live' | 'frozen';
+export type ScoreboardReleaseMode = 'manual' | 'immediate' | 'resolver';
 
 export type Contest = {
   contest_id: string;
@@ -45,6 +46,8 @@ export type Contest = {
   notice_access_after_end?: ContestResourceAccess;
   editorial_access_after_end?: ContestResourceAccess;
   scoreboard_freeze_mode?: ScoreboardFreezeMode;
+  scoreboard_release_mode?: ScoreboardReleaseMode;
+  scoreboard_release_locked?: boolean;
   mock_judging_enabled?: boolean;
   participant_progress_visible?: boolean;
   mock_judging_progress_visible?: boolean;
@@ -113,6 +116,7 @@ export type ContestSettingsPatch = Partial<
     | 'notice_access_after_end'
     | 'editorial_access_after_end'
     | 'scoreboard_freeze_mode'
+    | 'scoreboard_release_mode'
     | 'mock_judging_enabled'
     | 'participant_progress_visible'
     | 'mock_judging_progress_visible'

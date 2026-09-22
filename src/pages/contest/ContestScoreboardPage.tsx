@@ -184,6 +184,7 @@ function ContestScoreboardContent({
   const problems = problemsQuery.data ?? [];
   const resolvedDivisionName =
     scoreboardQuery.data?.division.name ?? divisionName;
+  const release = scoreboardQuery.data?.release;
 
   return (
     <ContestPageFrame>
@@ -234,9 +235,23 @@ function ContestScoreboardContent({
         {scoreboardQuery.data?.frozen ? (
           <PageNotice
             message={
-              scoreboardQuery.data.release?.mode === 'partial'
-                ? `순위를 공개하고 있습니다. ${scoreboardQuery.data.release.revealed_count} / ${scoreboardQuery.data.release.total_count}팀 공개`
-                : '현재 공개 스코어보드는 프리즈된 상태입니다.'
+              release?.strategy === 'resolver' && release.mode === 'partial'
+                ? `프리즈 이후 결과를 공개하고 있습니다. ${release.resolver?.step ?? 0} / ${release.resolver?.total_steps ?? 0}건 공개 · 결과에 따라 순위가 이동합니다.`
+                : release?.strategy === 'resolver' && isEnded
+                  ? '순위 발표를 기다리고 있습니다. 프리즈 당시 성적을 표시하며, 물음표는 아직 공개하지 않은 제출입니다.'
+                  : release?.mode === 'partial'
+                    ? `순위를 공개하고 있습니다. ${release.revealed_count} / ${release.total_count}팀 공개`
+                    : '현재 공개 스코어보드는 프리즈된 상태입니다.'
+            }
+            status="ready"
+          />
+        ) : null}
+        {isEnded && release?.mode === 'all' ? (
+          <PageNotice
+            message={
+              release.strategy === 'immediate'
+                ? '대회가 종료되어 전체 성적이 공개되었습니다. 남아 있는 채점 결과는 완료되는 대로 반영됩니다.'
+                : '모든 순위가 공개되었습니다.'
             }
             status="ready"
           />

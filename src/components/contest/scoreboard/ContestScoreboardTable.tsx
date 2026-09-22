@@ -1,4 +1,5 @@
 import ContestScoreboardProblemCell from '@/components/contest/scoreboard/ContestScoreboardProblemCell';
+import useScoreboardRowMotion from '@/domains/submissionScoreboard/useScoreboardRowMotion';
 import type { Problem } from '@/domains/problemManagement/types';
 import type {
   ScoreboardProblemScore,
@@ -57,6 +58,7 @@ export default function ContestScoreboardTable({
   rows,
 }: ContestScoreboardTableProps) {
   const scoreboardProblemScores = scoreboardProblems(rows, problems);
+  const bodyRef = useScoreboardRowMotion(rows);
   const headerCellClassName =
     'border-r border-slate-200 px-5 py-4 last:border-r-0';
   const bodyCellClassName =
@@ -95,11 +97,12 @@ export default function ContestScoreboardTable({
             <th className={`${headerCellClassName} w-32`}>총시간(min)</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef}>
           {rows.map((row) =>
             row.is_revealed === false ? (
               <tr
                 key={row.team_id}
+                data-scoreboard-row={row.team_id}
                 className="border-b border-slate-200 bg-slate-100/70"
               >
                 <td className={`${bodyCellClassName} zoj-score-rank`}>
@@ -115,7 +118,8 @@ export default function ContestScoreboardTable({
             ) : (
               <tr
                 className="border-b border-slate-200 last:border-b-0 odd:bg-slate-50/80"
-                key={`${row.rank}-${row.team_id ?? row.team_name}`}
+                key={row.team_id ?? row.team_name}
+                data-scoreboard-row={row.team_id ?? row.team_name}
               >
                 <td
                   className={`${bodyCellClassName} zoj-score-rank font-semibold`}

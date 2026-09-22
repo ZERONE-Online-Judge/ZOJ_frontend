@@ -1,4 +1,7 @@
-import type { Division } from '@/domains/contestAdministration/types';
+import type {
+  Division,
+  ScoreboardReleaseMode,
+} from '@/domains/contestAdministration/types';
 
 export type JudgeLanguage = 'c99' | 'cpp17' | 'python313' | 'java8';
 
@@ -71,6 +74,7 @@ export type SubmissionCreateRequest = {
 };
 
 export type ScoreboardProblemScore = {
+  pending_attempts?: number;
   problem_id?: string;
   problem_code: string;
   attempts: number;
@@ -98,6 +102,7 @@ export type ScoreboardProblemStat = {
 };
 
 export type ScoreboardRow = {
+  is_finalized?: boolean;
   is_revealed?: boolean;
   rank: number;
   team_id?: string;
@@ -150,15 +155,30 @@ export type OperatorPresentationScoreboardResponse = {
     end_at: string;
     freeze_at: string;
     scoreboard_freeze_mode?: string | null;
+    scoreboard_release_mode?: ScoreboardReleaseMode;
   };
   sections: OperatorPresentationScoreboardSection[];
 };
 
 export type ScoreboardRelease = {
+  strategy?: ScoreboardReleaseMode;
   mode: 'not_started' | 'partial' | 'all';
   ranks: { rank: number; team_count: number; revealed: boolean }[];
   revealed_count: number;
   total_count: number;
+  resolver?: {
+    step: number;
+    total_steps: number;
+    pending_count: number;
+    last_event: {
+      team_id: string;
+      team_name: string;
+      problem_code: string;
+      status: string;
+      from_rank: number;
+      to_rank: number;
+    } | null;
+  } | null;
 };
 
 export type JudgeDetail = {

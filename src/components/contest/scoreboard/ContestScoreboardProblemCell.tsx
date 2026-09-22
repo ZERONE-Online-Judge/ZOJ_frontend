@@ -17,6 +17,18 @@ function scoreLabel(score?: ScoreboardProblemScore) {
 export default function ContestScoreboardProblemCell({
   score,
 }: ContestScoreboardProblemCellProps) {
+  if (score?.pending_attempts && !score.solved) {
+    const description = `미공개 제출 ${score.pending_attempts}건${score.attempts ? ` · 공개된 실패 ${score.attempts}회` : ''}`;
+    return (
+      <span
+        className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-full bg-amber-100 px-1 text-xs font-black text-amber-900"
+        aria-label={description}
+        title={description}
+      >
+        ?{score.pending_attempts}
+      </span>
+    );
+  }
   const label = scoreLabel(score);
   if (!label) return null;
 

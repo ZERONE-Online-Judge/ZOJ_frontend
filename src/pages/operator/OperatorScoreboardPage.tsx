@@ -1,5 +1,5 @@
 import Modal from '@/shared/ui/Modal';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   keepPreviousData,
@@ -28,6 +28,7 @@ import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import { getOperatorProblems } from '@/domains/problemManagement/api';
 import type { Problem } from '@/domains/problemManagement/types';
 import { getOperatorDivisionScoreboard } from '@/domains/submissionScoreboard/api';
+import { scoreboardReleaseOption } from '@/domains/submissionScoreboard/releaseModes';
 import type {
   ScoreboardProblemStat,
   ScoreboardProblemScore,
@@ -564,11 +565,20 @@ function OperatorScoreboardContent({
     useState<ScoreboardRow | null>(null);
   const [presentationPopupBlocked, setPresentationPopupBlocked] =
     useState(false);
+  const [, setClock] = useState(Date.now);
+
+  useEffect(() => {
+    if (!isVisible) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [isVisible]);
 
   const dashboardQuery = useQuery({
     queryKey: ['operator', 'dashboard', contestId, queryIdentity],
     queryFn: () => getOperatorContestDashboard(contestId, token),
     placeholderData: keepPreviousData,
+    refetchInterval: isVisible ? 5_000 : false,
+    refetchIntervalInBackground: false,
   });
   const problemsQuery = useQuery({
     enabled: canReadProblems,
@@ -610,6 +620,9 @@ function OperatorScoreboardContent({
 
   const contest = dashboardQuery.data?.contest;
   const freezeMode = contest?.scoreboard_freeze_mode ?? 'auto';
+  const releaseMode = contest?.scoreboard_release_mode ?? 'manual';
+  const releaseOption = scoreboardReleaseOption(releaseMode);
+  const ended = Boolean(contest && isContestEnded(contest));
   const problems = (canReadProblems ? (problemsQuery.data ?? []) : []).filter(
     (problem) => (divisionId ? problem.division_id === divisionId : true),
   );
@@ -624,14 +637,77 @@ function OperatorScoreboardContent({
   return (
     <PageLayout
       variant="management"
-      description="운영자용 내부 순위입니다. 프리즈 이후에도 live view를 확인할 수 있습니다."
+      description="운영자용 내부 순위입니다. 프리즈 이후에도 최신 채점 결과가 반영됩니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 스코어보드`}
       width="full"
     >
       <OperatorTabs contestId={contestId} />
 
-      {contest && !isContestEnded(contest) ? (
+      {contest ? (
+        <section
+          aria-label="종료 후 순위 공개 방식"
+          className="grid gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-5"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-semibold text-slate-950">
+              종료 후 순위 공개
+            </h2>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700">
+              {releaseOption.label}
+            </span>
+            <span className="text-xs text-slate-500">
+              대회 설정에서 선택한 방식
+            </span>
+          </div>
+          <p className="text-sm leading-6 text-slate-600">
+            {releaseOption.description}
+          </p>
+          <ol className="flex flex-wrap gap-2" aria-label="공개 진행 순서">
+            {releaseOption.flow.map((step, index) => (
+              <li
+                key={step}
+                className="rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+              >
+                <span className="mr-2 font-semibold text-indigo-600">
+                  {index + 1}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+          <p className="text-xs leading-5 text-slate-500">
+            {releaseMode === 'immediate'
+              ? ended
+                ? '종료되어 프리즈가 자동 해제되었습니다. 별도의 공개 조작은 필요하지 않습니다.'
+                : '종료 시각이 되거나 대회 상태를 종료로 바꾸면 자동 공개됩니다.'
+              : ended
+                ? canManage
+                  ? '아래에서 참가 유형을 선택하고 공개를 진행하세요. 남은 채점이 있으면 발표를 시작할 수 없습니다.'
+                  : '스코어보드 관리 권한이 있는 운영자가 유형별로 공개를 진행합니다.'
+                : '대회가 종료되면 아래 순위표 영역에 유형별 발표 조작이 나타납니다.'}{' '}
+            참가자와 프레젠테이션에 함께 반영되며, 프레젠테이션은 결과만
+            표시합니다.
+          </p>
+          {contest.scoreboard_access_after_end === 'private' ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+              종료 후 스코어보드 열람 범위가 비공개입니다. 발표는 프레젠테이션에
+              표시되지만 참가자 페이지에서는 볼 수 없습니다.
+            </p>
+          ) : null}
+          {freezeMode === 'live' && releaseMode !== 'immediate' ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+              {ended
+                ? releaseMode === 'manual'
+                  ? '대회 중 라이브 모드로 운영했습니다. 공개 시작 전까지 프리즈 없이 최신 성적이 표시되며, 개별 순위 공개를 시작하면 팀 정보가 가려집니다.'
+                  : '대회 중 라이브 모드에서 프리즈 이후 성적도 이미 공개되었습니다. 종료 후에는 결과 순차 공개를 위해 프리즈 기준 표가 표시됩니다.'
+                : '라이브 모드에서는 프리즈 이후 성적도 이미 공개됩니다. 순차 발표를 준비한다면 오토로 전환하세요.'}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {contest && !ended ? (
         <ScoreboardFreezeControl
           canManage={canManage}
           disabled={freezeModeMutation.isPending}
@@ -713,7 +789,7 @@ function OperatorScoreboardContent({
             를 선택하세요.
           </p>
         ) : null}
-        {canManage && contest && isContestEnded(contest) && divisionId ? (
+        {canManage && contest && ended && divisionId ? (
           <ScoreboardReleaseControl
             key={divisionId}
             contestId={contestId}
@@ -723,12 +799,13 @@ function OperatorScoreboardContent({
                 ?.name ?? '선택 유형'
             }
             token={token}
+            strategy={releaseMode}
           />
         ) : null}
         {scoreboardQuery.data?.frozen_public_view ? (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-            공개 스코어보드는 프리즈 상태입니다. 이 화면은 운영자 live
-            view입니다.
+            공개 스코어보드는 프리즈 상태입니다. 이 화면은 최신 성적을 보여주는
+            운영자 내부 순위입니다.
           </p>
         ) : null}
         <ContestScoreboardTable

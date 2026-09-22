@@ -24,6 +24,7 @@ const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 const h = React.createElement;
 let session, operators, reads, creates, updates, removals;
 let updateError, sessionClears, currentLocation, apiCalls;
+let contestOverrides, settingsChanges;
 const mocks = {
   '@/shared/unsaved/useUnsavedForm': {
     default: () => ({ formProps: {}, confirm: (callback) => callback() }),
@@ -59,9 +60,15 @@ const mocks = {
         start_at: '2026-10-01T01:00:00Z',
         end_at: '2026-10-01T06:00:00Z',
         freeze_at: '2026-10-01T05:00:00Z',
+        ...contestOverrides,
       },
       divisions: [],
     }),
+    updateContestSettings: async (contestId, token, body) => {
+      settingsChanges.push({ contestId, token, body });
+      contestOverrides = { ...contestOverrides, ...body };
+      return contestOverrides;
+    },
     listContestOperators: async () => {
       reads++;
       return operators;
@@ -177,6 +184,9 @@ beforeEach(() => {
   updateError = null;
   sessionClears = 0;
   apiCalls = [];
+  contestOverrides = {};
+  settingsChanges = [];
+  window.localStorage.removeItem('zoj.scoreboard.updated.contest');
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -401,6 +411,36 @@ test('master settings page keeps staff management on its separate tab without fe
   assert.equal(button('운영자 추가'), undefined);
   assert.equal(reads, 0);
   assert.equal(container.textContent.includes('assigned@example.test'), false);
+});
+
+test('contest settings defaults to manual release and saves the chosen resolver mode', async () => {
+  await render(SettingsPage, 'settings');
+  const choices = container.querySelectorAll(
+    'input[name="scoreboard_release_mode"]',
+  );
+  assert.equal(choices.length, 3);
+  assert.equal([...choices].find((input) => input.checked).value, 'manual');
+  await click(container.querySelector('input[value="resolver"]'));
+  await click(button('설정 저장'));
+  assert.equal(settingsChanges.length, 1);
+  assert.equal(settingsChanges[0].body.scoreboard_release_mode, 'resolver');
+  assert.ok(window.localStorage.getItem('zoj.scoreboard.updated.contest'));
+  assert.match(
+    container.textContent,
+    /열람 범위가 비공개이면 참가자는 볼 수 없습니다/,
+  );
+});
+
+test('a started release disables mode selection but preserves the saved mode', async () => {
+  contestOverrides = {
+    scoreboard_release_mode: 'resolver',
+    scoreboard_release_locked: true,
+  };
+  await render(SettingsPage, 'settings');
+  const selected = container.querySelector('input[value="resolver"]');
+  assert.equal(selected.checked, true);
+  assert.equal(selected.closest('fieldset').disabled, true);
+  assert.match(container.textContent, /공개 방식을 변경할 수 없습니다/);
 });
 
 test('staff manager sees staff controls only and cannot assign or edit masters', async () => {

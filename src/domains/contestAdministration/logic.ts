@@ -33,6 +33,7 @@ export function emptyContest(contestId?: string): Contest {
     notice_access_after_end: 'public',
     editorial_access_after_end: 'private',
     scoreboard_freeze_mode: 'auto',
+    scoreboard_release_mode: 'manual',
     mock_judging_enabled: false,
     participant_progress_visible: true,
     mock_judging_progress_visible: false,
