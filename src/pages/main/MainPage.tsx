@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import ContestListSection from '@/components/main/ContestListSection';
 import HeroSection from '@/components/main/HeroSection';
+import AboutTeaser from '@/components/main/AboutTeaser';
 import NoticeSection from '@/components/main/NoticeSection';
 import { mainPageContent } from '@/data/testContent';
 import { mainPageText } from '@/data/uiText';
@@ -47,6 +48,7 @@ export default function MainPage() {
     <>
       <HeroSection {...hero} />
       <div className="mx-auto my-12 flex w-full max-w-7xl flex-col gap-14 px-4 sm:my-16 sm:gap-18 sm:px-6 lg:my-24 lg:gap-24 lg:px-8">
+        <AboutTeaser />
         <NoticeSection
           isLoading={noticesQuery.isPending}
           notices={noticeItems}

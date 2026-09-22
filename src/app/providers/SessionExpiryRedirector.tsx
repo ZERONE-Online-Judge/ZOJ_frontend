@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   SESSION_EXPIRED_EVENT,
   type SessionExpiredEventDetail,
 } from '@/domains/identityAccess/sessionStorage';
 import { safeLoginRedirectTarget } from '@/shared/lib/loginRedirect';
+import SessionExpiredNotice from '@/components/auth/SessionExpiredNotice';
 
 function loginRedirectPath(currentPath: string) {
   const target = safeLoginRedirectTarget(currentPath);
@@ -16,6 +17,7 @@ function loginRedirectPath(currentPath: string) {
 export default function SessionExpiryRedirector() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [expiredPath, setExpiredPath] = useState<string | null>(null);
 
   useEffect(() => {
     function onSessionExpired(event: Event) {
@@ -24,16 +26,26 @@ export default function SessionExpiryRedirector() {
         detail?.currentPath ??
         `${location.pathname}${location.search}${location.hash}`;
 
-      if (location.pathname === '/login') return;
-
-      navigate(loginRedirectPath(currentPath), { replace: true });
+      setExpiredPath((previous) => previous ?? currentPath);
     }
 
     window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
     return () => {
       window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
     };
-  }, [location.hash, location.pathname, location.search, navigate]);
+  }, [location.hash, location.pathname, location.search]);
 
-  return null;
+  if (expiredPath === null) return null;
+
+  function leave(to: string) {
+    navigate(to, { replace: true });
+    setExpiredPath(null);
+  }
+
+  return (
+    <SessionExpiredNotice
+      onHome={() => leave('/')}
+      onLogin={() => leave(loginRedirectPath(expiredPath))}
+    />
+  );
 }

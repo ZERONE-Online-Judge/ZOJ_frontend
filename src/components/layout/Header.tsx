@@ -31,6 +31,7 @@ export default function Header() {
       actionClassName="flex-nowrap xl:w-auto"
       actions={<HeaderAuthControls loginTo="/login" />}
       ariaLabel="Main navigation"
+      navGapClassName="gap-2 md:gap-5 xl:gap-9"
       navItems={navItems}
     />
   );

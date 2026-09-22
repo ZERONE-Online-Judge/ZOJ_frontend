@@ -27,6 +27,7 @@ const ContestSubmissionsPage = lazy(
   () => import('@/pages/contest/ContestSubmissionsPage'),
 );
 const ContestsPage = lazy(() => import('@/pages/public/ContestsPage'));
+const AboutPage = lazy(() => import('@/pages/public/AboutPage'));
 const JudgeStatusPage = lazy(() => import('@/pages/public/JudgeStatusPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const MainPage = lazy(() => import('@/pages/main/MainPage'));
@@ -83,6 +84,11 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.home,
     path: '/',
     Component: MainPage,
+  },
+  {
+    name: 'ZOJ 소개',
+    path: '/about',
+    Component: AboutPage,
   },
   {
     name: routeText.contests,

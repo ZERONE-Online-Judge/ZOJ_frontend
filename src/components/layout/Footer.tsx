@@ -2,6 +2,7 @@ import backgroundLogoUrl from '@/assets/logos/background-logo.png';
 import { SvgIcon } from '@/utils/Icons';
 
 const footerPolicies = [
+  { label: 'ZOJ 소개', href: '/about' },
   { label: '이용안내', href: '/support' },
   { label: '개인정보처리방침', href: '/support?tab=privacy' },
   { label: '서비스 문의', href: '/support?tab=contact' },
@@ -34,8 +35,8 @@ export default function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-[#f3f6fb]">
       <div className="mx-auto grid w-full max-w-[96rem] gap-12 px-[clamp(1.5rem,5vw,4rem)] py-[clamp(3rem,7vw,6.5rem)]">
-        <section className="grid gap-10 lg:grid-cols-[minmax(16rem,1.05fr)_minmax(24rem,1.2fr)_minmax(11rem,0.55fr)_minmax(10rem,0.5fr)] lg:items-start lg:gap-0">
-          <div className="grid content-start justify-items-start gap-5 lg:min-h-full lg:pr-[clamp(2rem,3vw,4rem)] lg:place-content-center">
+        <section className="grid gap-10 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1.05fr)_minmax(24rem,1.2fr)_minmax(11rem,0.55fr)_minmax(10rem,0.5fr)] xl:items-start xl:gap-0">
+          <div className="grid content-start justify-items-start gap-5 xl:min-h-full xl:place-content-center xl:pr-[clamp(2rem,3vw,4rem)]">
             <div className="flex min-w-0 items-center gap-3">
               <img
                 alt=""
@@ -44,7 +45,7 @@ export default function Footer() {
                 src={backgroundLogoUrl}
               />
               <div className="min-w-0">
-                <p className="zoj-truncate-safe whitespace-nowrap text-[clamp(1rem,1.55vw,1.55rem)] leading-tight font-black tracking-normal text-slate-950">
+                <p className="zoj-truncate-safe text-[clamp(1rem,1.55vw,1.55rem)] leading-tight font-black tracking-normal whitespace-nowrap text-slate-950">
                   Zerone Online Judge
                 </p>
                 <p className="mt-1 text-[clamp(0.8rem,1vw,1rem)] leading-snug font-bold text-slate-500">
@@ -55,7 +56,7 @@ export default function Footer() {
             <div className="pl-[clamp(4.5rem,6vw,5.5rem)]">
               <a
                 aria-label="GitHub 열기"
-                className="inline-flex size-11 items-center justify-center rounded-full bg-white text-slate-950 shadow-[0_0.4rem_1rem_rgba(15,23,42,0.12)] transition hover:-translate-y-0.5 hover:text-zoj-blue hover:shadow-[0_0.7rem_1.25rem_rgba(15,23,42,0.16)]"
+                className="hover:text-zoj-blue inline-flex size-11 items-center justify-center rounded-full bg-white text-slate-950 shadow-[0_0.4rem_1rem_rgba(15,23,42,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_0.7rem_1.25rem_rgba(15,23,42,0.16)]"
                 href="https://github.com/ZERONE-Online-Judge"
                 rel="noreferrer"
                 target="_blank"
@@ -65,7 +66,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <section className="grid gap-7 border-slate-200 lg:border-l lg:px-[clamp(2rem,3vw,4rem)]">
+          <section className="grid gap-7 border-slate-200 xl:border-l xl:px-[clamp(2rem,3vw,4rem)]">
             <h2 className="text-[clamp(1rem,1.15vw,1.15rem)] font-black text-slate-950">
               Team
             </h2>
@@ -79,7 +80,7 @@ export default function Footer() {
                     {person.name}
                   </span>
                   <a
-                    className="zoj-break-anywhere text-xs font-bold text-slate-500 underline-offset-4 transition hover:text-zoj-blue hover:underline"
+                    className="zoj-break-anywhere hover:text-zoj-blue text-xs font-bold text-slate-500 underline-offset-4 transition hover:underline"
                     href={`mailto:${person.email}`}
                   >
                     {person.email}
@@ -89,7 +90,7 @@ export default function Footer() {
             </div>
           </section>
 
-          <section className="grid content-start gap-7 border-slate-200 lg:border-l lg:px-[clamp(2rem,3vw,3.25rem)]">
+          <section className="grid content-start gap-7 border-slate-200 xl:border-l xl:px-[clamp(2rem,3vw,3.25rem)]">
             <h2 className="text-[clamp(1rem,1.15vw,1.15rem)] font-black text-slate-950">
               Service
             </h2>
@@ -97,7 +98,7 @@ export default function Footer() {
               {footerPolicies.map((policy, index) => (
                 <a
                   className={[
-                    'inline-flex items-center justify-between gap-4 text-sm font-black text-slate-500 transition hover:text-zoj-blue',
+                    'hover:text-zoj-blue inline-flex items-center justify-between gap-4 text-sm font-black text-slate-500 transition',
                     index === 0 ? 'text-[#7b61ff]' : '',
                   ].join(' ')}
                   href={policy.href}
@@ -115,12 +116,12 @@ export default function Footer() {
             </nav>
           </section>
 
-          <section className="grid content-start gap-7 border-slate-200 lg:border-l lg:pl-[clamp(2rem,3vw,3.25rem)]">
+          <section className="grid content-start gap-7 border-slate-200 xl:border-l xl:pl-[clamp(2rem,3vw,3.25rem)]">
             <h2 className="text-[clamp(1rem,1.15vw,1.15rem)] font-black text-slate-950">
               Links
             </h2>
             <a
-              className="text-sm font-black text-slate-500 underline-offset-4 transition hover:text-zoj-blue hover:underline"
+              className="hover:text-zoj-blue text-sm font-black text-slate-500 underline-offset-4 transition hover:underline"
               href="https://github.com/ZERONE-Online-Judge"
               rel="noreferrer"
               target="_blank"
