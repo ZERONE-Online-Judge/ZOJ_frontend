@@ -258,7 +258,11 @@ function ContestScoreboardContent({
         ) : null}
 
         {canViewScoreboard ? (
-          <ContestScoreboardTable problems={problems} rows={rows} />
+          <ContestScoreboardTable
+            problems={problems}
+            release={release}
+            rows={rows}
+          />
         ) : null}
 
         {canViewScoreboard &&

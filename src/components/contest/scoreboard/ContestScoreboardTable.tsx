@@ -1,14 +1,17 @@
 import ContestScoreboardProblemCell from '@/components/contest/scoreboard/ContestScoreboardProblemCell';
+import ScoreboardMedal from '@/components/contest/scoreboard/ScoreboardMedal';
 import useScoreboardRowMotion from '@/domains/submissionScoreboard/useScoreboardRowMotion';
 import type { Problem } from '@/domains/problemManagement/types';
 import type {
   ScoreboardProblemScore,
+  ScoreboardRelease,
   ScoreboardRow,
 } from '@/domains/submissionScoreboard/types';
 
 type ContestScoreboardTableProps = {
   onSelectPenaltyBreakdown?: (row: ScoreboardRow) => void;
   problems?: Problem[];
+  release?: ScoreboardRelease | null;
   rows: ScoreboardRow[];
 };
 
@@ -55,6 +58,7 @@ function submissionCount(row: ScoreboardRow) {
 export default function ContestScoreboardTable({
   onSelectPenaltyBreakdown,
   problems = [],
+  release,
   rows,
 }: ContestScoreboardTableProps) {
   const scoreboardProblemScores = scoreboardProblems(rows, problems);
@@ -131,7 +135,10 @@ export default function ContestScoreboardTable({
                 <td
                   className={`${bodyCellClassName} zoj-score-team font-semibold`}
                 >
-                  {row.team_name}
+                  <span className="flex items-center gap-2">
+                    <span>{row.team_name}</span>
+                    <ScoreboardMedal release={release} row={row} />
+                  </span>
                 </td>
                 <td className={`${bodyCellClassName} font-bold`}>
                   {row.solved}개

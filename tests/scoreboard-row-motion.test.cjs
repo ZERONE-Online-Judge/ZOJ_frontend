@@ -66,11 +66,13 @@ function row(id, rank) {
     problem_scores: [],
   };
 }
-async function mount(rows) {
+async function mount(rows, release) {
   const element = document.createElement('div');
   document.body.append(element);
   root = createRoot(element);
-  await act(async () => root.render(React.createElement(Table, { rows })));
+  await act(async () =>
+    root.render(React.createElement(Table, { rows, release })),
+  );
   return element;
 }
 for (const reduced of [false, true])
@@ -152,4 +154,99 @@ test('unrevealed submissions are visibly pending until a published result arrive
   );
   assert.doesNotMatch(element.textContent, /\?2/);
   assert.match(element.textContent, /✓/);
+});
+
+function medalsIn(element) {
+  return [...element.querySelectorAll('td.zoj-score-team svg[role="img"]')].map(
+    (medal) => ({
+      team: medal.closest('tr').dataset.scoreboardRow,
+      label: medal.getAttribute('aria-label'),
+    }),
+  );
+}
+
+test('podium medals stay hidden before release, including finalized resolver teams', async () => {
+  const rows = [1, 2, 3].map((rank) => ({
+    ...row(`team-${rank}`, rank),
+    is_revealed: true,
+    is_finalized: true,
+  }));
+  const element = await mount(rows);
+  assert.deepEqual(medalsIn(element), []);
+  for (const strategy of ['manual', 'immediate', 'resolver']) {
+    await act(async () =>
+      root.render(
+        React.createElement(Table, {
+          rows,
+          release: { strategy, mode: 'not_started' },
+        }),
+      ),
+    );
+    assert.deepEqual(medalsIn(element), []);
+  }
+  await act(async () =>
+    root.render(
+      React.createElement(Table, {
+        rows,
+        release: { strategy: 'resolver', mode: 'partial' },
+      }),
+    ),
+  );
+  assert.deepEqual(medalsIn(element), []);
+});
+
+test('manual rank release shows only revealed podium medals beside team names', async () => {
+  const rows = [1, 2, 3, 4].map((rank) => ({
+    ...row(`team-${rank}`, rank),
+    is_revealed: rank >= 3,
+  }));
+  const element = await mount(rows, { strategy: 'manual', mode: 'partial' });
+  assert.deepEqual(medalsIn(element), [
+    { team: 'team-3', label: '3위 동메달' },
+  ]);
+  rows[1].is_revealed = true;
+  // Older release responses omit strategy; their release mode is manual.
+  await act(async () =>
+    root.render(
+      React.createElement(Table, { rows, release: { mode: 'partial' } }),
+    ),
+  );
+  assert.deepEqual(medalsIn(element), [
+    { team: 'team-2', label: '2위 은메달' },
+    { team: 'team-3', label: '3위 동메달' },
+  ]);
+});
+
+test('fully released ranks award gold, silver and bronze and preserve tied ranks', async () => {
+  const rows = [
+    row('gold', 1),
+    row('silver', 2),
+    row('bronze', 3),
+    row('fourth', 4),
+  ];
+  // Immediate release rows do not have an is_revealed flag.
+  const element = await mount(rows, { strategy: 'immediate', mode: 'all' });
+  assert.deepEqual(medalsIn(element), [
+    { team: 'gold', label: '1위 금메달' },
+    { team: 'silver', label: '2위 은메달' },
+    { team: 'bronze', label: '3위 동메달' },
+  ]);
+  await act(async () =>
+    root.render(
+      React.createElement(Table, {
+        rows: [
+          row('gold', 1),
+          row('silver-a', 2),
+          row('silver-b', 2),
+          row('fourth', 4),
+        ],
+        release: { strategy: 'manual', mode: 'all' },
+      }),
+    ),
+  );
+  assert.deepEqual(medalsIn(element), [
+    { team: 'gold', label: '1위 금메달' },
+    { team: 'silver-a', label: '2위 은메달' },
+    { team: 'silver-b', label: '2위 은메달' },
+  ]);
 });

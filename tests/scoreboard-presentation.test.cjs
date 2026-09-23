@@ -273,6 +273,7 @@ test('ended presentation displays the selected division without any release cont
   assert.equal(releaseReads, 0);
   assert.equal(updateCalls.length, 0);
   assert.match(display.textContent, /공개 대기/);
+  assert.equal(display.querySelectorAll('svg[role="img"]').length, 0);
 });
 
 test('operator rank release refreshes a separate presentation client and leaves other ranks hidden', async () => {
@@ -307,9 +308,16 @@ test('operator rank release refreshes a separate presentation client and leaves 
   assert.equal(display.querySelector('h1'), displayTitle);
   assert.equal(display.querySelectorAll('button, select, input').length, 0);
   assert.equal(releases.b.revealed_count, 0);
+  assert.equal(
+    display.querySelector('svg[role="img"]').getAttribute('aria-label'),
+    '2위 은메달',
+  );
+  assert.equal(display.querySelectorAll('svg[role="img"]').length, 1);
 });
 
 test('presentation without a division filter displays all divisions and ignores other contests', async () => {
+  releases.a.ranks[0].revealed = true;
+  releases.a.revealed_count = 1;
   const display = await renderPage(
     Presentation,
     '/operator/contests/contest/scoreboard/presentation',
@@ -320,6 +328,16 @@ test('presentation without a division filter displays all divisions and ignores 
   await dispatchUpdate('another-contest');
   assert.equal(presentationReads, readsBeforeUpdate);
   assert.equal(display.querySelectorAll('button, select, input').length, 0);
+  assert.equal(display.querySelectorAll('svg[role="img"]').length, 1);
+  assert.equal(
+    display.querySelector('svg[role="img"]').closest('tr').dataset
+      .scoreboardRow,
+    'a-1',
+  );
+  assert.equal(
+    display.querySelector('svg[role="img"]').getAttribute('aria-label'),
+    '1위 금메달',
+  );
 });
 
 test('failed release does not broadcast or reveal ranks', async () => {
@@ -439,6 +457,8 @@ test('resolver presentation retains team names and moves existing rows as result
         team_id: 'alpha',
         team_name: 'Alpha',
         rank: 1,
+        is_finalized: true,
+        is_revealed: true,
         solved: 1,
         problem_scores: [],
       },
@@ -453,6 +473,7 @@ test('resolver presentation retains team names and moves existing rows as result
   assert.match(display.textContent, /Beta/);
   assert.match(display.textContent, /\?1/);
   assert.match(display.textContent, /결과 공개 0 \/ 1/);
+  assert.equal(display.querySelectorAll('svg[role="img"]').length, 0);
   assert.doesNotMatch(display.textContent, /공개 대기|아직 공개되지 않은 순위/);
   assert.equal(display.querySelectorAll('button, input, select').length, 0);
   const beta = display.querySelector('[data-scoreboard-row="beta"]');
@@ -501,6 +522,16 @@ test('resolver presentation retains team names and moves existing rows as result
   assert.equal(display.querySelector('tbody tr').dataset.scoreboardRow, 'beta');
   assert.match(display.textContent, /2위 → 1위/);
   assert.match(display.textContent, /최종 순위/);
+  assert.equal(
+    beta.querySelector('svg[role="img"]').getAttribute('aria-label'),
+    '1위 금메달',
+  );
+  assert.equal(
+    display
+      .querySelector('[data-scoreboard-row="alpha"] svg[role="img"]')
+      .getAttribute('aria-label'),
+    '2위 은메달',
+  );
   assert.doesNotMatch(display.textContent, /\?1/);
   assert.equal(display.querySelectorAll('button, input, select').length, 0);
   assert.equal(updateCalls.length, 0);

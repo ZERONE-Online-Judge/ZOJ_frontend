@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { OperatorAccessGate } from '@/components/operator/OperatorShell';
+import ScoreboardMedal from '@/components/contest/scoreboard/ScoreboardMedal';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorPresentationScoreboard } from '@/domains/submissionScoreboard/api';
 import { subscribeScoreboardUpdates } from '@/domains/submissionScoreboard/presentationSync';
@@ -261,8 +262,11 @@ function PresentationDivisionBoard({
                     {row.rank}
                   </td>
                   <td className="max-w-64 px-3 py-2.5">
-                    <span className="block truncate text-[clamp(0.8rem,1vw,0.92rem)] font-semibold text-white">
-                      {row.team_name}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[clamp(0.8rem,1vw,0.92rem)] font-semibold text-white">
+                        {row.team_name}
+                      </span>
+                      <ScoreboardMedal release={section.release} row={row} />
                     </span>
                     {row.is_finalized && section.release?.mode !== 'all' ? (
                       <span className="mt-0.5 block text-[0.6rem] font-medium text-emerald-300">
