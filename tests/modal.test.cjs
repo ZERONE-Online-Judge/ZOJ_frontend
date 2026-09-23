@@ -228,3 +228,72 @@ test('confirmation waits for an explicit choice, supports cancel, and settles on
   await act(async () => root.render(null));
   assert.equal(await promise, false);
 });
+
+const { default: ModalDialog, ModalButton } = source(
+  'shared/ui/ModalDialog.tsx',
+);
+test('shared dialog connects its heading and description and keeps footer actions operable', async () => {
+  let closed = 0,
+    applied = 0;
+  await act(async () =>
+    root.render(
+      h(
+        ModalDialog,
+        {
+          title: '변경 확인',
+          description: '설정 변경 내용을 확인해 주세요.',
+          onClose: () => closed++,
+          footer: h(
+            ModalButton,
+            { tone: 'primary', onClick: () => applied++ },
+            '적용',
+          ),
+        },
+        h('p', null, '변경된 설정'),
+      ),
+    ),
+  );
+  const dialog = document.querySelector('dialog');
+  assert.equal(
+    document.getElementById(dialog.getAttribute('aria-labelledby')).textContent,
+    '변경 확인',
+  );
+  assert.equal(
+    document.getElementById(dialog.getAttribute('aria-describedby'))
+      .textContent,
+    '설정 변경 내용을 확인해 주세요.',
+  );
+  await act(async () => document.querySelector('footer button').click());
+  assert.equal(applied, 1);
+  await act(async () =>
+    document.querySelector('button[aria-label="닫기"]').click(),
+  );
+  assert.equal(closed, 1);
+});
+
+test('blocking shared dialog exposes only explicit actions and still prevents Escape dismissal', async () => {
+  let completed = 0;
+  await act(async () =>
+    root.render(
+      h(
+        ModalDialog,
+        {
+          title: '연결이 종료되었습니다',
+          footer: h(
+            ModalButton,
+            { onClick: () => completed++ },
+            '메인으로 돌아가기',
+          ),
+        },
+        '다시 로그인해 주세요.',
+      ),
+    ),
+  );
+  assert.equal(document.querySelector('button[aria-label="닫기"]'), null);
+  const cancel = new dom.window.Event('cancel', { cancelable: true });
+  await act(async () => document.querySelector('dialog').dispatchEvent(cancel));
+  assert.equal(cancel.defaultPrevented, true);
+  assert.equal(completed, 0);
+  await act(async () => document.querySelector('footer button').click());
+  assert.equal(completed, 1);
+});

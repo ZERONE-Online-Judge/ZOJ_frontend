@@ -2,6 +2,7 @@
 @import 'tailwindcss';
 @import './styles/design-tokens.css';
 @import './components/common/ManagementCards.css';
+@import './shared/ui/Modal.css';
 
 @theme {
   --color-zoj-blue: var(--zoj-accent);
@@ -384,101 +385,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
-  .zoj-dialog {
-    --zoj-modal-height: calc(100dvh - 1rem);
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100dvh;
-    max-width: none;
-    max-height: none;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--color-slate-900);
-    overflow: hidden;
-    outline: none;
-  }
-
-  .zoj-dialog::backdrop {
-    background: rgb(15 23 42 / 0.45);
-    backdrop-filter: blur(3px);
-  }
-
-  .zoj-modal-backdrop {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(0.5rem, env(safe-area-inset-top))
-      max(0.5rem, env(safe-area-inset-right))
-      max(0.5rem, env(safe-area-inset-bottom))
-      max(0.5rem, env(safe-area-inset-left));
-  }
-
-  .zoj-modal-shell,
-  .zoj-modal-card {
-    width: 100%;
-    min-width: 0;
-    max-height: var(--zoj-modal-height);
-    overflow: hidden;
-    border: 1px solid var(--zoj-border);
-    border-radius: var(--zoj-radius-card);
-    background: white;
-    box-shadow: 0 24px 80px rgb(15 23 42 / 0.2);
-    animation: zoj-pop-in 160ms ease-out;
-  }
-
-  .zoj-modal-card {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .zoj-modal-shell.h-full {
-    height: min(54rem, var(--zoj-modal-height));
-  }
-
-  .zoj-modal-shell > header {
-    background: var(--zoj-surface);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    padding: 1rem 1.25rem;
-    gap: 0.75rem;
-  }
-
-  .zoj-modal-shell > header h2 {
-    font-size: 1.125rem;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-  }
-
-  .zoj-modal-shell > header > button {
-    flex-shrink: 0;
-  }
-
-  .zoj-modal-drawer {
-    justify-content: flex-end;
-    padding: 0;
-  }
-
-  .zoj-modal-drawer > aside {
-    height: 100dvh;
-    padding-bottom: env(safe-area-inset-bottom);
-    animation: zoj-drawer-in 180ms ease-out;
-  }
-
-  @media (min-width: 640px) {
-    .zoj-dialog {
-      --zoj-modal-height: calc(100dvh - 3rem);
-    }
-    .zoj-modal-backdrop:not(.zoj-modal-drawer) {
-      padding: 1.5rem;
-    }
-  }
 }
 
 @media (hover: hover) {
@@ -637,23 +543,6 @@
     .zoj-management-panel > header {
       flex-direction: column;
       align-items: stretch;
-    }
-
-    .zoj-modal-shell > header {
-      padding: 0.875rem 1rem;
-    }
-
-    .zoj-modal-shell > header h2 {
-      font-size: 1rem;
-    }
-
-    .zoj-modal-shell > header > div > p[class*='uppercase'] {
-      display: none;
-    }
-
-    .zoj-modal-shell > .p-5,
-    .zoj-modal-drawer > aside > :is(header, footer, div) {
-      padding: 1rem;
     }
   }
 }

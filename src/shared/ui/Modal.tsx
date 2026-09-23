@@ -5,6 +5,7 @@ type ModalProps = {
   children: ReactNode;
   'aria-label'?: string;
   'aria-labelledby'?: string;
+  'aria-describedby'?: string;
   onClose?: () => void;
   drawer?: boolean;
 };

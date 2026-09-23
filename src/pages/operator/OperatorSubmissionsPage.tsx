@@ -1,5 +1,5 @@
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
-import Modal from '@/shared/ui/Modal';
+import ModalDialog from '@/shared/ui/ModalDialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -824,30 +824,23 @@ function ProblemPreviewModal({
   problem: Problem;
 }) {
   return (
-    <Modal aria-label="문제 미리보기" onClose={onClose}>
-      <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
-            <p className="text-xs font-semibold text-indigo-600 uppercase">
-              Problem preview
-            </p>
-            <h2 className="text-xl font-semibold text-slate-950">
-              {problem.problem_code}. {problem.title}
-            </h2>
-          </div>
-          <button
-            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-            type="button"
-          >
-            닫기
-          </button>
-        </header>
-        <div className="min-h-0 overflow-y-auto">
-          <ProblemStatementPanel problem={problem} />
-        </div>
-      </section>
-    </Modal>
+    <ModalDialog
+      aria-label="문제 미리보기"
+      onClose={onClose}
+      title={
+        <>
+          {problem.problem_code}. {problem.title}
+        </>
+      }
+      eyebrow="문제 미리보기"
+      size="xl"
+      fill
+      customBody
+    >
+      <div className="min-h-0 overflow-y-auto">
+        <ProblemStatementPanel problem={problem} />
+      </div>
+    </ModalDialog>
   );
 }
 
@@ -869,91 +862,79 @@ function TeamDetailModal({
   const leader = members.find((member) => member.role === 'leader');
 
   return (
-    <Modal aria-label="팀 정보" onClose={onClose}>
-      <section className="zoj-modal-shell grid max-w-2xl grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-indigo-600 uppercase">
-              Team account
-            </p>
-            <h2 className="zoj-break-anywhere text-xl font-semibold text-slate-950">
-              {submissionOwner(submission)}
-            </h2>
-          </div>
-          <button
-            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-            type="button"
-          >
-            닫기
-          </button>
-        </header>
-        <div className="min-h-0 overflow-y-auto p-5">
-          {isOperatorTest || isMockJudging || isPreview ? (
-            <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-medium text-indigo-700">
-              {isPreview
-                ? '참가자 미리보기 화면에서 생성한 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'
-                : isMockJudging
-                  ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
-                  : '문제 모아보기 또는 문제 관리에서 생성한 검수·테스트 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'}
-            </p>
-          ) : (
-            <div className="grid gap-5">
-              <div className="grid gap-3 md:grid-cols-2">
-                <DetailCard
-                  label="팀 이름"
-                  value={team?.team_name ?? submissionOwner(submission)}
-                />
-                <DetailCard
-                  label="제출자"
-                  value={`${submissionMemberName(submission)} / ${submissionMemberEmail(submission)}`}
-                />
-                {canViewParticipants ? (
-                  <DetailCard
-                    label="팀장"
-                    value={
-                      leader
-                        ? `${leader.name} / ${leader.email}`
-                        : '팀장 정보 없음'
-                    }
-                  />
-                ) : null}
-                {canViewParticipants ? (
-                  <DetailCard label="상태" value={team?.status ?? '-'} />
-                ) : null}
-              </div>
+    <ModalDialog
+      aria-label="팀 정보"
+      onClose={onClose}
+      title={submissionOwner(submission)}
+      eyebrow="팀 정보"
+      size="md"
+      customBody
+    >
+      <div className="min-h-0 overflow-y-auto p-5">
+        {isOperatorTest || isMockJudging || isPreview ? (
+          <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-5 text-sm font-medium text-indigo-700">
+            {isPreview
+              ? '참가자 미리보기 화면에서 생성한 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'
+              : isMockJudging
+                ? '참가자 화면에서 종료 후 모의채점으로 생성된 제출입니다.'
+                : '문제 모아보기 또는 문제 관리에서 생성한 검수·테스트 제출입니다. 실제 참가자의 기록과 점수판에는 반영되지 않습니다.'}
+          </p>
+        ) : (
+          <div className="grid gap-5">
+            <div className="grid gap-3 md:grid-cols-2">
+              <DetailCard
+                label="팀 이름"
+                value={team?.team_name ?? submissionOwner(submission)}
+              />
+              <DetailCard
+                label="제출자"
+                value={`${submissionMemberName(submission)} / ${submissionMemberEmail(submission)}`}
+              />
               {canViewParticipants ? (
-                <div className="grid gap-2">
-                  <p className="text-sm font-semibold text-slate-800">팀원</p>
-                  {members.length ? (
-                    members.map((member) => (
-                      <div
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm"
-                        key={member.team_member_id ?? member.email}
-                      >
-                        <span className="min-w-0 font-semibold text-slate-950">
-                          {member.name}
-                        </span>
-                        <span className="zoj-break-anywhere min-w-0 font-medium text-slate-500">
-                          {member.email}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                          {member.role === 'leader' ? '팀장' : '팀원'}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
-                      팀 상세 정보를 불러오지 못했습니다.
-                    </p>
-                  )}
-                </div>
+                <DetailCard
+                  label="팀장"
+                  value={
+                    leader
+                      ? `${leader.name} / ${leader.email}`
+                      : '팀장 정보 없음'
+                  }
+                />
+              ) : null}
+              {canViewParticipants ? (
+                <DetailCard label="상태" value={team?.status ?? '-'} />
               ) : null}
             </div>
-          )}
-        </div>
-      </section>
-    </Modal>
+            {canViewParticipants ? (
+              <div className="grid gap-2">
+                <p className="text-sm font-semibold text-slate-800">팀원</p>
+                {members.length ? (
+                  members.map((member) => (
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm"
+                      key={member.team_member_id ?? member.email}
+                    >
+                      <span className="min-w-0 font-semibold text-slate-950">
+                        {member.name}
+                      </span>
+                      <span className="zoj-break-anywhere min-w-0 font-medium text-slate-500">
+                        {member.email}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                        {member.role === 'leader' ? '팀장' : '팀원'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
+                    팀 상세 정보를 불러오지 못했습니다.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </ModalDialog>
   );
 }
 
@@ -973,117 +954,99 @@ function SubmissionDetailModal({
   const detail = parseJudgeDetail(submission?.judge_message);
 
   return (
-    <Modal aria-label="제출 상세" onClose={onClose}>
-      <section className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-indigo-600 uppercase">
-              Submission detail
-            </p>
-            <h2 className="zoj-break-anywhere text-xl font-semibold text-slate-950">
-              {submission
-                ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
-                : '제출 상세'}
-            </h2>
-          </div>
-          <button
-            className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-            type="button"
-          >
-            닫기
-          </button>
-        </header>
-        <div className="min-h-0 overflow-y-auto p-5">
-          {isLoading ? (
-            <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
-              제출 상세를 불러오는 중입니다.
-            </p>
-          ) : null}
-          {error ? (
-            <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-              {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
-            </p>
-          ) : null}
-          {submission ? (
-            <div className="grid gap-5">
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-                <DetailCard
-                  label="팀/계정"
-                  value={submissionOwner(submission)}
-                />
-                <DetailCard
-                  label="문제"
-                  value={submissionProblemLabel(submission, problemById)}
-                />
-                <DetailCard
-                  label="결과"
-                  value={submissionStatusLabel(submission.status)}
-                />
-                <DetailCard
-                  label="제출 구분"
-                  value={submissionKindLabel(submission)}
-                />
-                <DetailCard
-                  label="언어"
-                  value={judgeLanguageLabel(submission.language)}
-                />
-                <DetailCard
-                  label="실패 케이스"
-                  value={String(submission.failed_testcase_order ?? '-')}
-                />
-                <DetailCard label="코드 길이" value={codeLength(submission)} />
-                <DetailCard
-                  label="시간"
-                  value={formatRuntime(
-                    submission.runtime_ms ??
-                      submission.time_ms ??
-                      submission.execution_time_ms,
-                  )}
-                />
-                <DetailCard
-                  label="메모리"
-                  value={formatMemoryKb(
-                    submission.memory_kb ??
-                      submission.memory_usage_kb ??
-                      submission.max_memory_kb,
-                  )}
-                />
-                <DetailCard
-                  label="진행"
-                  value={submissionProgressText(submission) || '-'}
-                />
-                <DetailCard
-                  label="제출 시각"
-                  value={formatDateTime(submission.submitted_at)}
-                />
-                <DetailCard label="제출 ID" value={submission.submission_id} />
-              </div>
-              <LogBlock
-                label="소스 코드"
-                value={submission.source_code || '-'}
+    <ModalDialog
+      aria-label="제출 상세"
+      onClose={onClose}
+      title={
+        submission
+          ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
+          : '제출 상세'
+      }
+      eyebrow="제출 상세"
+      size="wide"
+      fill
+      customBody
+    >
+      <div className="min-h-0 overflow-y-auto p-5">
+        {isLoading ? (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
+            제출 상세를 불러오는 중입니다.
+          </p>
+        ) : null}
+        {error ? (
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
+          </p>
+        ) : null}
+        {submission ? (
+          <div className="grid gap-5">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <DetailCard label="팀/계정" value={submissionOwner(submission)} />
+              <DetailCard
+                label="문제"
+                value={submissionProblemLabel(submission, problemById)}
               />
-              <LogBlock
-                label="컴파일 로그"
-                value={submission.compile_message || '-'}
+              <DetailCard
+                label="결과"
+                value={submissionStatusLabel(submission.status)}
               />
-              <LogBlock
-                label="채점 로그"
-                value={submission.judge_message || '-'}
+              <DetailCard
+                label="제출 구분"
+                value={submissionKindLabel(submission)}
               />
-              <div className="grid gap-4 lg:grid-cols-3">
-                <LogBlock label="실패 입력" value={detail.inputText || '-'} />
-                <LogBlock
-                  label="기대 출력"
-                  value={detail.expectedText || '-'}
-                />
-                <LogBlock label="실제 출력" value={detail.actualText || '-'} />
-              </div>
+              <DetailCard
+                label="언어"
+                value={judgeLanguageLabel(submission.language)}
+              />
+              <DetailCard
+                label="실패 케이스"
+                value={String(submission.failed_testcase_order ?? '-')}
+              />
+              <DetailCard label="코드 길이" value={codeLength(submission)} />
+              <DetailCard
+                label="시간"
+                value={formatRuntime(
+                  submission.runtime_ms ??
+                    submission.time_ms ??
+                    submission.execution_time_ms,
+                )}
+              />
+              <DetailCard
+                label="메모리"
+                value={formatMemoryKb(
+                  submission.memory_kb ??
+                    submission.memory_usage_kb ??
+                    submission.max_memory_kb,
+                )}
+              />
+              <DetailCard
+                label="진행"
+                value={submissionProgressText(submission) || '-'}
+              />
+              <DetailCard
+                label="제출 시각"
+                value={formatDateTime(submission.submitted_at)}
+              />
+              <DetailCard label="제출 ID" value={submission.submission_id} />
             </div>
-          ) : null}
-        </div>
-      </section>
-    </Modal>
+            <LogBlock label="소스 코드" value={submission.source_code || '-'} />
+            <LogBlock
+              label="컴파일 로그"
+              value={submission.compile_message || '-'}
+            />
+            <LogBlock
+              label="채점 로그"
+              value={submission.judge_message || '-'}
+            />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <LogBlock label="실패 입력" value={detail.inputText || '-'} />
+              <LogBlock label="기대 출력" value={detail.expectedText || '-'} />
+              <LogBlock label="실제 출력" value={detail.actualText || '-'} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </ModalDialog>
   );
 }
 

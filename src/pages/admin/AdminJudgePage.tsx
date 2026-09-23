@@ -1,5 +1,5 @@
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
-import Modal from '@/shared/ui/Modal';
+import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 import { useEffect, useRef, useState } from 'react';
 import {
   keepPreviousData,
@@ -662,95 +662,70 @@ function JudgeNodeLogsModal({
   onRefresh: () => void;
 }) {
   return (
-    <Modal aria-label="채점기 로그" onClose={onClose}>
-      <section className="zoj-modal-shell grid h-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-indigo-600 uppercase">
-              Judge agent logs
-            </p>
-            <h2
-              className="zoj-break-anywhere text-xl font-semibold text-slate-950"
-              title={node?.node_name ?? ''}
-            >
-              {node?.node_name ?? '채점기 로그'}
-            </h2>
-            <p
-              className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-400"
-              title={node?.judge_node_id ?? ''}
-            >
-              {node?.judge_node_id ?? '노드 정보를 불러오는 중입니다.'}
-            </p>
+    <ModalDialog
+      aria-label="채점기 로그"
+      onClose={onClose}
+      title={node?.node_name ?? '채점기 로그'}
+      eyebrow="채점기 로그"
+      description={node?.judge_node_id ?? '노드 정보를 불러오는 중입니다.'}
+      size="xl"
+      fill
+      headerActions={
+        <ModalButton disabled={isFetching} onClick={onRefresh}>
+          {isFetching ? '갱신 중' : '새로고침'}
+        </ModalButton>
+      }
+      customBody
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-medium text-slate-500">
+        <span>최신 로그가 위에 표시됩니다.</span>
+        <span>{logs.length.toLocaleString('ko-KR')}개 표시</span>
+      </div>
+
+      <div className="min-h-0 overflow-auto bg-slate-950 p-4">
+        {error ? (
+          <div className="rounded-lg border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm font-medium text-rose-100">
+            {formatApiError(error, '채점기 로그를 불러오지 못했습니다')}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:text-slate-300"
-              disabled={isFetching}
-              onClick={onRefresh}
-              type="button"
-            >
-              {isFetching ? '갱신 중' : '새로고침'}
-            </button>
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-              onClick={onClose}
-              type="button"
-            >
-              닫기
-            </button>
+        ) : null}
+
+        {!error && logs.length === 0 ? (
+          <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-10 text-center text-sm font-medium text-slate-400">
+            아직 수집된 채점기 로그가 없습니다.
           </div>
-        </header>
+        ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-medium text-slate-500">
-          <span>최신 로그가 위에 표시됩니다.</span>
-          <span>{logs.length.toLocaleString('ko-KR')}개 표시</span>
-        </div>
-
-        <div className="min-h-0 overflow-auto bg-slate-950 p-4">
-          {error ? (
-            <div className="rounded-lg border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm font-medium text-rose-100">
-              {formatApiError(error, '채점기 로그를 불러오지 못했습니다')}
-            </div>
-          ) : null}
-
-          {!error && logs.length === 0 ? (
-            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-10 text-center text-sm font-medium text-slate-400">
-              아직 수집된 채점기 로그가 없습니다.
-            </div>
-          ) : null}
-
-          {logs.length > 0 ? (
-            <ol className="grid gap-1 font-mono text-xs leading-5">
-              {logs.map((log) => (
-                <li
-                  className="grid gap-2 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-100 md:grid-cols-[10rem_4rem_minmax(0,1fr)]"
-                  key={log.judge_agent_log_id}
+        {logs.length > 0 ? (
+          <ol className="grid gap-1 font-mono text-xs leading-5">
+            {logs.map((log) => (
+              <li
+                className="grid gap-2 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-100 md:grid-cols-[10rem_4rem_minmax(0,1fr)]"
+                key={log.judge_agent_log_id}
+              >
+                <time className="font-medium whitespace-nowrap text-slate-500">
+                  {formatDateTime(log.created_at)}
+                </time>
+                <span
+                  className={[
+                    'font-semibold uppercase',
+                    log.level === 'error'
+                      ? 'text-rose-300'
+                      : log.level === 'warning'
+                        ? 'text-amber-300'
+                        : 'text-emerald-300',
+                  ].join(' ')}
                 >
-                  <time className="font-medium whitespace-nowrap text-slate-500">
-                    {formatDateTime(log.created_at)}
-                  </time>
-                  <span
-                    className={[
-                      'font-semibold uppercase',
-                      log.level === 'error'
-                        ? 'text-rose-300'
-                        : log.level === 'warning'
-                          ? 'text-amber-300'
-                          : 'text-emerald-300',
-                    ].join(' ')}
-                  >
-                    {log.level}
-                  </span>
-                  <pre className="zoj-break-anywhere m-0 whitespace-pre-wrap text-slate-100">
-                    {log.message}
-                  </pre>
-                </li>
-              ))}
-            </ol>
-          ) : null}
-        </div>
-      </section>
-    </Modal>
+                  {log.level}
+                </span>
+                <pre className="zoj-break-anywhere m-0 whitespace-pre-wrap text-slate-100">
+                  {log.message}
+                </pre>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+    </ModalDialog>
   );
 }
 
@@ -904,33 +879,19 @@ function SubmissionDetailModal({
   const submissionId = entry?.submission.submission_id;
 
   return (
-    <Modal aria-labelledby="admin-submission-detail-title" onClose={onClose}>
-      <div className="zoj-modal-shell grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-          <div className="grid gap-1">
-            <h2
-              className="text-xl font-semibold text-slate-950"
-              id="admin-submission-detail-title"
-            >
-              제출 상세
-            </h2>
-            <p className="zoj-break-anywhere text-sm font-medium text-slate-500">
-              {submissionId ?? '제출 정보를 불러오는 중입니다.'}
-            </p>
-          </div>
-          <button
-            className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
-            onClick={onClose}
-            type="button"
-          >
-            닫기
-          </button>
-        </header>
-        <div className="overflow-auto px-6 py-5">
-          <SubmissionDetail entry={entry} error={error} isLoading={isLoading} />
-        </div>
+    <ModalDialog
+      onClose={onClose}
+      title="제출 상세"
+      titleId="admin-submission-detail-title"
+      description={submissionId ?? '제출 정보를 불러오는 중입니다.'}
+      size="wide"
+      fill
+      customBody
+    >
+      <div className="overflow-auto px-6 py-5">
+        <SubmissionDetail entry={entry} error={error} isLoading={isLoading} />
       </div>
-    </Modal>
+    </ModalDialog>
   );
 }
 

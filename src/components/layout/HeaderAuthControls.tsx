@@ -1,6 +1,6 @@
 import HeaderPanel, { HeaderIcon } from '@/components/layout/HeaderPanel';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
-import Modal from '@/shared/ui/Modal';
+import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
@@ -145,8 +145,8 @@ export default function HeaderAuthControls({
           description="내 계정과 참가 중인 대회를 한곳에서 확인하세요."
           onClose={() => setIsAccountPanelOpen(false)}
           footer={
-            <button
-              className="header-logout-button"
+            <ModalButton
+              className="w-full"
               disabled={isLoggingOut}
               onClick={() => setIsLogoutConfirmOpen(true)}
               type="button"
@@ -155,7 +155,7 @@ export default function HeaderAuthControls({
               <span>
                 {isLoggingOut ? headerText.loggingOut : headerText.logout}
               </span>
-            </button>
+            </ModalButton>
           }
         >
           <div className="header-profile">
@@ -238,51 +238,37 @@ export default function HeaderAuthControls({
         </HeaderPanel>
       ) : null}
       {isLogoutConfirmOpen ? (
-        <Modal
-          aria-labelledby="logout-confirm-title"
+        <ModalDialog
+          titleId="logout-confirm-title"
+          title={headerText.logoutConfirmTitle}
+          icon={<HeaderIcon name="logout" />}
           onClose={
             isLoggingOut ? undefined : () => setIsLogoutConfirmOpen(false)
           }
-        >
-          <div className="header-logout-dialog zoj-modal-card w-full max-w-md p-6">
-            <div className="flex items-start gap-4">
-              <span className="header-panel-symbol">
-                <HeaderIcon name="logout" />
-              </span>
-              <div className="grid gap-2">
-                <h2
-                  className="text-xl font-semibold text-slate-950"
-                  id="logout-confirm-title"
-                >
-                  {headerText.logoutConfirmTitle}
-                </h2>
-                <p className="text-sm leading-6 font-medium text-slate-600">
-                  {headerText.logoutConfirmDescription}
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                className="header-confirm-cancel"
+          footer={
+            <>
+              <ModalButton
                 disabled={isLoggingOut}
                 onClick={() => setIsLogoutConfirmOpen(false)}
-                type="button"
               >
                 {headerText.logoutCancel}
-              </button>
-              <button
-                className="header-confirm-submit"
+              </ModalButton>
+              <ModalButton
+                tone="primary"
                 disabled={isLoggingOut}
                 onClick={() => void handleLogout()}
-                type="button"
               >
                 {isLoggingOut
                   ? headerText.loggingOut
                   : headerText.logoutConfirm}
-              </button>
-            </div>
-          </div>
-        </Modal>
+              </ModalButton>
+            </>
+          }
+        >
+          <p className="zoj-modal-copy">
+            {headerText.logoutConfirmDescription}
+          </p>
+        </ModalDialog>
       ) : null}
     </>
   );

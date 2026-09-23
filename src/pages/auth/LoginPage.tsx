@@ -1,5 +1,5 @@
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
-import Modal from '@/shared/ui/Modal';
+import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 import { useEffect, useRef, useState } from 'react';
 import {
   Link,
@@ -384,97 +384,62 @@ export default function LoginPage() {
       data-motion={motion.paused ? 'off' : 'on'}
     >
       {shouldShowContestLoginModal ? (
-        <Modal
-          aria-labelledby="contest-login-required-title"
+        <ModalDialog
+          titleId="contest-login-required-title"
+          title={loginPageText.contestRequiredTitle}
           onClose={closeContestLoginModal}
+          footer={
+            <ModalButton tone="primary" onClick={closeContestLoginModal}>
+              {loginPageText.modalConfirm}
+            </ModalButton>
+          }
         >
-          <div className="zoj-modal-card w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="flex items-start gap-4">
-              <span className="text-zoj-blue flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
-                <svg
-                  aria-hidden="true"
-                  className="size-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M10 1.5 17 4v5.25c0 4.12-2.96 7.94-7 9.25-4.04-1.31-7-5.13-7-9.25V4l7-2.5Zm0 4.5a.75.75 0 0 0-.75.75v3.5c0 .41.34.75.75.75s.75-.34.75-.75v-3.5A.75.75 0 0 0 10 6Zm0 7.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
-                </svg>
-              </span>
-              <div className="grid gap-2">
-                <h2
-                  id="contest-login-required-title"
-                  className="text-xl font-semibold text-slate-950"
-                >
-                  {loginPageText.contestRequiredTitle}
-                </h2>
-                <p className="text-sm leading-6 text-slate-600">
-                  {loginPageText.contestRequiredDescription}
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
-                onClick={closeContestLoginModal}
-                type="button"
-              >
-                {loginPageText.modalConfirm}
-              </button>
-            </div>
-          </div>
-        </Modal>
+          <p className="zoj-modal-copy">
+            {loginPageText.contestRequiredDescription}
+          </p>
+        </ModalDialog>
       ) : null}
 
       {pendingSessionReplacement ? (
-        <Modal
-          aria-labelledby="session-replacement-title"
+        <ModalDialog
+          titleId="session-replacement-title"
+          title="기존 로그인 연결을 끊을까요?"
           onClose={isSubmitting ? undefined : cancelSessionReplacement}
-        >
-          <div className="zoj-modal-card w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="grid gap-2">
-              <h2
-                className="text-xl font-semibold text-slate-950"
-                id="session-replacement-title"
-              >
-                기존 로그인 연결을 끊을까요?
-              </h2>
-              <p className="text-sm leading-6 text-slate-600">
-                이 계정은 이미 다른 브라우저 또는 기기에서 로그인 중입니다. 이
-                브라우저에서 계속 사용하면 이전 세션은 로그아웃됩니다.
-              </p>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-                활성 세션 {pendingSessionReplacement.activeSessionCount}개
-                {pendingSessionReplacement.lastSeenAt ? (
-                  <>
-                    {' · 마지막 사용 '}
-                    {new Intl.DateTimeFormat('ko-KR', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }).format(new Date(pendingSessionReplacement.lastSeenAt))}
-                  </>
-                ) : null}
-              </div>
-            </div>
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <button
-                className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-950"
+          footer={
+            <>
+              <ModalButton
                 disabled={isSubmitting}
                 onClick={cancelSessionReplacement}
-                type="button"
               >
                 이전 세션 유지
-              </button>
-              <button
-                className="bg-zoj-blue h-10 rounded-lg px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-slate-300"
+              </ModalButton>
+              <ModalButton
+                tone="primary"
                 disabled={isSubmitting}
                 onClick={confirmSessionReplacement}
-                type="button"
               >
                 이 브라우저에서 사용
-              </button>
-            </div>
+              </ModalButton>
+            </>
+          }
+        >
+          <p className="zoj-modal-copy">
+            이 계정은 이미 다른 브라우저 또는 기기에서 로그인 중입니다. 이
+            브라우저에서 계속 사용하면 이전 세션은 로그아웃됩니다.
+          </p>
+          <div className="zoj-card mt-4 px-4 py-3 text-sm text-slate-600">
+            활성 세션 {pendingSessionReplacement.activeSessionCount}개
+            {pendingSessionReplacement.lastSeenAt ? (
+              <>
+                {' · 마지막 사용 '}
+                {new Intl.DateTimeFormat('ko-KR', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }).format(new Date(pendingSessionReplacement.lastSeenAt))}
+              </>
+            ) : null}
           </div>
-        </Modal>
+        </ModalDialog>
       ) : null}
 
       <PublicHero label="로그인" motion={motion} className="login-hero">

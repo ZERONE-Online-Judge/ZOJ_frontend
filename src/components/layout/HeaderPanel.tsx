@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Modal from '@/shared/ui/Modal';
+import ModalDialog from '@/shared/ui/ModalDialog';
 import './HeaderPanels.css';
 
 export type HeaderIconName =
@@ -60,40 +60,19 @@ export default function HeaderPanel({
   footer?: ReactNode;
 }) {
   return (
-    <Modal aria-labelledby={id} onClose={onClose} drawer>
-      <button
-        className="header-panel-backdrop"
-        aria-label={`${title} 닫기`}
-        onClick={onClose}
-        type="button"
-        tabIndex={-1}
-      />
-      <aside className="header-panel">
-        <header className="header-panel-heading">
-          <div className="header-panel-topline">
-            <span>ZOJ / {label}</span>
-            <button
-              className="header-icon-button"
-              aria-label={`${title} 닫기`}
-              onClick={onClose}
-              type="button"
-            >
-              <HeaderIcon name="close" />
-            </button>
-          </div>
-          <div className="header-panel-title">
-            <span className="header-panel-symbol">
-              <HeaderIcon name={icon} />
-            </span>
-            <h2 id={id}>{title}</h2>
-          </div>
-          <p>{description}</p>
-        </header>
-        <div className="header-panel-body">{children}</div>
-        {footer ? (
-          <footer className="header-panel-footer">{footer}</footer>
-        ) : null}
-      </aside>
-    </Modal>
+    <ModalDialog
+      titleId={id}
+      title={title}
+      eyebrow={`ZOJ / ${label}`}
+      description={description}
+      icon={<HeaderIcon name={icon} />}
+      onClose={onClose}
+      closeLabel={`${title} 닫기`}
+      drawer
+      className="header-panel"
+      footer={footer}
+    >
+      {children}
+    </ModalDialog>
   );
 }
