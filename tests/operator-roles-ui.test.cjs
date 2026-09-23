@@ -771,3 +771,84 @@ test('failed owner transfer preserves the selected recipient and current owner',
     'owner',
   ]);
 });
+
+test('contest visibility stays separate from lifecycle and restricts anonymous resource choices after ending', async () => {
+  contestOverrides = {
+    visibility: 'public',
+    visibility_after_end: 'public',
+    ...Object.fromEntries(
+      [
+        'problem',
+        'scoreboard',
+        'submission',
+        'board',
+        'notice',
+        'editorial',
+      ].map((key) => [key + '_access_after_end', 'public']),
+    ),
+  };
+  await render(SettingsPage, 'settings');
+  const before = container.querySelector(
+    'input[name="visibility"][value="private"]',
+  );
+  const after = container.querySelector(
+    'input[name="visibility_after_end"][value="private"]',
+  );
+  const status = [...container.querySelectorAll('label')]
+    .find((el) => el.textContent.trim().startsWith('상태'))
+    .querySelector('select');
+  await click(before);
+  assert.equal(status.value, 'draft');
+  assert.ok(container.querySelector('option[value="public"]'));
+  await click(after);
+  assert.equal(container.querySelector('option[value="public"]'), null);
+  const resources = [
+    ...container.querySelectorAll('.zoj-settings-access select'),
+  ];
+  assert.equal(resources.length, 6);
+  assert.ok(resources.every((select) => select.value === 'participants'));
+  await click(button('설정 저장'));
+  assert.equal(settingsChanges.at(-1).body.visibility, 'private');
+  assert.equal(settingsChanges.at(-1).body.visibility_after_end, 'private');
+  assert.equal(settingsChanges.at(-1).body.status, 'draft');
+  assert.ok(
+    [
+      'problem',
+      'scoreboard',
+      'submission',
+      'board',
+      'notice',
+      'editorial',
+    ].every(
+      (key) =>
+        settingsChanges.at(-1).body[key + '_access_after_end'] ===
+        'participants',
+    ),
+  );
+  await click(
+    container.querySelector(
+      'input[name="visibility_after_end"][value="public"]',
+    ),
+  );
+  assert.ok(container.querySelector('option[value="public"]'));
+  assert.ok(
+    [...container.querySelectorAll('.zoj-settings-access select')].every(
+      (select) => select.value === 'participants',
+    ),
+  );
+});
+
+test('visibility can change during a running contest while its lifecycle remains locked', async () => {
+  contestOverrides = { status: 'running' };
+  await render(SettingsPage, 'settings');
+  const status = [...container.querySelectorAll('label')]
+    .find((el) => el.textContent.trim().startsWith('상태'))
+    .querySelector('select');
+  assert.equal(status.disabled, true);
+  await click(
+    container.querySelector('input[name="visibility"][value="private"]'),
+  );
+  await click(button('설정 저장'));
+  assert.equal(settingsChanges.at(-1).body.visibility, 'private');
+  assert.equal('status' in settingsChanges.at(-1).body, false);
+});

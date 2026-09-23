@@ -68,7 +68,7 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
     refetchInterval: 15_000,
   });
 
-  const detail = contestQuery.data;
+  const detail = contestQuery.isError ? undefined : contestQuery.data;
   const contest = detail?.contest;
   const hasSessionAccess = Boolean(
     participantContest || activeParticipantSession,

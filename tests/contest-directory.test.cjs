@@ -37,7 +37,8 @@ function source(relative) {
             : operatorQuery;
         },
       };
-    if (id === '@/domains/contestAdministration/api') return {};
+    if (id === '@/domains/contestAdministration/api')
+      return { getPublicContests: async (token) => token };
     if (id === '@/domains/identityAccess/sessionStore')
       return {
         useSessionStore: (selector) => selector({ generalSession: session }),
@@ -202,4 +203,32 @@ test('footer preserves team contacts, links to supported help tab, and honors re
   assert.ok(host.querySelector('a[href="/notices"]'));
   await clickButton('맨 위로');
   assert.deepEqual(scrolled, { top: 0, behavior: 'auto' });
+});
+
+test('directory requests and caches are scoped to the authenticated account and reset on logout', async () => {
+  session = {
+    accessToken: 'member-a',
+    account: {},
+    participantContests: [],
+    operatorContests: [],
+  };
+  await render();
+  const first = options
+    .filter((item) => item.queryKey[0] === 'public-contests')
+    .at(-1);
+  assert.equal(await first.queryFn(), 'member-a');
+  session = { ...session, accessToken: 'member-b' };
+  await render();
+  const second = options
+    .filter((item) => item.queryKey[0] === 'public-contests')
+    .at(-1);
+  assert.equal(await second.queryFn(), 'member-b');
+  assert.notDeepEqual(first.queryKey, second.queryKey);
+  session = null;
+  await render();
+  const anonymous = options
+    .filter((item) => item.queryKey[0] === 'public-contests')
+    .at(-1);
+  assert.equal(await anonymous.queryFn(), undefined);
+  assert.notDeepEqual(second.queryKey, anonymous.queryKey);
 });

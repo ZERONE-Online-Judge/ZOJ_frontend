@@ -1,5 +1,6 @@
 import type {
   Contest,
+  ContestVisibility,
   ContestSettingsPatch,
   ContestWorkspace,
   Division,
@@ -15,8 +16,8 @@ export function getPublicHome() {
   return apiRequest<PublicHomeReadModel>('/public/home');
 }
 
-export function getPublicContests() {
-  return apiRequest<Contest[]>('/public/contests');
+export function getPublicContests(token?: string) {
+  return apiRequest<Contest[]>('/public/contests', token);
 }
 
 export function getPublicContest(contestId: string, token?: string) {
@@ -163,6 +164,8 @@ export function createAdminContest(
   body: {
     organization_name: string;
     status: string;
+    visibility?: ContestVisibility;
+    visibility_after_end?: ContestVisibility;
     start_at?: string;
     operator_email?: string;
     operator_display_name?: string;

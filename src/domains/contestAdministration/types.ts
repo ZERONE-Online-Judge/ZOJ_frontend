@@ -20,6 +20,7 @@ export type ContestFormatType =
   | 'ioi'
   | string;
 
+export type ContestVisibility = 'public' | 'private';
 export type ContestResourceAccess = 'private' | 'participants' | 'public';
 export type ScoreboardFreezeMode = 'auto' | 'live' | 'frozen';
 export type ScoreboardReleaseMode = 'manual' | 'immediate' | 'resolver';
@@ -30,6 +31,8 @@ export type Contest = {
   organization_name: string;
   overview: string;
   status: ContestStatus | string;
+  visibility?: ContestVisibility;
+  visibility_after_end?: ContestVisibility;
   contest_type?: ContestFormatType | null;
   start_at: string;
   end_at: string;
@@ -105,6 +108,8 @@ export type ContestSettingsPatch = Partial<
     | 'organization_name'
     | 'overview'
     | 'status'
+    | 'visibility'
+    | 'visibility_after_end'
     | 'start_at'
     | 'end_at'
     | 'freeze_at'

@@ -95,11 +95,16 @@ export default function ContestsPage() {
   const isDocumentVisible = useDocumentVisibility();
   useRefreshGeneralSession();
   const generalSession = useSessionStore((state) => state.generalSession);
+  const participantSession = useSessionStore(
+    (state) => state.participantSession,
+  );
+  const directoryToken =
+    generalSession?.accessToken ?? participantSession?.accessToken;
   const operatorToken = generalSession?.operatorSession?.accessToken;
   const operatorQueryIdentity = tokenQueryIdentity(operatorToken);
   const contestsQuery = useQuery({
-    queryKey: ['public-contests'],
-    queryFn: getPublicContests,
+    queryKey: ['public-contests', tokenQueryIdentity(directoryToken)],
+    queryFn: () => getPublicContests(directoryToken),
     refetchInterval: isDocumentVisible ? 15_000 : false,
     refetchIntervalInBackground: false,
   });

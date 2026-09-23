@@ -1,3 +1,5 @@
+import { useSessionStore } from '@/domains/identityAccess/sessionStore';
+import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import HomeHero from './HomeHero';
@@ -45,6 +47,11 @@ const shortcuts = [
 export default function MainPage() {
   const motion = usePublicMotion();
   const visible = useDocumentVisibility();
+  const directoryToken = useSessionStore(
+    (state) =>
+      state.generalSession?.accessToken ??
+      state.participantSession?.accessToken,
+  );
   const noticesQuery = useQuery({
     queryKey: ['public-service-notices'],
     queryFn: getPublicServiceNotices,
@@ -52,8 +59,8 @@ export default function MainPage() {
     refetchIntervalInBackground: false,
   });
   const contestsQuery = useQuery({
-    queryKey: ['public-contests'],
-    queryFn: getPublicContests,
+    queryKey: ['public-contests', tokenQueryIdentity(directoryToken)],
+    queryFn: () => getPublicContests(directoryToken),
     refetchInterval: visible ? 15_000 : false,
     refetchIntervalInBackground: false,
   });

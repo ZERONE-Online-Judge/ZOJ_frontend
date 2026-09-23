@@ -1,3 +1,4 @@
+import ContestVisibilitySettings from '@/components/operator/ContestVisibilitySettings';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,12 +15,17 @@ import {
   getAdminContests,
 } from '@/domains/contestAdministration/api';
 import { isContestHiddenFromPublic } from '@/domains/contestAdministration/logic';
-import type { Contest } from '@/domains/contestAdministration/types';
+import type {
+  Contest,
+  ContestVisibility,
+} from '@/domains/contestAdministration/types';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
 
 type ContestFormState = {
+  visibility: ContestVisibility;
+  visibility_after_end: ContestVisibility;
   organizationName: string;
   operatorEmail: string;
   operatorDisplayName: string;
@@ -34,6 +40,8 @@ type OperatorFormState = {
 };
 
 const emptyContestForm: ContestFormState = {
+  visibility: 'public',
+  visibility_after_end: 'public',
   organizationName: '',
   operatorEmail: '',
   operatorDisplayName: '',
@@ -116,6 +124,8 @@ function AdminContestsContent({ token }: { token: string }) {
           contestForm.overview.trim() ||
           `${contestForm.organizationName.trim()}에서 주최하는 대회입니다.`,
         status: 'draft',
+        visibility: contestForm.visibility,
+        visibility_after_end: contestForm.visibility_after_end,
         title: contestForm.title.trim() || undefined,
       }),
     onSuccess: (contest) => {
@@ -411,6 +421,17 @@ function AdminContestsContent({ token }: { token: string }) {
                 주최 기관은 필수입니다. 초기 계정은 모든 권한을 가진 대회 총괄로
                 등록되며, 나중에 배정할 수도 있습니다.
               </p>
+              <ContestVisibilitySettings
+                visibility={contestForm.visibility}
+                afterEnd={contestForm.visibility_after_end}
+                onChange={(field, value) =>
+                  setContestForm((prev) => ({ ...prev, [field]: value }))
+                }
+              />
+              <p className="zoj-settings-note">
+                상태: 초안 · 생성 후 운영 설정에서 상태와 일정을 변경할 수
+                있습니다.
+              </p>
               <div className="grid gap-4 lg:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
                   대회명
@@ -563,9 +584,13 @@ function ContestRow({ contest }: { contest: Contest }) {
         <span className="inline-flex max-w-full flex-wrap rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
           {statusLabels[contest.status] ?? contest.status}
           {isContestHiddenFromPublic(contest) ? (
-            <span className="ml-1 text-indigo-400">* 비공개됨</span>
+            <span className="ml-1 text-indigo-400">운영자만 표시</span>
           ) : null}
         </span>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          대회 {contest.visibility === 'private' ? '비공개' : '공개'} · 종료 후{' '}
+          {contest.visibility_after_end === 'private' ? '비공개' : '공개'}
+        </p>
       </td>
       <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-600">
         {formatDateTime(contest.start_at)}

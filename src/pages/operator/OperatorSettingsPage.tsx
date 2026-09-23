@@ -1,3 +1,4 @@
+import ContestVisibilitySettings from '@/components/operator/ContestVisibilitySettings';
 import { type FormEvent, useId, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +25,7 @@ import {
 } from '@/domains/contestAdministration/logic';
 import type {
   Contest,
+  ContestVisibility,
   ContestSettingsPatch,
   ContestResourceAccess,
   Division,
@@ -38,6 +40,8 @@ import { formatApiError } from '@/shared/api/errors';
 import { dateTimeLocalToIso, dateTimeLocalValue } from '@/shared/lib/dateTime';
 
 type SettingsForm = {
+  visibility: ContestVisibility;
+  visibility_after_end: ContestVisibility;
   end_at: string;
   freeze_at: string;
   organization_name: string;
@@ -89,10 +93,29 @@ const accessOptions: { label: string; value: ContestResourceAccess }[] = [
   { label: '비로그인 공개', value: 'public' },
 ];
 
+function normalizeVisibility(form: SettingsForm): SettingsForm {
+  const next = { ...form };
+  if (next.visibility_after_end === 'private') {
+    for (const field of [
+      'problem_access_after_end',
+      'scoreboard_access_after_end',
+      'submission_access_after_end',
+      'board_access_after_end',
+      'notice_access_after_end',
+      'editorial_access_after_end',
+    ] as const) {
+      if (next[field] === 'public') next[field] = 'participants';
+    }
+  }
+  return next;
+}
+
 function settingsFormFromContest(contest: Contest): SettingsForm {
   const status = contest.status === 'schedule_tbd' ? 'draft' : contest.status;
 
-  return {
+  return normalizeVisibility({
+    visibility: contest.visibility ?? 'public',
+    visibility_after_end: contest.visibility_after_end ?? 'public',
     end_at: dateTimeLocalValue(contest.end_at),
     freeze_at: dateTimeLocalValue(contest.freeze_at),
     organization_name: contest.organization_name,
@@ -119,7 +142,7 @@ function settingsFormFromContest(contest: Contest): SettingsForm {
       contest.mock_judging_progress_visible,
     ),
     title: contest.title,
-  };
+  });
 }
 
 export default function OperatorSettingsPage() {
@@ -199,11 +222,15 @@ function OperatorSettingsContent({
     updater: (prev: SettingsForm | null) => SettingsForm | null,
   ) {
     const next = updater(settingsForm);
-    setSettingsDraft(next ? { contestId, form: next } : null);
+    setSettingsDraft(
+      next ? { contestId, form: normalizeVisibility(next) } : null,
+    );
   }
 
   function settingsPatchFromForm(form: SettingsForm): ContestSettingsPatch {
     const body: ContestSettingsPatch = {
+      visibility: form.visibility,
+      visibility_after_end: form.visibility_after_end,
       problem_access_after_end: form.problem_access_after_end,
       scoreboard_access_after_end: form.scoreboard_access_after_end,
       scoreboard_release_mode: form.scoreboard_release_mode,
@@ -368,13 +395,22 @@ function OperatorSettingsContent({
                     있습니다.
                   </p>
                 ) : null}
+                <ContestVisibilitySettings
+                  visibility={settingsForm.visibility}
+                  afterEnd={settingsForm.visibility_after_end}
+                  onChange={(field, value) =>
+                    setSettingsForm((prev) =>
+                      prev ? { ...prev, [field]: value } : prev,
+                    )
+                  }
+                />
                 <SettingsCard
                   title="기본 정보"
                   description="대회 목록과 소개 화면에 표시할 정보를 입력합니다."
                   hint={
                     operationLocked
                       ? '진행 중인 대회의 기본 정보와 상태는 변경할 수 없습니다.'
-                      : '공개 여부는 상태에서, 운영 시간은 아래 대회 일정에서 설정합니다.'
+                      : '‘예정(비공개)’는 운영자만 확인하는 준비 단계입니다. 참가자에게 보이게 하려면 ‘예정(공개)’로 변경하세요.'
                   }
                 >
                   <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -511,7 +547,11 @@ function OperatorSettingsContent({
                 </SettingsCard>
                 <SettingsCard
                   title="자료 공개 범위"
-                  description="종료 후 각 자료를 누가 볼 수 있는지 선택하세요. 문제집·스코어보드·채점현황은 ‘비로그인 공개’를 선택하면 진행 중에도 로그인 없이 볼 수 있습니다. 해설은 종료 후에만 공개됩니다."
+                  description={
+                    settingsForm.visibility_after_end === 'private'
+                      ? '종료 후 비공개 대회입니다. 각 자료를 참가자에게 공개하거나 운영자만 볼 수 있게 설정하세요.'
+                      : '종료 후 각 자료를 누가 볼 수 있는지 선택하세요. 대회가 공개인 동안 문제집·스코어보드·채점현황의 비로그인 공개가 적용됩니다. 해설은 종료 후에만 공개됩니다.'
+                  }
                   hint="문제집을 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다. 게시판 작성 허용은 아래에서 별도로 설정합니다."
                 >
                   <dl className="grid gap-3 text-xs leading-5 sm:grid-cols-3">
@@ -529,17 +569,22 @@ function OperatorSettingsContent({
                         해당 대회 참가자로 로그인하면 볼 수 있습니다.
                       </dd>
                     </div>
-                    <div className="zoj-settings-note">
-                      <dt className="font-semibold text-slate-700">
-                        비로그인 공개
-                      </dt>
-                      <dd className="mt-1">
-                        로그인하지 않은 방문자도 볼 수 있습니다.
-                      </dd>
-                    </div>
+                    {settingsForm.visibility_after_end === 'public' ? (
+                      <div className="zoj-settings-note">
+                        <dt className="font-semibold text-slate-700">
+                          비로그인 공개
+                        </dt>
+                        <dd className="mt-1">
+                          로그인하지 않은 방문자도 볼 수 있습니다.
+                        </dd>
+                      </div>
+                    ) : null}
                   </dl>
                   <div className="zoj-settings-resources">
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       helperText="문제 목록과 문제 본문의 공개 범위입니다. 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다."
                       label="문제집"
                       onChange={(value) =>
@@ -563,6 +608,9 @@ function OperatorSettingsContent({
                       value={settingsForm.problem_access_after_end}
                     />
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       label="스코어보드"
                       helperText="순위와 팀별 성적을 누가 볼 수 있는지 정합니다. 위에서 선택한 종료 후 순위 공개 방식과 별도로 적용됩니다."
                       onChange={(value) =>
@@ -575,6 +623,9 @@ function OperatorSettingsContent({
                       value={settingsForm.scoreboard_access_after_end}
                     />
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       label="채점현황"
                       helperText="제출 목록과 채점 결과의 열람 범위입니다. 제출 소스 코드의 열람 권한과는 별개입니다."
                       onChange={(value) =>
@@ -587,6 +638,9 @@ function OperatorSettingsContent({
                       value={settingsForm.submission_access_after_end}
                     />
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       label="게시판"
                       helperText="종료 후 게시판을 열람할 수 있는 대상입니다. 글을 쓰게 하려면 아래 ‘게시판 작성 허용’도 켜세요."
                       onChange={(value) =>
@@ -599,6 +653,9 @@ function OperatorSettingsContent({
                       value={settingsForm.board_access_after_end}
                     />
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       disabled={
                         settingsForm.problem_access_after_end === 'private'
                       }
@@ -618,6 +675,9 @@ function OperatorSettingsContent({
                       value={settingsForm.editorial_access_after_end}
                     />
                     <AccessSelect
+                      allowPublic={
+                        settingsForm.visibility_after_end === 'public'
+                      }
                       label="공지"
                       helperText="대회 종료 후 공지사항을 열람할 수 있는 대상입니다."
                       onChange={(value) =>
@@ -923,12 +983,14 @@ function DateInput({
 }
 
 function AccessSelect({
+  allowPublic,
   disabled,
   helperText,
   label,
   onChange,
   value,
 }: {
+  allowPublic: boolean;
   disabled?: boolean;
   helperText?: string;
   label: string;
@@ -948,11 +1010,13 @@ function AccessSelect({
         }
         value={value}
       >
-        {accessOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {accessOptions
+          .filter((option) => allowPublic || option.value !== 'public')
+          .map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
       </select>
       {helperText ? (
         <span

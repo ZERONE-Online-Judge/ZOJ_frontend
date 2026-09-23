@@ -23,6 +23,8 @@ export function emptyContest(contestId?: string): Contest {
     organization_name: '',
     overview: '',
     status: 'draft',
+    visibility: 'public',
+    visibility_after_end: 'public',
     start_at: now,
     end_at: now,
     freeze_at: now,
@@ -116,6 +118,11 @@ export function canViewContestResource(
   hasSessionAccess: boolean,
   afterEndAccess: ContestResourceAccess | boolean | undefined,
 ) {
+  const visibility = isContestEnded(contest)
+    ? contest.visibility_after_end
+    : contest.visibility;
+  if (visibility === 'private' && !hasSessionAccess) return false;
+
   const access =
     typeof afterEndAccess === 'boolean'
       ? afterEndAccess
