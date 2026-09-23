@@ -77,7 +77,9 @@ export default function ContestScoreboardTable({
     >
       <table
         className="zoj-scoreboard-table w-full border-separate border-spacing-0 text-left text-sm"
-        style={{ minWidth: `${360 + scoreboardProblemScores.length * 64}px` }}
+        style={{
+          minWidth: `calc(var(--zoj-scoreboard-base-width, 360px) + ${scoreboardProblemScores.length} * var(--zoj-scoreboard-problem-width, 64px))`,
+        }}
       >
         <caption className="sr-only">팀별 순위와 문제별 해결 현황</caption>
         <thead>

@@ -277,10 +277,13 @@ main:has(.zoj-contest-shell) {
   padding: 0;
 }
 .zoj-participant .zoj-scoreboard-table {
+  /* Rank (3rem), two metrics (6rem each), total (8rem), team (14rem). */
+  --zoj-scoreboard-base-width: 37rem;
+  --zoj-scoreboard-problem-width: 4rem;
   table-layout: fixed;
 }
 .zoj-participant .zoj-scoreboard-table th:nth-child(n + 5):not(:last-child) {
-  width: auto;
+  width: var(--zoj-scoreboard-problem-width);
 }
 .zoj-participant .zoj-scoreboard-scroll {
   scrollbar-width: thin;
@@ -304,9 +307,9 @@ main:has(.zoj-contest-shell) {
   position: sticky;
   left: 3rem;
   z-index: 2;
-  width: 12rem;
-  min-width: 12rem;
-  max-width: 12rem;
+  /* Give the team column all space left by the fixed-size result columns. */
+  width: auto;
+  min-width: 14rem;
   overflow-wrap: anywhere;
   background: #fff;
   box-shadow: 3px 0 5px -4px #64748b;
@@ -417,10 +420,11 @@ main:has(.zoj-contest-shell) {
   .zoj-participant .zoj-problem-submit {
     padding: 1rem;
   }
+  .zoj-participant .zoj-scoreboard-table {
+    --zoj-scoreboard-base-width: 33rem;
+  }
   .zoj-participant .zoj-scoreboard-table .zoj-score-team {
-    width: 8rem;
-    min-width: 8rem;
-    max-width: 8rem;
+    min-width: 10rem;
     font-size: 0.75rem;
   }
   .zoj-participant .zoj-scoreboard-table td {
