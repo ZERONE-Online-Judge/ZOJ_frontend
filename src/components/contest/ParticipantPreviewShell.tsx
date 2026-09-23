@@ -181,6 +181,8 @@ export default function ParticipantPreviewShell({
           <ContestEmergencyNotice
             contestId={contestId}
             notice={preview.data.contest.emergency_notice ?? ''}
+            template={preview.data.contest.emergency_notice_template}
+            contest={preview.data.contest}
           />
           {children(preview.data)}
         </>

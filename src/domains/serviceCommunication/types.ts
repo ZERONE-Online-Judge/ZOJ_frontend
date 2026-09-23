@@ -25,6 +25,7 @@ export type ContestNotice = {
   contest_notice_id: string;
   title: string;
   body: string;
+  body_template?: string | null;
   pinned: boolean;
   emergency: boolean;
   visibility: 'public' | 'participants';

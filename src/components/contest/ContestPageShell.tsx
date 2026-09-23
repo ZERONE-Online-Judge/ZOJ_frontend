@@ -182,6 +182,8 @@ function StandardContestPageShell({ children }: ContestPageShellProps) {
           <ContestEmergencyNotice
             contestId={contestId}
             notice={contest.emergency_notice ?? ''}
+            template={contest.emergency_notice_template}
+            contest={contest}
           />
 
           {children(detail)}

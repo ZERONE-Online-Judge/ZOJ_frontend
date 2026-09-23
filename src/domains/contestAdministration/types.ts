@@ -55,6 +55,7 @@ export type Contest = {
   participant_progress_visible?: boolean;
   mock_judging_progress_visible?: boolean;
   emergency_notice: string | null;
+  emergency_notice_template?: string | null;
 };
 
 export type Division = {

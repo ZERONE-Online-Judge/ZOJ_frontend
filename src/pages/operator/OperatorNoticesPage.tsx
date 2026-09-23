@@ -1,6 +1,9 @@
+import NoticeCountdownText, {
+  NoticeCountdownCommands,
+} from '@/components/contest/NoticeCountdownText';
 import { ChoiceCard } from '@/components/common/ManagementCards';
 import useConfirmation from '@/shared/ui/useConfirmation';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
@@ -86,7 +89,7 @@ function OperatorNoticesContent({
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const [form, setForm] = useState(emptyNoticeForm);
-  const [emergencyNotice, setEmergencyNotice] = useState('');
+  const [emergencyDraft, setEmergencyNotice] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [editorMode, setEditorMode] = useState<NoticeEditorMode>('notice');
   const [expandedNoticeId, setExpandedNoticeId] = useState('');
@@ -115,6 +118,11 @@ function OperatorNoticesContent({
   ] as const;
 
   const contest = dashboardQuery.data?.contest;
+  const emergencyNotice =
+    emergencyDraft ??
+    contest?.emergency_notice_template ??
+    contest?.emergency_notice ??
+    '';
   const notices = noticesQuery.data ?? [];
   const isNoticeListLoading =
     noticesQuery.isPending || (noticesQuery.isFetching && !noticesQuery.data);
@@ -126,10 +134,6 @@ function OperatorNoticesContent({
     (noticePage - 1) * NOTICE_PAGE_SIZE,
     noticePage * NOTICE_PAGE_SIZE,
   );
-
-  useEffect(() => {
-    setEmergencyNotice(contest?.emergency_notice ?? '');
-  }, [contest?.emergency_notice]);
 
   const saveNoticeMutation = useMutation({
     mutationFn: () =>
@@ -185,7 +189,7 @@ function OperatorNoticesContent({
         emergency_notice: notice?.trim() || null,
       }),
     onSuccess: (updatedContest) => {
-      setEmergencyNotice(updatedContest.emergency_notice ?? '');
+      setEmergencyNotice(null);
       queryClient.setQueryData<OperatorDashboard>(
         dashboardQueryKey,
         (current) =>
@@ -235,7 +239,7 @@ function OperatorNoticesContent({
 
   function editNotice(notice: ContestNotice) {
     setForm({
-      body: notice.body,
+      body: notice.body_template ?? notice.body,
       emergency: notice.emergency,
       noticeId: notice.contest_notice_id,
       pinned: notice.pinned,
@@ -352,6 +356,26 @@ function OperatorNoticesContent({
                   value={form.body}
                 />
               </label>
+              <NoticeCountdownCommands
+                onInsert={(command) =>
+                  setForm((current) => ({
+                    ...current,
+                    body: [current.body.trimEnd(), command]
+                      .filter(Boolean)
+                      .join('\n'),
+                  }))
+                }
+              />
+              {form.body.includes('{{countdown:') ? (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 px-4 py-3">
+                  <p className="mb-1 text-xs font-semibold text-indigo-600">
+                    참가자에게 보이는 문구
+                  </p>
+                  <p className="text-sm leading-6 whitespace-pre-wrap text-slate-700">
+                    <NoticeCountdownText text={form.body} contest={contest} />
+                  </p>
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
                   <Toggle
@@ -398,7 +422,11 @@ function OperatorNoticesContent({
                     </span>
                   </div>
                   <p className="text-sm leading-6 font-medium whitespace-pre-wrap text-rose-700">
-                    {contest.emergency_notice}
+                    <NoticeCountdownText
+                      text={contest.emergency_notice}
+                      template={contest.emergency_notice_template}
+                      contest={contest}
+                    />
                   </p>
                 </div>
               ) : (
@@ -427,6 +455,28 @@ function OperatorNoticesContent({
                     value={emergencyNotice}
                   />
                 </label>
+                <NoticeCountdownCommands
+                  onInsert={(command) =>
+                    setEmergencyNotice(
+                      [emergencyNotice.trimEnd(), command]
+                        .filter(Boolean)
+                        .join('\n'),
+                    )
+                  }
+                />
+                {emergencyNotice.includes('{{countdown:') ? (
+                  <div className="rounded-lg border border-rose-100 bg-rose-50/50 px-4 py-3">
+                    <p className="mb-1 text-xs font-semibold text-rose-600">
+                      참가자에게 보이는 문구
+                    </p>
+                    <p className="text-sm leading-6 whitespace-pre-wrap text-slate-700">
+                      <NoticeCountdownText
+                        text={emergencyNotice}
+                        contest={contest}
+                      />
+                    </p>
+                  </div>
+                ) : null}
                 {saveEmergencyMutation.error ? (
                   <ErrorBox
                     error={saveEmergencyMutation.error}
@@ -530,7 +580,11 @@ function OperatorNoticesContent({
                   </div>
                   {expandedNoticeId === notice.contest_notice_id ? (
                     <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 whitespace-pre-wrap text-slate-700">
-                      {notice.body}
+                      <NoticeCountdownText
+                        text={notice.body}
+                        template={notice.body_template}
+                        contest={contest}
+                      />
                     </p>
                   ) : null}
                 </article>

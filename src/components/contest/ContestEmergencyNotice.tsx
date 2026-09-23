@@ -7,6 +7,8 @@ import {
 } from 'react';
 import { sharedUiText } from '@/data/uiText';
 import { SvgIcon } from '@/utils/Icons';
+import type { Contest } from '@/domains/contestAdministration/types';
+import { useNoticeCountdown } from '@/domains/serviceCommunication/useNoticeCountdown';
 
 const EMERGENCY_NOTICE_DISMISS_EVENT = 'zoj:emergency-notice-dismissed';
 
@@ -124,21 +126,29 @@ function EmergencyNoticeBanner({
 export default function ContestEmergencyNotice({
   contestId,
   notice,
+  template,
+  contest,
 }: {
   contestId: string;
   notice: string;
+  template?: string | null;
+  contest?: Contest;
 }) {
-  const key = notice ? emergencyNoticeDismissKey(contestId, notice) : null;
+  const rendered = useNoticeCountdown(notice, template, contest);
+  const key = rendered.text
+    ? emergencyNoticeDismissKey(contestId, rendered.identity)
+    : null;
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const isStoredDismissed = useSyncExternalStore(
     subscribeDismissedEmergencyNotice,
     () => readDismissedEmergencyNotice(key),
     () => false,
   );
-  if (!notice || !key || isStoredDismissed || dismissedKey === key) return null;
+  if (!rendered.text || !key || isStoredDismissed || dismissedKey === key)
+    return null;
   return (
     <EmergencyNoticeBanner
-      notice={notice}
+      notice={rendered.text}
       onDismiss={() => {
         setDismissedKey(key);
         try {

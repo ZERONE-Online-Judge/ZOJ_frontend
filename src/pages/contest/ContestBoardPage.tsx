@@ -1,3 +1,4 @@
+import NoticeCountdownText from '@/components/contest/NoticeCountdownText';
 import { ChoiceCard, SettingsCard } from '@/components/common/ManagementCards';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -337,6 +338,7 @@ function ContestBoardContent({
         <section>
           {canViewNotices ? (
             <NoticePanel
+              contest={contest}
               currentPage={currentNoticePage}
               expandedNoticeId={activeNoticeId}
               isError={noticesQuery.isError}
@@ -428,6 +430,7 @@ function ContestBoardContent({
 }
 
 function NoticePanel({
+  contest,
   currentPage,
   expandedNoticeId,
   isError,
@@ -438,6 +441,7 @@ function NoticePanel({
   showPagination,
   totalPages,
 }: {
+  contest: Contest;
   currentPage: number;
   expandedNoticeId: string;
   isError: boolean;
@@ -490,7 +494,11 @@ function NoticePanel({
               {isExpanded ? (
                 <article className="bg-white px-4 pb-6">
                   <p className="rounded border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 whitespace-pre-wrap text-slate-950">
-                    {notice.body}
+                    <NoticeCountdownText
+                      text={notice.body}
+                      template={notice.body_template}
+                      contest={contest}
+                    />
                   </p>
                 </article>
               ) : null}
