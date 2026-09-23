@@ -198,7 +198,7 @@ export default function ContestsPage() {
 
   return (
     <div className="public-experience contest-directory">
-      <PublicHero className="directory-hero" scrollTo="#contest-directory">
+      <PublicHero className="directory-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">YOUR NEXT CHALLENGE</p>

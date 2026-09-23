@@ -54,7 +54,7 @@ export default function JudgeStatusPage() {
 
   return (
     <div className={`public-experience judge-experience is-${tone}`}>
-      <PublicHero className="judge-hero" scrollTo="#judge-now">
+      <PublicHero className="judge-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">BEHIND EVERY ANSWER</p>

@@ -57,14 +57,7 @@
   color: #b8bdce;
   margin: 26px 0 32px;
 }
-.public-experience .public-hero .experience-hero-foot {
-  min-height: 65px;
-  padding: 20px 0;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: #9ca5bd;
-  align-items: center;
-}
+
 .public-hero-orbit {
   position: absolute;
   pointer-events: none;
@@ -131,11 +124,6 @@
   .public-experience .public-hero .experience-eyebrow {
     font-size: 9px;
     margin-bottom: 22px;
-  }
-  .public-experience .public-hero .experience-hero-foot {
-    font-size: 8px;
-    gap: 14px;
-    min-height: 56px;
   }
 
   .experience-actions {

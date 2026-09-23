@@ -142,7 +142,7 @@ export default function NoticesPage() {
 
   return (
     <div className="public-experience notices-experience">
-      <PublicHero className="notices-hero" scrollTo="#notice-list">
+      <PublicHero className="notices-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">KEEP IN THE LOOP</p>

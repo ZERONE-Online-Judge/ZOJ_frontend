@@ -82,7 +82,7 @@ export default function SupportGuidePage() {
 
   return (
     <div className="public-experience support-experience">
-      <PublicHero className="support-hero" scrollTo="#support-content">
+      <PublicHero className="support-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">HERE FOR YOUR NEXT STEP</p>

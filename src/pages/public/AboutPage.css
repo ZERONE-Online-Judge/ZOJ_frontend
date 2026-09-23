@@ -192,22 +192,7 @@
   font-weight: 500;
   color: #d1d5e1;
 }
-.about-hero-bottom {
-  border-top: 1px solid #ffffff19;
-  min-height: 66px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: #9ca5bd;
-}
-.about-hero-bottom a {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  min-height: 44px;
-}
+
 .about-orbit {
   position: absolute;
   border: 1px solid #9f8cdf19;
@@ -1122,14 +1107,7 @@
   .about-window {
     transform: rotate(1deg);
   }
-  .about-hero-bottom {
-    font-size: 8px;
-    min-height: 56px;
-    gap: 12px;
-  }
-  .about-hero-bottom a {
-    gap: 8px;
-  }
+
   .about-orbit {
     top: 400px;
     right: -200px;

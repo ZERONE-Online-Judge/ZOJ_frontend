@@ -246,7 +246,7 @@ export default function AboutPage() {
 
   return (
     <div className="public-experience about-page" ref={root}>
-      <PublicHero className="about-hero" scrollTo="#about-experience">
+      <PublicHero className="about-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">FROM ZERO TO YOUR CONTEST</p>

@@ -153,16 +153,7 @@
   text-decoration: underline;
   text-underline-offset: 5px;
 }
-.experience-hero-foot {
-  border-top: 1px solid #ffffff16;
-  padding: 22px 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  color: #b2b6c8;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-}
+
 .experience-live {
   display: inline-flex;
   align-items: center;
@@ -1383,10 +1374,7 @@
   .judge-server {
     height: 39px;
   }
-  .experience-hero-foot {
-    font-size: 9px;
-    gap: 14px;
-  }
+
   .experience-section-heading {
     align-items: start;
     flex-direction: column;
@@ -1689,9 +1677,6 @@
   }
   .support-privacy aside nav {
     grid-template-columns: 1fr;
-  }
-  .experience-hero-foot span:last-child {
-    font-size: 8px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
