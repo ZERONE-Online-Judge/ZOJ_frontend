@@ -218,6 +218,7 @@ function source(relative) {
   loaded.paths = Module._nodeModulePaths(path.dirname(filename));
   const native = loaded.require.bind(loaded);
   loaded.require = (id) => {
+    if (id.endsWith('.css')) return {};
     if (mocks[id]) return mocks[id];
     if (!id.startsWith('@/')) return native(id);
     return source(

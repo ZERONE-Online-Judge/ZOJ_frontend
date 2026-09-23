@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import OperatorContestStatus from '@/components/operator/OperatorContestStatus';
 import {
   JudgeIcon,
   OperatorAccessGate,
@@ -22,7 +23,6 @@ import {
 } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
 import { formatApiError } from '@/shared/api/errors';
-import { formatDateTime } from '@/shared/lib/dateTime';
 import AnimatedNumber from '@/shared/ui/AnimatedNumber';
 
 export default function OperatorHomePage() {
@@ -89,6 +89,17 @@ function OperatorHomeContent({
       ) : null}
 
       <div className="grid gap-6">
+        {contest ? (
+          <OperatorContestStatus
+            contest={contest}
+            canManageSettings={can('contest.settings.manage')}
+            stale={dashboardQuery.isError}
+          />
+        ) : dashboardQuery.isPending ? (
+          <div className="zoj-card text-sm text-slate-500" role="status">
+            대회 진행 상태를 불러오고 있습니다.
+          </div>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {can('contest.participant.view') ? (
             <OperatorMetricCard
@@ -202,25 +213,9 @@ function OperatorHomeContent({
         </OperatorPanel>
 
         <OperatorPanel
-          description="대회 일정과 참가 유형을 확인합니다."
-          title="대회 상태"
+          description="등록된 참가 유형을 확인합니다."
+          title="참가 유형"
         >
-          {contest ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              <OperatorInfo
-                label="시작"
-                value={formatDateTime(contest.start_at)}
-              />
-              <OperatorInfo
-                label="종료"
-                value={formatDateTime(contest.end_at)}
-              />
-              <OperatorInfo
-                label="프리즈"
-                value={formatDateTime(contest.freeze_at)}
-              />
-            </div>
-          ) : null}
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
@@ -292,14 +287,5 @@ function OperatorQuickLink({
       {icon}
       {label}
     </Link>
-  );
-}
-
-function OperatorInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs font-semibold text-slate-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-950">{value}</p>
-    </div>
   );
 }
