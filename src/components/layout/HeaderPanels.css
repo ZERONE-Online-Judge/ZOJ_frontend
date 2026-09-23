@@ -60,9 +60,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #e6e3ed;
-  border-radius: 24px;
-  background: #fafafd;
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-card);
+  background: var(--zoj-surface);
   color: #272b40;
   box-shadow: 0 24px 90px #10132330;
   font-weight: 400;
@@ -71,8 +71,7 @@
 .header-panel-heading {
   flex-shrink: 0;
   padding: 20px 26px 24px;
-  background:
-    radial-gradient(ellipse at 100% 0, #e7dff7, transparent 70%), #f2f2f7;
+  background: var(--zoj-surface);
   border-bottom: 1px solid #e4e2ed;
 }
 .header-panel-topline {
@@ -221,17 +220,17 @@
   display: grid;
   gap: 7px;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #e6e3ed;
-  border-radius: 14px;
+  background: var(--zoj-surface-raised);
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-inset);
   text-decoration: none;
   transition:
     border-color 0.2s,
     background 0.2s;
 }
 .header-contest-card:hover {
-  background: #f7f4fc;
-  border-color: #cbb7e1;
+  background: var(--zoj-surface-hover);
+  border-color: var(--zoj-border-selected);
 }
 .header-contest-card strong {
   color: #39394e;
@@ -313,14 +312,14 @@
   gap: 12px;
   width: 100%;
   text-align: left;
-  border: 1px solid #e4dfef;
-  border-radius: 16px;
-  background: #fff;
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-inset);
+  background: var(--zoj-surface-raised);
   padding: 16px;
 }
 .header-notification-card:hover {
-  background: #f8f5fe;
-  border-color: #cbb9e4;
+  background: var(--zoj-surface-hover);
+  border-color: var(--zoj-border-selected);
 }
 .header-notification-open {
   display: flex;
@@ -460,10 +459,13 @@
     inset: 8px 8px 8px auto;
     width: calc(100% - 16px);
     max-height: calc(100dvh - 16px);
-    border-radius: 20px;
+    border-radius: var(--zoj-radius-card);
+    border: 1px solid var(--zoj-border);
+    background: var(--zoj-surface);
   }
   .header-panel-heading {
     padding: 16px 20px 20px;
+    background: var(--zoj-surface);
   }
   .header-panel-body {
     padding: 20px 16px;
@@ -478,6 +480,9 @@
 @media (prefers-reduced-motion: reduce) {
   .header-panel {
     animation: none;
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-card);
+    background: var(--zoj-surface);
   }
   .header-action,
   .header-contest-card {

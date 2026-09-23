@@ -1,3 +1,4 @@
+import { ChoiceCard } from '@/components/common/ManagementCards';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -624,15 +625,12 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
-      <input
-        checked={checked}
-        className="size-4 accent-indigo-600"
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
-      {label}
-    </label>
+    <ChoiceCard
+      checked={checked}
+      onChange={onChange}
+      type="checkbox"
+      title={label}
+    />
   );
 }
 

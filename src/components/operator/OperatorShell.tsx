@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { ManagementPanel } from '@/components/common/ManagementCards';
 import { accessText, operatorNavText } from '@/data/uiText';
 import { contestRoleTitleForAccount } from '@/domains/identityAccess/contestRoles';
 import {
@@ -352,30 +353,8 @@ function TabCountBadge({ children }: { children: ReactNode }) {
   );
 }
 
-export function OperatorPanel({
-  actions,
-  children,
-  description,
-  title,
-}: OperatorPanelProps) {
-  return (
-    <section className="zoj-management-panel grid min-w-0 gap-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid min-w-0 gap-1">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          {description ? (
-            <p className="text-sm leading-6 font-normal text-slate-500">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {actions ? (
-          <div className="flex min-w-0 flex-wrap gap-2">{actions}</div>
-        ) : null}
-      </header>
-      {children}
-    </section>
-  );
+export function OperatorPanel(props: OperatorPanelProps) {
+  return <ManagementPanel {...props} />;
 }
 
 export function OperatorMetricCard({
@@ -386,7 +365,7 @@ export function OperatorMetricCard({
   value,
 }: OperatorMetricCardProps) {
   return (
-    <article className="flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid sm:p-5">
+    <article className="zoj-card flex items-start gap-4 sm:grid">
       <span
         className={[
           'inline-flex size-9 items-center justify-center rounded-lg border',

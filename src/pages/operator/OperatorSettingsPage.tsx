@@ -2,6 +2,7 @@ import { type FormEvent, useId, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageLayout from '@/components/common/PageLayout';
+import { ChoiceCard, SettingsCard } from '@/components/common/ManagementCards';
 import { sharedUiText } from '@/data/uiText';
 import {
   OperatorAccessGate,
@@ -353,13 +354,13 @@ function OperatorSettingsContent({
       ) : null}
 
       {canManageSettings ? (
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <OperatorPanel
             description="대회 기본 정보와 공개 정책을 수정합니다."
             title="대회 설정"
           >
             {settingsForm ? (
-              <form className="grid gap-4" onSubmit={handleSettingsSubmit}>
+              <form className="grid gap-5" onSubmit={handleSettingsSubmit}>
                 {operationLocked ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                     대회가 진행 중이어서 기본 정보와 상태 변경은 잠겨 있습니다.
@@ -367,71 +368,105 @@ function OperatorSettingsContent({
                     있습니다.
                   </p>
                 ) : null}
-                <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                  상태
-                  <select
-                    className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
-                    disabled={operationLocked}
-                    onChange={(event) =>
-                      setSettingsForm((prev) =>
-                        prev ? { ...prev, status: event.target.value } : prev,
-                      )
-                    }
-                    value={settingsForm.status}
-                  >
-                    {statusOptions.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <fieldset
+                <SettingsCard
+                  title="기본 정보"
+                  description="대회 목록과 소개 화면에 표시할 정보를 입력합니다."
+                  hint={
+                    operationLocked
+                      ? '진행 중인 대회의 기본 정보와 상태는 변경할 수 없습니다.'
+                      : '공개 여부는 상태에서, 운영 시간은 아래 대회 일정에서 설정합니다.'
+                  }
+                >
+                  <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                    상태
+                    <select
+                      className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                      disabled={operationLocked}
+                      onChange={(event) =>
+                        setSettingsForm((prev) =>
+                          prev ? { ...prev, status: event.target.value } : prev,
+                        )
+                      }
+                      value={settingsForm.status}
+                    >
+                      {statusOptions.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextInput
+                      disabled={operationLocked}
+                      label="대회명"
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev ? { ...prev, title: value } : prev,
+                        )
+                      }
+                      value={settingsForm.title}
+                    />
+                    <TextInput
+                      disabled={operationLocked}
+                      label="주최 기관"
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev ? { ...prev, organization_name: value } : prev,
+                        )
+                      }
+                      value={settingsForm.organization_name}
+                    />
+                  </div>
+                  <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                    개요
+                    <textarea
+                      className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+                      disabled={operationLocked}
+                      onChange={(event) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, overview: event.target.value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.overview}
+                    />
+                  </label>
+                </SettingsCard>
+                <SettingsCard
+                  title="대회 일정"
                   disabled={
                     scheduleDisabled || updateSettingsMutation.isPending
                   }
-                  aria-describedby={
-                    scheduleDisabled ? 'schedule-locked-help' : undefined
+                  description={
+                    scheduleDisabled
+                      ? '초안에서는 일정 입력이 잠깁니다. 기본 정보에서 예정 상태로 변경하세요.'
+                      : `시작·프리즈·종료 시간을 설정합니다. 시간대: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`
                   }
-                  className={`grid min-w-0 gap-4 rounded-lg border px-4 py-4 md:grid-cols-3 ${scheduleDisabled ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-indigo-50/60'}`}
+                  hint="변경한 일정은 아래 ‘설정 저장’을 누르면 반영됩니다."
                 >
-                  <div className="grid gap-1 md:col-span-3">
-                    <h3 className="text-sm font-semibold text-slate-800">
-                      대회 일정
-                    </h3>
-                    {scheduleDisabled ? (
-                      <p
-                        id="schedule-locked-help"
-                        className="text-xs text-slate-500"
-                      >
-                        초안에서는 일정 입력이 잠깁니다. 위에서 예정 상태로
-                        변경하세요.
-                      </p>
-                    ) : (
-                      <span className="text-xs text-slate-500">
-                        {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                      </span>
-                    )}
+                  <div className="zoj-settings-fields">
+                    <DateInput
+                      label="시작"
+                      name="start_at"
+                      setForm={setSettingsForm}
+                      value={settingsForm.start_at}
+                    />
+                    <DateInput
+                      label="프리즈"
+                      name="freeze_at"
+                      setForm={setSettingsForm}
+                      value={settingsForm.freeze_at}
+                    />
+                    <DateInput
+                      label="종료"
+                      name="end_at"
+                      setForm={setSettingsForm}
+                      value={settingsForm.end_at}
+                    />
                   </div>
-                  <DateInput
-                    label="시작"
-                    name="start_at"
-                    setForm={setSettingsForm}
-                    value={settingsForm.start_at}
-                  />
-                  <DateInput
-                    label="프리즈"
-                    name="freeze_at"
-                    setForm={setSettingsForm}
-                    value={settingsForm.freeze_at}
-                  />
-                  <DateInput
-                    label="종료"
-                    name="end_at"
-                    setForm={setSettingsForm}
-                    value={settingsForm.end_at}
-                  />
-                </fieldset>
+                </SettingsCard>
                 {quickActionsVisible ? (
                   <QuickActions
                     currentStatus={settingsForm.status}
@@ -439,391 +474,269 @@ function OperatorSettingsContent({
                     onAction={applyQuickAction}
                   />
                 ) : null}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput
-                    disabled={operationLocked}
-                    label="대회명"
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev ? { ...prev, title: value } : prev,
-                      )
-                    }
-                    value={settingsForm.title}
-                  />
-                  <TextInput
-                    disabled={operationLocked}
-                    label="주최 기관"
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev ? { ...prev, organization_name: value } : prev,
-                      )
-                    }
-                    value={settingsForm.organization_name}
-                  />
-                </div>
-                <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                  개요
-                  <textarea
-                    className="min-h-28 resize-y rounded-lg border border-slate-200 px-3 py-3 text-sm leading-6 font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
-                    disabled={operationLocked}
-                    onChange={(event) =>
-                      setSettingsForm((prev) =>
-                        prev ? { ...prev, overview: event.target.value } : prev,
-                      )
-                    }
-                    value={settingsForm.overview}
-                  />
-                </label>
-                <fieldset
-                  className="grid min-w-0 gap-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 disabled:opacity-75"
+                <SettingsCard
+                  title="종료 후 순위 공개 방식"
+                  description="참가자 스코어보드와 프레젠테이션에 같은 방식이 적용됩니다. 발표 조작은 운영자 스코어보드 탭에서 합니다."
                   disabled={Boolean(contest?.scoreboard_release_locked)}
-                  aria-describedby="scoreboard-release-help"
+                  hint="누가 볼 수 있는지는 아래 ‘자료 공개 범위 → 스코어보드’에서 별도로 정합니다. 순위를 공개해도 열람 범위가 비공개이면 참가자는 볼 수 없습니다."
                 >
-                  <legend className="px-1 text-sm font-semibold text-slate-900">
-                    종료 후 순위 공개 방식
-                  </legend>
-                  <p
-                    id="scoreboard-release-help"
-                    className="text-xs leading-5 text-slate-600"
-                  >
-                    참가자 스코어보드와 프레젠테이션에 같은 방식이 적용됩니다.
-                    발표 조작은 운영자 스코어보드 탭에서 합니다.
-                  </p>
                   {SCOREBOARD_RELEASE_OPTIONS.map((option) => (
-                    <label
+                    <ChoiceCard
                       key={option.value}
-                      className={`flex min-w-0 items-start gap-3 rounded-xl border p-4 transition ${settingsForm.scoreboard_release_mode === option.value ? 'border-indigo-300 bg-white shadow-sm' : 'border-slate-200 bg-white/60'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="scoreboard_release_mode"
-                        value={option.value}
-                        checked={
-                          settingsForm.scoreboard_release_mode === option.value
-                        }
-                        onChange={() =>
-                          setSettingsForm((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  scoreboard_release_mode: option.value,
-                                }
-                              : prev,
-                          )
-                        }
-                        className="mt-1 size-4 shrink-0 accent-indigo-600"
-                      />
-                      <span className="grid min-w-0 gap-1.5">
-                        <strong className="text-sm font-semibold text-slate-900">
-                          {option.label}
-                        </strong>
-                        <span className="text-xs leading-5 text-slate-600">
-                          {option.description}
-                        </span>
-                        <span className="text-xs leading-5 font-medium text-indigo-700">
-                          {option.flow.join(' → ')}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                  <p className="text-xs leading-5 text-slate-600">
-                    {contest?.scoreboard_release_locked
-                      ? '이미 순위 공개를 시작한 유형이 있어 공개 방식을 변경할 수 없습니다.'
-                      : '아래 설정 저장을 누르면 반영됩니다. 순위별·결과 순차 공개는 발표 시작 시 성적을 고정하며, 이후에는 방식을 변경할 수 없습니다.'}
-                  </p>
-                  <p className="rounded-lg bg-white px-3 py-2 text-xs leading-5 text-slate-600">
-                    누가 볼 수 있는지는 아래 ‘자료 공개 범위 → 스코어보드’에서
-                    별도로 정합니다. 순위를 공개해도 열람 범위가 비공개이면
-                    참가자는 볼 수 없습니다.
-                  </p>
-                </fieldset>
-                <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-3">
-                  <div className="grid gap-2 md:col-span-2 xl:col-span-3">
-                    <h3 className="text-sm font-semibold text-slate-800">
-                      자료 공개 범위
-                    </h3>
-                    <p className="text-xs leading-5 text-slate-600">
-                      종료 후 각 자료를 누가 볼 수 있는지 선택하세요.
-                      문제집·스코어보드·채점현황은 ‘비로그인 공개’를 선택하면
-                      대회 진행 중에도 로그인 없이 열람할 수 있습니다. 해설은
-                      대회 종료 후에만 공개됩니다.
-                    </p>
-                    <dl className="grid gap-2 text-xs leading-5 sm:grid-cols-3">
-                      <div>
-                        <dt className="font-medium text-slate-700">비공개</dt>
-                        <dd className="text-slate-500">
-                          종료 후 참가자와 일반 방문자의 열람을 막습니다.
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="font-medium text-slate-700">
-                          참가자 공개 유지
-                        </dt>
-                        <dd className="text-slate-500">
-                          종료 후에도 해당 대회 참가자로 로그인하면 볼 수
-                          있습니다.
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="font-medium text-slate-700">
-                          비로그인 공개
-                        </dt>
-                        <dd className="text-slate-500">
-                          로그인하지 않은 방문자도 볼 수 있습니다. 게시판 작성
-                          권한은 별도입니다.
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                  <AccessSelect
-                    helperText="문제 목록과 문제 본문의 공개 범위입니다. 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다."
-                    label="문제집"
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              problem_access_after_end: value,
-                              editorial_access_after_end:
-                                value === 'private'
-                                  ? 'private'
-                                  : prev.editorial_access_after_end,
-                              mock_judging_enabled:
-                                value === 'private'
-                                  ? false
-                                  : prev.mock_judging_enabled,
-                            }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.problem_access_after_end}
-                  />
-                  <AccessSelect
-                    label="스코어보드"
-                    helperText="순위와 팀별 성적을 누가 볼 수 있는지 정합니다. 위에서 선택한 종료 후 순위 공개 방식과 별도로 적용됩니다."
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? { ...prev, scoreboard_access_after_end: value }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.scoreboard_access_after_end}
-                  />
-                  <AccessSelect
-                    label="채점현황"
-                    helperText="제출 목록과 채점 결과의 열람 범위입니다. 제출 소스 코드의 열람 권한과는 별개입니다."
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? { ...prev, submission_access_after_end: value }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.submission_access_after_end}
-                  />
-                  <AccessSelect
-                    label="게시판"
-                    helperText="종료 후 게시판을 열람할 수 있는 대상입니다. 글을 쓰게 하려면 아래 ‘게시판 작성 허용’도 켜세요."
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? { ...prev, board_access_after_end: value }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.board_access_after_end}
-                  />
-                  <AccessSelect
-                    disabled={
-                      settingsForm.problem_access_after_end === 'private'
-                    }
-                    helperText={
-                      settingsForm.problem_access_after_end === 'private'
-                        ? '문제집 종료 후 공개가 켜져야 해설 공개 범위를 설정할 수 있습니다.'
-                        : '해설은 대회 종료 후에만 공개됩니다.'
-                    }
-                    label="해설"
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? { ...prev, editorial_access_after_end: value }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.editorial_access_after_end}
-                  />
-                  <AccessSelect
-                    label="공지"
-                    helperText="대회 종료 후 공지사항을 열람할 수 있는 대상입니다."
-                    onChange={(value) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? { ...prev, notice_access_after_end: value }
-                          : prev,
-                      )
-                    }
-                    value={settingsForm.notice_access_after_end}
-                  />
-                </div>
-
-                <div className="grid gap-3 rounded-lg border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
-                  <div className="grid gap-1">
-                    <span className="font-semibold">참가자 채점 진행률</span>
-                    <span className="font-medium text-slate-500">
-                      가리면 참가자 화면에는 테스트케이스 진행률이나 큐 순번을
-                      보여주지 않고 채점 경과 시간만 표시합니다. 최종 채점
-                      결과는 계속 표시되며, 스코어보드 프리즈와는 별도
-                      설정입니다.
-                    </span>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <label
-                      className={[
-                        'flex items-center gap-3 rounded-lg border px-4 py-3 font-semibold transition',
-                        settingsForm.participant_progress_visible
-                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 bg-white text-slate-600',
-                      ].join(' ')}
-                    >
-                      <input
-                        checked={settingsForm.participant_progress_visible}
-                        className="size-4 accent-indigo-600"
-                        name="participant_progress_visible"
-                        onChange={() =>
-                          setSettingsForm((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  participant_progress_visible: true,
-                                  mock_judging_progress_visible: false,
-                                }
-                              : prev,
-                          )
-                        }
-                        type="radio"
-                      />
-                      보이기
-                    </label>
-                    <label
-                      className={[
-                        'flex items-center gap-3 rounded-lg border px-4 py-3 font-semibold transition',
-                        !settingsForm.participant_progress_visible
-                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 bg-white text-slate-600',
-                      ].join(' ')}
-                    >
-                      <input
-                        checked={!settingsForm.participant_progress_visible}
-                        className="size-4 accent-indigo-600"
-                        name="participant_progress_visible"
-                        onChange={() =>
-                          setSettingsForm((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  participant_progress_visible: false,
-                                }
-                              : prev,
-                          )
-                        }
-                        type="radio"
-                      />
-                      가리기
-                    </label>
-                  </div>
-                  {!settingsForm.participant_progress_visible ? (
-                    <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <input
-                        checked={settingsForm.mock_judging_progress_visible}
-                        className="mt-1 size-4 accent-indigo-600"
-                        onChange={(event) =>
-                          setSettingsForm((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  mock_judging_progress_visible:
-                                    event.target.checked,
-                                }
-                              : prev,
-                          )
-                        }
-                        type="checkbox"
-                      />
-                      <span className="grid gap-1">
-                        <span className="font-semibold">
-                          모의채점 진행률 보이기
-                        </span>
-                        <span className="font-medium text-slate-500">
-                          정규 제출의 진행률은 가린 채 모의채점 진행률만
-                          보여줍니다. 꺼두면 모의채점도 채점 경과 시간만
-                          표시합니다.
-                        </span>
-                      </span>
-                    </label>
-                  ) : null}
-                </div>
-
-                <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                  <input
-                    checked={settingsForm.board_write_after_end}
-                    className="mt-1 size-4 accent-indigo-600"
-                    onChange={(event) =>
-                      setSettingsForm((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              board_write_after_end: event.target.checked,
-                            }
-                          : prev,
-                      )
-                    }
-                    type="checkbox"
-                  />
-                  <span className="grid gap-1">
-                    <span className="font-semibold">
-                      대회 종료 후 게시판 작성 허용
-                    </span>
-                    <span className="font-medium text-slate-500">
-                      켜면 종료 이후에도 참가자가 질문과 댓글을 작성할 수
-                      있습니다. 게시판 공개 범위가 비공개면 작성도 차단됩니다.
-                    </span>
-                  </span>
-                </label>
-
-                {settingsForm.problem_access_after_end !== 'private' ? (
-                  <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                    <input
-                      checked={settingsForm.mock_judging_enabled}
-                      className="mt-1 size-4 accent-amber-500"
-                      onChange={(event) =>
+                      checked={
+                        settingsForm.scoreboard_release_mode === option.value
+                      }
+                      name="scoreboard_release_mode"
+                      value={option.value}
+                      title={option.label}
+                      description={option.description}
+                      hint={option.flow.join(' → ')}
+                      onChange={() =>
                         setSettingsForm((prev) =>
                           prev
                             ? {
                                 ...prev,
-                                mock_judging_enabled: event.target.checked,
+                                scoreboard_release_mode: option.value,
                               }
                             : prev,
                         )
                       }
-                      type="checkbox"
                     />
-                    <span className="grid gap-1">
-                      <span className="font-semibold">모의채점</span>
-                      <span className="font-medium text-amber-800">
-                        종료된 대회에서 문제집 접근자가 제출 필드로 채점 결과만
-                        확인할 수 있습니다. 일반 채점현황과 스코어보드에는
-                        기록하지 않습니다.
-                      </span>
-                    </span>
-                  </label>
-                ) : (
-                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
-                    모의채점은 종료 후 연습 제출 기능입니다. 사용하려면 문제집을
-                    ‘참가자 공개 유지’ 또는 ‘비로그인 공개’로 바꾸세요. 모의채점
-                    결과는 대회 순위에 반영되지 않습니다.
+                  ))}
+                  <p className="zoj-settings-card__description">
+                    {contest?.scoreboard_release_locked
+                      ? '이미 순위 공개를 시작한 유형이 있어 공개 방식을 변경할 수 없습니다.'
+                      : '순위별·결과 순차 공개는 발표 시작 시 성적을 고정하며, 이후에는 방식을 변경할 수 없습니다.'}
                   </p>
-                )}
+                </SettingsCard>
+                <SettingsCard
+                  title="자료 공개 범위"
+                  description="종료 후 각 자료를 누가 볼 수 있는지 선택하세요. 문제집·스코어보드·채점현황은 ‘비로그인 공개’를 선택하면 진행 중에도 로그인 없이 볼 수 있습니다. 해설은 종료 후에만 공개됩니다."
+                  hint="문제집을 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다. 게시판 작성 허용은 아래에서 별도로 설정합니다."
+                >
+                  <dl className="grid gap-3 text-xs leading-5 sm:grid-cols-3">
+                    <div className="zoj-settings-note">
+                      <dt className="font-semibold text-slate-700">비공개</dt>
+                      <dd className="mt-1">
+                        종료 후 참가자와 방문자가 볼 수 없습니다.
+                      </dd>
+                    </div>
+                    <div className="zoj-settings-note">
+                      <dt className="font-semibold text-slate-700">
+                        참가자 공개 유지
+                      </dt>
+                      <dd className="mt-1">
+                        해당 대회 참가자로 로그인하면 볼 수 있습니다.
+                      </dd>
+                    </div>
+                    <div className="zoj-settings-note">
+                      <dt className="font-semibold text-slate-700">
+                        비로그인 공개
+                      </dt>
+                      <dd className="mt-1">
+                        로그인하지 않은 방문자도 볼 수 있습니다.
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="zoj-settings-resources">
+                    <AccessSelect
+                      helperText="문제 목록과 문제 본문의 공개 범위입니다. 비공개로 바꾸면 해설도 비공개로 바뀌고 모의채점이 꺼집니다."
+                      label="문제집"
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                problem_access_after_end: value,
+                                editorial_access_after_end:
+                                  value === 'private'
+                                    ? 'private'
+                                    : prev.editorial_access_after_end,
+                                mock_judging_enabled:
+                                  value === 'private'
+                                    ? false
+                                    : prev.mock_judging_enabled,
+                              }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.problem_access_after_end}
+                    />
+                    <AccessSelect
+                      label="스코어보드"
+                      helperText="순위와 팀별 성적을 누가 볼 수 있는지 정합니다. 위에서 선택한 종료 후 순위 공개 방식과 별도로 적용됩니다."
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, scoreboard_access_after_end: value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.scoreboard_access_after_end}
+                    />
+                    <AccessSelect
+                      label="채점현황"
+                      helperText="제출 목록과 채점 결과의 열람 범위입니다. 제출 소스 코드의 열람 권한과는 별개입니다."
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, submission_access_after_end: value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.submission_access_after_end}
+                    />
+                    <AccessSelect
+                      label="게시판"
+                      helperText="종료 후 게시판을 열람할 수 있는 대상입니다. 글을 쓰게 하려면 아래 ‘게시판 작성 허용’도 켜세요."
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, board_access_after_end: value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.board_access_after_end}
+                    />
+                    <AccessSelect
+                      disabled={
+                        settingsForm.problem_access_after_end === 'private'
+                      }
+                      helperText={
+                        settingsForm.problem_access_after_end === 'private'
+                          ? '문제집 종료 후 공개가 켜져야 해설 공개 범위를 설정할 수 있습니다.'
+                          : '해설은 대회 종료 후에만 공개됩니다.'
+                      }
+                      label="해설"
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, editorial_access_after_end: value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.editorial_access_after_end}
+                    />
+                    <AccessSelect
+                      label="공지"
+                      helperText="대회 종료 후 공지사항을 열람할 수 있는 대상입니다."
+                      onChange={(value) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? { ...prev, notice_access_after_end: value }
+                            : prev,
+                        )
+                      }
+                      value={settingsForm.notice_access_after_end}
+                    />
+                  </div>
+                </SettingsCard>
+
+                <SettingsCard
+                  title="참가자 채점 진행률"
+                  description="참가자에게 채점 과정을 얼마나 보여줄지 선택합니다. 최종 채점 결과는 항상 표시되며, 스코어보드 프리즈와는 별도로 적용됩니다."
+                >
+                  <div className="zoj-settings-fields">
+                    <ChoiceCard
+                      checked={settingsForm.participant_progress_visible}
+                      name="participant_progress_visible"
+                      value="visible"
+                      title="보이기"
+                      description="테스트케이스 진행률과 채점 대기 정보를 표시합니다."
+                      onChange={() =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                participant_progress_visible: true,
+                                mock_judging_progress_visible: false,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                    <ChoiceCard
+                      checked={!settingsForm.participant_progress_visible}
+                      name="participant_progress_visible"
+                      value="hidden"
+                      title="가리기"
+                      description="진행률과 대기 순번을 가리고, 채점 경과 시간만 표시합니다."
+                      onChange={() =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                participant_progress_visible: false,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  {!settingsForm.participant_progress_visible ? (
+                    <ChoiceCard
+                      checked={settingsForm.mock_judging_progress_visible}
+                      type="checkbox"
+                      title="모의채점 진행률 보이기"
+                      description="정규 제출의 진행률은 가린 채 모의채점 진행률만 보여줍니다. 꺼두면 모의채점도 경과 시간만 표시합니다."
+                      onChange={(checked) =>
+                        setSettingsForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                mock_judging_progress_visible: checked,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                  ) : null}
+                </SettingsCard>
+                <SettingsCard
+                  title="종료 후 참여"
+                  description="대회가 끝난 뒤에도 질문을 주고받거나 문제를 연습할 수 있도록 설정합니다."
+                >
+                  <ChoiceCard
+                    checked={settingsForm.board_write_after_end}
+                    type="checkbox"
+                    title="대회 종료 후 게시판 작성 허용"
+                    description="참가자가 질문과 댓글을 작성할 수 있습니다. 게시판 공개 범위가 비공개이면 작성도 차단됩니다."
+                    onChange={(checked) =>
+                      setSettingsForm((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              board_write_after_end: checked,
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                  <ChoiceCard
+                    checked={settingsForm.mock_judging_enabled}
+                    disabled={
+                      settingsForm.problem_access_after_end === 'private'
+                    }
+                    type="checkbox"
+                    title="모의채점"
+                    description="문제집을 볼 수 있는 사용자가 연습 제출로 채점 결과를 확인합니다. 일반 채점현황과 스코어보드에는 기록하지 않습니다."
+                    hint={
+                      settingsForm.problem_access_after_end === 'private'
+                        ? '문제집을 참가자 또는 비로그인 공개로 바꾸면 사용할 수 있습니다.'
+                        : '모의채점 결과는 대회 순위에 반영되지 않습니다.'
+                    }
+                    onChange={(checked) =>
+                      setSettingsForm((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              mock_judging_enabled: checked,
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                </SettingsCard>
 
                 {formError || updateSettingsMutation.error ? (
                   <ErrorBox
@@ -837,14 +750,19 @@ function OperatorSettingsContent({
                   </p>
                 ) : null}
 
-                <button
-                  className="inline-flex h-11 w-fit items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
-                  disabled={updateSettingsMutation.isPending}
-                  type="submit"
-                >
-                  <SettingsIcon />
-                  {updateSettingsMutation.isPending ? '저장 중' : '설정 저장'}
-                </button>
+                <div className="zoj-settings-actions">
+                  <p className="text-xs leading-5 text-slate-500">
+                    위 설정은 저장하면 함께 반영됩니다.
+                  </p>
+                  <button
+                    className="inline-flex h-11 w-fit items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 disabled:bg-slate-300"
+                    disabled={updateSettingsMutation.isPending}
+                    type="submit"
+                  >
+                    <SettingsIcon />
+                    {updateSettingsMutation.isPending ? '저장 중' : '설정 저장'}
+                  </button>
+                </div>
               </form>
             ) : (
               <p className="text-sm font-medium text-slate-500">
@@ -1019,7 +937,7 @@ function AccessSelect({
 }) {
   const helpId = useId();
   return (
-    <label className="grid gap-2 text-sm font-semibold text-slate-700">
+    <label className="zoj-settings-access">
       {label}
       <select
         aria-describedby={helperText ? helpId : undefined}
@@ -1075,19 +993,14 @@ function QuickActions({
   ] as const;
 
   return (
-    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-sm font-semibold text-slate-800">
-          빠른 운영 액션
-        </strong>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-          선택한 상태: {contestStatusLabel(currentStatus)}
-        </span>
-      </div>
-      <p className="text-xs leading-5 text-slate-500">
-        시간 버튼은 입력값만 바꿉니다. 기존 시간에 더하는 것이 아니라 지금을
-        기준으로 설정하며, 아래 ‘설정 저장’을 눌러야 반영됩니다.
-      </p>
+    <SettingsCard
+      title="빠른 일정 변경"
+      description="현재 시각을 기준으로 시작·프리즈·종료 시간을 빠르게 입력합니다."
+      hint="버튼은 입력값만 바꿉니다. 아래 ‘설정 저장’을 눌러야 실제 일정에 반영됩니다."
+    >
+      <span className="w-fit rounded-lg border border-indigo-100 bg-white px-3 py-1 text-xs font-medium text-indigo-700">
+        선택한 상태: {contestStatusLabel(currentStatus)}
+      </span>
       <div className="flex flex-wrap gap-2">
         {actions.map(([action, label]) => (
           <button
@@ -1101,7 +1014,7 @@ function QuickActions({
           </button>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 

@@ -79,7 +79,7 @@ function OverviewIconBadge({ icon }: { icon: OverviewIcon }) {
 
 function OverviewCard({ icon, title, subtitle }: OverviewCardProps) {
   return (
-    <article className="zoj-overview-card flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-5">
+    <article className="zoj-overview-card zoj-card flex items-start gap-4">
       <OverviewIconBadge icon={icon} />
       <div>
         <h2 className="text-lg font-semibold tracking-tight break-words text-slate-900">
@@ -361,7 +361,7 @@ function ContestOverviewContent({
         />
       </section>
 
-      <section className="zoj-overview-schedule mt-4 grid gap-5 rounded-xl border border-slate-200 bg-white px-5 py-4 sm:grid-cols-3">
+      <section className="zoj-overview-schedule zoj-card mt-4 grid gap-5 sm:grid-cols-3">
         <div className="grid gap-1">
           <span className="text-xs font-black text-slate-400">시작 시간</span>
           <strong className="text-sm font-black text-slate-950">
@@ -385,7 +385,7 @@ function ContestOverviewContent({
         </div>
       </section>
 
-      <div className="zoj-overview-notices mt-6 rounded-xl border border-slate-200 bg-white p-5">
+      <div className="zoj-overview-notices zoj-card mt-6">
         <NoticePreview
           contestId={contest.contest_id}
           isError={noticesQuery.isError}

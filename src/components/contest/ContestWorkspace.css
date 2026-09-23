@@ -29,7 +29,7 @@ main:has(.zoj-contest-shell) {
 .zoj-participant :is(input:not([type='range']), select, textarea) {
   min-width: 0;
   max-width: 100%;
-  border-radius: 0.5rem;
+  border-radius: var(--zoj-radius-control);
   font-weight: 400;
 }
 .zoj-participant
@@ -86,16 +86,16 @@ main:has(.zoj-contest-shell) {
 .zoj-problem-workspace {
   display: grid;
   min-width: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem;
+  background: var(--zoj-surface-raised);
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-card);
   overflow: clip;
   align-items: start;
 }
 .zoj-participant .zoj-problem-sidebar {
   border-right: 0;
   border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: var(--zoj-surface);
   align-self: stretch;
 }
 .zoj-participant .zoj-problem-sidebar nav {
@@ -223,6 +223,9 @@ main:has(.zoj-contest-shell) {
 @media (min-width: 1600px) {
   .zoj-problem-workspace {
     grid-template-columns: 12rem minmax(0, 1fr);
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-card);
+    background: var(--zoj-surface-raised);
   }
   .zoj-problem-workspace.is-combined {
     grid-template-columns: 12rem minmax(0, 1.35fr) minmax(24rem, 1fr);
@@ -254,9 +257,9 @@ main:has(.zoj-contest-shell) {
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem;
-  background: white;
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-card);
+  background: var(--zoj-surface-raised);
   scrollbar-width: thin;
 }
 .zoj-participant .zoj-problems-table {
@@ -331,13 +334,16 @@ main:has(.zoj-contest-shell) {
 }
 
 .zoj-contest-board > section {
-  padding: 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 0.75rem;
+  padding: var(--zoj-card-padding);
+  border: 1px solid var(--zoj-border);
+  background: var(--zoj-surface);
+  border-radius: var(--zoj-radius-card);
 }
 .zoj-contest-board :is(h2, h3) {
-  font-size: 1.125rem;
+  font-size: var(--zoj-card-title);
+  color: var(--zoj-ink);
+  font-weight: 600;
+  line-height: 1.5;
 }
 .zoj-contest-board :is(p, strong, span, time) {
   overflow-wrap: anywhere;
@@ -421,7 +427,10 @@ main:has(.zoj-contest-shell) {
     font-size: 0.8125rem;
   }
   .zoj-contest-board > section {
-    padding: 1rem;
+    padding: var(--zoj-card-padding);
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-card);
+    background: var(--zoj-surface);
   }
   .zoj-contest-board ul > li > button {
     grid-template-columns: minmax(0, 1fr);
@@ -446,8 +455,9 @@ main:has(.zoj-contest-shell) {
   .zoj-participant .zoj-problems-surface,
   .zoj-participant .zoj-submissions-surface {
     overflow: visible;
-    background: transparent;
-    border: 0;
+    background: var(--zoj-surface-raised);
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-card);
   }
   .zoj-participant :is(.zoj-problems-table, .zoj-submissions-table) {
     display: block;
@@ -561,4 +571,24 @@ main:has(.zoj-contest-shell) {
   .zoj-participant .zoj-submission-code-row section {
     padding: 1rem;
   }
+}
+
+/* Content stays white inside the shared soft card frame. */
+.zoj-participant .zoj-scoreboard-scroll {
+  border-color: var(--zoj-border);
+  border-radius: var(--zoj-radius-card);
+}
+.zoj-participant .zoj-problem-submit {
+  background: var(--zoj-surface);
+}
+.zoj-contest-board ul > li {
+  border-color: var(--zoj-border);
+  border-radius: var(--zoj-radius-inset);
+  background: var(--zoj-surface-raised);
+}
+.zoj-overview-card h2,
+.zoj-overview-notices :is(h2, h3) {
+  font-size: var(--zoj-card-title);
+  font-weight: 600;
+  line-height: 1.5;
 }

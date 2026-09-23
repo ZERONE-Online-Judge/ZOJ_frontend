@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import PageLayout from '@/components/common/PageLayout';
+import { ManagementPanel } from '@/components/common/ManagementCards';
 import { accessText, routeText } from '@/data/uiText';
 import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import type { StaffSession } from '@/domains/identityAccess/types';
@@ -153,7 +154,7 @@ export function AdminMetricCard({
   value,
 }: AdminMetricCardProps) {
   return (
-    <article className="flex min-w-0 items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid sm:p-5">
+    <article className="zoj-card flex items-start gap-4 sm:grid">
       <AdminIconBadge tone={accent}>{icon}</AdminIconBadge>
       <div className="grid min-w-0 gap-1">
         <p className="text-sm font-semibold text-slate-500">{label}</p>
@@ -170,30 +171,8 @@ export function AdminMetricCard({
   );
 }
 
-export function AdminPanel({
-  actions,
-  children,
-  description,
-  title,
-}: AdminPanelProps) {
-  return (
-    <section className="zoj-management-panel grid min-w-0 gap-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid min-w-0 gap-1">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          {description ? (
-            <p className="text-sm leading-6 font-normal text-slate-500">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {actions ? (
-          <div className="flex min-w-0 flex-wrap gap-2">{actions}</div>
-        ) : null}
-      </header>
-      {children}
-    </section>
-  );
+export function AdminPanel(props: AdminPanelProps) {
+  return <ManagementPanel {...props} />;
 }
 
 export function DashboardIcon() {

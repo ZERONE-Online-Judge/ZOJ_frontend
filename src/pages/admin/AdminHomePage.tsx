@@ -1,3 +1,4 @@
+import { ChoiceCard } from '@/components/common/ManagementCards';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import { type FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -261,20 +262,14 @@ function AdminHomeContent({ token }: { token: string }) {
             />
           </label>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <input
-                checked={form.emergency}
-                className="size-4 accent-violet-600"
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    emergency: event.target.checked,
-                  }))
-                }
-                type="checkbox"
-              />
-              긴급 공지로 표시
-            </label>
+            <ChoiceCard
+              checked={form.emergency}
+              onChange={(checked) =>
+                setForm((prev) => ({ ...prev, emergency: checked }))
+              }
+              type="checkbox"
+              title="긴급 공지로 표시"
+            />
             <button
               className="h-11 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:bg-slate-300"
               disabled={createNoticeMutation.isPending}

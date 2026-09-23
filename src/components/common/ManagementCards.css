@@ -1,0 +1,239 @@
+@layer components {
+  .zoj-management-panel,
+  .zoj-settings-card {
+    --management-surface: var(--zoj-surface);
+    --management-border: var(--zoj-border);
+    --management-accent: var(--zoj-accent);
+    min-width: 0;
+    border: 1px solid var(--management-border);
+    border-radius: var(--zoj-radius-card);
+    background: var(--management-surface);
+  }
+
+  .zoj-management-panel {
+    display: grid;
+    align-content: start;
+    gap: 1.25rem;
+    padding: var(--zoj-card-padding);
+  }
+
+  .zoj-management-panel__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .zoj-management-panel__heading {
+    display: grid;
+    flex: 1 1 16rem;
+    min-width: 0;
+    gap: 0.375rem;
+  }
+
+  .zoj-management-panel__heading h2 {
+    color: var(--zoj-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .zoj-management-panel__heading p,
+  .zoj-settings-card__description {
+    color: var(--zoj-muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .zoj-management-panel__actions {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .zoj-settings-card {
+    padding: 0 1rem 1rem;
+  }
+
+  .zoj-settings-card > legend {
+    max-width: 100%;
+    padding: 0 0.375rem;
+    color: var(--zoj-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.75;
+  }
+
+  .zoj-settings-card__body {
+    display: grid;
+    min-width: 0;
+    gap: 0.875rem;
+    padding-top: 0.5rem;
+  }
+
+  .zoj-settings-note {
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-control);
+    background: #fff;
+    padding: 0.625rem 0.875rem;
+    color: var(--zoj-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .zoj-choice-card {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-inset);
+    background: #ffffffc9;
+    padding: 1rem;
+    cursor: pointer;
+    transition:
+      border-color 150ms,
+      background-color 150ms,
+      box-shadow 150ms;
+  }
+
+  .zoj-choice-card:hover:not(:has(input:disabled)) {
+    border-color: var(--zoj-border-selected);
+    background: #fff;
+  }
+
+  .zoj-choice-card[data-selected='true'] {
+    border-color: var(--zoj-border-selected);
+    background: #fff;
+    box-shadow: var(--zoj-card-shadow);
+  }
+
+  .zoj-choice-card:focus-within {
+    outline: 2px solid var(--zoj-focus);
+    outline-offset: 2px;
+  }
+
+  .zoj-choice-card:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .zoj-choice-card > input {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    margin-top: 0.1875rem;
+    accent-color: var(--zoj-accent);
+  }
+
+  .zoj-choice-card__content {
+    display: grid;
+    min-width: 0;
+    gap: 0.375rem;
+    overflow-wrap: anywhere;
+  }
+
+  .zoj-choice-card__content > strong {
+    color: var(--zoj-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .zoj-choice-card__description,
+  .zoj-choice-card__hint {
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.75;
+  }
+
+  .zoj-choice-card__description {
+    color: var(--zoj-muted);
+  }
+
+  .zoj-choice-card__hint {
+    color: var(--zoj-accent-hover);
+    font-weight: 500;
+  }
+
+  .zoj-settings-fields {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
+
+  .zoj-settings-resources {
+    display: grid;
+    min-width: 0;
+    gap: 0.875rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .zoj-settings-access {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 0.625rem;
+    border: 1px solid var(--zoj-border);
+    border-radius: var(--zoj-radius-inset);
+    background: #fff;
+    padding: 1rem;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .zoj-settings-access:has(select:disabled) {
+    background: #f8fafc;
+  }
+
+  .zoj-settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid var(--zoj-border);
+    padding-top: 1.25rem;
+  }
+
+  .zoj-management-panel
+    :where(input:not([type='checkbox'], [type='radio']), select, textarea) {
+    background-color: #fff;
+  }
+
+  @media (max-width: 639px) {
+    .zoj-settings-resources {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .zoj-management-panel__heading {
+      flex-basis: auto;
+    }
+
+    .zoj-settings-card {
+      padding-inline: 0.75rem;
+    }
+
+    .zoj-choice-card,
+    .zoj-settings-access {
+      padding: 0.875rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zoj-choice-card {
+      transition: none;
+    }
+  }
+}

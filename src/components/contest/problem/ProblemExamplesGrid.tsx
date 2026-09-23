@@ -12,7 +12,7 @@ type ProblemExamplesGridProps = {
 
 function ExampleBox({ title, value }: { title: string; value: string }) {
   return (
-    <section className="overflow-hidden rounded-md border border-slate-200 bg-white">
+    <section className="zoj-inset overflow-hidden p-0">
       <header className="flex h-10 items-center justify-between bg-slate-100 px-4 text-xs font-black text-slate-700">
         <span>{title}</span>
         <button
@@ -44,7 +44,7 @@ export default function ProblemExamplesGrid({
           <ExampleBox title={`예제 입력 ${index + 1}`} value={example.input} />
           <ExampleBox title={`예제 출력 ${index + 1}`} value={example.output} />
           {example.note?.trim() ? (
-            <section className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+            <section className="zoj-card md:col-span-2">
               <h3 className="text-xs font-black text-slate-500">
                 예제 설명 {index + 1}
               </h3>

@@ -32,10 +32,7 @@ export default function PageInfoSection({ content }: PageInfoSectionProps) {
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {content.boxes.map((box) => (
-          <section
-            className="min-h-40 rounded border border-slate-200 bg-white p-6"
-            key={box.title}
-          >
+          <section className="zoj-card min-h-40" key={box.title}>
             <h2 className="text-xl font-semibold text-slate-950">
               {box.title}
             </h2>
@@ -57,10 +54,7 @@ export default function PageInfoSection({ content }: PageInfoSectionProps) {
           </h2>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {content.examples.map((example) => (
-              <div
-                className="min-h-36 rounded border border-dashed border-slate-300 bg-slate-50 p-5"
-                key={example.title}
-              >
+              <div className="zoj-card min-h-36" key={example.title}>
                 <h3 className="text-lg font-semibold text-slate-950">
                   {example.title}
                 </h3>

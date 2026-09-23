@@ -59,7 +59,7 @@ export default function ContestCard({
     : undefined;
   const canShowUnavailableMessage = canOpenContest && !cardHref;
   const cardClassName = [
-    'rounded border border-slate-200 bg-white px-8 py-7 transition',
+    'zoj-card transition',
     cardHref || !canOpenContest || canShowUnavailableMessage
       ? 'hover:border-zoj-blue hover:shadow-sm'
       : 'opacity-70',

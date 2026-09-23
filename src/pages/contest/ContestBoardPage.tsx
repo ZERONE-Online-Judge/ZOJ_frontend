@@ -1,3 +1,4 @@
+import { ChoiceCard, SettingsCard } from '@/components/common/ManagementCards';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -54,8 +55,8 @@ function normalizedEmail(value?: string | null) {
 }
 
 function authorContext(teamName?: string | null, divisionName?: string | null) {
-  const parts = [teamName, divisionName].filter(
-    (item): item is string => Boolean(item),
+  const parts = [teamName, divisionName].filter((item): item is string =>
+    Boolean(item),
   );
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -81,14 +82,18 @@ function answerAuthorLabel(question: ContestQuestion, answer: ContestAnswer) {
     contestBoardText.authorFallback;
   const answerEmail = normalizedEmail(answer.created_by_email);
   const isQuestionAuthor =
-    answerEmail !== '' && answerEmail === normalizedEmail(question.author_email);
+    answerEmail !== '' &&
+    answerEmail === normalizedEmail(question.author_email);
 
   return isQuestionAuthor ? `${name} (글쓴이)` : name;
 }
 
 function answerAuthorContext(answer: ContestAnswer) {
   if (answer.created_by_role === 'operator') return null;
-  return authorContext(answer.created_by_team_name, answer.created_by_division_name);
+  return authorContext(
+    answer.created_by_team_name,
+    answer.created_by_division_name,
+  );
 }
 
 function ContestBoardContent({
@@ -691,11 +696,8 @@ function QuestionForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form
-      className="grid gap-6 rounded-lg border border-slate-200 bg-white p-6"
-      onSubmit={onSubmit}
-    >
-      <div className="grid gap-5 md:grid-cols-2">
+    <form className="zoj-inset grid gap-5" onSubmit={onSubmit}>
+      <div className="grid gap-5">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           {contestBoardText.titleLabel}
           <input
@@ -707,27 +709,30 @@ function QuestionForm({
             value={form.title}
           />
         </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          {contestBoardText.visibilityLabel}
-          <select
-            className="h-11 rounded-full border border-slate-200 px-5 text-sm font-bold text-slate-600 transition outline-none focus:border-slate-400"
-            onChange={(event) =>
-              onChange({
-                ...form,
-                visibility: event.target.value as ContestQuestion['visibility'],
-              })
-            }
-            value={form.visibility}
-          >
-            <option value="public">
-              {contestBoardText.visibilityPublicOption}
-            </option>
-            <option value="private">
-              {contestBoardText.visibilityPrivateOption}
-            </option>
-          </select>
-        </label>
       </div>
+      <SettingsCard
+        title={contestBoardText.visibilityLabel}
+        description="질문과 답변을 볼 수 있는 대상을 선택하세요."
+      >
+        <div className="zoj-settings-fields">
+          <ChoiceCard
+            checked={form.visibility === 'public'}
+            name="question_visibility"
+            value="public"
+            title={contestBoardText.visibilityPublicOption}
+            description="게시판을 볼 수 있는 다른 참가자도 함께 확인합니다."
+            onChange={() => onChange({ ...form, visibility: 'public' })}
+          />
+          <ChoiceCard
+            checked={form.visibility === 'private'}
+            name="question_visibility"
+            value="private"
+            title={contestBoardText.visibilityPrivateOption}
+            description="내 팀과 운영진만 확인할 수 있습니다."
+            onChange={() => onChange({ ...form, visibility: 'private' })}
+          />
+        </div>
+      </SettingsCard>
       <textarea
         className="min-h-56 resize-y rounded-md border border-slate-200 px-5 py-4 text-sm leading-7 text-slate-950 transition outline-none focus:border-slate-400"
         onChange={(event) => onChange({ ...form, body: event.target.value })}
@@ -812,7 +817,8 @@ function QuestionList({
               </span>
               <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
                 <span className="text-sm font-black text-slate-700">
-                  {questionAuthorName(question)} · {formatDateTime(question.created_at)}
+                  {questionAuthorName(question)} ·{' '}
+                  {formatDateTime(question.created_at)}
                 </span>
                 {questionAuthorContext(question) ? (
                   <span className="text-xs font-bold text-slate-500">
