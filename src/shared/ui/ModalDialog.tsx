@@ -97,7 +97,7 @@ export default function ModalDialog({
         </header>
         {children ? (
           <div
-            className={`zoj-modal-body${customBody ? 'zoj-modal-body--custom' : ''}`}
+            className={`zoj-modal-body ${customBody ? 'zoj-modal-body--custom' : ''}`}
           >
             {children}
           </div>

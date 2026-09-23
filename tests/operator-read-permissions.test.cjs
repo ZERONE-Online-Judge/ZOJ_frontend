@@ -56,7 +56,7 @@ const submission = {
   memory_kb: 1024,
   failed_testcase_order: 2,
 };
-let session, reads, location, submissionItems;
+let session, reads, location, submissionItems, detailOverrides;
 function withScopes(scopes) {
   return {
     account: { email: 'staff@test' },
@@ -163,6 +163,7 @@ const mocks = {
         compile_message: '컴파일 성공',
         judge_message:
           'testcase #2 (2.in / 2.out): wrong answer\n[input]\n1 2\n[expected]\n3\n[actual]\n0',
+        ...detailOverrides,
       };
     },
     waitOperatorSubmissionStatus: async () => {
@@ -251,6 +252,7 @@ beforeEach(() => {
   ]);
   reads = [];
   submissionItems = [submission];
+  detailOverrides = {};
   location = '';
   document.body.innerHTML = '';
   window.localStorage.clear();
@@ -359,6 +361,12 @@ test('submission viewers use safe filter labels and inspect source/results witho
   assert.match(detail.textContent, /실패 입력1 2/);
   assert.match(detail.textContent, /기대 출력3/);
   assert.match(detail.textContent, /실제 출력0/);
+  const diagnostics = [...detail.querySelectorAll('details')].find((item) =>
+    item.querySelector('summary').textContent.startsWith('채점 상세'),
+  );
+  assert.equal(diagnostics.open, false);
+  await click(diagnostics.querySelector('summary'));
+  assert.equal(diagnostics.open, true);
   assert.deepEqual(requests('detail'), [
     {
       kind: 'detail',
@@ -374,6 +382,90 @@ test('submission viewers use safe filter labels and inspect source/results witho
   assert.doesNotMatch(owner.textContent, /팀장|팀원|leader@test/);
   assert.equal(requests('problems').length, 0);
   assert.equal(requests('participants').length, 0);
+});
+
+test('submission detail preserves exact source on copy and hides absent logs for accepted code', async () => {
+  const source = '  int main() {\n\treturn 0;\n}\n';
+  detailOverrides = {
+    status: 'accepted',
+    source_code: source,
+    compile_message: '',
+    judge_message: '',
+    failed_testcase_order: null,
+  };
+  let copied;
+  const oldNavigator = Object.getOwnPropertyDescriptor(global, 'navigator');
+  Object.defineProperty(global, 'navigator', {
+    configurable: true,
+    value: {
+      clipboard: {
+        writeText: async (value) => {
+          copied = value;
+        },
+      },
+    },
+  });
+  try {
+    await render(SubmissionsPage, '/submissions');
+    await click(button('보기'));
+    const detail = document.querySelector('dialog[aria-label="제출 상세"]');
+    assert.equal(detail.querySelector('pre code').textContent, source);
+    assert.doesNotMatch(
+      detail.textContent,
+      /채점 상세|실패 입력|컴파일 로그|원본 채점 로그/,
+    );
+    await click(button('코드 복사', detail));
+    assert.equal(copied, source);
+    assert.ok(button('복사됨', detail));
+    await click(button('줄바꿈 꺼짐', detail));
+    assert.equal(
+      button('줄바꿈 켜짐', detail).getAttribute('aria-pressed'),
+      'true',
+    );
+    assert.equal(detail.querySelector('pre code').textContent, source);
+  } finally {
+    if (oldNavigator) Object.defineProperty(global, 'navigator', oldNavigator);
+    else delete global.navigator;
+  }
+});
+
+test('compile errors open diagnostics; output comparisons preserve whitespace and distinguish empty output', async () => {
+  detailOverrides = {
+    status: 'compile_error',
+    compile_message: 'error: expected ;',
+    judge_message: '',
+    failed_testcase_order: null,
+  };
+  await render(SubmissionsPage, '/submissions');
+  await click(button('보기'));
+  let detail = document.querySelector('dialog[aria-label="제출 상세"]');
+  const diagnostics = [...detail.querySelectorAll('details')].find((item) =>
+    item.querySelector('summary').textContent.startsWith('채점 상세'),
+  );
+  assert.equal(diagnostics.open, true);
+  assert.match(diagnostics.textContent, /error: expected ;/);
+  await click(button('닫기', detail));
+  detailOverrides = {
+    judge_message:
+      'testcase #2 (2.in / 2.out): wrong answer\n[input]\n 1 \n\n[expected]\n 3 \n\n[actual]\n',
+  };
+  await act(async () =>
+    client.removeQueries({ queryKey: ['operator', 'submission-detail'] }),
+  );
+  await click(button('보기'));
+  detail = document.querySelector('dialog[aria-label="제출 상세"]');
+  assert.equal(
+    detail.querySelector('pre[aria-label="실패 입력"]').textContent,
+    ' 1 \n',
+  );
+  assert.equal(
+    detail.querySelector('pre[aria-label="기대 출력"]').textContent,
+    ' 3 \n',
+  );
+  assert.equal(
+    detail.querySelector('pre[aria-label="실제 출력"]').textContent,
+    '(비어 있음)',
+  );
 });
 
 test('combined problem and participant permissions retain authorized previews in submissions', async () => {

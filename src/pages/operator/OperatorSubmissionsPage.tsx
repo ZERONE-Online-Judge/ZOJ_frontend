@@ -1,5 +1,6 @@
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import ModalDialog from '@/shared/ui/ModalDialog';
+import SubmissionDetailContent from '@/components/operator/SubmissionDetailContent';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -34,9 +35,7 @@ import {
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import {
   isSubmissionPending,
-  parseJudgeDetail,
   submissionProgressText,
-  submissionStatusLabel,
 } from '@/domains/submissionScoreboard/status';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime, formatRelativeTime } from '@/shared/lib/dateTime';
@@ -330,6 +329,11 @@ function OperatorSubmissionsContent({
     ],
     queryFn: () =>
       getOperatorSubmission(contestId, selectedSubmissionId, token),
+    refetchInterval: (query) =>
+      isVisible && isSubmissionPending(query.state.data?.status)
+        ? 3_000
+        : false,
+    refetchIntervalInBackground: false,
   });
 
   return (
@@ -837,7 +841,11 @@ function ProblemPreviewModal({
       fill
       customBody
     >
-      <div className="min-h-0 overflow-y-auto">
+      <div
+        aria-label="문제 본문"
+        tabIndex={0}
+        className="min-h-0 overflow-y-auto overscroll-contain"
+      >
         <ProblemStatementPanel problem={problem} />
       </div>
     </ModalDialog>
@@ -951,23 +959,30 @@ function SubmissionDetailModal({
   problemById: Map<string, SubmissionProblem>;
   submission?: Submission;
 }) {
-  const detail = parseJudgeDetail(submission?.judge_message);
-
   return (
     <ModalDialog
       aria-label="제출 상세"
       onClose={onClose}
       title={
         submission
-          ? `${submissionOwner(submission)} · ${displaySubmissionId(submission.submission_id)}`
+          ? submissionProblemLabel(submission, problemById)
           : '제출 상세'
       }
-      eyebrow="제출 상세"
+      eyebrow={
+        submission
+          ? `제출 상세 · ${displaySubmissionId(submission.submission_id)}`
+          : '제출 상세'
+      }
+      description={
+        submission
+          ? `${submissionOwner(submission)} · ${formatDateTime(submission.submitted_at)}`
+          : undefined
+      }
       size="wide"
       fill
       customBody
     >
-      <div className="min-h-0 overflow-y-auto p-5">
+      <div className="min-h-0 overflow-y-auto overscroll-contain p-5">
         {isLoading ? (
           <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
             제출 상세를 불러오는 중입니다.
@@ -979,71 +994,23 @@ function SubmissionDetailModal({
           </p>
         ) : null}
         {submission ? (
-          <div className="grid gap-5">
-            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-              <DetailCard label="팀/계정" value={submissionOwner(submission)} />
-              <DetailCard
-                label="문제"
-                value={submissionProblemLabel(submission, problemById)}
-              />
-              <DetailCard
-                label="결과"
-                value={submissionStatusLabel(submission.status)}
-              />
-              <DetailCard
-                label="제출 구분"
-                value={submissionKindLabel(submission)}
-              />
-              <DetailCard
-                label="언어"
-                value={judgeLanguageLabel(submission.language)}
-              />
-              <DetailCard
-                label="실패 케이스"
-                value={String(submission.failed_testcase_order ?? '-')}
-              />
-              <DetailCard label="코드 길이" value={codeLength(submission)} />
-              <DetailCard
-                label="시간"
-                value={formatRuntime(
-                  submission.runtime_ms ??
-                    submission.time_ms ??
-                    submission.execution_time_ms,
-                )}
-              />
-              <DetailCard
-                label="메모리"
-                value={formatMemoryKb(
-                  submission.memory_kb ??
-                    submission.memory_usage_kb ??
-                    submission.max_memory_kb,
-                )}
-              />
-              <DetailCard
-                label="진행"
-                value={submissionProgressText(submission) || '-'}
-              />
-              <DetailCard
-                label="제출 시각"
-                value={formatDateTime(submission.submitted_at)}
-              />
-              <DetailCard label="제출 ID" value={submission.submission_id} />
-            </div>
-            <LogBlock label="소스 코드" value={submission.source_code || '-'} />
-            <LogBlock
-              label="컴파일 로그"
-              value={submission.compile_message || '-'}
-            />
-            <LogBlock
-              label="채점 로그"
-              value={submission.judge_message || '-'}
-            />
-            <div className="grid gap-4 lg:grid-cols-3">
-              <LogBlock label="실패 입력" value={detail.inputText || '-'} />
-              <LogBlock label="기대 출력" value={detail.expectedText || '-'} />
-              <LogBlock label="실제 출력" value={detail.actualText || '-'} />
-            </div>
-          </div>
+          <SubmissionDetailContent
+            key={submission.submission_id}
+            submission={submission}
+            owner={submissionOwner(submission)}
+            kind={submissionKindLabel(submission)}
+            runtime={formatRuntime(
+              submission.runtime_ms ??
+                submission.time_ms ??
+                submission.execution_time_ms,
+            )}
+            memory={formatMemoryKb(
+              submission.memory_kb ??
+                submission.memory_usage_kb ??
+                submission.max_memory_kb,
+            )}
+            codeLength={codeLength(submission)}
+          />
         ) : null}
       </div>
     </ModalDialog>
@@ -1058,16 +1025,5 @@ function DetailCard({ label, value }: { label: string; value: string }) {
         {value}
       </strong>
     </div>
-  );
-}
-
-function LogBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <label className="grid gap-2 text-sm font-semibold text-slate-700">
-      {label}
-      <pre className="max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-50">
-        {value}
-      </pre>
-    </label>
   );
 }

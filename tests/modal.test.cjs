@@ -232,6 +232,22 @@ test('confirmation waits for an explicit choice, supports cancel, and settles on
 const { default: ModalDialog, ModalButton } = source(
   'shared/ui/ModalDialog.tsx',
 );
+test('custom dialog body retains both layout classes so its inner content can scroll', async () => {
+  await act(async () =>
+    root.render(
+      h(
+        ModalDialog,
+        { title: '문제 미리보기', customBody: true, fill: true },
+        h('article', null, '긴 문제 본문'),
+      ),
+    ),
+  );
+  const body = document.querySelector('.zoj-modal-body');
+  assert.ok(body, 'the shared shrinking body must be present');
+  assert.ok(body.classList.contains('zoj-modal-body--custom'));
+  assert.equal(body.querySelector('article').textContent, '긴 문제 본문');
+});
+
 test('shared dialog connects its heading and description and keeps footer actions operable', async () => {
   let closed = 0,
     applied = 0;
