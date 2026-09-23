@@ -38,6 +38,7 @@ export default function PageSeo() {
         // The read-only presentation sets a descriptive contest-specific tab
         // title itself. All its search and sharing metadata is still private.
         preserveTitle:
+          /^\/presentation\/contests\/[^/]+$/.test(path) ||
           /^\/operator\/contests\/[^/]+\/scoreboard\/presentation$/.test(path),
       },
     );

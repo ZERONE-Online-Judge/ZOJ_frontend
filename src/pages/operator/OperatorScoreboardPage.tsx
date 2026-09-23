@@ -1,3 +1,7 @@
+import ScoreboardFreezeDialog, {
+  type FreezeChange,
+} from '@/components/operator/ScoreboardFreezeDialog';
+import PresentationAccountCard from '@/components/operator/PresentationAccountCard';
 import ModalDialog from '@/shared/ui/ModalDialog';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -472,7 +476,8 @@ function ScoreboardFreezeControl({
                     ? 'bg-slate-950 text-white shadow-sm'
                     : 'text-slate-500 hover:bg-white hover:text-slate-950',
                 ].join(' ')}
-                disabled={disabled}
+                disabled={disabled || mode === option.value}
+                aria-pressed={mode === option.value}
                 key={option.value}
                 onClick={() => onChange(option.value)}
                 type="button"
@@ -546,6 +551,7 @@ function OperatorScoreboardContent({
   contestId: string;
   token: string;
 }) {
+  const [freezeChange, setFreezeChange] = useState<FreezeChange | null>(null);
   const isVisible = useDocumentVisibility();
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
@@ -635,6 +641,31 @@ function OperatorScoreboardContent({
       width="full"
     >
       <OperatorTabs contestId={contestId} />
+      {freezeChange && contest ? (
+        <ScoreboardFreezeDialog
+          key={`${freezeChange.from}-${freezeChange.to}`}
+          change={freezeChange}
+          contest={contest}
+          unavailable={ended || freezeModeMutation.isPending}
+          onCancel={() => setFreezeChange(null)}
+          onConfirm={() => {
+            if (
+              canManage &&
+              !ended &&
+              !freezeModeMutation.isPending &&
+              freezeChange.from === freezeMode &&
+              freezeChange.freezeAt === contest.freeze_at
+            ) {
+              const nextMode = freezeChange.to;
+              setFreezeChange(null);
+              freezeModeMutation.mutate(nextMode);
+            }
+          }}
+        />
+      ) : null}
+      {canManage ? (
+        <PresentationAccountCard contestId={contestId} token={token} />
+      ) : null}
 
       {contest ? (
         <section
@@ -707,7 +738,18 @@ function OperatorScoreboardContent({
           freezeAt={contest?.freeze_at}
           mode={freezeMode}
           onChange={(mode) => {
-            if (canManage) freezeModeMutation.mutate(mode);
+            if (
+              canManage &&
+              contest &&
+              mode !== freezeMode &&
+              !freezeModeMutation.isPending
+            ) {
+              setFreezeChange({
+                from: freezeMode,
+                to: mode,
+                freezeAt: contest.freeze_at,
+              });
+            }
           }}
           publicFrozen={Boolean(scoreboardQuery.data?.frozen_public_view)}
         />

@@ -1,3 +1,9 @@
+import { loginPresentation } from '@/domains/presentationAccess/api';
+import {
+  isPresentationEmail,
+  presentationPath,
+  usePresentationSession,
+} from '@/domains/presentationAccess/session';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 import { useEffect, useRef, useState } from 'react';
@@ -170,11 +176,13 @@ export default function LoginPage() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
   const [message, setMessage] = useState(() =>
-    searchParams.get('reason') === 'session'
-      ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
-      : emailChanged
-        ? '이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요.'
-        : '',
+    searchParams.get('reason') === 'presentation'
+      ? '프레젠테이션 전용 계정으로 로그인해 주세요. 연결이 종료되었다면 계정의 유효기간과 사용 상태를 확인해 주세요.'
+      : searchParams.get('reason') === 'session'
+        ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
+        : emailChanged
+          ? '이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요.'
+          : '',
   );
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'loading' | 'ready' | 'error'
@@ -186,6 +194,7 @@ export default function LoginPage() {
         : 'idle',
   );
   const [email, setEmail] = useState(changedEmail);
+  const presentationLogin = isPresentationEmail(email);
   const [otpCode, setOtpCode] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -292,6 +301,26 @@ export default function LoginPage() {
   async function submitLogin(values: LoginFormValues, forceNewSession = false) {
     if (!validateEmail()) return;
 
+    if (presentationLogin) {
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      setMessage('프레젠테이션을 여는 중입니다.');
+      setMessageStatus('loading');
+      try {
+        const session = await loginPresentation(values.email);
+        useSessionStore.getState().clearSessions();
+        usePresentationSession.getState().setSession(session);
+        navigate(presentationPath(session.contest_id), { replace: true });
+      } catch (error) {
+        setMessage(
+          formatUserApiError(error, '프레젠테이션 로그인에 실패했습니다'),
+        );
+        setMessageStatus('error');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
     if (!otpRequested) {
       await requestOtp();
       return;
@@ -497,17 +526,23 @@ export default function LoginPage() {
           >
             <div className="login-card-heading">
               <span className="login-step-label">
-                STEP {otpRequested ? '02' : '01'} / 02
+                {presentationLogin
+                  ? 'PRESENTATION'
+                  : `STEP ${otpRequested ? '02' : '01'} / 02`}
               </span>
               <h2 id="login-card-title">
-                {otpRequested
-                  ? '인증번호를 확인해 주세요.'
-                  : '이메일로 시작하기'}
+                {presentationLogin
+                  ? '발표 화면으로 바로 접속'
+                  : otpRequested
+                    ? '인증번호를 확인해 주세요.'
+                    : '이메일로 시작하기'}
               </h2>
               <p>
-                {otpRequested
-                  ? '메일에 도착한 인증번호를 입력해 주세요.'
-                  : '대회에 등록된 이메일로 인증번호를 보내드려요.'}
+                {presentationLogin
+                  ? '인증번호 없이 해당 대회의 프레젠테이션만 열립니다.'
+                  : otpRequested
+                    ? '메일에 도착한 인증번호를 입력해 주세요.'
+                    : '대회에 등록된 이메일로 인증번호를 보내드려요.'}
               </p>
             </div>
             <label className="grid gap-2">
@@ -551,7 +586,7 @@ export default function LoginPage() {
               className={
                 otpRequested ? 'login-action is-secondary' : 'login-action'
               }
-              disabled={!canRequestOtp}
+              disabled={presentationLogin ? isSubmitting : !canRequestOtp}
               onClick={otpRequested ? requestOtp : undefined}
               type={otpRequested ? 'button' : 'submit'}
             >
@@ -563,11 +598,15 @@ export default function LoginPage() {
               >
                 <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h10A2.5 2.5 0 0 1 17.5 5v10a2.5 2.5 0 0 1-2.5 2.5H5A2.5 2.5 0 0 1 2.5 15V5Zm2.2-.5 5.3 4.25L15.3 4.5H4.7Zm10.8 2.1-5.03 4.03a.75.75 0 0 1-.94 0L4.5 6.6V15c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V6.6Z" />
               </svg>
-              {cooldownSeconds > 0
-                ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
-                : otpRequested
-                  ? '인증번호 다시 받기'
-                  : loginPageText.otpRequestButton}
+              {presentationLogin
+                ? isSubmitting
+                  ? '접속 중…'
+                  : '프레젠테이션 열기'
+                : cooldownSeconds > 0
+                  ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
+                  : otpRequested
+                    ? '인증번호 다시 받기'
+                    : loginPageText.otpRequestButton}
             </button>
 
             {otpRequested && (

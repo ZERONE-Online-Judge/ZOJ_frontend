@@ -62,7 +62,15 @@ function board(divisionId) {
     })),
   };
 }
+let displayReads = 0;
 const mocks = {
+  '@/domains/presentationAccess/api': {
+    getPresentationAccount: async () => null,
+    getPresentationScoreboard: async () => {
+      displayReads++;
+      return { contest, sections: divisions.map((d) => board(d.division_id)) };
+    },
+  },
   '@/domains/identityAccess/queryIdentity': {
     tokenQueryIdentity: () => 'test-session',
   },
@@ -182,6 +190,7 @@ beforeEach(() => {
   );
   updateCalls = [];
   presentationReads = 0;
+  displayReads = 0;
   releaseReads = 0;
   rejectUpdate = false;
   customBoards = {};
@@ -509,4 +518,26 @@ test('selected division reports fully public even while another division is froz
   assert.match(display.textContent, /최종 순위/);
   assert.match(display.textContent, /공개됨/);
   assert.doesNotMatch(display.textContent, /프리즈 \/ 공개 진행/);
+});
+
+test('display-only session reads only the scoped presentation API and exposes no controls', async () => {
+  const { OperatorScoreboardPresentationContent } = source(
+    'pages/operator/OperatorScoreboardPresentationPage.tsx',
+  );
+  const Display = () =>
+    h(OperatorScoreboardPresentationContent, {
+      contestId: 'contest',
+      token: 'display-token',
+      now: Date.now(),
+      displayOnly: true,
+    });
+  const container = await renderPage(
+    Display,
+    '/operator/contests/contest/scoreboard/presentation',
+  );
+  await flush();
+  assert.ok(displayReads > 0);
+  assert.equal(presentationReads, 0);
+  assert.equal(container.querySelectorAll('button, input, select').length, 0);
+  assert.equal(releaseReads, 0);
 });

@@ -1,3 +1,7 @@
+import {
+  usePresentationSession,
+  presentationPath,
+} from '@/domains/presentationAccess/session';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { type ReactNode, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -59,6 +63,16 @@ function RouteAccessGuard({
   const participantSession = useSessionStore(
     (state) => state.participantSession,
   );
+
+  const displaySession = usePresentationSession((state) => state.session);
+  if (
+    displaySession &&
+    location.pathname !== presentationPath(displaySession.contest_id)
+  ) {
+    return (
+      <Navigate replace to={presentationPath(displaySession.contest_id)} />
+    );
+  }
 
   if (!access || access === 'public') return children;
 

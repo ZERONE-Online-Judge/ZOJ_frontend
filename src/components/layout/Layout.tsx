@@ -13,6 +13,7 @@ export default function Layout({ children }: LayoutProps) {
   const { pathname } = useLocation();
   useUsageTracking();
   if (
+    /^\/presentation\/contests\/[^/]+\/?$/.test(pathname) ||
     /^\/operator\/contests\/[^/]+\/scoreboard\/presentation\/?$/.test(pathname)
   ) {
     return (

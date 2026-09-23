@@ -1,3 +1,6 @@
+import { getPresentationScoreboard } from '@/domains/presentationAccess/api';
+import { usePresentationSession } from '@/domains/presentationAccess/session';
+import { isSessionAuthError } from '@/shared/api/errors';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -316,11 +319,13 @@ export default function OperatorScoreboardPresentationPage() {
   );
 }
 
-function OperatorScoreboardPresentationContent({
+export function OperatorScoreboardPresentationContent({
   contestId,
   now,
   token,
+  displayOnly = false,
 }: {
+  displayOnly?: boolean;
   contestId: string;
   now: number;
   token: string;
@@ -335,10 +340,21 @@ function OperatorScoreboardPresentationContent({
       contestId,
       queryIdentity,
     ],
-    queryFn: () => getOperatorPresentationScoreboard(contestId, token),
+    queryFn: () =>
+      displayOnly
+        ? getPresentationScoreboard(contestId, token)
+        : getOperatorPresentationScoreboard(contestId, token),
+    retry: (count, error) => !isSessionAuthError(error) && count < 2,
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   });
+  useEffect(() => {
+    if (displayOnly && isSessionAuthError(presentationQuery.error)) {
+      const session = usePresentationSession.getState().session;
+      if (session?.access_token === token)
+        usePresentationSession.getState().setSession(null);
+    }
+  }, [displayOnly, presentationQuery.error, token]);
   const { refetch } = presentationQuery;
 
   useEffect(
@@ -384,7 +400,7 @@ function OperatorScoreboardPresentationContent({
     );
   }
 
-  if (!contest && presentationQuery.error) {
+  if (presentationQuery.error && (!contest || displayOnly)) {
     return (
       <section className="fixed inset-0 z-[100] grid place-items-center bg-[#090b14] px-6 py-6 text-white">
         <div className="rounded border border-rose-400/40 bg-rose-500/15 px-5 py-4 text-sm font-black text-rose-100">

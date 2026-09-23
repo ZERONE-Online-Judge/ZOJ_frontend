@@ -32,6 +32,9 @@ const ContestSubmissionsPage = lazy(
 const ContestsPage = lazy(() => import('@/pages/public/ContestsPage'));
 const AboutPage = lazy(() => import('@/pages/public/AboutPage'));
 const JudgeStatusPage = lazy(() => import('@/pages/public/JudgeStatusPage'));
+const PresentationPage = lazy(
+  () => import('@/pages/presentation/PresentationPage'),
+);
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const MainPage = lazy(() => import('@/pages/main/MainPage'));
 const NotFoundPage = lazy(() => import('@/pages/public/NotFoundPage'));
@@ -255,6 +258,13 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.operatorScoreboard,
     path: '/operator/contests/:contestId/scoreboard',
     Component: OperatorScoreboardPage,
+    showInNavigation: false,
+  },
+  {
+    access: 'public',
+    name: '대회 프레젠테이션',
+    path: '/presentation/contests/:contestId',
+    Component: PresentationPage,
     showInNavigation: false,
   },
   {

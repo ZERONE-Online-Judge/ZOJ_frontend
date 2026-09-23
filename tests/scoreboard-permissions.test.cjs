@@ -38,7 +38,22 @@ const row = {
     },
   ],
 };
+dom.window.HTMLDialogElement.prototype.showModal = function () {
+  this.open = true;
+};
+dom.window.HTMLDialogElement.prototype.close = function () {
+  this.open = false;
+};
 const mocks = {
+  '@/domains/presentationAccess/api': {
+    getPresentationAccount: async () => null,
+    issuePresentationAccount: async () => ({
+      email: 'abcd2345@score.zoj.kr',
+      active: true,
+      expires_at: '2099-01-01T00:00:00Z',
+    }),
+    revokePresentationAccount: async () => ({ revoked: true }),
+  },
   '@/utils/Icons': { SvgIcon: () => null },
   '@/domains/identityAccess/queryIdentity': {
     tokenQueryIdentity: (token) => 'identity:' + token,
@@ -288,6 +303,26 @@ test('scoreboard managers can change freeze mode without contest settings or pro
   manage();
   await render();
   await click(button('프리즈'));
+  assert.deepEqual(changes, []);
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /참가자 스코어보드와 모든 프레젠테이션/,
+  );
+  await click(
+    [...document.querySelectorAll('button')].find(
+      (b) => b.textContent === '내용 확인',
+    ),
+  );
+  assert.deepEqual(changes, []);
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /정말 실행하시겠습니까/,
+  );
+  await click(
+    [...document.querySelectorAll('button')].find(
+      (b) => b.textContent === '프리즈로 전환',
+    ),
+  );
   assert.deepEqual(changes, [
     {
       kind: 'settings',
@@ -448,4 +483,41 @@ test('reaching the scheduled end reveals presentation controls without a page re
       Object.defineProperty(document, 'hidden', originalHidden);
     else delete document.hidden;
   }
+});
+
+test('cancelling either freeze confirmation never changes the public mode', async () => {
+  manage();
+  await render();
+  await click(button('라이브'));
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /최신 채점 결과와 순위를 즉시 공개/,
+  );
+  await click(
+    [...document.querySelectorAll('button')].find(
+      (b) => b.textContent === '취소',
+    ),
+  );
+  assert.deepEqual(changes, []);
+  await click(button('라이브'));
+  await click(
+    [...document.querySelectorAll('button')].find(
+      (b) => b.textContent === '내용 확인',
+    ),
+  );
+  await click(
+    [...document.querySelectorAll('button')].find(
+      (b) => b.textContent === '취소',
+    ),
+  );
+  assert.deepEqual(changes, []);
+  assert.equal(button('오토').disabled, true);
+});
+
+test('only scoreboard managers see the temporary presentation account card', async () => {
+  await render();
+  assert.equal(button('전용 계정 만들기'), undefined);
+  manage();
+  await render();
+  assert.ok(button('전용 계정 만들기'));
 });
