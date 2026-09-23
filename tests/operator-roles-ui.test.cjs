@@ -505,11 +505,12 @@ test('staff manager sees staff controls only and cannot assign or edit masters',
   );
 });
 
-test('editing submits old email in the route and new email, name and roles in the body while protecting assigned masters', async () => {
+test('editing submits old email in the route and new email, name and roles in the body while assigned masters allow only name editing', async () => {
   await render();
+  assert.ok(button('이름 수정', operatorCard('assigned@example.test')));
   assert.equal(
-    operatorCard('assigned@example.test').querySelector('button'),
-    null,
+    button('제거', operatorCard('assigned@example.test')),
+    undefined,
   );
   await click(
     button('이름·이메일·권한 수정', operatorCard('reviewer@example.test')),
@@ -698,10 +699,8 @@ test('owner delegation requires reviewing the named recipient and updates the fo
   ownerSetup();
   await render();
   assert.equal(role('대회 총괄'), undefined);
-  assert.equal(
-    operatorCard('actor@example.test').querySelector('button'),
-    null,
-  );
+  assert.ok(button('이름 수정', operatorCard('actor@example.test')));
+  assert.equal(button('제거', operatorCard('actor@example.test')), undefined);
   assert.equal(button('위임 내용 확인').disabled, true);
   await selectOwner('reviewer@example.test');
   assert.equal(transfers.length, 0);
@@ -746,6 +745,95 @@ test('ordinary masters can see the owner but have no delegation control', async 
   assert.match(container.textContent, /owner \/ 총괄/);
   assert.equal(container.querySelector('select'), null);
   assert.equal(button('위임 내용 확인'), undefined);
+});
+
+test('owner can edit their name while email and role stay fixed and the current session updates immediately', async () => {
+  ownerSetup();
+  await render();
+  await click(button('이름 수정', operatorCard('actor@example.test')));
+  assert.match(container.textContent, /총괄 이름 수정/);
+  assert.equal(inputByLabel('이메일 (필수)').disabled, true);
+  assert.equal(role('대회 마스터'), undefined);
+  assert.equal(role('검수진'), undefined);
+  assert.match(container.textContent, /대회 총괄 · 권한 유지/);
+  await input(inputByLabel('이름 (필수)'), '  손동열  ');
+  await click(button('변경사항 저장'));
+  assert.deepEqual(updates, [
+    {
+      contestId: 'contest',
+      email: 'actor@example.test',
+      token: 'staff-token',
+      body: {
+        email: 'actor@example.test',
+        display_name: '손동열',
+        roles: ['master'],
+      },
+    },
+  ]);
+  assert.equal(sessionClears, 0);
+  assert.equal(session.account.display_name, '손동열');
+  assert.equal(session.operatorSession.staff.display_name, '손동열');
+  assert.deepEqual(session.operatorSession.staff.contest_roles.contest, [
+    'owner',
+  ]);
+  assert.deepEqual(session.operatorSession.staff.contest_scopes.contest, [
+    'contest.*',
+    'contest.owner',
+  ]);
+  assert.deepEqual(session.operatorSession.staff.protected_master_contests, [
+    'contest',
+  ]);
+  assert.match(
+    operatorCard('actor@example.test').textContent,
+    /손동열 \/ 총괄/,
+  );
+  assert.equal(button('제거', operatorCard('actor@example.test')), undefined);
+  assert.deepEqual(transfers, []);
+  assert.deepEqual(removals, []);
+});
+
+test('master can edit the owner name without gaining delegation controls or changing their own name', async () => {
+  operators = [
+    staff('owner@example.test', ['owner'], true),
+    staff('actor@example.test', ['master']),
+  ];
+  await render();
+  await click(button('이름 수정', operatorCard('owner@example.test')));
+  await input(inputByLabel('이름 (필수)'), '새 총괄');
+  await click(button('변경사항 저장'));
+  assert.match(
+    operatorCard('owner@example.test').textContent,
+    /새 총괄 \/ 총괄/,
+  );
+  assert.equal(session.account.display_name, '운영자');
+  assert.equal(button('위임 내용 확인'), undefined);
+});
+
+test('staff managers cannot edit the owner name', async () => {
+  setActor(['contest.view', 'contest.staff.manage']);
+  operators = [staff('owner@example.test', ['owner'], true)];
+  await render();
+  assert.equal(
+    operatorCard('owner@example.test').querySelector('button'),
+    null,
+  );
+});
+
+test('failed owner name edit preserves the form and the existing session name', async () => {
+  ownerSetup();
+  updateError = new ApiClientError(
+    403,
+    'permission_denied',
+    'Permission denied',
+  );
+  await render();
+  await click(button('이름 수정', operatorCard('actor@example.test')));
+  await input(inputByLabel('이름 (필수)'), '바꿀 이름');
+  await click(button('변경사항 저장'));
+  assert.equal(inputByLabel('이름 (필수)').value, '바꿀 이름');
+  assert.equal(inputByLabel('이메일 (필수)').disabled, true);
+  assert.equal(session.operatorSession.staff.display_name, 'actor');
+  assert.equal(sessionClears, 0);
 });
 
 test('failed owner transfer preserves the selected recipient and current owner', async () => {

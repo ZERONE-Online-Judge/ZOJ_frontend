@@ -43,6 +43,7 @@ type OperatorForm = {
   displayName: string;
   email: string;
   editingEmail: string;
+  nameOnly: boolean;
   roles: ContestRole[];
 };
 
@@ -50,6 +51,7 @@ const emptyOperatorForm: OperatorForm = {
   displayName: '',
   editingEmail: '',
   email: '',
+  nameOnly: false,
   roles: [],
 };
 
@@ -115,7 +117,8 @@ function OperatorOperatorsContent({
         ? updateContestOperator(contestId, form.editingEmail, token, {
             display_name: form.displayName.trim(),
             email: form.email.trim(),
-            roles: form.roles,
+            // The API preserves an existing owner's role for a master update.
+            roles: form.nameOnly ? ['master'] : form.roles,
           })
         : createContestOperator(contestId, token, {
             display_name: form.displayName.trim(),
@@ -143,6 +146,23 @@ function OperatorOperatorsContent({
         });
         clearSessions();
         return;
+      }
+      const current = useSessionStore.getState().generalSession;
+      if (
+        current?.operatorSession?.accessToken === token &&
+        current.operatorSession.staff.email.trim().toLowerCase() === nextEmail
+      ) {
+        useSessionStore.getState().setGeneralSession({
+          ...current,
+          account: { ...current.account, display_name: operator.display_name },
+          operatorSession: {
+            ...current.operatorSession,
+            staff: {
+              ...current.operatorSession.staff,
+              display_name: operator.display_name,
+            },
+          },
+        });
       }
       setSavedMessage(
         emailChanged
@@ -268,16 +288,28 @@ function OperatorOperatorsContent({
         onTransfer={(email) => transferMutation.mutate(email)}
       />
       <OperatorPanel
-        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 대회 총괄은 별도의 위임으로만 변경할 수 있습니다."
-        title={operatorForm.editingEmail ? '운영자 수정' : '운영자 추가'}
+        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 대회 총괄 권한은 별도의 위임으로만 변경할 수 있습니다."
+        title={
+          operatorForm.nameOnly
+            ? '총괄 이름 수정'
+            : operatorForm.editingEmail
+              ? '운영자 수정'
+              : '운영자 추가'
+        }
       >
         <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <TextInput
               disabled={
-                saveOperatorMutation.isPending || transferMutation.isPending
+                operatorForm.nameOnly ||
+                saveOperatorMutation.isPending ||
+                transferMutation.isPending
               }
-              helperText="이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다."
+              helperText={
+                operatorForm.nameOnly
+                  ? '총괄의 표시 이름을 수정합니다. 로그인 이메일은 유지됩니다.'
+                  : '이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다.'
+              }
               label="이메일 (필수)"
               required
               type="email"
@@ -298,16 +330,26 @@ function OperatorOperatorsContent({
               value={operatorForm.displayName}
             />
           </div>
-          <ContestRoleSelector
-            canAssignMaster={canAssignMaster}
-            disabled={
-              saveOperatorMutation.isPending || transferMutation.isPending
-            }
-            value={operatorForm.roles}
-            onChange={(roles) =>
-              setOperatorForm((prev) => ({ ...prev, roles }))
-            }
-          />
+          {operatorForm.nameOnly ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">대회 총괄 · 권한 유지</p>
+              <p className="mt-1 text-xs leading-5">
+                이름을 바꿔도 총괄 권한은 유지됩니다. 총괄 변경은 위임
+                영역에서만 할 수 있습니다.
+              </p>
+            </div>
+          ) : (
+            <ContestRoleSelector
+              canAssignMaster={canAssignMaster}
+              disabled={
+                saveOperatorMutation.isPending || transferMutation.isPending
+              }
+              value={operatorForm.roles}
+              onChange={(roles) =>
+                setOperatorForm((prev) => ({ ...prev, roles }))
+              }
+            />
+          )}
           {operatorFormError || saveOperatorMutation.error ? (
             <ErrorBox
               error={saveOperatorMutation.error}
@@ -389,6 +431,9 @@ function OperatorOperatorsContent({
                 displayName: operator.display_name,
                 editingEmail: operator.email,
                 email: operator.email,
+                nameOnly:
+                  isContestOwner(operator, contestId) ||
+                  isAssignedContestMaster(operator, contestId),
                 roles: contestRolesForAccount(operator, contestId),
               });
             }}
@@ -468,6 +513,7 @@ function OperatorList({
           isAssignedContestMaster(operator, contestId);
         const protectedOperator =
           assignedMaster || (!canAssignMaster && roles.includes('master'));
+        const canEdit = canAssignMaster || !protectedOperator;
         return (
           <div
             className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-200 p-4"
@@ -504,7 +550,8 @@ function OperatorList({
                   ? '총괄은 강등하거나 제거할 수 없습니다. 위임 영역에서 다른 운영자에게 넘길 수 있습니다.'
                   : '대회 마스터만 이 운영자의 권한을 관리할 수 있습니다.'}
               </p>
-            ) : (
+            ) : null}
+            {canEdit ? (
               <div className="mt-auto flex gap-2 pt-1">
                 <button
                   className="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 disabled:opacity-50"
@@ -512,18 +559,20 @@ function OperatorList({
                   onClick={() => onEdit(operator)}
                   type="button"
                 >
-                  이름·이메일·권한 수정
+                  {assignedMaster ? '이름 수정' : '이름·이메일·권한 수정'}
                 </button>
-                <button
-                  className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-50"
-                  disabled={disabled}
-                  onClick={() => onRemove(operator)}
-                  type="button"
-                >
-                  제거
-                </button>
+                {!protectedOperator ? (
+                  <button
+                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                    disabled={disabled}
+                    onClick={() => onRemove(operator)}
+                    type="button"
+                  >
+                    제거
+                  </button>
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}
