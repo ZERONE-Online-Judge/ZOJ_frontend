@@ -15,7 +15,6 @@ import {
 } from 'react-router-dom';
 import { z } from 'zod';
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { ExperienceArrow } from '@/components/common/PublicExperience';
 import './LoginPage.css';
 import { loginGuideSections } from '@/data/loginGuideContent';
@@ -157,7 +156,6 @@ function postLoginRedirectPath(
 }
 
 export default function LoginPage() {
-  const motion = usePublicMotion();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -408,10 +406,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="public-experience login-experience"
-      data-motion={motion.paused ? 'off' : 'on'}
-    >
+    <div className="public-experience login-experience">
       {shouldShowContestLoginModal ? (
         <ModalDialog
           titleId="contest-login-required-title"
@@ -471,7 +466,7 @@ export default function LoginPage() {
         </ModalDialog>
       ) : null}
 
-      <PublicHero label="로그인" motion={motion} className="login-hero">
+      <PublicHero className="login-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">WELCOME TO YOUR NEXT CHALLENGE</p>

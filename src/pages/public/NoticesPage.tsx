@@ -1,5 +1,4 @@
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useEffect, useMemo } from 'react';
 import {
@@ -22,7 +21,6 @@ import './NoticesPage.css';
 const NOTICE_PAGE_SIZE = 20;
 
 export default function NoticesPage() {
-  const motion = usePublicMotion();
   const [params] = useSearchParams();
   const { noticeId } = useParams<{ noticeId: string }>();
   const navigate = useNavigate();
@@ -143,16 +141,8 @@ export default function NoticesPage() {
   }
 
   return (
-    <div
-      data-motion={motion.paused ? 'off' : 'on'}
-      className="public-experience notices-experience"
-    >
-      <PublicHero
-        label="공지사항"
-        motion={motion}
-        className="notices-hero"
-        scrollTo="#notice-list"
-      >
+    <div className="public-experience notices-experience">
+      <PublicHero className="notices-hero" scrollTo="#notice-list">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">KEEP IN THE LOOP</p>

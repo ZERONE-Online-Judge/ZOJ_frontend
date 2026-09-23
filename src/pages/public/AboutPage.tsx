@@ -1,5 +1,4 @@
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import './AboutPage.css';
@@ -213,8 +212,6 @@ function ScorePreview() {
 export default function AboutPage() {
   const root = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState(0);
-  const motion = usePublicMotion();
-  const { paused } = motion;
 
   useEffect(() => {
     const page = root.current;
@@ -248,17 +245,8 @@ export default function AboutPage() {
   }
 
   return (
-    <div
-      className="public-experience about-page"
-      data-motion={paused ? 'off' : 'on'}
-      ref={root}
-    >
-      <PublicHero
-        label="ZOJ 소개"
-        motion={motion}
-        className="about-hero"
-        scrollTo="#about-experience"
-      >
+    <div className="public-experience about-page" ref={root}>
+      <PublicHero className="about-hero" scrollTo="#about-experience">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">FROM ZERO TO YOUR CONTEST</p>

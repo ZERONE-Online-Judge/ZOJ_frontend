@@ -1,5 +1,4 @@
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { hasParticipantPreviewAccess } from '@/domains/identityAccess/participantPreview';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -86,7 +85,6 @@ function sortContestsByRecentDate(contests: Contest[]) {
 }
 
 export default function ContestsPage() {
-  const motion = usePublicMotion();
   const [filter, setFilter] = useState<ContestFilter>('all');
   const [search, setSearch] = useState('');
   const [phaseFilter, setPhaseFilter] = useState<ContestSectionKey | 'all'>(
@@ -199,16 +197,8 @@ export default function ContestsPage() {
   }
 
   return (
-    <div
-      data-motion={motion.paused ? 'off' : 'on'}
-      className="public-experience contest-directory"
-    >
-      <PublicHero
-        label="대회 목록"
-        motion={motion}
-        className="directory-hero"
-        scrollTo="#contest-directory"
-      >
+    <div className="public-experience contest-directory">
+      <PublicHero className="directory-hero" scrollTo="#contest-directory">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">YOUR NEXT CHALLENGE</p>

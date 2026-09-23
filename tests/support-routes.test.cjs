@@ -39,8 +39,6 @@ function source(relative) {
         ExperienceArrow: () => null,
         ExperienceReveal: ({ children }) => h('div', null, children),
       };
-    if (id === '@/shared/hooks/usePublicMotion')
-      return { __esModule: true, default: () => ({ paused: true }) };
     if (id === '@/shared/unsaved/useUnsavedForm')
       return {
         __esModule: true,
@@ -141,8 +139,8 @@ test('support tabs expose real crawlable URLs and navigate without query-only vi
       '/support',
       '/support/rules',
       '/support/help',
-    '/support/contact',
-    '/support/privacy',
+      '/support/contact',
+      '/support/privacy',
     ],
   );
   await act(async () => tabs[2].click());

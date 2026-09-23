@@ -1,5 +1,4 @@
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -12,7 +11,6 @@ import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import './PublicExperience.css';
 
 export default function JudgeStatusPage() {
-  const motion = usePublicMotion();
   const isDocumentVisible = useDocumentVisibility();
   const query = useQuery({
     queryKey: ['public-judge-status'],
@@ -44,13 +42,6 @@ export default function JudgeStatusPage() {
       : !connected
         ? '현재 연결된 채점 서버가 없습니다. 제출한 코드의 상태는 대회 채점현황에서 확인해 주세요.'
         : '서버 연결을 확인했습니다. 내 코드의 진행 상황과 결과는 대회 채점현황에서 확인해 주세요.';
-  const stateLabel = unavailable
-    ? '연결 확인 필요'
-    : !status
-      ? '상태 확인 중'
-      : connected
-        ? '서버 연결됨'
-        : '서버 연결 대기';
   const metrics = [
     {
       label: '연결된 채점 서버',
@@ -62,22 +53,8 @@ export default function JudgeStatusPage() {
   ];
 
   return (
-    <div
-      data-motion={motion.paused ? 'off' : 'on'}
-      className={`public-experience judge-experience is-${tone}`}
-    >
-      <PublicHero
-        label="채점 상태"
-        motion={motion}
-        className="judge-hero"
-        scrollTo="#judge-now"
-        aside={
-          <span className="experience-live">
-            <i />
-            {stateLabel}
-          </span>
-        }
-      >
+    <div className={`public-experience judge-experience is-${tone}`}>
+      <PublicHero className="judge-hero" scrollTo="#judge-now">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">BEHIND EVERY ANSWER</p>

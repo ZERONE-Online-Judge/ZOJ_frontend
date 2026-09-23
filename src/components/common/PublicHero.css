@@ -8,43 +8,7 @@
   position: relative;
   z-index: 1;
 }
-.public-experience .public-hero .experience-topline {
-  min-height: 78px;
-  padding-block: 20px;
-  font-size: 10px;
-  gap: 16px;
-  letter-spacing: 0.1em;
-}
-.public-hero-tools {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 24px;
-}
-.public-experience .public-hero .public-motion-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 8px 12px;
-  border: 1px solid #ffffff24;
-  border-radius: 24px;
-  color: #cbd0df;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0;
-  background: #ffffff03;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-.public-experience .public-hero .public-motion-toggle:hover {
-  background: #ffffff0d;
-}
-.public-experience .public-hero .public-motion-toggle:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
+
 .public-experience .public-hero .experience-hero-grid {
   display: grid;
   grid-template-columns: 1.05fr minmax(0, 1fr);
@@ -124,17 +88,7 @@
   align-items: center;
   gap: 24px;
 }
-.public-experience[data-motion='off'] *,
-.public-experience[data-motion='off'] *::before,
-.public-experience[data-motion='off'] *::after {
-  animation: none !important;
-  transition: none !important;
-  scroll-behavior: auto !important;
-}
-.public-experience[data-motion='off'] .experience-reveal {
-  opacity: 1;
-  transform: none;
-}
+
 @keyframes public-hero-enter {
   from {
     opacity: 0;
@@ -161,20 +115,8 @@
     width: min(100%, 520px);
     justify-self: center;
   }
-  .public-hero-tools {
-    gap: 16px;
-  }
 }
 @media (max-width: 600px) {
-  .public-experience .public-hero .experience-topline {
-    min-height: 68px;
-    padding-block: 16px;
-    font-size: 9px;
-    letter-spacing: 0.05em;
-  }
-  .public-hero-tools > :not(.public-motion-toggle) {
-    display: none;
-  }
   .public-experience .public-hero .experience-hero-grid {
     padding: 38px 0 44px;
     gap: 34px;
@@ -195,11 +137,7 @@
     gap: 14px;
     min-height: 56px;
   }
-  .public-experience .public-hero .public-motion-toggle {
-    font-size: 9px;
-    min-height: 34px;
-    padding: 7px 10px;
-  }
+
   .experience-actions {
     gap: 14px;
   }

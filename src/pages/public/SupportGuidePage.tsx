@@ -1,5 +1,4 @@
 import PublicHero from '@/components/common/PublicHero';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -33,7 +32,6 @@ function supportPath(tabId: SupportTabId) {
 }
 
 export default function SupportGuidePage() {
-  const motion = usePublicMotion();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -83,16 +81,8 @@ export default function SupportGuidePage() {
   }
 
   return (
-    <div
-      data-motion={motion.paused ? 'off' : 'on'}
-      className="public-experience support-experience"
-    >
-      <PublicHero
-        label="지원 안내"
-        motion={motion}
-        className="support-hero"
-        scrollTo="#support-content"
-      >
+    <div className="public-experience support-experience">
+      <PublicHero className="support-hero" scrollTo="#support-content">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
             <p className="experience-eyebrow">HERE FOR YOUR NEXT STEP</p>

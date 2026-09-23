@@ -12,7 +12,6 @@ import { getPublicContests } from '@/domains/contestAdministration/api';
 import { contestAccessPhase } from '@/domains/contestAdministration/logic';
 import { toContestCardData } from '@/domains/contestAdministration/presentation';
 import { getPublicServiceNotices } from '@/domains/serviceCommunication/api';
-import usePublicMotion from '@/shared/hooks/usePublicMotion';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
 import '@/pages/public/ContestsPage.css';
 import './MainPage.css';
@@ -45,7 +44,6 @@ const shortcuts = [
 ];
 
 export default function MainPage() {
-  const motion = usePublicMotion();
   const visible = useDocumentVisibility();
   const directoryToken = useSessionStore(
     (state) =>
@@ -85,11 +83,8 @@ export default function MainPage() {
     })
     .slice(0, 4);
   return (
-    <div
-      className="public-experience contest-directory home-experience"
-      data-motion={motion.paused ? 'off' : 'on'}
-    >
-      <HomeHero motion={motion} />
+    <div className="public-experience contest-directory home-experience">
+      <HomeHero />
       <section
         className="experience-container home-explore"
         id="home-explore"

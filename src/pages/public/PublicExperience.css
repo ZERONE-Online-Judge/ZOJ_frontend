@@ -76,20 +76,7 @@
   background-size: 24px 24px;
   mask-image: linear-gradient(100deg, transparent, black);
 }
-.experience-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  padding-block: 26px;
-  border-bottom: 1px solid #ffffff16;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #b2b6c8;
-}
-.experience-topline a:hover {
-  color: var(--xp-lime);
-}
+
 .experience-hero-grid {
   display: grid;
   grid-template-columns: 1.05fr 1fr;
@@ -1606,10 +1593,6 @@
   }
 }
 @media (max-width: 419px) {
-  .experience-topline {
-    gap: 10px;
-    font-size: 10px;
-  }
   .judge-room {
     padding: 18px 14px;
   }

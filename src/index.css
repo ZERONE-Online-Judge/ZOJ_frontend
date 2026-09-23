@@ -19,10 +19,6 @@
     scroll-behavior: smooth;
   }
 
-  html:has([data-motion='off']) {
-    scroll-behavior: auto;
-  }
-
   body {
     font-family:
       'Pretendard',

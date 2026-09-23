@@ -127,31 +127,7 @@
   background-size: 24px 24px;
   mask-image: linear-gradient(100deg, transparent 25%, black 100%);
 }
-.about-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 24px;
-  color: #a6aabe;
-  font-size: 10px;
-  font-weight: 550;
-  letter-spacing: 0.12em;
-}
-.about-topline button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  min-height: 36px;
-  border: 1px solid #ffffff20;
-  border-radius: 99px;
-  font: inherit;
-  letter-spacing: 0;
-  color: #cbd0df;
-}
-.about-topline button:hover {
-  background: #ffffff0a;
-}
+
 .about-hero-grid {
   min-height: 610px;
   display: grid;
@@ -1011,16 +987,7 @@
     transform: rotate(360deg);
   }
 }
-.about-page[data-motion='off'] *,
-.about-page[data-motion='off'] *::before,
-.about-page[data-motion='off'] *::after {
-  animation: none !important;
-  transition: none !important;
-}
-.about-page[data-motion='off'] [data-reveal] {
-  opacity: 1;
-  transform: none;
-}
+
 @media (prefers-reduced-motion: reduce) {
   .about-page *,
   .about-page *::before,
@@ -1121,10 +1088,7 @@
     margin-bottom: 18px;
     font-size: 10px;
   }
-  .about-topline {
-    font-size: 9px;
-    padding-top: 18px;
-  }
+
   .about-hero-grid {
     grid-template-columns: 1fr;
     gap: 48px;
@@ -1339,10 +1303,7 @@
   .about-hero h1 {
     font-size: 36px;
   }
-  .about-topline {
-    letter-spacing: 0.04em;
-    font-size: 8px;
-  }
+
   .about-stage-list > button {
     gap: 4px;
     padding-inline: 5px;

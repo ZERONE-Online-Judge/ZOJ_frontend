@@ -25,41 +25,7 @@
   mask-image: linear-gradient(transparent, #0005, transparent);
   pointer-events: none;
 }
-.home-launch-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 22px 0;
-  border-bottom: 1px solid #252d3915;
-  color: #636777;
-  font-size: 9px;
-  letter-spacing: 0.13em;
-}
-.home-launch-topline > span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.home-launch-topline i {
-  width: 6px;
-  height: 6px;
-  background: #638546;
-  border-radius: 50%;
-}
-.home-motion-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #55587025;
-  border-radius: 30px;
-  background: #ffffff60;
-  color: #606474;
-  font-size: 10px;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
+
 .home-launch-heading {
   position: relative;
   z-index: 2;
@@ -247,62 +213,25 @@
 .home-launch-bottom {
   position: relative;
   text-align: center;
-  padding-top: 8px;
-}
-.home-launch-bottom > p {
-  color: #6e7280;
-  font-size: 13px;
-  line-height: 1.9;
+  padding: 22px 0 46px;
 }
 .home-launch-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 25px;
-  margin-top: 22px;
 }
-.home-start-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 34px;
-  padding: 17px 25px;
-  border-radius: 40px;
-  background: #272b40;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 8px 20px #262c4015;
-  transition:
-    transform 0.2s,
-    background 0.2s;
-}
-.home-start-button:hover {
-  transform: translateY(-3px);
-  background: #49415f;
-}
-.home-start-button svg {
-  width: 18px;
-  height: 18px;
-  color: #c7e7ac;
-}
+
 .home-about-link {
-  font-size: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 13px;
   color: #5c5c70;
   display: inline-flex;
   gap: 12px;
 }
-.home-launch-scroll {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 30px 0 23px;
-  color: #838591;
-  font-size: 10px;
-}
-.home-launch-scroll span {
-  font-size: 18px;
-}
+
 @keyframes home-aurora {
   to {
     transform: translate(4%, -3%) rotate(7deg);
@@ -323,11 +252,7 @@
     rotate: 360deg;
   }
 }
-.home-experience[data-motion='off'] .home-launch *,
-.home-experience[data-motion='off'] .home-launch *::after {
-  animation: none !important;
-  transition: none !important;
-}
+
 @media (prefers-reduced-motion: reduce) {
   .home-launch *,
   .home-launch *::after {
@@ -358,17 +283,6 @@
   }
 }
 @media (max-width: 480px) {
-  .home-launch-topline {
-    padding: 16px 0;
-    letter-spacing: 0.04em;
-    font-size: 7px;
-    gap: 5px;
-  }
-  .home-motion-toggle {
-    padding: 7px;
-    font-size: 9px;
-    gap: 4px;
-  }
   .home-launch-heading {
     padding-top: 34px;
   }
@@ -427,21 +341,11 @@
     bottom: 35px;
   }
   .home-launch-bottom {
-    padding-top: 18px;
+    padding: 24px 0 36px;
   }
-  .home-launch-bottom > p {
-    font-size: 12px;
-  }
-  .home-launch-actions {
-    gap: 18px;
-  }
-  .home-start-button {
-    padding: 15px 19px;
-    gap: 20px;
-    font-size: 12px;
-  }
+
   .home-about-link {
-    font-size: 11px;
+    font-size: 12px;
     gap: 6px;
   }
 }
