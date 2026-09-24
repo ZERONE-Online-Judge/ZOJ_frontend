@@ -1,7 +1,6 @@
 import './OperatorSettingsPage.css';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import ContestVisibilitySettings from '@/components/operator/ContestVisibilitySettings';
-import OperatorSettingsNavigation from '@/components/operator/OperatorSettingsNavigation';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -359,7 +358,6 @@ function OperatorSettingsContent({
     >
       {dialog}
       <OperatorTabs contestId={contestId} />
-      <OperatorSettingsNavigation contestId={contestId} />
 
       {dashboardQuery.error ? (
         <ErrorBox

@@ -5,7 +5,6 @@ import {
   OperatorAccessGate,
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
-import OperatorSettingsNavigation from '@/components/operator/OperatorSettingsNavigation';
 import GuideVisual, {
   GuideIcon,
   GuideOverviewArt,
@@ -131,14 +130,6 @@ function GuideContent({
       width="full"
     >
       <OperatorTabs contestId={contestId} />
-      <OperatorSettingsNavigation
-        contestId={contestId}
-        canManageSettings={hasContestPermission(
-          session,
-          contestId,
-          'contest.settings.manage',
-        )}
-      />
       <div className="operator-guide" data-motion={motion ? 'on' : 'off'}>
         <header className="og-hero">
           <div className="og-hero-copy">

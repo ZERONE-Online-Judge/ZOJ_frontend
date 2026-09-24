@@ -219,9 +219,8 @@ test('visibility illustration never grants a visitor access through a private co
 test('review-only operators can read the guide without receiving settings controls', async () => {
   await render('?section=settings');
   assert.match(host.textContent, /설정 하나가 누구에게 무엇을 바꿀까요/);
-  const nav = host.querySelector('[aria-label="설정과 운영 가이드"]');
-  assert.equal(nav.querySelector('a[href$="/settings"]'), null);
-  assert.ok(nav.querySelector('a[href$="/guide"]'));
+  assert.equal(host.querySelector('a[href$="/settings"]'), null);
+  assert.ok(host.querySelector('a[href$="/guide"]'));
   assert.match(host.textContent, /해당 관리 화면을 열려면 담당 권한이 필요/);
   assert.equal(host.querySelector('.og-category-header a'), null);
 });
