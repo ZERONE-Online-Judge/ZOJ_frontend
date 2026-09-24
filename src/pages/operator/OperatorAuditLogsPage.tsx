@@ -236,12 +236,13 @@ function OperatorAuditLogsContent({
         ) : (
           <>
             <form
-              className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
+              className="grid min-w-0 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_auto]"
               onSubmit={applyFilters}
             >
               <input
                 className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
                 onChange={(event) => setActorDraft(event.target.value)}
+                aria-label="계정 이메일로 필터"
                 placeholder="계정 이메일로 필터"
                 value={actorDraft}
               />
@@ -253,7 +254,7 @@ function OperatorAuditLogsContent({
               </button>
             </form>
             {logType === 'access' && accessStats ? (
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 {[
                   ['최근 24시간', accessStats.total_count],
                   ['성공/유지', accessStats.success_count],
@@ -301,6 +302,7 @@ function OperatorAuditLogsContent({
               <AccessLogTable
                 loading={accessLogsQuery.isFetching}
                 logs={accessLogs}
+                showContest={false}
               />
             )}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-500">

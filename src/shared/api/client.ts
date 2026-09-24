@@ -6,6 +6,7 @@ import type {
 } from '@/shared/api/types';
 import {
   emitSessionSync,
+  expireStoredAccountSession,
   loadStoredGeneralSession,
   loadStoredParticipantSession,
   mapGeneralSession,
@@ -117,6 +118,7 @@ function storedReplacementTokenForRequest(
   if (
     general?.accessToken &&
     general.accessToken !== token &&
+    participant?.accessToken !== token &&
     (path.startsWith('/auth/general/') || contestId)
   ) {
     return general.accessToken;
@@ -191,10 +193,13 @@ async function refreshOperatorAccessTokenViaGeneralSession(): Promise<
 
   if (!result.response.ok) return null;
 
+  const currentGeneral = loadStoredGeneralSession();
+  if (currentGeneral?.accessToken !== generalToken) return null;
+
   const next = mapGeneralSession(
     (result.payload as DataEnvelope<Parameters<typeof mapGeneralSession>[0]>)
       .data!,
-    loadStoredGeneralSession(),
+    currentGeneral,
   );
   saveGeneralSession(next);
   emitSessionSync();
@@ -250,6 +255,8 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
         ...general,
         operatorSession: refreshed,
       };
+      if (loadStoredGeneralSession()?.accessToken !== general.accessToken)
+        return null;
       saveGeneralSession(nextGeneral);
       emitSessionSync();
       return refreshed.accessToken;
@@ -291,6 +298,9 @@ async function refreshGeneralAccessToken(
           .data!,
         general,
       );
+      // A revocation event or a newer login may have arrived while refreshing.
+      // Never restore credentials that the logout flow has already removed.
+      if (loadStoredGeneralSession()?.accessToken !== token) return null;
       saveGeneralSession(next);
       const participant = loadStoredParticipantSession();
       if (
@@ -388,6 +398,7 @@ async function refreshParticipantAccessToken(
         member: data.member,
         division: data.division,
       };
+      if (loadStoredParticipantSession()?.accessToken !== token) return null;
       saveParticipantSession(next);
       emitSessionSync();
       return next.accessToken;
@@ -445,6 +456,7 @@ export async function refreshActiveAccessTokens() {
 }
 
 function clearStoredSessionForFailedToken(token: string, path: string) {
+  if (expireStoredAccountSession(token, path)) return;
   const general = loadStoredGeneralSession();
   let changed = false;
 

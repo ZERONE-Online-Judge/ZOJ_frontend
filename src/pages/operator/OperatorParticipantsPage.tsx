@@ -1,3 +1,5 @@
+import ParticipantDivisionsPanel from '@/components/operator/ParticipantDivisionsPanel';
+import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import {
   type ChangeEvent,
@@ -77,6 +79,11 @@ export default function OperatorParticipantsPage() {
           <OperatorParticipantsContent
             contestId={contestId}
             token={session.accessToken}
+            canManageParticipants={hasContestPermission(
+              session,
+              contestId,
+              'contest.participant.manage',
+            )}
           />
         ) : (
           <PageLayout
@@ -94,9 +101,11 @@ export default function OperatorParticipantsPage() {
 function OperatorParticipantsContent({
   contestId,
   token,
+  canManageParticipants,
 }: {
   contestId: string;
   token: string;
+  canManageParticipants: boolean;
 }) {
   const { confirm: confirmAction, dialog: confirmationDialog } =
     useConfirmation();
@@ -360,7 +369,7 @@ function OperatorParticipantsContent({
   return (
     <PageLayout
       variant="management"
-      description="참가팀, 멤버, 상태, 세션을 관리합니다."
+      description="참가 유형, 참가팀, 멤버와 로그인 세션을 관리합니다."
       eyebrow="Operator"
       title={`${dashboardQuery.data?.contest.title ?? '대회'} 참가팀`}
       width="full"
@@ -373,6 +382,30 @@ function OperatorParticipantsContent({
         <ErrorBox
           error={dashboardQuery.error || teamsQuery.error}
           fallback="참가팀 데이터를 불러오지 못했습니다"
+        />
+      ) : null}
+
+      {revokeSessionMutation.error ? (
+        <ErrorBox
+          error={revokeSessionMutation.error}
+          fallback="계정을 로그아웃하지 못했습니다"
+        />
+      ) : null}
+      {revokeSessionMutation.isSuccess ? (
+        <p
+          role="status"
+          className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+        >
+          해당 계정의 모든 로그인 세션을 해제했습니다.
+        </p>
+      ) : null}
+
+      {canManageParticipants && dashboardQuery.data ? (
+        <ParticipantDivisionsPanel
+          contestId={contestId}
+          token={token}
+          contest={dashboardQuery.data.contest}
+          divisions={divisions}
         />
       ) : null}
 
@@ -733,6 +766,8 @@ function OperatorParticipantsContent({
                                 (member.active_sessions ?? 0) > 0 ? (
                                   <button
                                     className="rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-50"
+                                    disabled={revokeSessionMutation.isPending}
+                                    title="이 계정의 모든 기기에서 로그아웃합니다"
                                     onClick={() =>
                                       revokeSessionMutation.mutate({
                                         memberId: member.team_member_id!,
@@ -741,7 +776,7 @@ function OperatorParticipantsContent({
                                     }
                                     type="button"
                                   >
-                                    세션 해제
+                                    계정 로그아웃
                                   </button>
                                 ) : null}
                               </div>

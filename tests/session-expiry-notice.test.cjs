@@ -110,7 +110,7 @@ test('expiry displays one focused dialog without silently sending the user away'
   const dialog = document.querySelector('dialog');
   assert.equal(dialog.open, true);
   assert.equal(document.activeElement, dialog);
-  assert.match(dialog.textContent, /세션이 만료되었습니다/);
+  assert.match(dialog.textContent, /로그아웃되었습니다/);
   assert.equal(location.pathname, '/operator/contests/demo/problems');
   const cancel = new dom.window.Event('cancel', { cancelable: true });
   await act(async () => dialog.dispatchEvent(cancel));

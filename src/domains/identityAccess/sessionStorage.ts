@@ -10,11 +10,42 @@ export const PARTICIPANT_SESSION_KEY = 'zoj.participantSession';
 export const GENERAL_SESSION_KEY = 'zoj.generalSession';
 export const SESSION_SYNC_EVENT = 'zoj:session-sync';
 export const SESSION_EXPIRED_EVENT = 'zoj:session-expired';
+export const SESSION_EXPIRED_STORAGE_KEY = 'zoj.sessionExpired';
 
 export type SessionExpiredEventDetail = {
   currentPath?: string;
   requestPath?: string;
 };
+
+export function expireStoredAccountSession(token: string, requestPath: string) {
+  const general = loadStoredGeneralSession();
+  const participant = loadStoredParticipantSession();
+  if (general?.accessToken !== token && participant?.accessToken !== token)
+    return false;
+
+  // Notify other tabs before removing the shared credentials. A stale response
+  // cannot sign out a newer login because its token no longer matches storage.
+  browserStorage()?.setItem(
+    SESSION_EXPIRED_STORAGE_KEY,
+    JSON.stringify({
+      email: general?.account.email ?? participant?.member.email,
+      at: Date.now(),
+      requestPath,
+    }),
+  );
+  saveGeneralSession(null);
+  saveParticipantSession(null);
+  emitSessionSync();
+  window.dispatchEvent(
+    new CustomEvent<SessionExpiredEventDetail>(SESSION_EXPIRED_EVENT, {
+      detail: {
+        currentPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        requestPath,
+      },
+    }),
+  );
+  return true;
+}
 
 function browserStorage() {
   return typeof window === 'undefined' ? null : window.localStorage;

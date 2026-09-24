@@ -25,6 +25,7 @@ const h = React.createElement;
 let session, operators, reads, creates, updates, removals;
 let updateError, sessionClears, currentLocation, apiCalls;
 let contestOverrides, settingsChanges, transfers, transferError;
+let divisionCreates;
 const mocks = {
   '@/shared/unsaved/useUnsavedForm': {
     default: () => ({ formProps: {}, confirm: (callback) => callback() }),
@@ -50,6 +51,10 @@ const mocks = {
     },
   },
   '@/domains/contestAdministration/api': {
+    createOperatorDivision: async (contestId, token, body) => {
+      divisionCreates.push({ contestId, token, body });
+      return { division_id: 'new-division', ...body };
+    },
     getOperatorContestDashboard: async () => ({
       contest: {
         contest_id: 'contest',
@@ -125,6 +130,7 @@ const mocks = {
     listOperatorContestQuestions: async () => [],
   },
   '@/domains/problemManagement/api': { getOperatorProblems: async () => [] },
+  '@/domains/teamParticipation/api': { listParticipantTeams: async () => [] },
 };
 mocks['@/domains/identityAccess/sessionStore'].useSessionStore.getState =
   () => ({
@@ -170,6 +176,9 @@ const OperatorsPage = source(
   'pages/operator/OperatorOperatorsPage.tsx',
 ).default;
 const SettingsPage = source('pages/operator/OperatorSettingsPage.tsx').default;
+const ParticipantsPage = source(
+  'pages/operator/OperatorParticipantsPage.tsx',
+).default;
 const LoginPage = source('pages/auth/LoginPage.tsx').default;
 const { ApiClientError } = source('shared/api/errors.ts');
 const { updateContestOperator } = source(
@@ -224,6 +233,7 @@ beforeEach(() => {
   apiCalls = [];
   contestOverrides = {};
   settingsChanges = [];
+  divisionCreates = [];
   transfers = [];
   transferError = null;
   window.localStorage.removeItem('zoj.scoreboard.updated.contest');
@@ -434,20 +444,48 @@ test('operator list shows one prioritized title beside each name while retaining
   assert.match(container.textContent, /운영자 \/ 마스터/);
 });
 
-test('settings manager sees settings and divisions without fetching or exposing staff controls', async () => {
+test('settings manager sees settings without participant division or staff controls', async () => {
   setActor(['contest.view', 'contest.settings.manage']);
   await render(SettingsPage, 'settings');
   assert.ok(button('설정 저장'));
-  assert.ok(button('유형 추가'));
+  assert.equal(button('유형 추가'), undefined);
   assert.equal(button('운영자 추가'), undefined);
   assert.equal(reads, 0);
   assert.equal(container.textContent.includes('assigned@example.test'), false);
 });
 
+test('participant manager creates divisions from participant management without settings permission', async () => {
+  setActor([
+    'contest.view',
+    'contest.participant.view',
+    'contest.participant.manage',
+  ]);
+  await render(ParticipantsPage, 'participants');
+  assert.ok(button('유형 추가'));
+  assert.equal(button('설정 저장'), undefined);
+  await input(inputByLabel('유형 이름'), '고등부');
+  await click(button('유형 추가'));
+  assert.deepEqual(divisionCreates, [
+    {
+      contestId: 'contest',
+      token: 'staff-token',
+      body: { name: '고등부', description: '' },
+    },
+  ]);
+  assert.match(container.textContent, /참가 유형을 저장했습니다/);
+});
+
+test('participant view-only permission does not expose division editing', async () => {
+  setActor(['contest.view', 'contest.participant.view']);
+  await render(ParticipantsPage, 'participants');
+  assert.equal(button('유형 추가'), undefined);
+  assert.equal(container.textContent.includes('참가 유형 관리'), false);
+});
+
 test('master settings page keeps staff management on its separate tab without fetching operators', async () => {
   await render(SettingsPage, 'settings');
   assert.ok(button('설정 저장'));
-  assert.ok(button('유형 추가'));
+  assert.equal(button('유형 추가'), undefined);
   assert.equal(button('운영자 추가'), undefined);
   assert.equal(reads, 0);
   assert.equal(container.textContent.includes('assigned@example.test'), false);

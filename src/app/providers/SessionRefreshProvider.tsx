@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { SESSION_EXPIRED_EVENT } from '@/domains/identityAccess/sessionStorage';
 import { refreshActiveAccessTokens } from '@/shared/api/client';
+import { useSessionRevocation } from '@/domains/identityAccess/useSessionRevocation';
 
 const SESSION_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
 
@@ -12,11 +13,13 @@ export default function SessionRefreshProvider({
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();
+  useSessionRevocation();
 
   useEffect(() => {
     function handleSessionExpired() {
       useSessionStore.getState().syncSessionsFromStorage();
       void queryClient.cancelQueries();
+      queryClient.clear();
     }
 
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);

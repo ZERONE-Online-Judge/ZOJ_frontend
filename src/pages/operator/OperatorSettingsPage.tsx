@@ -12,10 +12,8 @@ import {
   SettingsIcon,
 } from '@/components/operator/OperatorShell';
 import {
-  createOperatorDivision,
   getOperatorContestDashboard,
   updateContestSettings,
-  updateOperatorDivision,
 } from '@/domains/contestAdministration/api';
 import {
   contestResourceAccess,
@@ -28,7 +26,6 @@ import type {
   ContestVisibility,
   ContestSettingsPatch,
   ContestResourceAccess,
-  Division,
   ScoreboardReleaseMode,
 } from '@/domains/contestAdministration/types';
 import { SCOREBOARD_RELEASE_OPTIONS } from '@/domains/submissionScoreboard/releaseModes';
@@ -62,21 +59,9 @@ type SettingsForm = {
   title: string;
 };
 
-type DivisionForm = {
-  description: string;
-  divisionId: string;
-  name: string;
-};
-
 type SettingsDraft = {
   contestId: string;
   form: SettingsForm;
-};
-
-const emptyDivisionForm: DivisionForm = {
-  description: '',
-  divisionId: '',
-  name: '',
 };
 
 const statusOptions = [
@@ -191,7 +176,6 @@ function OperatorSettingsContent({
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft | null>(
     null,
   );
-  const [divisionForm, setDivisionForm] = useState(emptyDivisionForm);
   const [formError, setFormError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
 
@@ -201,7 +185,6 @@ function OperatorSettingsContent({
   });
 
   const contest = dashboardQuery.data?.contest;
-  const divisions = dashboardQuery.data?.divisions ?? [];
   const settingsForm =
     settingsDraft?.contestId === contestId
       ? settingsDraft.form
@@ -286,25 +269,6 @@ function OperatorSettingsContent({
     },
   });
 
-  const saveDivisionMutation = useMutation({
-    mutationFn: () =>
-      divisionForm.divisionId
-        ? updateOperatorDivision(contestId, divisionForm.divisionId, token, {
-            description: divisionForm.description.trim(),
-            name: divisionForm.name.trim(),
-          })
-        : createOperatorDivision(contestId, token, {
-            description: divisionForm.description.trim(),
-            name: divisionForm.name.trim(),
-          }),
-    onSuccess: () => {
-      setDivisionForm(emptyDivisionForm);
-      void queryClient.invalidateQueries({
-        queryKey: ['operator', 'dashboard', contestId],
-      });
-    },
-  });
-
   function handleSettingsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!settingsForm?.title.trim() || !settingsForm.organization_name.trim()) {
@@ -356,17 +320,10 @@ function OperatorSettingsContent({
     if (action === 'freeze-60') updateDate('freeze_at', addMinutes(60));
   }
 
-  function handleDivisionSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (saveDivisionMutation.isPending) return;
-    if (!divisionForm.name.trim()) return;
-    saveDivisionMutation.mutate();
-  }
-
   return (
     <PageLayout
       variant="management"
-      description="대회 일정, 공개 범위와 참가 유형을 조정합니다."
+      description="대회 정보, 일정과 공개 범위를 조정합니다."
       eyebrow="Operator"
       title={`${contest?.title ?? '대회'} 설정`}
       width="full"
@@ -381,7 +338,7 @@ function OperatorSettingsContent({
       ) : null}
 
       {canManageSettings ? (
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid min-w-0 gap-6">
           <OperatorPanel
             description="대회 기본 정보와 공개 정책을 수정합니다."
             title="대회 설정"
@@ -830,80 +787,6 @@ function OperatorSettingsContent({
               </p>
             )}
           </OperatorPanel>
-
-          <div className="grid gap-6">
-            <OperatorPanel
-              description="초등부·중등부처럼 참가팀을 나누는 구분입니다. 참가 유형별로 문제를 배정하고 스코어보드를 확인할 수 있습니다. 목록을 누르면 해당 유형을 수정합니다. 추가·수정은 대회 설정 저장과 별도로 반영됩니다."
-              title={
-                divisionForm.divisionId ? '참가 유형 수정' : '참가 유형 추가'
-              }
-            >
-              <form className="grid gap-3" onSubmit={handleDivisionSubmit}>
-                <TextInput
-                  label="유형 이름"
-                  helperText="예: 초등부, 중등부, 고등부"
-                  onChange={(value) =>
-                    setDivisionForm((prev) => ({ ...prev, name: value }))
-                  }
-                  value={divisionForm.name}
-                />
-                <TextInput
-                  label="설명"
-                  onChange={(value) =>
-                    setDivisionForm((prev) => ({ ...prev, description: value }))
-                  }
-                  value={divisionForm.description}
-                />
-                {saveDivisionMutation.error ? (
-                  <ErrorBox
-                    error={saveDivisionMutation.error}
-                    fallback="참가 유형 저장에 실패했습니다"
-                  />
-                ) : null}
-                <button
-                  className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
-                  disabled={
-                    saveDivisionMutation.isPending || !divisionForm.name.trim()
-                  }
-                  type="submit"
-                >
-                  {saveDivisionMutation.isPending
-                    ? '저장 중…'
-                    : divisionForm.divisionId
-                      ? '변경사항 저장'
-                      : '유형 추가'}
-                </button>
-                {divisionForm.divisionId ? (
-                  <button
-                    className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
-                    disabled={saveDivisionMutation.isPending}
-                    onClick={() => {
-                      setDivisionForm(emptyDivisionForm);
-                      saveDivisionMutation.reset();
-                    }}
-                    type="button"
-                  >
-                    수정 취소 · 새 유형 추가로 돌아가기
-                  </button>
-                ) : null}
-              </form>
-              <DivisionList
-                divisions={divisions}
-                onEdit={(form) => {
-                  if (!saveDivisionMutation.isPending) {
-                    saveDivisionMutation.reset();
-                    setDivisionForm(form);
-                  }
-                }}
-              />
-              {!divisions.length ? (
-                <p className="text-sm text-slate-500">
-                  등록된 참가 유형이 없습니다. 문제와 참가팀을 추가하기 전에
-                  유형을 만들어주세요.
-                </p>
-              ) : null}
-            </OperatorPanel>
-          </div>
         </div>
       ) : null}
     </PageLayout>
@@ -1079,52 +962,6 @@ function QuickActions({
         ))}
       </div>
     </SettingsCard>
-  );
-}
-
-function DivisionList({
-  divisions,
-  onEdit,
-}: {
-  divisions: Division[];
-  onEdit: (form: DivisionForm) => void;
-}) {
-  return (
-    <div className="grid gap-2">
-      {divisions.map((division) => (
-        <button
-          className="min-w-0 rounded-lg border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-indigo-200 hover:bg-indigo-50"
-          key={division.division_id}
-          onClick={() =>
-            onEdit({
-              description: division.description,
-              divisionId: division.division_id,
-              name: division.name,
-            })
-          }
-          type="button"
-        >
-          <strong
-            className="zoj-break-anywhere font-semibold text-slate-950"
-            title={division.name}
-          >
-            {division.name}
-          </strong>
-          <span
-            className="zoj-truncate-safe mt-1 max-w-full text-xs font-medium text-slate-500"
-            title={division.description || '설명 없음'}
-          >
-            {division.description || '설명 없음'}
-          </span>
-          <span
-            className="mt-2 inline-flex w-fit rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500"
-            title={division.code || '코드 없음'}
-          >
-            코드 {division.code || '-'}
-          </span>
-        </button>
-      ))}
-    </div>
   );
 }
 

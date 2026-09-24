@@ -16,12 +16,13 @@ export const CONTEST_ROLES = [
   {
     value: 'settings_manager',
     label: '대회 운영진 · 대회 설정 관리',
-    description: '대회 정보, 일정, 공개 범위와 참가 유형을 관리합니다.',
+    description: '대회 정보, 일정과 공개 범위를 관리합니다.',
   },
   {
     value: 'participants_manager',
     label: '대회 운영진 · 참가자 관리',
-    description: '참가팀을 등록·수정·제거하고 참가자 접속 기록을 확인합니다.',
+    description:
+      '참가 유형과 참가팀을 관리하고 참가자 로그아웃 및 접속 기록을 확인합니다.',
   },
   {
     value: 'posts_manager',
