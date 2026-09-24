@@ -3,6 +3,17 @@ export function fieldLabel(field: string) {
   const labels: Record<string, string> = {
     answer_body: '답변',
     overview: '대회 소개',
+    organization_name: '주최 기관',
+    display_name: '표시 이름',
+    code: '참가 유형 코드',
+    summary: '요약',
+    judge_config: '채점 설정',
+    role: '팀원 역할',
+    team_leader_name: '팀장 이름',
+    team_leader_email: '팀장 이메일',
+    members: '팀원 목록',
+    time_limit_ms_override: '테스트케이스 시간 제한',
+    memory_limit_mb_override: '테스트케이스 메모리 제한',
     visibility_after_end: '종료 후 대회 공개',
     editorial_access_after_end: '종료 후 해설 공개',
     notice_access_after_end: '종료 후 공지 공개',
@@ -234,7 +245,16 @@ export function auditChanges(log: OperationalAuditLog): AuditChange[] {
 export function valueLabel(value: unknown, field = ''): string {
   if (value === null || value === undefined) return '없음';
   if (typeof value === 'boolean') return value ? '사용' : '사용 안 함';
-  if (typeof value === 'number') return value.toLocaleString('ko-KR');
+  if (typeof value === 'number') {
+    const unit = field.startsWith('time_limit_ms')
+      ? ' ms'
+      : field.startsWith('memory_limit_mb')
+        ? ' MB'
+        : field === 'file_size'
+          ? ' bytes'
+          : '';
+    return value.toLocaleString('ko-KR') + unit;
+  }
   if (Array.isArray(value))
     return value.map((item) => valueLabel(item)).join(', ') || '없음';
   if (typeof value === 'object') return JSON.stringify(value);
@@ -244,6 +264,7 @@ export function valueLabel(value: unknown, field = ''): string {
       public: '공개',
       private: '비공개',
       participants: '참가자 공개',
+      questioner: '질문자 공개',
     },
     status: {
       draft: '초안',
