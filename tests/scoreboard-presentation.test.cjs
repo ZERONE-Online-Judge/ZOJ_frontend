@@ -472,7 +472,8 @@ test('resolver presentation retains team names and moves existing rows as result
   assert.match(display.textContent, /Alpha/);
   assert.match(display.textContent, /Beta/);
   assert.match(display.textContent, /\?1/);
-  assert.match(display.textContent, /결과 공개 0 \/ 1/);
+  assert.doesNotMatch(display.textContent, /결과 공개 0 \/ 1/);
+  assert.equal(display.querySelector('[role="status"]'), null);
   assert.equal(display.querySelectorAll('svg[role="img"]').length, 0);
   assert.doesNotMatch(display.textContent, /공개 대기|아직 공개되지 않은 순위/);
   assert.equal(display.querySelectorAll('button, input, select').length, 0);
@@ -520,7 +521,11 @@ test('resolver presentation retains team names and moves existing rows as result
   await dispatchUpdate();
   assert.equal(display.querySelector('[data-scoreboard-row="beta"]'), beta);
   assert.equal(display.querySelector('tbody tr').dataset.scoreboardRow, 'beta');
-  assert.match(display.textContent, /2위 → 1위/);
+  assert.doesNotMatch(
+    display.textContent,
+    /2위 → 1위|모든 결과 공개 완료|Beta · A번/,
+  );
+  assert.equal(display.querySelector('[role="status"]'), null);
   assert.match(display.textContent, /최종 순위/);
   assert.equal(
     beta.querySelector('svg[role="img"]').getAttribute('aria-label'),

@@ -10,7 +10,6 @@ import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { getOperatorPresentationScoreboard } from '@/domains/submissionScoreboard/api';
 import { subscribeScoreboardUpdates } from '@/domains/submissionScoreboard/presentationSync';
 import useScoreboardRowMotion from '@/domains/submissionScoreboard/useScoreboardRowMotion';
-import { submissionStatusLabel } from '@/domains/submissionScoreboard/status';
 import type {
   OperatorPresentationScoreboardSection,
   ScoreboardProblemScore,
@@ -142,8 +141,7 @@ function PresentationDivisionBoard({
   const problemCodes = useMemo(() => sortedProblemCodes(section), [section]);
   const gridMinWidth = Math.max(560, 380 + problemCodes.length * 48);
   const bodyRef = useScoreboardRowMotion(section.rows);
-  const resolver = section.release?.resolver;
-  const lastEvent = resolver?.last_event;
+  const lastEvent = section.release?.resolver?.last_event;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-[0.85rem] border border-indigo-300/15 bg-slate-950/55 p-[clamp(0.8rem,1.4vw,1.2rem)] shadow-[0_1.25rem_4rem_rgba(0,0,0,0.28)] backdrop-blur">
@@ -174,43 +172,6 @@ function PresentationDivisionBoard({
                 : '라이브'}
         </span>
       </header>
-
-      {section.release?.strategy === 'resolver' &&
-      section.release.mode !== 'not_started' &&
-      resolver ? (
-        <div
-          className="mb-3 rounded-xl border border-violet-300/20 bg-violet-300/10 px-4 py-3"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="text-xs font-semibold text-violet-200">
-            {section.release.mode === 'all'
-              ? '모든 결과 공개 완료'
-              : `결과 공개 ${resolver.step} / ${resolver.total_steps}`}
-          </p>
-          {lastEvent ? (
-            <p className="mt-1 text-sm font-semibold text-white">
-              {lastEvent.team_name} · {lastEvent.problem_code}번{' '}
-              <span
-                className={
-                  lastEvent.status === 'accepted'
-                    ? 'text-emerald-300'
-                    : 'text-amber-200'
-                }
-              >
-                {submissionStatusLabel(lastEvent.status)}
-              </span>
-              {lastEvent.from_rank !== lastEvent.to_rank
-                ? ` · ${lastEvent.from_rank}위 → ${lastEvent.to_rank}위`
-                : ''}
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-white/65">
-              프리즈 성적을 유지한 채 하위 팀부터 결과를 공개합니다.
-            </p>
-          )}
-        </div>
-      ) : null}
 
       <div className="overflow-x-auto">
         <table
