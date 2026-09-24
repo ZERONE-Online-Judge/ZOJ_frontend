@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { OperatorPanel } from '@/components/operator/OperatorShell';
 import {
   createOperatorDivision,
+  deleteOperatorDivision,
   updateOperatorDivision,
 } from '@/domains/contestAdministration/api';
 import { isContestOperationLocked } from '@/domains/contestAdministration/logic';
@@ -47,6 +48,24 @@ export default function ParticipantDivisionsPanel({
       }
     },
   });
+  const remove = useMutation({
+    mutationFn: (divisionId: string) =>
+      deleteOperatorDivision(contestId, divisionId, token),
+    onSuccess: () => {
+      setForm(emptyForm);
+      setSaved('참가 유형을 삭제했습니다.');
+      for (const name of [
+        'dashboard',
+        'divisions',
+        'participants',
+        'problems',
+      ]) {
+        void queryClient.invalidateQueries({
+          queryKey: ['operator', name, contestId],
+        });
+      }
+    },
+  });
   const { confirm, dialog } = useConfirmation();
   const selected = divisions.find(
     (division) => division.division_id === form.divisionId,
@@ -75,7 +94,7 @@ export default function ParticipantDivisionsPanel({
       {dialog}
       {locked ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          대회 진행 중에는 참가 유형을 추가하거나 수정할 수 없습니다.
+          대회 진행 중에는 참가 유형을 추가·수정·삭제할 수 없습니다.
         </p>
       ) : null}
       <div className="grid min-w-0 gap-5 lg:grid-cols-2">
@@ -84,7 +103,7 @@ export default function ParticipantDivisionsPanel({
             <button
               key={division.division_id}
               type="button"
-              disabled={locked || save.isPending}
+              disabled={locked || save.isPending || remove.isPending}
               aria-pressed={form.divisionId === division.division_id}
               className="min-w-0 rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-default disabled:hover:bg-white aria-pressed:border-indigo-400 aria-pressed:bg-indigo-50"
               onClick={() =>
@@ -96,6 +115,7 @@ export default function ParticipantDivisionsPanel({
                   });
                   setSaved('');
                   save.reset();
+                  remove.reset();
                 })
               }
             >
@@ -121,7 +141,7 @@ export default function ParticipantDivisionsPanel({
             {form.divisionId ? '참가 유형 수정' : '참가 유형 추가'}
           </h3>
           <fieldset
-            disabled={locked || save.isPending}
+            disabled={locked || save.isPending || remove.isPending}
             className="grid min-w-0 gap-3 disabled:opacity-60"
           >
             <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -162,11 +182,29 @@ export default function ParticipantDivisionsPanel({
               {form.divisionId ? (
                 <button
                   type="button"
+                  className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                  onClick={async () => {
+                    if (
+                      await confirm(
+                        `‘${selected?.name ?? form.name}’ 참가 유형을 삭제할까요? 연결된 참가팀·문제·제출 또는 순위 발표 기록이 있으면 삭제되지 않습니다.`,
+                        { title: '참가 유형 삭제', confirmLabel: '유형 삭제' },
+                      )
+                    )
+                      remove.mutate(form.divisionId);
+                  }}
+                >
+                  {remove.isPending ? '삭제 중…' : '유형 삭제'}
+                </button>
+              ) : null}
+              {form.divisionId ? (
+                <button
+                  type="button"
                   className="rounded-lg border border-slate-200 px-4 py-2 text-sm"
                   onClick={() =>
                     guard.confirm(() => {
                       setForm(emptyForm);
                       save.reset();
+                      remove.reset();
                     })
                   }
                 >
@@ -175,6 +213,11 @@ export default function ParticipantDivisionsPanel({
               ) : null}
             </div>
           </fieldset>
+          {remove.error ? (
+            <p role="alert" className="text-sm text-rose-700">
+              {formatApiError(remove.error, '참가 유형 삭제에 실패했습니다')}
+            </p>
+          ) : null}
           {save.error ? (
             <p role="alert" className="text-sm text-rose-700">
               {formatApiError(save.error, '참가 유형 저장에 실패했습니다')}

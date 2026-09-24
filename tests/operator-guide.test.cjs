@@ -195,8 +195,7 @@ test('search finds detailed instructions and requires every keyword', () => {
   assert.ok(
     searchOperatorGuide('삭제').some(
       (r) =>
-        r.article.id === 'divisions' &&
-        r.article.note.includes('삭제 버튼은 없습니다'),
+        r.article.id === 'divisions' && r.article.note.includes('유형 삭제'),
     ),
   );
 });

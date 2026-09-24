@@ -12,6 +12,8 @@ type AccessLogTableProps = {
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
     general_login: '통합 로그인',
+    operator_access: '운영자 대회 접속',
+    presentation_login: '발표 계정 로그인',
     general_refresh: '세션 갱신',
     login_failed: '로그인 실패',
     logout: '로그아웃',

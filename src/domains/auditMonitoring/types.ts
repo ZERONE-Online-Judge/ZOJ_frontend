@@ -74,6 +74,8 @@ export type OperationalAuditLog = {
 
 export type MailDeliveryLog = {
   mail_queue_id: string;
+  body_preview?: string | null;
+  preview_restricted?: boolean;
   contest_id: string | null;
   contest_title: string | null;
   mail_type: string;

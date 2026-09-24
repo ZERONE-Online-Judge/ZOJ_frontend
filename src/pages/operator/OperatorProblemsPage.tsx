@@ -1768,8 +1768,9 @@ function OperatorProblemsContent({
                     : '어떤 문제를 작업할까요?'}
                 </h3>
                 <p className="max-w-md text-sm leading-6 text-slate-500">
-                  문제를 선택하기 전에는 편집 폼이 열리지 않습니다. 기존 문제는
-                  목록에서 선택하고, 새로 출제할 때는 ‘새 문제’를 누르세요.
+                  {!activeDivisionId && !dashboardQuery.isLoading
+                    ? '문제를 추가하려면 참가팀 탭의 참가 유형 관리에서 유형을 먼저 추가해 주세요.'
+                    : '기존 문제는 목록에서 선택하고, 새로 출제할 때는 ‘새 문제’를 누르세요.'}
                 </p>
                 {activeDivisionId ? (
                   <button

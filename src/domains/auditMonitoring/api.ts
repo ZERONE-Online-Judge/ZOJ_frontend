@@ -12,6 +12,21 @@ import type {
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import { apiPageRequest, apiRequest } from '@/shared/api/client';
 
+export function getMailLogPreview(
+  token: string,
+  mailId: string,
+  contestId?: string,
+) {
+  const base = contestId
+    ? `/operator/contests/${encodeURIComponent(contestId)}`
+    : '/admin';
+  return apiRequest<{
+    body_text: string | null;
+    restricted: boolean;
+    truncated: boolean;
+  }>(`${base}/mail-logs/${encodeURIComponent(mailId)}/preview`, token);
+}
+
 export function listMailDeliveryLogs(
   token: string,
   options: MailLogFilters = {},

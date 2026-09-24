@@ -72,7 +72,17 @@ const mocks = {
     updateContestSettings: async (contestId, token, body) => {
       settingsChanges.push({ contestId, token, body });
       contestOverrides = { ...contestOverrides, ...body };
-      return contestOverrides;
+      return {
+        contest_id: 'contest',
+        title: '권한 테스트',
+        organization_name: 'ZOJ',
+        overview: '',
+        status: 'draft',
+        start_at: '2026-10-01T01:00:00Z',
+        end_at: '2026-10-01T06:00:00Z',
+        freeze_at: '2026-10-01T05:00:00Z',
+        ...contestOverrides,
+      };
     },
     listContestOperators: async () => {
       reads++;
@@ -447,7 +457,7 @@ test('operator list shows one prioritized title beside each name while retaining
 test('settings manager sees settings without participant division or staff controls', async () => {
   setActor(['contest.view', 'contest.settings.manage']);
   await render(SettingsPage, 'settings');
-  assert.ok(button('설정 저장'));
+  assert.ok(button('변경사항 저장'));
   assert.equal(button('유형 추가'), undefined);
   assert.equal(button('운영자 추가'), undefined);
   assert.equal(reads, 0);
@@ -462,7 +472,7 @@ test('participant manager creates divisions from participant management without 
   ]);
   await render(ParticipantsPage, 'participants');
   assert.ok(button('유형 추가'));
-  assert.equal(button('설정 저장'), undefined);
+  assert.equal(button('변경사항 저장'), undefined);
   await input(inputByLabel('유형 이름'), '고등부');
   await click(button('유형 추가'));
   assert.deepEqual(divisionCreates, [
@@ -484,7 +494,7 @@ test('participant view-only permission does not expose division editing', async 
 
 test('master settings page keeps staff management on its separate tab without fetching operators', async () => {
   await render(SettingsPage, 'settings');
-  assert.ok(button('설정 저장'));
+  assert.ok(button('변경사항 저장'));
   assert.equal(button('유형 추가'), undefined);
   assert.equal(button('운영자 추가'), undefined);
   assert.equal(reads, 0);
@@ -499,7 +509,7 @@ test('contest settings defaults to manual release and saves the chosen resolver 
   assert.equal(choices.length, 3);
   assert.equal([...choices].find((input) => input.checked).value, 'manual');
   await click(container.querySelector('input[value="resolver"]'));
-  await click(button('설정 저장'));
+  await click(button('변경사항 저장'));
   assert.equal(settingsChanges.length, 1);
   assert.equal(settingsChanges[0].body.scoreboard_release_mode, 'resolver');
   assert.ok(window.localStorage.getItem('zoj.scoreboard.updated.contest'));
@@ -524,7 +534,7 @@ test('a started release disables mode selection but preserves the saved mode', a
 test('staff manager sees staff controls only and cannot assign or edit masters', async () => {
   setActor(['contest.view', 'contest.staff.manage']);
   await render();
-  assert.equal(button('설정 저장'), undefined);
+  assert.equal(button('변경사항 저장'), undefined);
   assert.equal(button('유형 추가'), undefined);
   assert.ok(button('운영자 추가'));
   assert.ok(reads > 0);
@@ -705,7 +715,7 @@ for (const [label, scope, page, suffix] of [
     );
     await render(page, suffix);
     assert.equal(button('운영자 추가'), undefined);
-    assert.equal(button('설정 저장'), undefined);
+    assert.equal(button('변경사항 저장'), undefined);
     assert.equal(reads, 0);
   });
 }
@@ -933,10 +943,10 @@ test('contest visibility stays separate from lifecycle and restricts anonymous r
   ];
   assert.equal(resources.length, 6);
   assert.ok(resources.every((select) => select.value === 'participants'));
-  await click(button('설정 저장'));
+  await click(button('변경사항 저장'));
   assert.equal(settingsChanges.at(-1).body.visibility, 'private');
   assert.equal(settingsChanges.at(-1).body.visibility_after_end, 'private');
-  assert.equal(settingsChanges.at(-1).body.status, 'draft');
+  assert.equal('status' in settingsChanges.at(-1).body, false);
   assert.ok(
     [
       'problem',
@@ -974,7 +984,21 @@ test('visibility can change during a running contest while its lifecycle remains
   await click(
     container.querySelector('input[name="visibility"][value="private"]'),
   );
-  await click(button('설정 저장'));
+  await click(button('변경사항 저장'));
   assert.equal(settingsChanges.at(-1).body.visibility, 'private');
   assert.equal('status' in settingsChanges.at(-1).body, false);
+});
+
+test('saving one field sends only that field and leaves untouched schedules intact', async () => {
+  contestOverrides = { status: 'open', start_at: '2026-10-01T01:00:37Z' };
+  await render(SettingsPage, 'settings');
+  assert.equal(button('변경사항 저장').disabled, true);
+  assert.equal(
+    container.querySelectorAll('.operator-settings-section[open]').length,
+    1,
+  );
+  await input(inputByLabel('대회명'), '제목만 변경');
+  await click(button('변경사항 저장'));
+  assert.deepEqual(settingsChanges.at(-1).body, { title: '제목만 변경' });
+  assert.equal(contestOverrides.start_at, '2026-10-01T01:00:37Z');
 });

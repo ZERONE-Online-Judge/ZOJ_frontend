@@ -1,6 +1,10 @@
 import { type FormEvent, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { listMailDeliveryLogs } from '@/domains/auditMonitoring/api';
+import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
+import {
+  getMailLogPreview,
+  listMailDeliveryLogs,
+} from '@/domains/auditMonitoring/api';
 import type {
   MailDeliveryLog,
   MailLogFilters,
@@ -68,6 +72,9 @@ export default function MailDeliveryLogPanel({
   contestId?: string;
 }) {
   const visible = useDocumentVisibility();
+  const [selectedMail, setSelectedMail] = useState<MailDeliveryLog | null>(
+    null,
+  );
   const [draft, setDraft] = useState({
     q: '',
     status: '',
@@ -123,8 +130,16 @@ export default function MailDeliveryLogPanel({
     'h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700';
   return (
     <section className="grid min-w-0 gap-4" aria-label="이메일 발송 로그">
+      {selectedMail ? (
+        <MailPreview
+          log={selectedMail}
+          token={token}
+          contestId={contestId}
+          onClose={() => setSelectedMail(null)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm leading-6 text-slate-500">
+        <p className="text-sm leading-6 text-slate-600">
           발송 요청일 기준 최신순입니다. 첫 페이지는 10초마다 갱신됩니다.
         </p>
         <button
@@ -215,12 +230,12 @@ export default function MailDeliveryLogPanel({
         </p>
       ) : null}
       {query.isLoading ? (
-        <p role="status" className="py-10 text-center text-sm text-slate-500">
+        <p role="status" className="py-10 text-center text-sm text-slate-600">
           이메일 발송 로그를 불러오는 중입니다.
         </p>
       ) : null}
       {!query.isLoading && !query.error && logs.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-600">
           조건에 맞는 이메일 발송 기록이 없습니다.
         </p>
       ) : null}
@@ -231,7 +246,7 @@ export default function MailDeliveryLogPanel({
               <caption className="sr-only">
                 이메일 수신자, 제목, 상태와 발송 시각
               </caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
                 <tr>
                   {[
                     '수신자',
@@ -257,9 +272,13 @@ export default function MailDeliveryLogPanel({
                       <p className="font-medium break-words text-slate-900">
                         {log.subject}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-slate-600">
                         {mailTypes[log.mail_type] ?? log.mail_type}
                       </p>
+                      <PreviewButton
+                        log={log}
+                        onOpen={() => setSelectedMail(log)}
+                      />
                     </td>
                     {!contestId ? (
                       <td className="max-w-48 px-4 py-4 break-words text-slate-600">
@@ -269,7 +288,7 @@ export default function MailDeliveryLogPanel({
                     <td className="px-4 py-4 whitespace-nowrap">
                       <StatusBadge status={log.status} />
                     </td>
-                    <td className="min-w-36 px-4 py-4 text-xs leading-5 text-slate-500">
+                    <td className="min-w-36 px-4 py-4 text-xs leading-5 text-slate-600">
                       {formatDateTime(log.created_at)}
                     </td>
                     <td className="min-w-36 px-4 py-4 text-xs leading-5 text-slate-600">
@@ -287,7 +306,7 @@ export default function MailDeliveryLogPanel({
                 className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-600">
                     {mailTypes[log.mail_type] ?? log.mail_type}
                   </span>
                   <StatusBadge status={log.status} />
@@ -300,8 +319,9 @@ export default function MailDeliveryLogPanel({
                     받는 사람 · {log.recipient_email}
                   </p>
                 </div>
+                <PreviewButton log={log} onOpen={() => setSelectedMail(log)} />
                 {!contestId ? (
-                  <p className="text-xs text-slate-500">{contestName(log)}</p>
+                  <p className="text-xs text-slate-600">{contestName(log)}</p>
                 ) : null}
                 <dl className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-xs leading-5">
                   <div>
@@ -320,7 +340,7 @@ export default function MailDeliveryLogPanel({
           </ul>
         </>
       ) : null}
-      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <span>
           전체 {(query.data?.page.total_count ?? 0).toLocaleString('ko-KR')}건 ·
           현재 {logs.length}건
@@ -352,5 +372,99 @@ export default function MailDeliveryLogPanel({
         </div>
       </footer>
     </section>
+  );
+}
+
+function PreviewButton({
+  log,
+  onOpen,
+}: {
+  log: MailDeliveryLog;
+  onOpen: () => void;
+}) {
+  if (log.preview_restricted)
+    return (
+      <p className="mt-2 text-xs text-slate-600">
+        인증·보호 메일 · 본문 미리보기 제한
+      </p>
+    );
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="mt-2 block w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:border-indigo-300 hover:bg-indigo-50"
+      aria-label={`${log.subject} 이메일 내용 보기`}
+    >
+      <span className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere] text-slate-600">
+        {log.body_preview || '내용 미리보기'}
+      </span>
+      <span className="mt-1 block text-xs font-semibold text-indigo-700">
+        이메일 내용 보기 →
+      </span>
+    </button>
+  );
+}
+
+function MailPreview({
+  log,
+  token,
+  contestId,
+  onClose,
+}: {
+  log: MailDeliveryLog;
+  token: string;
+  contestId?: string;
+  onClose: () => void;
+}) {
+  const query = useQuery({
+    queryKey: [
+      'mail-preview',
+      contestId ?? 'service',
+      tokenQueryIdentity(token),
+      log.mail_queue_id,
+    ],
+    queryFn: () => getMailLogPreview(token, log.mail_queue_id, contestId),
+    staleTime: 60_000,
+  });
+  return (
+    <ModalDialog
+      title="이메일 내용 미리보기"
+      description="발송 요청에 저장된 본문입니다."
+      size="lg"
+      onClose={onClose}
+      footer={<ModalButton onClick={onClose}>닫기</ModalButton>}
+    >
+      <div className="mb-4 grid gap-1 border-b border-slate-200 pb-4 text-sm [overflow-wrap:anywhere]">
+        <strong>{log.subject}</strong>
+        <span className="text-slate-600">
+          받는 사람 · {log.recipient_email}
+        </span>
+        <span className="text-xs text-slate-600">
+          요청 {formatDateTime(log.created_at)}
+        </span>
+      </div>
+      {query.isLoading ? (
+        <p role="status">본문을 불러오는 중입니다.</p>
+      ) : query.error ? (
+        <p role="alert" className="text-sm text-rose-700">
+          {formatApiError(query.error, '본문을 불러오지 못했습니다.')}
+        </p>
+      ) : query.data?.restricted ? (
+        <p className="text-sm text-slate-600">
+          인증번호 등 보호 정보가 담긴 메일은 본문을 표시하지 않습니다.
+        </p>
+      ) : (
+        <>
+          <div className="text-sm leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800">
+            {query.data?.body_text || '텍스트 본문이 없습니다.'}
+          </div>
+          {query.data?.truncated ? (
+            <p className="mt-4 text-xs text-slate-600">
+              긴 본문은 앞부분 40,000자까지 표시합니다.
+            </p>
+          ) : null}
+        </>
+      )}
+    </ModalDialog>
   );
 }

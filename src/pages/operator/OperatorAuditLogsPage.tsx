@@ -162,7 +162,7 @@ function OperatorAuditLogsContent({
       description={
         canViewOperations
           ? '이 대회의 변경 작업, 접속 기록과 이메일 발송 기록을 확인합니다.'
-          : '이 대회 참가자의 접속 기록을 확인합니다.'
+          : '이 대회 참가자와 운영자의 접속 기록을 확인합니다.'
       }
       eyebrow="Operator Audit"
       title="운영 로그"
@@ -215,7 +215,7 @@ function OperatorAuditLogsContent({
                   'rounded-lg px-4 py-2 text-sm font-semibold transition',
                   logType === value
                     ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800',
+                    : 'text-slate-600 hover:text-slate-800',
                 ].join(' ')}
                 key={value}
                 onClick={() =>
@@ -253,6 +253,13 @@ function OperatorAuditLogsContent({
                 필터 적용
               </button>
             </form>
+            {logType === 'access' ? (
+              <p className="text-xs leading-5 text-slate-600">
+                운영자 접속은 대회 화면의 인증된 요청을 기준으로 기록합니다.
+                같은 세션·IP의 반복 접속은 30분마다 한 번 기록합니다. 활성 세션
+                수는 참가자 세션 기준입니다.
+              </p>
+            ) : null}
             {logType === 'access' && accessStats ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 {[
@@ -267,7 +274,7 @@ function OperatorAuditLogsContent({
                     className="rounded-lg border border-slate-200 bg-white px-4 py-3"
                     key={label}
                   >
-                    <div className="text-xs font-semibold text-slate-500">
+                    <div className="text-xs font-semibold text-slate-600">
                       {label}
                     </div>
                     <div className="mt-1 text-xl font-semibold text-slate-900">
@@ -305,7 +312,7 @@ function OperatorAuditLogsContent({
                 showContest={false}
               />
             )}
-            <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-500">
+            <footer className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-600">
               {logType === 'operations' ? (
                 <span>
                   전체 {page?.total_count ?? logs.length}건 중 {logs.length}건

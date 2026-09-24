@@ -78,6 +78,18 @@ export function createOperatorDivision(
   );
 }
 
+export function deleteOperatorDivision(
+  contestId: string,
+  divisionId: string,
+  token: string,
+) {
+  return apiRequest<{ deleted: boolean }>(
+    `/operator/contests/${contestId}/divisions/${divisionId}`,
+    token,
+    { method: 'DELETE' },
+  );
+}
+
 export function updateOperatorDivision(
   contestId: string,
   divisionId: string,
