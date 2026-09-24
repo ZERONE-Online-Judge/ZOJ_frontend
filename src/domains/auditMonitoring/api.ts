@@ -6,9 +6,26 @@ import type {
   AdminJudgeSubmissionEntry,
   JudgeStatus,
   OperationalAuditLog,
+  MailDeliveryLog,
+  MailLogFilters,
 } from '@/domains/auditMonitoring/types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import { apiPageRequest, apiRequest } from '@/shared/api/client';
+
+export function listMailDeliveryLogs(
+  token: string,
+  options: MailLogFilters = {},
+  contestId?: string,
+) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const path = contestId
+    ? `/operator/contests/${encodeURIComponent(contestId)}/mail-logs`
+    : '/admin/mail-logs';
+  return apiPageRequest<MailDeliveryLog[]>(`${path}?${search}`, token);
+}
 
 export function getPublicJudgeStatus() {
   return apiRequest<JudgeStatus>('/public/judge-status');

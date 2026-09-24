@@ -172,6 +172,36 @@ const mocks = {
     },
   },
   '@/domains/auditMonitoring/api': {
+    listAdminOperationalAuditLogs: async () => ({
+      data: [],
+      page: { total_count: 0, next_cursor: null },
+    }),
+    listMailDeliveryLogs: async (token, filters, contestId) => {
+      record('mail', { token, filters, contestId });
+      const empty = filters.q === 'missing';
+      return {
+        data: empty
+          ? []
+          : [
+              {
+                mail_queue_id: 'mail-one',
+                recipient_email: 'recipient@test',
+                contest_id: contestId ?? null,
+                contest_title: contestId ? '권한 대회' : null,
+                mail_type: 'participant_invited',
+                subject: '대회 초대 안내',
+                status: filters.status || 'sent',
+                created_at: '2026-09-22T00:00:00Z',
+                sent_at: null,
+                last_attempt_at: null,
+              },
+            ],
+        page: {
+          total_count: empty ? 0 : 51,
+          next_cursor: empty || filters.cursor ? null : 'mail-page-2',
+        },
+      };
+    },
     listOperatorAccessLogs: async (contestId, token, filters) => {
       record('access', { contestId, token, filters });
       return {
@@ -244,6 +274,7 @@ const SubmissionsPage = source(
   'pages/operator/OperatorSubmissionsPage.tsx',
 ).default;
 const AuditPage = source('pages/operator/OperatorAuditLogsPage.tsx').default;
+const AdminAuditPage = source('pages/admin/AdminAuditLogsPage.tsx').default;
 const HomePage = source('pages/operator/OperatorHomePage.tsx').default;
 let root, container, client;
 beforeEach(() => {
@@ -500,6 +531,8 @@ test('participant managers browse, filter, refresh and paginate only access logs
   await render(AuditPage, '/audit-logs');
   assert.ok(button('접속 로그'));
   assert.equal(button('작업 로그'), undefined);
+  assert.equal(button('이메일 발송 로그'), undefined);
+  assert.equal(requests('mail').length, 0);
   assert.match(container.textContent, /participant@test/);
   assert.match(container.textContent, /활성 세션/);
   assert.equal(requests('operations').length, 0);
@@ -677,4 +710,55 @@ test('all submissions clears persisted filters and identifies review and preview
   assert.match(detail.textContent, /제출 구분참가자 미리보기/);
   assert.match(detail.textContent, /int main/);
   assert.equal(requests('participants').length, 0);
+});
+
+test('audit viewers can browse only their contest mail with filters, pagination and refresh', async () => {
+  session = withScopes(['contest.audit.view']);
+  await render(AuditPage, '/audit-logs');
+  assert.equal(requests('mail').length, 0);
+  await click(button('이메일 발송 로그'));
+  assert.equal(requests('mail').at(-1).contestId, 'contest');
+  assert.match(container.textContent, /recipient@test/);
+  assert.match(container.textContent, /대회 초대 안내/);
+  assert.match(container.textContent, /기존 기록 · 시각 미기록/);
+  await click(button('다음'));
+  assert.equal(requests('mail').at(-1).filters.cursor, 'mail-page-2');
+  await input(
+    container.querySelector('input[placeholder="받는 이메일 또는 제목"]'),
+    ' recipient@test ',
+  );
+  await input(container.querySelector('input[type="date"]'), '2026-09-22');
+  await click(button('검색 적용'));
+  assert.equal(requests('mail').at(-1).filters.q, 'recipient@test');
+  assert.equal(
+    requests('mail').at(-1).filters.since,
+    '2026-09-21T15:00:00.000Z',
+  );
+  assert.equal(requests('mail').at(-1).filters.cursor, undefined);
+  const before = requests('mail').length;
+  await click(button('새로고침'));
+  assert.equal(requests('mail').length, before + 1);
+  assert.equal(requests('access').length, 0);
+  assert.equal(requests('participants').length, 0);
+});
+
+test('service masters query all mail instead of the contest-specific endpoint', async () => {
+  session = withScopes([]);
+  session.operatorSession.staff.is_service_master = true;
+  await render(AdminAuditPage, '/audit-logs');
+  await click(button('이메일 발송 로그'));
+  assert.equal(requests('mail').at(-1).contestId, undefined);
+  assert.ok(
+    container.querySelector('input[placeholder="받는 이메일, 제목, 대회명"]'),
+  );
+  await input(
+    container.querySelector('input[placeholder="받는 이메일, 제목, 대회명"]'),
+    'missing',
+  );
+  await click(button('검색 적용'));
+  assert.match(
+    container.textContent,
+    /조건에 맞는 이메일 발송 기록이 없습니다/,
+  );
+  assert.equal(button('다음').disabled, true);
 });

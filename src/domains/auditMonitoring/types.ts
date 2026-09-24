@@ -72,6 +72,28 @@ export type OperationalAuditLog = {
   created_at: string;
 };
 
+export type MailDeliveryLog = {
+  mail_queue_id: string;
+  contest_id: string | null;
+  contest_title: string | null;
+  mail_type: string;
+  recipient_email: string;
+  subject: string;
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'canceled';
+  created_at: string;
+  last_attempt_at: string | null;
+  sent_at: string | null;
+};
+
+export type MailLogFilters = {
+  q?: string;
+  status?: string;
+  since?: string;
+  until?: string;
+  cursor?: string;
+  limit?: number;
+};
+
 export type AccessLog = {
   access_log_id: string;
   event_type: string;
