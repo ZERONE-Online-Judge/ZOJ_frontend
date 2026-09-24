@@ -239,9 +239,12 @@ function ContestScoreboardContent({
                 ? `프리즈 이후 결과를 공개하고 있습니다. ${release.resolver?.step ?? 0} / ${release.resolver?.total_steps ?? 0}건 공개 · 결과에 따라 순위가 이동합니다.`
                 : release?.strategy === 'resolver' && isEnded
                   ? '순위 발표를 기다리고 있습니다. 프리즈 당시 성적을 표시하며, 물음표는 아직 공개하지 않은 제출입니다.'
-                  : release?.mode === 'partial'
-                    ? `순위를 공개하고 있습니다. ${release.revealed_count} / ${release.total_count}팀 공개`
-                    : '현재 공개 스코어보드는 프리즈된 상태입니다.'
+                  : release?.strategy === 'immediate' &&
+                      release.mode === 'partial'
+                    ? '전체 공개가 일시 중지되어 프리즈 당시 성적을 표시합니다.'
+                    : release?.mode === 'partial'
+                      ? `순위를 공개하고 있습니다. ${release.revealed_count} / ${release.total_count}팀 공개`
+                      : '현재 공개 스코어보드는 프리즈된 상태입니다.'
             }
             status="ready"
           />

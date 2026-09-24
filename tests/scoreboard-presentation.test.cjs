@@ -42,7 +42,8 @@ let releases,
   presentationReads,
   releaseReads,
   rejectUpdate,
-  customBoards;
+  customBoards,
+  undoHistory;
 
 function board(divisionId) {
   if (customBoards[divisionId]) return customBoards[divisionId];
@@ -119,6 +120,22 @@ const mocks = {
       updateCalls.push({ contestId, divisionId, token, body });
       if (rejectUpdate) throw new Error('save failed');
       const release = releases[divisionId];
+      if (
+        body.expected_revision !== undefined &&
+        body.expected_revision !== release.revision
+      )
+        throw new Error('stale revision');
+      if (body.action === 'undo') {
+        const previous = undoHistory[divisionId].pop();
+        releases[divisionId] = { ...previous, revision: release.revision + 1 };
+        return global.structuredClone(releases[divisionId]);
+      }
+      undoHistory[divisionId].push(global.structuredClone(release));
+      if (release.revision !== undefined) release.revision++;
+      release.undo = {
+        action: body.action,
+        ...(body.rank ? { rank: body.rank } : {}),
+      };
       release.ranks = release.ranks.map((item) => ({
         ...item,
         revealed:
@@ -194,6 +211,7 @@ beforeEach(() => {
   releaseReads = 0;
   rejectUpdate = false;
   customBoards = {};
+  undoHistory = { a: [], b: [] };
   window.localStorage.clear();
   document.body.innerHTML = '';
 });
@@ -576,4 +594,152 @@ test('display-only session reads only the scoped presentation API and exposes no
   assert.equal(presentationReads, 0);
   assert.equal(container.querySelectorAll('button, input, select').length, 0);
   assert.equal(releaseReads, 0);
+});
+
+test('undo confirms the selected rank then updates a separate presentation and removes its medal', async () => {
+  releases.a.revision = 0;
+  releases.a.undo = null;
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  assert.equal(button(operator, '되돌리기 (Undo)').disabled, true);
+  await act(async () => button(operator, '2위 공개').click());
+  await dispatchUpdate();
+  assert.ok(display.querySelector('svg[aria-label="2위 은메달"]'));
+  await act(async () => button(operator, '되돌리기 (Undo)').click());
+  assert.match(document.querySelector('dialog').textContent, /2위 공개를 취소/);
+  await act(async () =>
+    button(document.querySelector('dialog'), '취소').click(),
+  );
+  assert.equal(updateCalls.length, 1);
+  await act(async () => button(operator, '되돌리기 (Undo)').click());
+  await act(async () =>
+    button(document.querySelector('dialog'), '되돌리기').click(),
+  );
+  await flush();
+  assert.deepEqual(updateCalls[1].body, {
+    action: 'undo',
+    expected_revision: 1,
+  });
+  await dispatchUpdate();
+  assert.doesNotMatch(display.textContent, /a-team-2/);
+  assert.equal(display.querySelector('svg[role="img"]'), null);
+  assert.equal(button(operator, '2위 공개').disabled, false);
+  assert.equal(button(operator, '되돌리기 (Undo)').disabled, true);
+  assert.equal(releases.b.revealed_count, 0);
+  assert.equal(display.querySelectorAll('button, select, input').length, 0);
+});
+
+test('failed undo keeps the published scoreboard and refreshes the operator state', async () => {
+  releases.a.revision = 0;
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  await act(async () => button(operator, '2위 공개').click());
+  await flush();
+  const readsBefore = releaseReads;
+  rejectUpdate = true;
+  await act(async () => button(operator, '되돌리기 (Undo)').click());
+  await act(async () =>
+    button(document.querySelector('dialog'), '되돌리기').click(),
+  );
+  await flush();
+  assert.equal(releases.a.revealed_count, 1);
+  assert.ok(operator.querySelector('[role="alert"]'));
+  assert.ok(releaseReads > readsBefore);
+});
+
+test('undo does not silently cancel a newer reveal while its confirmation is open', async () => {
+  releases.a.revision = 0;
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  await act(async () => button(operator, '2위 공개').click());
+  await flush();
+  await act(async () => button(operator, '되돌리기 (Undo)').click());
+  releases.a.revision = 2;
+  releases.a.undo = { action: 'all' };
+  await act(async () =>
+    Promise.all(
+      clients.map((client) =>
+        client.invalidateQueries({
+          queryKey: ['operator', 'scoreboard-release'],
+        }),
+      ),
+    ),
+  );
+  await flush();
+  await act(async () =>
+    button(document.querySelector('dialog'), '되돌리기').click(),
+  );
+  await flush();
+  assert.equal(updateCalls.at(-1).body.expected_revision, 1);
+  assert.equal(releases.a.revealed_count, 1);
+  assert.ok(operator.querySelector('[role="alert"]'));
+});
+
+test('legacy release reset is explicitly named and explained before confirmation', async () => {
+  releases.a.undo = { action: 'legacy' };
+  releases.a.revision = 0;
+  const operator = await renderPage(
+    OperatorPage,
+    '/operator/contests/contest/scoreboard',
+  );
+  await flush();
+  await act(async () => button(operator, '공개 시작 전으로 되돌리기').click());
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /단계별 기록이 없어 모든 공개를 취소/,
+  );
+  await act(async () =>
+    button(document.querySelector('dialog'), '취소').click(),
+  );
+  assert.equal(updateCalls.length, 0);
+});
+
+test('immediate undo presentation keeps the frozen table without medals or release controls', async () => {
+  customBoards.a = {
+    ...board('a'),
+    frozen: true,
+    release: {
+      strategy: 'immediate',
+      mode: 'partial',
+      ranks: [],
+      revealed_count: 0,
+      total_count: 1,
+    },
+    rows: [
+      {
+        team_id: 'held',
+        team_name: '프리즈 팀',
+        rank: 1,
+        solved: 1,
+        submission_count: 1,
+        penalty: 30,
+        problem_scores: [],
+      },
+    ],
+  };
+  const display = await renderPage(
+    Presentation,
+    '/operator/contests/contest/scoreboard/presentation?divisionId=a',
+  );
+  assert.match(display.textContent, /프리즈 유지/);
+  assert.match(display.textContent, /프리즈 팀/);
+  assert.doesNotMatch(
+    display.textContent,
+    /순위 공개 중|결과 공개 중|최종 순위/,
+  );
+  assert.equal(display.querySelector('svg[role="img"]'), null);
+  assert.equal(display.querySelectorAll('button, select, input').length, 0);
 });

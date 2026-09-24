@@ -114,6 +114,15 @@ const mocks = {
     },
     updateScoreboardRelease: async (contestId, divisionId, token, body) => {
       changes.push({ kind: 'release', contestId, divisionId, token, body });
+      if (release.strategy === 'immediate') {
+        release = {
+          ...release,
+          revision: release.revision + 1,
+          mode: body.action === 'undo' ? 'partial' : 'all',
+          undo: body.action === 'undo' ? null : { action: 'all' },
+        };
+        return release;
+      }
       if (release.strategy === 'resolver') {
         if (body.action === 'next' && rejectNext) {
           release = { ...release, resolver: { ...release.resolver, step: 1 } };
@@ -377,18 +386,49 @@ test('viewers see the selected release flow before and after end without managem
   assert.equal(reads.release, 0);
 });
 
-test('immediate release has no manual controls or release requests after end', async () => {
+test('immediate release can undo automatic publication and explicitly resume it', async () => {
   manage();
   contest.status = 'ended';
   contest.scoreboard_release_mode = 'immediate';
+  release = {
+    ...release,
+    strategy: 'immediate',
+    mode: 'all',
+    revision: 0,
+    undo: { action: 'automatic' },
+  };
   await render();
   assert.match(container.textContent, /종료 즉시 전체 공개/);
   assert.match(container.textContent, /남은 채점과 재채점 결과/);
   assert.equal(button('개별 순위 공개 시작'), undefined);
   assert.equal(button('결과 순차 공개 시작'), undefined);
   assert.equal(button('이 유형 전체 공개'), undefined);
-  assert.equal(reads.release, 0);
+  assert.ok(reads.release > 0);
   assert.deepEqual(changes, []);
+  await click(button('되돌리기 (Undo)'));
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /다시 전체 공개할 때까지 유지/,
+  );
+  await act(async () =>
+    [...document.querySelectorAll('dialog button')]
+      .find((b) => b.textContent === '되돌리기')
+      .click(),
+  );
+  await flush();
+  assert.deepEqual(changes[0].body, { action: 'undo', expected_revision: 0 });
+  assert.match(container.textContent, /프리즈 표 유지 중/);
+  assert.equal(button('되돌리기 (Undo)').disabled, true);
+  await click(button('다시 전체 공개'));
+  await act(async () =>
+    [...document.querySelectorAll('dialog button')]
+      .find((b) => b.textContent === '공개')
+      .click(),
+  );
+  await flush();
+  assert.deepEqual(changes[1].body, { action: 'all', expected_revision: 1 });
+  assert.match(container.textContent, /전체 성적 공개 중/);
+  assert.equal(button('되돌리기 (Undo)').disabled, false);
 });
 
 test('resolver starts then advances with the expected step and displays the revealed outcome', async () => {

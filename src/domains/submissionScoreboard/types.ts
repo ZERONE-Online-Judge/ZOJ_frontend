@@ -161,6 +161,11 @@ export type OperatorPresentationScoreboardResponse = {
 };
 
 export type ScoreboardRelease = {
+  revision?: number;
+  undo?: {
+    action: 'start' | 'rank' | 'next' | 'all' | 'automatic' | 'legacy';
+    rank?: number;
+  } | null;
   strategy?: ScoreboardReleaseMode;
   mode: 'not_started' | 'partial' | 'all';
   ranks: { rank: number; team_count: number; revealed: boolean }[];
@@ -179,6 +184,13 @@ export type ScoreboardRelease = {
       to_rank: number;
     } | null;
   } | null;
+};
+
+export type ScoreboardReleaseAction = {
+  action: 'start' | 'rank' | 'all' | 'next' | 'undo';
+  rank?: number;
+  expected_step?: number;
+  expected_revision?: number;
 };
 
 export type JudgeDetail = {

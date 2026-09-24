@@ -165,11 +165,14 @@ function PresentationDivisionBoard({
           <span className="size-2 rounded-full bg-current" />
           {section.release?.mode === 'all'
             ? '최종 순위'
-            : section.release?.mode === 'partial'
-              ? '순위 공개 중'
-              : section.frozen
-                ? '프리즈'
-                : '라이브'}
+            : section.release?.strategy === 'immediate' &&
+                section.release.mode === 'partial'
+              ? '프리즈 유지'
+              : section.release?.mode === 'partial'
+                ? '순위 공개 중'
+                : section.frozen
+                  ? '프리즈'
+                  : '라이브'}
         </span>
       </header>
 
@@ -448,7 +451,9 @@ export function OperatorScoreboardPresentationContent({
                       ? visibleSections.every((section) => !section.frozen)
                         ? '공개됨'
                         : visibleSections.some(
-                              (section) => section.release?.mode === 'partial',
+                              (section) =>
+                                section.release?.mode === 'partial' &&
+                                section.release.strategy !== 'immediate',
                             )
                           ? '결과 공개 중'
                           : '프리즈 유지'

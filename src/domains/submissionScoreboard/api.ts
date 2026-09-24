@@ -3,6 +3,7 @@ import type {
   OperatorPresentationScoreboardResponse,
   ScoreboardResponse,
   ScoreboardRelease,
+  ScoreboardReleaseAction,
   Submission,
   SubmissionCreateRequest,
 } from '@/domains/submissionScoreboard/types';
@@ -300,11 +301,7 @@ export function updateScoreboardRelease(
   contestId: string,
   divisionId: string,
   token: string,
-  body: {
-    action: 'start' | 'rank' | 'all' | 'next';
-    rank?: number;
-    expected_step?: number;
-  },
+  body: ScoreboardReleaseAction,
 ) {
   return apiRequest<ScoreboardRelease>(
     `/operator/contests/${contestId}/divisions/${divisionId}/scoreboard/release`,
