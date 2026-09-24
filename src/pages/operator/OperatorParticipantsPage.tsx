@@ -1,3 +1,4 @@
+import CollapsibleEditor from '@/components/operator/CollapsibleEditor';
 import ParticipantDivisionsPanel from '@/components/operator/ParticipantDivisionsPanel';
 import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import useConfirmation from '@/shared/ui/useConfirmation';
@@ -113,6 +114,9 @@ function OperatorParticipantsContent({
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
   const teamEditorRef = useRef<HTMLDivElement | null>(null);
+  const [teamEditorOpen, setTeamEditorOpen] = useState(false);
+  const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
+  const [teamSaved, setTeamSaved] = useState('');
   const [teamForm, setTeamForm] = useState(emptyTeamForm);
   const [draftMembers, setDraftMembers] = useState<TeamMember[]>([]);
   const [bulkText, setBulkText] = useState('');
@@ -240,6 +244,12 @@ function OperatorParticipantsContent({
       return updated;
     },
     onSuccess: () => {
+      setTeamSaved(
+        teamForm.teamId
+          ? '참가팀 정보를 저장했습니다.'
+          : '참가팀을 등록했습니다.',
+      );
+      setTeamEditorOpen(false);
       setTeamForm(emptyTeamForm);
       setDraftMembers([]);
       setFormError('');
@@ -293,6 +303,9 @@ function OperatorParticipantsContent({
   }
 
   function editTeam(team: ParticipantTeam) {
+    setTeamEditorOpen(true);
+    setTeamSaved('');
+    saveTeamMutation.reset();
     const leader =
       team.members.find((member) => member.role === 'leader') ??
       team.members[0];
@@ -312,6 +325,9 @@ function OperatorParticipantsContent({
     );
     setFormError('');
     window.requestAnimationFrame(() => {
+      teamEditorRef.current
+        ?.querySelector<HTMLInputElement>('input')
+        ?.focus({ preventScroll: true });
       teamEditorRef.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
@@ -410,15 +426,25 @@ function OperatorParticipantsContent({
       ) : null}
 
       <div className="grid gap-6">
-        <div className="grid gap-6">
-          <div ref={teamEditorRef}>
-            <OperatorPanel
+        <div className="grid gap-3" hidden={!canManageParticipants}>
+          <div ref={teamEditorRef} className="scroll-mt-24">
+            <CollapsibleEditor
+              open={teamEditorOpen}
+              onOpenChange={setTeamEditorOpen}
+              busy={saveTeamMutation.isPending}
+              draft={Boolean(
+                teamForm.teamName ||
+                teamForm.leaderName ||
+                teamForm.leaderEmail ||
+                teamForm.divisionId ||
+                draftMembers.length,
+              )}
               description="팀 정보, 팀장, 팀원을 한 카드에서 함께 등록하거나 수정합니다."
               title={teamForm.teamId ? '참가팀 수정' : '참가팀 등록'}
             >
               <form className="grid gap-4" onSubmit={submitTeam}>
                 <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="text-xs font-semibold text-slate-500 uppercase">
+                  <p className="text-xs font-semibold text-slate-600 uppercase">
                     팀 설정
                   </p>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -484,10 +510,10 @@ function OperatorParticipantsContent({
                 <div className="grid gap-3 rounded-lg border border-slate-200 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase">
+                      <p className="text-xs font-semibold text-slate-600 uppercase">
                         팀원
                       </p>
-                      <p className="mt-1 text-xs font-medium text-slate-500">
+                      <p className="mt-1 text-xs font-medium text-slate-600">
                         1인팀이면 비워두고, 여러 명이면 필요한 만큼 추가합니다.
                       </p>
                     </div>
@@ -521,7 +547,7 @@ function OperatorParticipantsContent({
                             value={member.email}
                           />
                           <button
-                            className="self-end rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:text-slate-300"
+                            className="self-end rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 disabled:text-slate-300"
                             disabled={Boolean(member.team_member_id)}
                             onClick={() => removeDraftMember(index)}
                             title={
@@ -537,7 +563,7 @@ function OperatorParticipantsContent({
                       ))}
                     </div>
                   ) : (
-                    <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-medium text-slate-500">
+                    <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-medium text-slate-600">
                       추가 팀원이 없습니다.
                     </p>
                   )}
@@ -572,7 +598,7 @@ function OperatorParticipantsContent({
                   />
                 ) : null}
                 <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
                   disabled={saveTeamMutation.isPending}
                   type="submit"
                 >
@@ -594,11 +620,15 @@ function OperatorParticipantsContent({
                   </button>
                 </div>
               </form>
-            </OperatorPanel>
+            </CollapsibleEditor>
           </div>
 
-          <OperatorPanel
-            description="CSV/TSV 헤더: team_name, division, leader_name, leader_email, member1_name, member1_email, member2_name, member2_email..."
+          <CollapsibleEditor
+            open={bulkEditorOpen}
+            onOpenChange={setBulkEditorOpen}
+            busy={bulkCreateMutation.isPending}
+            draft={Boolean(bulkText)}
+            description="CSV·TSV 파일을 올리거나 붙여넣어 여러 팀을 한 번에 등록합니다."
             title="일괄 등록"
           >
             <form
@@ -608,13 +638,19 @@ function OperatorParticipantsContent({
                 bulkCreateMutation.mutate();
               }}
             >
+              <p className="text-xs leading-5 break-words text-slate-600">
+                CSV/TSV 헤더: team_name, division, leader_name, leader_email,
+                member1_name, member1_email…
+              </p>
               <input
+                aria-label="참가팀 CSV·TSV 파일"
                 accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
                 className="block w-full text-xs font-medium text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
                 onChange={readBulkFile}
                 type="file"
               />
               <textarea
+                aria-label="참가팀 일괄 등록 내용"
                 className="min-h-44 resize-y rounded-lg border border-slate-200 px-3 py-3 font-mono text-xs leading-5 text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => setBulkText(event.target.value)}
                 placeholder={
@@ -635,19 +671,29 @@ function OperatorParticipantsContent({
                 </p>
               ) : null}
               <button
-                className="h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700"
+                disabled={bulkCreateMutation.isPending || !bulkText.trim()}
+                className="h-10 w-fit rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 disabled:opacity-50"
                 type="submit"
               >
-                일괄 등록 실행
+                {bulkCreateMutation.isPending ? '등록 중…' : '일괄 등록 실행'}
               </button>
             </form>
-          </OperatorPanel>
+          </CollapsibleEditor>
         </div>
+        {teamSaved ? (
+          <p
+            role="status"
+            className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            {teamSaved}
+          </p>
+        ) : null}
 
         <OperatorPanel
           actions={
             <>
               <select
+                aria-label="참가팀 유형 필터"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => setDivisionFilter(event.target.value)}
                 value={divisionFilter}
@@ -663,6 +709,7 @@ function OperatorParticipantsContent({
                 ))}
               </select>
               <input
+                aria-label="참가팀 검색"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="팀/이름/이메일/상태 검색"
@@ -675,7 +722,7 @@ function OperatorParticipantsContent({
         >
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
+              <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
                 <tr>
                   <th className="w-56 border-r border-b border-slate-200 px-4 py-3">
                     팀
@@ -730,7 +777,7 @@ function OperatorParticipantsContent({
                                   {member.name}
                                 </span>
                                 <span
-                                  className="zoj-break-anywhere min-w-0 text-xs font-medium text-slate-400"
+                                  className="zoj-break-anywhere min-w-0 text-xs font-medium text-slate-600"
                                   title={member.email}
                                 >
                                   {member.email}
@@ -739,13 +786,13 @@ function OperatorParticipantsContent({
                                   {member.role === 'leader' ? '팀장' : '팀원'}
                                 </span>
                               </div>
-                              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
                                 <span
                                   className={[
                                     'rounded-full px-2 py-1 font-semibold',
                                     (member.active_sessions ?? 0) > 0
                                       ? 'bg-emerald-50 text-emerald-700'
-                                      : 'bg-slate-100 text-slate-500',
+                                      : 'bg-slate-100 text-slate-600',
                                   ].join(' ')}
                                 >
                                   {(member.active_sessions ?? 0) > 0
@@ -784,7 +831,7 @@ function OperatorParticipantsContent({
                           ))}
                         </div>
                       </td>
-                      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-500">
+                      <td className="border-r border-slate-100 px-4 py-4 align-top font-medium text-slate-600">
                         {formatDateTime(team.created_at)}
                       </td>
                       <td className="px-4 py-4 align-top">
@@ -797,7 +844,7 @@ function OperatorParticipantsContent({
                             팀/팀원 편집
                           </button>
                           <button
-                            className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600"
+                            className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700"
                             onClick={() => confirmDeleteTeam(team)}
                             type="button"
                           >
@@ -810,7 +857,7 @@ function OperatorParticipantsContent({
                 ) : (
                   <tr>
                     <td
-                      className="px-4 py-10 text-center text-sm font-medium text-slate-500"
+                      className="px-4 py-10 text-center text-sm font-medium text-slate-600"
                       colSpan={5}
                     >
                       표시할 참가팀이 없습니다.

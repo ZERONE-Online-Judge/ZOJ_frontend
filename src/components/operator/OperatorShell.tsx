@@ -1,3 +1,4 @@
+import { hasOperatorAnswer } from '@/domains/serviceCommunication/boardPresentation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -288,7 +289,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
   const problemCountLabel = countLabel(problems.length, '개');
   const boardCountLabel =
     questions.length > 0
-      ? `${questions.length}건(답변필요:${questions.filter((question) => question.answers.length === 0).length})`
+      ? `${questions.length}건(답변필요:${questions.filter((question) => !hasOperatorAnswer(question)).length})`
       : '';
 
   return (
@@ -353,7 +354,7 @@ export function OperatorTabs({ contestId }: OperatorTabsProps) {
 
 function TabCountBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-md bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+    <span className="rounded-md bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
       {children}
     </span>
   );

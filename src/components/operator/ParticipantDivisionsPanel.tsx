@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { OperatorPanel } from '@/components/operator/OperatorShell';
+import CollapsibleEditor from '@/components/operator/CollapsibleEditor';
 import {
   createOperatorDivision,
   deleteOperatorDivision,
@@ -24,6 +24,7 @@ export default function ParticipantDivisionsPanel({
   contest: Contest;
   divisions: Division[];
 }) {
+  const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saved, setSaved] = useState('');
   const queryClient = useQueryClient();
@@ -87,9 +88,17 @@ export default function ParticipantDivisionsPanel({
     if (!locked && !save.isPending && form.name.trim()) save.mutate();
   }
   return (
-    <OperatorPanel
+    <CollapsibleEditor
+      open={open}
+      onOpenChange={setOpen}
+      busy={save.isPending || remove.isPending}
+      draft={Boolean(form.name || form.description)}
       title="참가 유형 관리"
-      description="초등부·중등부처럼 참가팀을 나누는 구분입니다. 유형별로 문제와 스코어보드를 운영합니다."
+      description={
+        divisions.length
+          ? `${divisions.length}개 유형 · ${divisions.map((division) => division.name).join(' · ')}`
+          : '참가팀 등록 전, 초등부·중등부처럼 팀을 나눌 유형을 먼저 추가하세요.'
+      }
     >
       {dialog}
       {locked ? (
@@ -230,6 +239,6 @@ export default function ParticipantDivisionsPanel({
           ) : null}
         </form>
       </div>
-    </OperatorPanel>
+    </CollapsibleEditor>
   );
 }

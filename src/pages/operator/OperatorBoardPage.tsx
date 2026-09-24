@@ -1,3 +1,8 @@
+import './OperatorBoardPage.css';
+import {
+  hasOperatorAnswer,
+  matchesQuestionSearch,
+} from '@/domains/serviceCommunication/boardPresentation';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -126,6 +131,9 @@ function OperatorBoardContent({
 
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [visibilityFilter, setVisibilityFilter] = useState('all');
   const [expandedQuestionId, setExpandedQuestionId] = useState('');
   const [answerForm, setAnswerForm] = useState(emptyAnswerForm);
   const [formError, setFormError] = useState('');
@@ -144,10 +152,23 @@ function OperatorBoardContent({
     () =>
       [...(questionsQuery.data ?? [])].sort(
         (a, b) =>
-          Number(b.answers.length === 0) - Number(a.answers.length === 0) ||
+          Number(!hasOperatorAnswer(b)) - Number(!hasOperatorAnswer(a)) ||
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       ),
     [questionsQuery.data],
+  );
+  const pendingCount = questions.filter(
+    (question) => !hasOperatorAnswer(question),
+  ).length;
+  const filteredQuestions = questions.filter(
+    (question) =>
+      matchesQuestionSearch(question, search) &&
+      (statusFilter === 'all' ||
+        (statusFilter === 'answered') === hasOperatorAnswer(question)) &&
+      (visibilityFilter === 'all' || question.visibility === visibilityFilter),
+  );
+  const draftingQuestion = questions.find(
+    (question) => question.contest_question_id === answerForm.questionId,
   );
   const answerMutation = useMutation({
     mutationFn: () => {
@@ -201,9 +222,9 @@ function OperatorBoardContent({
     mutationFn: (questionId: string) =>
       deleteContestQuestion(contestId, questionId, token),
     onSuccess: (_result, questionId) => {
+      if (answerForm.questionId === questionId) setAnswerForm(emptyAnswerForm);
       if (expandedQuestionId === questionId) {
         setExpandedQuestionId('');
-        setAnswerForm(emptyAnswerForm);
       }
       void queryClient.invalidateQueries({
         queryKey: ['operator', 'boards', contestId],
@@ -246,7 +267,15 @@ function OperatorBoardContent({
     },
   });
 
-  function startAnswer(question: ContestQuestion) {
+  async function startAnswer(question: ContestQuestion) {
+    if (answerMutation.isPending) return;
+    if (answerForm.questionId === question.contest_question_id) return;
+    if (
+      answerForm.body.trim() &&
+      !(await confirmAction('작성 중인 답변을 버리고 다른 질문에 답변할까요?'))
+    )
+      return;
+    answerMutation.reset();
     setExpandedQuestionId(question.contest_question_id);
     setAnswerForm({
       body: '',
@@ -258,6 +287,7 @@ function OperatorBoardContent({
 
   function submitAnswer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (answerMutation.isPending) return;
     if (!answerForm.questionId) {
       setFormError('답변할 질문을 선택해 주세요.');
       return;
@@ -311,7 +341,6 @@ function OperatorBoardContent({
     setExpandedQuestionId((current) =>
       current === questionId ? '' : questionId,
     );
-    setAnswerForm(emptyAnswerForm);
     setFormError('');
   }
 
@@ -335,11 +364,99 @@ function OperatorBoardContent({
       ) : null}
 
       <OperatorPanel
-        description="답변이 필요한 질문을 우선 표시합니다. 질문을 클릭하면 아래로 상세가 펼쳐집니다."
+        description="운영자 답변이 없는 질문부터 표시합니다. 15초마다 새 질문을 확인합니다."
         title="질문 목록"
       >
-        <ul className="zoj-list-stagger zoj-row-motion divide-y divide-slate-200 border-y border-slate-200">
-          {questions.map((question) => {
+        <div className="operator-board-toolbar">
+          <div
+            className="operator-board-filters"
+            role="group"
+            aria-label="답변 상태 필터"
+          >
+            {[
+              ['all', '전체', questions.length],
+              ['pending', '답변 필요', pendingCount],
+              ['answered', '답변 완료', questions.length - pendingCount],
+            ].map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={statusFilter === value}
+                onClick={() => setStatusFilter(String(value))}
+              >
+                {label} <span>{count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="operator-board-search">
+            <input
+              aria-label="게시판 검색"
+              type="search"
+              placeholder="제목·내용·작성자·팀 검색"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <select
+              aria-label="질문 공개 범위 필터"
+              value={visibilityFilter}
+              onChange={(event) => setVisibilityFilter(event.target.value)}
+            >
+              <option value="all">전체 공개 범위</option>
+              <option value="public">공개</option>
+              <option value="private">비공개</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+          <p role="status">
+            {filteredQuestions.length}개 질문
+            {search || statusFilter !== 'all' || visibilityFilter !== 'all'
+              ? ` / 전체 ${questions.length}개`
+              : ''}
+          </p>
+          {search || statusFilter !== 'all' || visibilityFilter !== 'all' ? (
+            <button
+              type="button"
+              className="rounded px-2 py-1 font-semibold text-indigo-700"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('all');
+                setVisibilityFilter('all');
+              }}
+            >
+              필터 초기화
+            </button>
+          ) : null}
+        </div>
+        {answerForm.body.trim() &&
+        draftingQuestion &&
+        (expandedQuestionId !== answerForm.questionId ||
+          !filteredQuestions.includes(draftingQuestion)) ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+            <span className="min-w-0 break-words">
+              작성 중인 답변이 있습니다: {draftingQuestion.title}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 font-semibold underline underline-offset-4"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('all');
+                setVisibilityFilter('all');
+                setExpandedQuestionId(answerForm.questionId);
+              }}
+            >
+              이어서 작성
+            </button>
+          </div>
+        ) : null}
+        {questionsQuery.isLoading ? (
+          <p role="status" className="py-8 text-center text-sm text-slate-600">
+            질문을 불러오는 중입니다.
+          </p>
+        ) : null}
+        <ul className="operator-board-list">
+          {filteredQuestions.map((question) => {
             const isExpanded =
               expandedQuestionId === question.contest_question_id;
 
@@ -347,32 +464,45 @@ function OperatorBoardContent({
               <li key={question.contest_question_id}>
                 <button
                   aria-expanded={isExpanded}
-                  className={[
-                    'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-4 py-5 text-left transition hover:bg-slate-50',
-                    isExpanded ? 'bg-slate-50' : '',
-                  ].join(' ')}
+                  aria-controls={`question-detail-${question.contest_question_id}`}
+                  className="operator-board-row"
                   onClick={() => toggleQuestion(question.contest_question_id)}
                   type="button"
                 >
-                  <span className="flex min-w-0 flex-wrap items-center gap-3">
-                    <StatusBadge answered={question.answers.length > 0} />
-                    <VisibilityBadge visibility={question.visibility} />
-                    <strong className="min-w-0 text-base font-semibold break-keep text-slate-950 sm:truncate">
+                  <span className="operator-board-row-main">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <StatusBadge answered={hasOperatorAnswer(question)} />
+                      <VisibilityBadge visibility={question.visibility} />
+                      <span className="text-xs text-slate-600">
+                        {answerCountLabel(question.answers.length)}
+                      </span>
+                    </span>
+                    <strong className="operator-board-title">
                       {question.title}
                     </strong>
-                    <AnswerCountBadge count={question.answers.length} />
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                    <span className="text-sm font-semibold text-slate-700">
-                      {questionAuthorName(question)} ·{' '}
-                      {formatDateTime(question.created_at)}
+                    <span className="operator-board-preview">
+                      {question.body}
                     </span>
-                    {questionAuthorContext(question) ? (
-                      <span className="text-xs font-medium text-slate-500">
-                        {questionAuthorContext(question)}
+                    <span className="operator-board-meta">
+                      <span>
+                        {questionAuthorName(question)}
+                        {questionAuthorContext(question)
+                          ? ` · ${questionAuthorContext(question)}`
+                          : ''}
                       </span>
-                    ) : null}
+                      <time>{formatDateTime(question.created_at)}</time>
+                    </span>
                   </span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className={`size-4 shrink-0 text-slate-600 transition-transform motion-reduce:transition-none ${isExpanded ? 'rotate-180' : ''}`}
+                  >
+                    <path d="m5 7.5 5 5 5-5" />
+                  </svg>
                 </button>
 
                 {isExpanded ? (
@@ -414,9 +544,11 @@ function OperatorBoardContent({
             );
           })}
         </ul>
-        {!questionsQuery.isLoading && questions.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-500">
-            표시할 질문이 없습니다.
+        {!questionsQuery.isLoading && filteredQuestions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-600">
+            {questions.length
+              ? '검색 조건에 맞는 질문이 없습니다. 필터를 바꿔보세요.'
+              : '아직 등록된 질문이 없습니다.'}
           </p>
         ) : null}
       </OperatorPanel>
@@ -447,21 +579,6 @@ function VisibilityBadge({
   return (
     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
       {visibility === 'private' ? '비공개' : '공개'}
-    </span>
-  );
-}
-
-function AnswerCountBadge({ count }: { count: number }) {
-  return (
-    <span
-      className={[
-        'rounded-full px-2 py-1 text-xs font-semibold',
-        count > 0
-          ? 'bg-indigo-100 text-indigo-700'
-          : 'bg-amber-100 text-amber-700',
-      ].join(' ')}
-    >
-      {answerCountLabel(count)}
     </span>
   );
 }
@@ -512,20 +629,22 @@ function QuestionInlineDetail({
   const forcedPrivateAnswer = question.visibility === 'private';
 
   return (
-    <article className="grid gap-5 bg-white px-4 pb-6">
-      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
+    <article
+      id={`question-detail-${question.contest_question_id}`}
+      className="operator-board-detail"
+    >
+      <div className="operator-board-question">
         <QuestionMeta question={question} />
-        <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
-          {question.body}
-        </p>
+        <p className="operator-board-body">{question.body}</p>
         <div className="flex flex-wrap gap-2">
           <button
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
+            disabled={isAnswerSubmitting}
             onClick={onStartAnswer}
             type="button"
           >
             <NoticeIcon />
-            답변 작성
+            {isAnswerFormOpen ? '답변 작성 중' : '답변 작성'}
           </button>
           <button
             className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
@@ -536,7 +655,7 @@ function QuestionInlineDetail({
             {question.visibility === 'public' ? '비공개 전환' : '공개 전환'}
           </button>
           <button
-            className="h-9 rounded-lg border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+            className="h-9 rounded-lg border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
             disabled={deletePending}
             onClick={onDelete}
             type="button"
@@ -553,18 +672,81 @@ function QuestionInlineDetail({
         />
       ) : null}
 
-      <section className="grid gap-3 pl-4 sm:pl-8">
-        <h3 className="text-sm font-semibold text-slate-700">답변</h3>
+      {isAnswerFormOpen ? (
+        <form className="operator-board-composer" onSubmit={onSubmitAnswer}>
+          <label className="grid gap-2 text-sm font-semibold text-slate-700">
+            공개 범위
+            <select
+              aria-label="답변 공개 범위"
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-600"
+              disabled={forcedPrivateAnswer || isAnswerSubmitting}
+              onChange={(event) =>
+                onAnswerChange({
+                  ...answerForm,
+                  visibility: event.target.value as AnswerForm['visibility'],
+                })
+              }
+              value={forcedPrivateAnswer ? 'questioner' : answerForm.visibility}
+            >
+              {!forcedPrivateAnswer ? (
+                <option value="public">공개</option>
+              ) : null}
+              <option value="questioner">비공개</option>
+            </select>
+          </label>
+          {forcedPrivateAnswer ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+              비공개 질문에는 비공개 답변만 등록할 수 있습니다.
+            </p>
+          ) : null}
+          <textarea
+            aria-label="답변 내용"
+            autoFocus
+            disabled={isAnswerSubmitting}
+            placeholder="참가자에게 전달할 답변을 입력하세요."
+            className="min-h-32 resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+            onChange={(event) =>
+              onAnswerChange({ ...answerForm, body: event.target.value })
+            }
+            value={answerForm.body}
+          />
+          {formError || answerMutationError ? (
+            <ErrorBox
+              error={answerMutationError}
+              fallback={formError || '답변 등록에 실패했습니다'}
+            />
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <button
+              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600"
+              disabled={isAnswerSubmitting}
+              onClick={onCancelAnswer}
+              type="button"
+            >
+              취소
+            </button>
+            <button
+              className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
+              disabled={isAnswerSubmitting}
+              type="submit"
+            >
+              {isAnswerSubmitting ? '등록 중' : '답변 등록'}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <section className="operator-board-replies" aria-label="답변 내역">
+        <h3 className="text-sm font-semibold text-slate-700">
+          답변 내역 · {question.answers.length}건
+        </h3>
         {question.answers.map((answer) => (
           <article
-            className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
+            className="operator-board-reply"
             key={answer.contest_answer_id}
           >
-            <span className="pt-2 text-2xl leading-none font-semibold text-slate-300">
-              ㄴ
-            </span>
-            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
-              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+            <div className="grid min-w-0 gap-3">
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
                 <span
                   className={[
                     'rounded-full px-3 py-1',
@@ -576,20 +758,18 @@ function QuestionInlineDetail({
                   {answerAuthorLabel(question, answer)}
                 </span>
                 {answerAuthorContext(answer) ? (
-                  <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                  <span className="py-1 text-slate-600">
                     {answerAuthorContext(answer)}
                   </span>
                 ) : null}
-                <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                <span className="py-1 text-slate-600">
                   {answer.visibility === 'public' ? '공개' : '비공개'}
                 </span>
-                <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                <span className="py-1 text-slate-600">
                   {formatDateTime(answer.created_at)}
                 </span>
               </div>
-              <p className="text-sm leading-7 whitespace-pre-wrap text-slate-950">
-                {answer.body}
-              </p>
+              <p className="operator-board-body">{answer.body}</p>
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
@@ -600,7 +780,7 @@ function QuestionInlineDetail({
                   {answer.visibility === 'public' ? '비공개 전환' : '공개 전환'}
                 </button>
                 <button
-                  className="h-8 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:text-slate-300"
+                  className="h-8 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
                   disabled={answerActionPending}
                   onClick={() => onDeleteAnswer(answer)}
                   type="button"
@@ -623,74 +803,13 @@ function QuestionInlineDetail({
           />
         ) : null}
       </section>
-
-      {isAnswerFormOpen ? (
-        <form
-          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4"
-          onSubmit={onSubmitAnswer}
-        >
-          <label className="grid gap-2 text-sm font-semibold text-slate-700">
-            공개 범위
-            <select
-              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={forcedPrivateAnswer}
-              onChange={(event) =>
-                onAnswerChange({
-                  ...answerForm,
-                  visibility: event.target.value as AnswerForm['visibility'],
-                })
-              }
-              value={forcedPrivateAnswer ? 'questioner' : answerForm.visibility}
-            >
-              {!forcedPrivateAnswer ? (
-                <option value="public">공개</option>
-              ) : null}
-              <option value="questioner">비공개</option>
-            </select>
-          </label>
-          {forcedPrivateAnswer ? (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
-              비공개 질문에는 비공개 답변만 등록할 수 있습니다.
-            </p>
-          ) : null}
-          <textarea
-            className="min-h-32 resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-            onChange={(event) =>
-              onAnswerChange({ ...answerForm, body: event.target.value })
-            }
-            value={answerForm.body}
-          />
-          {formError || answerMutationError ? (
-            <ErrorBox
-              error={answerMutationError}
-              fallback={formError || '답변 등록에 실패했습니다'}
-            />
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <button
-              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600"
-              onClick={onCancelAnswer}
-              type="button"
-            >
-              취소
-            </button>
-            <button
-              className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
-              disabled={isAnswerSubmitting}
-              type="submit"
-            >
-              {isAnswerSubmitting ? '등록 중' : '답변 등록'}
-            </button>
-          </div>
-        </form>
-      ) : null}
     </article>
   );
 }
 
 function QuestionMeta({ question }: { question: ContestQuestion }) {
   return (
-    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium text-slate-500">
+    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium text-slate-600">
       <span>작성자: {questionAuthorName(question)}</span>
       <span>팀: {question.team_name ?? '-'}</span>
       <span>유형: {question.division_name ?? '-'}</span>

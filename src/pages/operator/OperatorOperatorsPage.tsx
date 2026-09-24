@@ -1,4 +1,5 @@
-import { type FormEvent, useId, useState } from 'react';
+import CollapsibleEditor from '@/components/operator/CollapsibleEditor';
+import { type FormEvent, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -97,6 +98,8 @@ function OperatorOperatorsContent({
   const canAssignMaster = isContestMaster(session, contestId);
   const queryClient = useQueryClient();
   const queryIdentity = tokenQueryIdentity(token);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [operatorForm, setOperatorForm] = useState(emptyOperatorForm);
   const [operatorFormError, setOperatorFormError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
@@ -134,6 +137,7 @@ function OperatorOperatorsContent({
       // Reset the saved form before leaving, including any unsaved-form guard.
       flushSync(() => setOperatorForm(emptyOperatorForm));
       setOperatorFormError('');
+      setEditorOpen(false);
       if (
         emailChanged &&
         previousEmail === session.staff.email.trim().toLowerCase()
@@ -264,7 +268,7 @@ function OperatorOperatorsContent({
       variant="management"
       width="full"
       eyebrow="Operator"
-      title={`${dashboardQuery.data?.contest.title ?? '대회'} 운영자 추가`}
+      title={`${dashboardQuery.data?.contest.title ?? '대회'} 운영자 관리`}
       description="이 대회를 운영할 구성원을 추가하고 이름, 이메일과 담당 권한을 관리합니다."
     >
       <OperatorTabs contestId={contestId} />
@@ -287,160 +291,180 @@ function OperatorOperatorsContent({
         error={transferMutation.error}
         onTransfer={(email) => transferMutation.mutate(email)}
       />
-      <OperatorPanel
-        description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 대회 총괄 권한은 별도의 위임으로만 변경할 수 있습니다."
-        title={
-          operatorForm.nameOnly
-            ? '총괄 이름 수정'
-            : operatorForm.editingEmail
-              ? '운영자 수정'
-              : '운영자 추가'
-        }
-      >
-        <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
-          <div className="grid items-start gap-4 sm:grid-cols-2">
-            <TextInput
-              disabled={
-                operatorForm.nameOnly ||
-                saveOperatorMutation.isPending ||
-                transferMutation.isPending
-              }
-              helperText={
-                operatorForm.nameOnly
-                  ? '총괄의 표시 이름을 수정합니다. 로그인 이메일은 유지됩니다.'
-                  : '이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다.'
-              }
-              label="이메일 (필수)"
-              required
-              type="email"
-              onChange={(value) =>
-                setOperatorForm((prev) => ({ ...prev, email: value }))
-              }
-              value={operatorForm.email}
-            />
-            <TextInput
-              label="이름 (필수)"
-              required
-              disabled={
-                saveOperatorMutation.isPending || transferMutation.isPending
-              }
-              onChange={(value) =>
-                setOperatorForm((prev) => ({ ...prev, displayName: value }))
-              }
-              value={operatorForm.displayName}
-            />
-          </div>
-          {operatorForm.nameOnly ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold">대회 총괄 · 권한 유지</p>
-              <p className="mt-1 text-xs leading-5">
-                이름을 바꿔도 총괄 권한은 유지됩니다. 총괄 변경은 위임
-                영역에서만 할 수 있습니다.
-              </p>
-            </div>
-          ) : (
-            <ContestRoleSelector
-              canAssignMaster={canAssignMaster}
-              disabled={
-                saveOperatorMutation.isPending || transferMutation.isPending
-              }
-              value={operatorForm.roles}
-              onChange={(roles) =>
-                setOperatorForm((prev) => ({ ...prev, roles }))
-              }
-            />
+      <div ref={editorRef} className="scroll-mt-24">
+        <CollapsibleEditor
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          busy={saveOperatorMutation.isPending || transferMutation.isPending}
+          draft={Boolean(
+            operatorForm.email ||
+            operatorForm.displayName ||
+            operatorForm.roles.length,
           )}
-          {operatorFormError || saveOperatorMutation.error ? (
-            <ErrorBox
-              error={saveOperatorMutation.error}
-              fallback={operatorFormError || '운영자 저장에 실패했습니다'}
-            />
-          ) : null}
-          {savedMessage ? (
-            <p
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-              role="status"
-            >
-              {savedMessage}
-            </p>
-          ) : null}
-          <button
-            className="h-10 w-fit rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
-            disabled={
-              transferMutation.isPending ||
-              saveOperatorMutation.isPending ||
-              !operatorForm.email.trim() ||
-              !operatorForm.displayName.trim() ||
-              !operatorForm.roles.length
-            }
-            type="submit"
-          >
-            {saveOperatorMutation.isPending
-              ? '저장 중…'
+          description="운영자의 이름, 이메일과 담당 권한을 지정하세요. 추가·수정·제거는 즉시 반영됩니다. 대회 총괄 권한은 별도의 위임으로만 변경할 수 있습니다."
+          title={
+            operatorForm.nameOnly
+              ? '총괄 이름 수정'
               : operatorForm.editingEmail
-                ? '변경사항 저장'
-                : '운영자 추가'}
-          </button>
-          {operatorForm.editingEmail ? (
+                ? '운영자 수정'
+                : '운영자 추가'
+          }
+        >
+          <form className="grid gap-3" onSubmit={handleOperatorSubmit}>
+            <div className="grid items-start gap-4 sm:grid-cols-2">
+              <TextInput
+                disabled={
+                  operatorForm.nameOnly ||
+                  saveOperatorMutation.isPending ||
+                  transferMutation.isPending
+                }
+                helperText={
+                  operatorForm.nameOnly
+                    ? '총괄의 표시 이름을 수정합니다. 로그인 이메일은 유지됩니다.'
+                    : '이메일 변경은 이 계정이 속한 모든 대회에 적용되며, 변경 후 새 이메일로 다시 로그인해야 합니다.'
+                }
+                label="이메일 (필수)"
+                required
+                type="email"
+                onChange={(value) =>
+                  setOperatorForm((prev) => ({ ...prev, email: value }))
+                }
+                value={operatorForm.email}
+              />
+              <TextInput
+                label="이름 (필수)"
+                required
+                disabled={
+                  saveOperatorMutation.isPending || transferMutation.isPending
+                }
+                onChange={(value) =>
+                  setOperatorForm((prev) => ({ ...prev, displayName: value }))
+                }
+                value={operatorForm.displayName}
+              />
+            </div>
+            {operatorForm.nameOnly ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <p className="font-semibold">대회 총괄 · 권한 유지</p>
+                <p className="mt-1 text-xs leading-5">
+                  이름을 바꿔도 총괄 권한은 유지됩니다. 총괄 변경은 위임
+                  영역에서만 할 수 있습니다.
+                </p>
+              </div>
+            ) : (
+              <ContestRoleSelector
+                canAssignMaster={canAssignMaster}
+                disabled={
+                  saveOperatorMutation.isPending || transferMutation.isPending
+                }
+                value={operatorForm.roles}
+                onChange={(roles) =>
+                  setOperatorForm((prev) => ({ ...prev, roles }))
+                }
+              />
+            )}
+            {operatorFormError || saveOperatorMutation.error ? (
+              <ErrorBox
+                error={saveOperatorMutation.error}
+                fallback={operatorFormError || '운영자 저장에 실패했습니다'}
+              />
+            ) : null}
             <button
-              className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
+              className="h-10 w-fit rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-50"
               disabled={
-                saveOperatorMutation.isPending || transferMutation.isPending
+                transferMutation.isPending ||
+                saveOperatorMutation.isPending ||
+                !operatorForm.email.trim() ||
+                !operatorForm.displayName.trim() ||
+                !operatorForm.roles.length
               }
-              onClick={() => {
-                setOperatorForm(emptyOperatorForm);
-                setOperatorFormError('');
-                saveOperatorMutation.reset();
-              }}
-              type="button"
+              type="submit"
             >
-              수정 취소 · 새 운영자 추가로 돌아가기
+              {saveOperatorMutation.isPending
+                ? '저장 중…'
+                : operatorForm.editingEmail
+                  ? '변경사항 저장'
+                  : '운영자 추가'}
             </button>
-          ) : null}
-        </form>
-        <div className="mt-3 border-t border-slate-100 pt-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-800">
-            등록된 운영자 · {operators.length}명
-          </h3>
-          {operatorsQuery.isPending ? (
-            <p className="text-sm text-slate-500">
-              운영자 목록을 불러오는 중입니다.
-            </p>
-          ) : null}
-          {removeOperatorMutation.error ? (
-            <ErrorBox
-              error={removeOperatorMutation.error}
-              fallback="운영자를 제거하지 못했습니다"
-            />
-          ) : null}
-          <OperatorList
-            contestId={contestId}
-            canAssignMaster={canAssignMaster}
-            disabled={
-              transferMutation.isPending ||
-              saveOperatorMutation.isPending ||
-              removeOperatorMutation.isPending
-            }
-            onEdit={(operator) => {
-              if (saveOperatorMutation.isPending || transferMutation.isPending)
-                return;
-              saveOperatorMutation.reset();
-              setOperatorFormError('');
-              setSavedMessage('');
-              setOperatorForm({
-                displayName: operator.display_name,
-                editingEmail: operator.email,
-                email: operator.email,
-                nameOnly:
-                  isContestOwner(operator, contestId) ||
-                  isAssignedContestMaster(operator, contestId),
-                roles: contestRolesForAccount(operator, contestId),
-              });
-            }}
-            onRemove={(operator) => removeOperatorMutation.mutate(operator)}
-            operators={operators}
+            {operatorForm.editingEmail ? (
+              <button
+                className="h-10 rounded-lg border border-slate-200 text-sm font-medium text-slate-600"
+                disabled={
+                  saveOperatorMutation.isPending || transferMutation.isPending
+                }
+                onClick={() => {
+                  setOperatorForm(emptyOperatorForm);
+                  setOperatorFormError('');
+                  saveOperatorMutation.reset();
+                }}
+                type="button"
+              >
+                수정 취소 · 새 운영자 추가로 돌아가기
+              </button>
+            ) : null}
+          </form>
+        </CollapsibleEditor>
+      </div>
+      {savedMessage ? (
+        <p
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          role="status"
+        >
+          {savedMessage}
+        </p>
+      ) : null}
+      <OperatorPanel
+        title={`등록된 운영자 · ${operators.length}명`}
+        description="구성원의 담당 권한을 확인하고 필요한 정보를 수정하세요."
+      >
+        {operatorsQuery.isPending ? (
+          <p className="text-sm text-slate-600">
+            운영자 목록을 불러오는 중입니다.
+          </p>
+        ) : null}
+        {removeOperatorMutation.error ? (
+          <ErrorBox
+            error={removeOperatorMutation.error}
+            fallback="운영자를 제거하지 못했습니다"
           />
-        </div>
+        ) : null}
+        <OperatorList
+          contestId={contestId}
+          canAssignMaster={canAssignMaster}
+          disabled={
+            transferMutation.isPending ||
+            saveOperatorMutation.isPending ||
+            removeOperatorMutation.isPending
+          }
+          onEdit={(operator) => {
+            if (saveOperatorMutation.isPending || transferMutation.isPending)
+              return;
+            setEditorOpen(true);
+            window.requestAnimationFrame(() => {
+              editorRef.current
+                ?.querySelector<HTMLInputElement>('input:not(:disabled)')
+                ?.focus({ preventScroll: true });
+              editorRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            });
+            saveOperatorMutation.reset();
+            setOperatorFormError('');
+            setSavedMessage('');
+            setOperatorForm({
+              displayName: operator.display_name,
+              editingEmail: operator.email,
+              email: operator.email,
+              nameOnly:
+                isContestOwner(operator, contestId) ||
+                isAssignedContestMaster(operator, contestId),
+              roles: contestRolesForAccount(operator, contestId),
+            });
+          }}
+          onRemove={(operator) => removeOperatorMutation.mutate(operator)}
+          operators={operators}
+        />
       </OperatorPanel>
     </PageLayout>
   );
@@ -469,7 +493,7 @@ function TextInput({
       {label}
       <input
         aria-describedby={helperText ? helpId : undefined}
-        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400"
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-950 transition outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-600"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -479,7 +503,7 @@ function TextInput({
       {helperText ? (
         <span
           id={helpId}
-          className="text-xs leading-5 font-normal text-slate-500"
+          className="text-xs leading-5 font-normal text-slate-600"
         >
           {helperText}
         </span>
@@ -523,13 +547,13 @@ function OperatorList({
               <strong className="zoj-break-anywhere font-semibold text-slate-950">
                 {operator.display_name}
                 {roleTitle ? (
-                  <span className="font-medium text-slate-500">
+                  <span className="font-medium text-slate-600">
                     {' '}
                     / {roleTitle}
                   </span>
                 ) : null}
               </strong>
-              <span className="zoj-break-anywhere text-xs text-slate-500">
+              <span className="zoj-break-anywhere text-xs text-slate-600">
                 {operator.email}
               </span>
             </div>
@@ -545,7 +569,7 @@ function OperatorList({
               ))}
             </div>
             {protectedOperator ? (
-              <p className="text-xs leading-5 text-slate-500">
+              <p className="text-xs leading-5 text-slate-600">
                 {assignedMaster
                   ? '총괄은 강등하거나 제거할 수 없습니다. 위임 영역에서 다른 운영자에게 넘길 수 있습니다.'
                   : '대회 마스터만 이 운영자의 권한을 관리할 수 있습니다.'}
@@ -563,7 +587,7 @@ function OperatorList({
                 </button>
                 {!protectedOperator ? (
                   <button
-                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"
                     disabled={disabled}
                     onClick={() => onRemove(operator)}
                     type="button"

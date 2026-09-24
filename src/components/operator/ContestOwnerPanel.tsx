@@ -42,7 +42,7 @@ export default function ContestOwnerPanel({
       description="총괄은 대회마다 한 명이며, 모든 운영 권한을 가집니다. 현재 총괄만 다른 운영자에게 위임할 수 있습니다."
     >
       {loading ? (
-        <p className="text-sm text-slate-500">총괄 정보를 불러오는 중입니다.</p>
+        <p className="text-sm text-slate-600">총괄 정보를 불러오는 중입니다.</p>
       ) : owner ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <div className="min-w-0 rounded-xl border border-amber-200 bg-amber-50/60 p-5">
@@ -56,7 +56,7 @@ export default function ContestOwnerPanel({
             <p className="zoj-break-anywhere mt-1 text-sm text-slate-600">
               {owner.email}
             </p>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
+            <p className="mt-4 text-xs leading-5 text-slate-600">
               일반 권한 변경이나 제거로는 총괄을 해제할 수 없습니다.
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function ContestOwnerPanel({
                   ))}
                 </select>
               </label>
-              <p id={helpId} className="text-sm leading-6 text-slate-500">
+              <p id={helpId} className="text-sm leading-6 text-slate-600">
                 {candidates.length
                   ? '선택한 운영자는 기존 담당 권한 대신 총괄 권한을 갖습니다. 위임한 본인은 대회 마스터로 남습니다.'
                   : '먼저 아래에서 위임할 운영자를 추가해 주세요.'}
@@ -133,14 +133,14 @@ export default function ContestOwnerPanel({
               )}
             </div>
           ) : (
-            <p className="self-center text-sm leading-6 text-slate-500">
+            <p className="self-center text-sm leading-6 text-slate-600">
               총괄 위임은 현재 총괄 계정으로 로그인해 진행할 수 있습니다. 대회
               마스터의 일반 운영 권한은 동일하게 유지됩니다.
             </p>
           )}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           등록된 총괄이 없습니다. 서비스 관리자가 첫 대회 마스터를 배정하면
           총괄로 등록됩니다.
         </p>

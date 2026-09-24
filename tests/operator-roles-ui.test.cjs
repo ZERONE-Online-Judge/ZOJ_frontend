@@ -7,7 +7,9 @@ const ts = require('typescript');
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {
   url: 'https://judge.test/',
+  pretendToBeVisual: true,
 });
+dom.window.HTMLElement.prototype.scrollIntoView = () => {};
 global.window = dom.window;
 global.document = dom.window.document;
 global.IS_REACT_ACT_ENVIRONMENT = true;
