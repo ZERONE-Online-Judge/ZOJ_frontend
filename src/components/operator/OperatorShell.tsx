@@ -124,6 +124,12 @@ const operatorTabs = [
     icon: NoticeIcon,
     permission: ['contest.audit.view', 'contest.access_log.view'],
   },
+  {
+    label: '운영 가이드',
+    path: 'guide',
+    icon: GuideBookIcon,
+    permission: undefined,
+  },
 ] as const;
 
 function countLabel(count: number, unit = '건') {
@@ -397,6 +403,19 @@ export function DashboardIcon() {
         stroke="currentColor"
         strokeLinejoin="round"
         strokeWidth="1.7"
+      />
+    </svg>
+  );
+}
+
+function GuideBookIcon() {
+  return (
+    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 20 20">
+      <path
+        d="M10 5C7.5 3.5 4 3.5 2.5 4.5v12C5 15.5 7.5 15.5 10 17c2.5-1.5 5-1.5 7.5-.5v-12C16 3.5 12.5 3.5 10 5Zm0 0v12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
       />
     </svg>
   );

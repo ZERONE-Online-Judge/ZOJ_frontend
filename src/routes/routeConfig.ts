@@ -69,6 +69,9 @@ const OperatorScoreboardPresentationPage = lazy(
 const OperatorSettingsPage = lazy(
   () => import('@/pages/operator/OperatorSettingsPage'),
 );
+const OperatorGuidePage = lazy(
+  () => import('@/pages/operator/OperatorGuidePage'),
+);
 const OperatorOperatorsPage = lazy(
   () => import('@/pages/operator/OperatorOperatorsPage'),
 );
@@ -202,6 +205,13 @@ export const appRoutes: readonly AppRoute[] = [
     name: routeText.operatorSettings,
     path: '/operator/contests/:contestId/settings',
     Component: OperatorSettingsPage,
+    showInNavigation: false,
+  },
+  {
+    access: 'operator',
+    name: '운영 가이드',
+    path: '/operator/contests/:contestId/guide',
+    Component: OperatorGuidePage,
     showInNavigation: false,
   },
   {

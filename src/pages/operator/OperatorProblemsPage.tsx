@@ -1782,9 +1782,9 @@ function OperatorProblemsContent({
                 ) : !dashboardQuery.isLoading ? (
                   <Link
                     className="rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white"
-                    to={`/operator/contests/${contestId}/settings`}
+                    to={`/operator/contests/${contestId}/participants`}
                   >
-                    설정에서 참가 유형 추가
+                    참가팀에서 참가 유형 추가
                   </Link>
                 ) : (
                   <p className="text-sm text-slate-500">

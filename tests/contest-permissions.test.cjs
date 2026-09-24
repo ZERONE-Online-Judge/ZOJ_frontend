@@ -337,7 +337,7 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
   test(`${role} exposes only its authorized tabs and badge requests`, async () => {
     session = forRoles(role);
     await render();
-    assert.deepEqual(tabs(), expectedTabs);
+    assert.deepEqual(tabs(), [...expectedTabs, 'guide']);
     const expectedReads =
       role === 'participants_manager'
         ? ['dashboard']
@@ -401,6 +401,7 @@ test('multiple roles combine permissions and navigation without granting unrelat
     'problem-review',
     'scoreboard',
     'audit-logs',
+    'guide',
   ]);
   assert.deepEqual(reads, ['dashboard']);
   assert.equal(
@@ -453,7 +454,7 @@ test('participant preview does not grant operator home, management, or review ac
 test('board and notice roles combine independent tabs without granting staff or audit powers', async () => {
   session = forRoles('posts_manager', 'notices_manager');
   await render();
-  assert.deepEqual(tabs(), ['', 'notices', 'board']);
+  assert.deepEqual(tabs(), ['', 'notices', 'board', 'guide']);
   assert.deepEqual(reads.sort(), ['notices', 'questions']);
   assert.equal(
     hasContestPermission(session, 'contest', 'contest.staff.manage'),
@@ -468,7 +469,7 @@ test('board and notice roles combine independent tabs without granting staff or 
 test('settings and staff roles expose separate tabs with operators immediately after settings', async () => {
   session = forRoles('settings_manager', 'staff_manager');
   await render();
-  assert.deepEqual(tabs(), ['', 'settings', 'operators']);
+  assert.deepEqual(tabs(), ['', 'settings', 'operators', 'guide']);
   assert.deepEqual(reads, []);
   const links = [
     ...container.querySelectorAll('nav[aria-label="운영자 메뉴"] a'),

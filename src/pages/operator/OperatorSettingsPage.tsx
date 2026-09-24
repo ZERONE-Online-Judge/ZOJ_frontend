@@ -1,4 +1,5 @@
 import ContestVisibilitySettings from '@/components/operator/ContestVisibilitySettings';
+import OperatorSettingsNavigation from '@/components/operator/OperatorSettingsNavigation';
 import { type FormEvent, useId, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -329,6 +330,7 @@ function OperatorSettingsContent({
       width="full"
     >
       <OperatorTabs contestId={contestId} />
+      <OperatorSettingsNavigation contestId={contestId} />
 
       {dashboardQuery.error ? (
         <ErrorBox
