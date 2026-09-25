@@ -1,5 +1,6 @@
 const { test, beforeEach, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { Blob } = require('node:buffer');
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
@@ -47,7 +48,9 @@ function source(relative) {
   );
   return loaded.exports;
 }
-const { apiRequest, apiPageRequest } = source('shared/api/client.ts');
+const { apiRequest, apiPageRequest, apiBlobRequest } = source(
+  'shared/api/client.ts',
+);
 beforeEach(() => {
   general = {
     accessToken: 'general-current',
@@ -153,4 +156,47 @@ test('ordinary participant sessions keep their participant token', async () => {
   participant.accessToken = 'real-participant';
   await apiRequest('/contests/contest/problems', 'general-current');
   assert.equal(calls[0].token, 'Bearer real-participant');
+});
+
+test('protected ZIP download refreshes the account token and preserves binary bytes', async () => {
+  participant = null;
+  expire = true;
+  const previous = global.fetch;
+  const bytes = new Uint8Array([80, 75, 3, 4, 0, 255, 13, 10]);
+  global.fetch = async (url, init) => {
+    const result = await previous(url, init);
+    if (url === '/api/auth/general/me')
+      return { ...result, json: async () => ({ data: general }) };
+    if (url.endsWith('/archive') && result.ok)
+      return {
+        ...result,
+        blob: async () => new Blob([bytes], { type: 'application/zip' }),
+      };
+    return result;
+  };
+  const result = await apiBlobRequest(
+    '/operator/contests/contest/problems/problem/archive',
+    'general-current',
+  );
+  assert.deepEqual(new Uint8Array(await result.arrayBuffer()), bytes);
+  assert.equal(calls.at(-1).token, 'Bearer general-refreshed');
+  assert.equal(calls.filter((call) => call.url.endsWith('/archive')).length, 2);
+});
+
+test('ZIP download surfaces access denial without creating a downloadable blob', async () => {
+  participant = null;
+  global.fetch = async () => ({
+    ok: false,
+    status: 403,
+    json: async () => ({
+      error: { code: 'scope_denied', message: 'Forbidden' },
+    }),
+  });
+  await assert.rejects(
+    apiBlobRequest(
+      '/operator/contests/contest/problems/problem/archive',
+      'general-current',
+    ),
+    (error) => error.status === 403,
+  );
 });

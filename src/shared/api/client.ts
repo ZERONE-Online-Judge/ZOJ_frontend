@@ -531,6 +531,39 @@ export async function apiRequest<T>(
   return (result.payload as DataEnvelope<T>).data as T;
 }
 
+/** Download protected binary data with the same session refresh as JSON APIs. */
+export async function apiBlobRequest(
+  path: string,
+  token?: string,
+): Promise<Blob> {
+  let currentToken = preferredStoredTokenForRequest(path, token);
+  const send = () =>
+    fetch(`${API_BASE_URL}${path}`, {
+      credentials: 'include',
+      cache: 'no-store',
+      headers: currentToken ? { authorization: `Bearer ${currentToken}` } : {},
+    });
+  let response = await send();
+  if (response.status === 401 && currentToken && canAttemptAutoRefresh(path)) {
+    const refreshed = await tryRefreshTokenForRequest(currentToken, path);
+    if (refreshed) {
+      currentToken = refreshed;
+      response = await send();
+    }
+  }
+  if (!response.ok) {
+    if (
+      response.status === 401 &&
+      currentToken &&
+      canAttemptAutoRefresh(path)
+    ) {
+      clearStoredSessionForFailedToken(currentToken, path);
+    }
+    throw toApiError(response, await response.json().catch(() => null));
+  }
+  return response.blob();
+}
+
 export async function apiPageRequest<T>(
   path: string,
   token?: string,

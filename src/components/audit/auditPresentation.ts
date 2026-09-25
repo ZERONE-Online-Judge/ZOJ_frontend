@@ -99,6 +99,8 @@ export function actionLabel(log: OperationalAuditLog) {
       { POST: '참가팀 등록', PATCH: '참가팀 정보 수정', DELETE: '참가팀 삭제' },
     ],
     [/\/problems:copy$/, { POST: '문제 복사' }],
+    [/\/problem-archives:inspect$/, { POST: '문제 ZIP 파일 확인' }],
+    [/\/problem-archives:import$/, { POST: '문제 ZIP 가져오기' }],
     [/\/test-submissions$/, { POST: '검증 제출 실행' }],
     [
       /\/verified-testcase-sets(?::zip)?$/,

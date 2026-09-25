@@ -63,11 +63,15 @@ export function PageHeading({
   const HeadingTag = level === 2 ? 'h2' : 'h1';
 
   return (
-    <header className={['grid gap-2', className].filter(Boolean).join(' ')}>
+    <header
+      className={['grid min-w-0 gap-2', className].filter(Boolean).join(' ')}
+    >
       {eyebrow ? (
         <span className={eyebrowClasses[variant]}>{eyebrow}</span>
       ) : null}
-      <HeadingTag className={headingClasses[variant]}>{title}</HeadingTag>
+      <HeadingTag className={`zoj-break-anywhere ${headingClasses[variant]}`}>
+        {title}
+      </HeadingTag>
       {description ? (
         <p className={descriptionClasses[variant]}>{description}</p>
       ) : null}
@@ -86,7 +90,7 @@ export default function PageLayout({
   return (
     <section
       className={[
-        'animate-page-enter mx-auto grid w-full min-w-0 px-4 font-sans sm:px-6 lg:px-8',
+        'animate-page-enter mx-auto grid w-full min-w-0 grid-cols-1 px-4 font-sans sm:px-6 lg:px-8',
         variant === 'management'
           ? 'zoj-management gap-5 py-6 sm:gap-6 sm:py-8'
           : 'gap-6 py-10 sm:gap-8 sm:py-14',

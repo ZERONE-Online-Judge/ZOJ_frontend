@@ -1,3 +1,4 @@
+import ProblemArchivePanel from '@/components/operator/ProblemArchivePanel';
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import ModalDialog from '@/shared/ui/ModalDialog';
@@ -1554,6 +1555,42 @@ function OperatorProblemsContent({
           fallback="문제 데이터를 불러오지 못했습니다"
         />
       ) : null}
+
+      <ProblemArchivePanel
+        contestId={contestId}
+        token={token}
+        divisions={divisions}
+        problems={problems}
+        selectedProblem={selectedProblem}
+        activeDivisionId={activeDivisionId}
+        unsaved={Boolean(
+          selectedProblem &&
+          JSON.stringify(form) !==
+            JSON.stringify(problemFormFromProblem(selectedProblem)),
+        )}
+        disabled={
+          saveProblemMutation.isPending ||
+          deleteProblemMutation.isPending ||
+          copyProblemMutation.isPending ||
+          uploadAssetMutation.isPending ||
+          uploadEditorialAssetMutation.isPending ||
+          uploadRoleFileMutation.isPending ||
+          uploadMatchedTestcasesMutation.isPending ||
+          deleteAssetMutation.isPending ||
+          deleteTestcaseSetMutation.isPending ||
+          deleteTestcaseMutation.isPending
+        }
+        onImported={(problem) => {
+          void queryClient.invalidateQueries({
+            queryKey: ['operator', 'problems', contestId],
+          });
+          void queryClient.invalidateQueries({
+            queryKey: ['operator', 'dashboard', contestId],
+          });
+          if (editorMode === 'idle')
+            setFilterDivisionId(problem.division_id ?? activeDivisionId);
+        }}
+      />
 
       <div className="grid items-start gap-6 xl:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)]">
