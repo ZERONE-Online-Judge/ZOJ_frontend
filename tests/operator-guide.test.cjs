@@ -299,3 +299,31 @@ test('session demonstration reaches logout on all three devices by manual steps'
   assert.equal(host.querySelectorAll('.og-device.is-disconnected').length, 3);
   assert.equal(host.querySelectorAll('.og-mini-modal').length, 3);
 });
+
+test('server comparison separates CPU time from wall time and changing the example limit is local', async () => {
+  await render('?section=judge-servers');
+  const node = () => host.querySelector('[aria-label="서버 B · 선택한 상황"]');
+  assert.match(node().textContent, /시간 안에 완료/);
+  await click(button('서로 다른 성능'));
+  assert.match(node().textContent, /CPU 1,250ms/);
+  assert.match(node().textContent, /시간 초과/);
+  await click(button('VM 자원 경합'));
+  assert.match(node().textContent, /CPU 800ms/);
+  assert.match(node().textContent, /실제 경과 1,300ms/);
+  assert.match(node().textContent, /시간 초과/);
+  const limit = host.querySelector('.og-server-controls select');
+  await act(async () => {
+    limit.value = '1500';
+    limit.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  assert.match(node().textContent, /시간 안에 완료/);
+  assert.match(
+    host.querySelector('.og-server-demo').textContent,
+    /실제 서버나 문제의 제한을 변경하지/,
+  );
+  assert.ok(
+    searchOperatorGuide('CPU 시간').some(
+      (r) => r.article.id === 'judge-time-metrics',
+    ),
+  );
+});

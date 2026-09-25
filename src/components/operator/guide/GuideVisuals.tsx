@@ -7,6 +7,7 @@ import {
 } from 'react';
 import type { GuideScene } from '@/data/operatorGuideContent';
 import { guideAccessOutcome } from './guideDemoLogic';
+import JudgeServerDemo from './JudgeServerDemo';
 
 export function GuideIcon({
   kind = 'book',
@@ -954,6 +955,7 @@ export default function GuideVisual({
   if (scene === 'roles') return <RolesDemo />;
   if (scene === 'session') return <SessionDemo motion={motion} />;
   if (scene === 'judging') return <JudgingDemo motion={motion} />;
+  if (scene === 'server-performance') return <JudgeServerDemo />;
   if (scene === 'scoreboard') return <ScoreboardDemo motion={motion} />;
   if (scene === 'notice') return <NoticeDemo motion={motion} />;
   if (scene === 'question') return <QuestionDemo motion={motion} />;

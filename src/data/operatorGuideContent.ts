@@ -1,4 +1,5 @@
 import type { ContestPermissionCode } from '@/domains/identityAccess/permissions';
+import { judgeServerGuide } from './judgeServerGuide';
 
 export type GuideScene =
   | 'journey'
@@ -10,6 +11,7 @@ export type GuideScene =
   | 'pipeline'
   | 'review'
   | 'judging'
+  | 'server-performance'
   | 'scoreboard'
   | 'audit'
   | 'diagnosis';
@@ -22,6 +24,9 @@ export type GuideArticle = {
   note?: string;
   example?: string;
   table?: { headers: string[]; rows: string[][] };
+  stepsTitle?: string;
+  effectTitle?: string;
+  references?: { label: string; url: string }[];
 };
 export type GuideCategory = {
   id: string;
@@ -680,6 +685,7 @@ export const operatorGuideCategories: GuideCategory[] = [
       },
     ],
   },
+  judgeServerGuide,
   {
     id: 'submissions',
     label: '제출 · 채점 결과',

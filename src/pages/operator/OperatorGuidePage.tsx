@@ -202,20 +202,25 @@ function GuideContent({
         </div>
         <div className="og-popular">
           <span>많이 찾는 안내</span>
-          {['프리즈', '로그아웃', '모의채점', '참가 유형', '메일'].map(
-            (word) => (
-              <button
-                key={word}
-                type="button"
-                onClick={() => {
-                  search(word);
-                  searchRef.current?.focus();
-                }}
-              >
-                {word} <span>↗</span>
-              </button>
-            ),
-          )}
+          {[
+            '프리즈',
+            '로그아웃',
+            '모의채점',
+            '참가 유형',
+            '메일',
+            '채점 서버',
+          ].map((word) => (
+            <button
+              key={word}
+              type="button"
+              onClick={() => {
+                search(word);
+                searchRef.current?.focus();
+              }}
+            >
+              {word} <span>↗</span>
+            </button>
+          ))}
         </div>
         <div className="og-layout">
           <aside className="og-sidebar">
@@ -482,7 +487,7 @@ function GuideArticleCard({
         className="og-article-body"
       >
         <div className="og-instructions">
-          <h4>이렇게 설정하세요</h4>
+          <h4>{article.stepsTitle ?? '이렇게 설정하세요'}</h4>
           <ol>
             {article.steps.map((step, stepIndex) => (
               <li key={step}>
@@ -495,7 +500,7 @@ function GuideArticleCard({
         <div className="og-effect">
           <GuideIcon kind="spark" />
           <div>
-            <h4>설정하면 이렇게 달라져요</h4>
+            <h4>{article.effectTitle ?? '설정하면 이렇게 달라져요'}</h4>
             <p>{article.effect}</p>
           </div>
         </div>
@@ -549,6 +554,24 @@ function GuideArticleCard({
             </div>
           </div>
         )}
+        {article.references?.length ? (
+          <div className="og-references">
+            <h4>참고 문서</h4>
+            <ul>
+              {article.references.map((reference) => (
+                <li key={reference.url}>
+                  <a
+                    href={reference.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {reference.label} ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <button type="button" className="og-article-copy" onClick={onCopy}>
           {copied ? '링크 복사 완료 ✓' : '이 안내 링크 복사 ↗'}
         </button>
