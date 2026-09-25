@@ -533,10 +533,14 @@ export default function VerificationAgentEvidence({
                   {analysis.usage?.cached_input_tokens
                     ? ` · 캐시 재사용 입력 ${analysis.usage.cached_input_tokens.toLocaleString()}개`
                     : ''}
-                  {' · '}입력 토큰은 각 호출의 누적량이며 비용 한도와 별도로
-                  적용됩니다.
                 </p>
               ) : null}
+              <p className="text-xs leading-5 text-slate-500">
+                {analysis.limits?.max_input_tokens ||
+                analysis.limits?.max_output_tokens
+                  ? '과거 분석에 적용된 토큰 한도입니다. 새 분석은 누적 토큰 제한 없이 예상 비용으로 통제합니다.'
+                  : '토큰 수는 누적 사용량 통계입니다. 누적 토큰 제한 없이 다음 요청과 보고서 작성 비용을 포함한 예상 비용으로 통제합니다.'}
+              </p>
               {analysis.stop_reason ? (
                 <p
                   role="status"

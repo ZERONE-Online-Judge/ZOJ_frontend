@@ -941,12 +941,44 @@ test('partial cached analysis explains separate token limits and upgrades only o
   assert.match(saved.textContent, /모델 호출 6\/10회/);
   assert.match(saved.textContent, /캐시 재사용 입력 43,008개/);
   assert.match(saved.textContent, /73,108/);
+  assert.match(saved.textContent, /과거 분석에 적용된 토큰 한도/);
   assert.equal(analysisRequests, 0);
   const retry = button(saved, '개선된 검증으로 다시 분석');
   assert.ok(retry);
   await act(async () => retry.click());
   await flush();
   assert.equal(analysisRequests, 1);
+});
+
+test('cost-budget analysis shows cumulative usage without obsolete token quotas', async () => {
+  const Evidence = source(
+    'components/operator/VerificationAgentEvidence.tsx',
+  ).default;
+  await act(async () =>
+    root.render(
+      h(Evidence, {
+        analysis: {
+          engine_version: 2,
+          calls: 12,
+          limits: { max_cost_usd: 1, max_calls: 48, max_runs: 16 },
+          usage: {
+            input_tokens: 400000,
+            output_tokens: 64000,
+            estimated_cost_usd: 0.1,
+          },
+        },
+      }),
+    ),
+  );
+  assert.match(document.body.textContent, /입력 400,000 · 출력 64,000 토큰/);
+  assert.match(document.body.textContent, /예상 \$0\.1000 \/ 한도 \$1\.00/);
+  assert.match(document.body.textContent, /누적 토큰 제한 없이/);
+  assert.match(document.body.textContent, /모델 호출 12\/48회/);
+  assert.doesNotMatch(
+    document.body.textContent,
+    /400,000 \/|64,000 \/|과거 분석/,
+  );
+  assert.equal(analysisRequests, 0);
 });
 
 test('candidate badges use server execution assessments and never infer success from model text', async () => {
