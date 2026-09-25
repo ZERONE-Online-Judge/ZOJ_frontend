@@ -9,6 +9,28 @@ const filename = path.resolve(
   '../src/components/audit/auditPresentation.ts',
 );
 const loaded = new Module(filename, module);
+const nativeRequire = loaded.require.bind(loaded);
+loaded.require = (id) => {
+  if (id === '@/domains/identityAccess/contestRoles') {
+    const roleFile = path.resolve(
+      __dirname,
+      '../src/domains/identityAccess/contestRoles.ts',
+    );
+    const roleModule = new Module(roleFile, module);
+    roleModule._compile(
+      ts.transpileModule(fs.readFileSync(roleFile, 'utf8'), {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText,
+      roleFile,
+    );
+    return roleModule.exports;
+  }
+  return nativeRequire(id);
+};
+
 loaded._compile(
   ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
     compilerOptions: {
@@ -18,8 +40,15 @@ loaded._compile(
   }).outputText,
   filename,
 );
-const { actionLabel, auditChanges, groupAuditLogs, valueLabel } =
-  loaded.exports;
+const {
+  actionLabel,
+  auditChanges,
+  groupAuditLogs,
+  valueLabel,
+  targetLabel,
+  operationSummary,
+  isVerificationAction,
+} = loaded.exports;
 function log(overrides = {}) {
   return {
     operational_audit_log_id: 'one',
@@ -158,4 +187,143 @@ test('setting values have readable labels', () => {
   assert.equal(valueLabel('private', 'problem_access_after_end'), '비공개');
   assert.equal(valueLabel('running', 'status'), '진행 중');
   assert.equal(valueLabel('resolver', 'scoreboard_release_mode'), '리졸버');
+});
+
+test('verification request labels cover initial, follow-up, analysis and cancellation', () => {
+  const root = '/api/operator/contests/c/problems/p';
+  for (const [suffix, body, label] of [
+    ['/verification-tasks', {}, 'AI 검증 작업 요청'],
+    [
+      '/verification-tasks',
+      { parent_task_id: 'previous' },
+      'AI 검증 이어서 요청',
+    ],
+    ['/verification-tasks/t/stop', {}, 'AI 검증 작업 중지 요청'],
+    ['/verification-runs/s/analysis', {}, '검증 코드 AI 분석 요청'],
+  ]) {
+    const entry = log({ path: root + suffix, details: { body } });
+    assert.equal(actionLabel(entry), label);
+    assert.equal(isVerificationAction(entry), true);
+    assert.match(operationSummary(entry), /요청/);
+  }
+  const entry = log({
+    path: root + '/verification-runs/s/analysis',
+    details: { analysis: { status: 'queued' } },
+  });
+  assert.match(operationSummary(entry), /요청 당시 분석 상태: 대기/);
+  assert.equal(isVerificationAction(log()), false);
+});
+
+test('historical operator requests display recipient and readable requested roles', () => {
+  const entry = log({
+    path: '/api/operator/contests/c/operators',
+    details: {
+      body: {
+        display_name: '테스트 검수자',
+        email: 'review@example.com',
+        roles: ['problem_reviewer', 'audit_viewer'],
+      },
+    },
+  });
+  assert.equal(actionLabel(entry), '운영자 등록·권한 설정');
+  assert.equal(targetLabel(entry), '테스트 검수자 (review@example.com)');
+  assert.equal(
+    operationSummary(entry),
+    '요청 역할: 검수진, 대회 운영진 · 운영로그 보기',
+  );
+});
+
+test('persisted operator snapshots distinguish creation, changes and no-op posts', () => {
+  const base = {
+    path: '/api/operator/contests/c/operators',
+    details: {
+      schema_version: 2,
+      change_kind: 'created',
+      target: {
+        display_name: '저장된 이름',
+        email: 'saved@example.com',
+        roles: ['problem_author'],
+      },
+      body: { display_name: '요청 이름', roles: ['master'] },
+    },
+  };
+  assert.equal(actionLabel(log(base)), '운영자 추가');
+  assert.equal(targetLabel(log(base)), '저장된 이름 (saved@example.com)');
+  assert.equal(operationSummary(log(base)), '저장된 역할: 출제진');
+  const changed = {
+    ...base,
+    details: {
+      ...base.details,
+      change_kind: 'updated',
+      changes: [
+        { field: 'roles', old: ['problem_reviewer'], new: ['problem_author'] },
+      ],
+    },
+  };
+  assert.equal(actionLabel(log(changed)), '운영자 정보·권한 변경');
+  assert.equal(
+    actionLabel(
+      log({ ...changed, details: { ...changed.details, changes: [] } }),
+    ),
+    '운영자 정보·권한 저장',
+  );
+  assert.deepEqual(
+    auditChanges(
+      log({
+        details: {
+          changes: [
+            {
+              field: 'roles',
+              old: ['problem_reviewer', 'audit_viewer'],
+              new: ['audit_viewer', 'problem_reviewer'],
+            },
+          ],
+        },
+      }),
+    ),
+    [],
+  );
+});
+
+test('stored target names take precedence over current lookup labels and missing history is explicit', () => {
+  const related_target = {
+    problem_title: '현재 문제',
+    problem_code: 'B',
+    label_source: 'current',
+  };
+  assert.equal(
+    targetLabel(log({ details: { related_target } })),
+    'B. 현재 문제 (현재 문제명)',
+  );
+  assert.equal(
+    targetLabel(
+      log({
+        details: {
+          related_target,
+          target: {
+            problem_title: '당시 문제',
+            problem_code: 'A',
+            original_filename: 'wrong.cpp',
+          },
+        },
+      }),
+    ),
+    'A. 당시 문제 · 검증 코드 wrong.cpp',
+  );
+  assert.equal(
+    targetLabel(log({ details: { entities: { problem_id: '12345678abcd' } } })),
+    '문제 12345678',
+  );
+});
+
+test('unknown raw API action remains in details but is not a primary label', () => {
+  assert.equal(
+    actionLabel(
+      log({
+        path: '/api/operator/future-feature',
+        action: 'POST /operator/future-feature',
+      }),
+    ),
+    '운영 작업 요청',
+  );
 });

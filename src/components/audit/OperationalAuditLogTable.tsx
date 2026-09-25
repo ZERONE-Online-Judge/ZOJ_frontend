@@ -8,6 +8,8 @@ import {
   auditChanges,
   fieldLabel,
   groupAuditLogs,
+  isVerificationAction,
+  operationSummary,
   targetLabel,
   valueLabel,
 } from '@/components/audit/auditPresentation';
@@ -40,7 +42,9 @@ function ResultBadge({ logs }: { logs: OperationalAuditLog[] }) {
           : `${logs.length}건 성공`
         : failed
           ? `${logs[0].status_code} ${logs[0].status_code < 500 ? '거부' : '실패'}`
-          : '성공'}
+          : isVerificationAction(logs[0])
+            ? '요청 접수'
+            : '성공'}
     </span>
   );
 }
@@ -67,12 +71,11 @@ function ChangeSummary({ log }: { log: OperationalAuditLog }) {
     );
   if (log.details?.change_kind === 'updated')
     return <p className="text-xs text-slate-600">실제 변경된 값 없음</p>;
+  const summary = operationSummary(log);
+  if (!summary && targetLabel(log)) return null;
   return (
-    <p className="line-clamp-1 text-xs [overflow-wrap:anywhere] text-slate-600">
-      {targetLabel(log) ||
-        (log.details?.change_kind === 'deleted'
-          ? '대상 삭제'
-          : '상세 기록에서 요청 내용을 확인하세요.')}
+    <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere] text-slate-600">
+      {summary || '저장된 대상 정보가 없습니다. 상세 기록을 확인하세요.'}
     </p>
   );
 }
@@ -125,6 +128,11 @@ function Operation({
         </>
       ) : (
         <>
+          {targetLabel(first) ? (
+            <p className="line-clamp-2 text-xs leading-5 font-medium [overflow-wrap:anywhere] text-slate-700">
+              {targetLabel(first)}
+            </p>
+          ) : null}
           <ChangeSummary log={first} />
           <button
             type="button"

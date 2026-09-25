@@ -1,7 +1,14 @@
 import type { OperationalAuditLog } from '@/domains/auditMonitoring/types';
+import { CONTEST_ROLES } from '@/domains/identityAccess/contestRoles';
 export function fieldLabel(field: string) {
   const labels: Record<string, string> = {
     answer_body: '답변',
+    goal: '검증 요청 내용',
+    source_asset_id: '선택한 검증 코드',
+    parent_task_id: '이전 검증 작업',
+    analysis_id: 'AI 분석',
+    task_id: 'AI 검증 작업',
+    submission_id: '검증 제출',
     overview: '대회 소개',
     organization_name: '주최 기관',
     display_name: '표시 이름',
@@ -102,6 +109,12 @@ export function actionLabel(log: OperationalAuditLog) {
     [/\/problem-archives:inspect$/, { POST: '문제 ZIP 파일 확인' }],
     [/\/problem-archives:import$/, { POST: '문제 ZIP 가져오기' }],
     [/\/test-submissions$/, { POST: '검증 제출 실행' }],
+    [/\/verification-tasks\/[^/]+\/stop$/, { POST: 'AI 검증 작업 중지 요청' }],
+    [/\/verification-tasks$/, { POST: 'AI 검증 작업 요청' }],
+    [
+      /\/verification-runs\/[^/]+\/analysis$/,
+      { POST: '검증 코드 AI 분석 요청' },
+    ],
     [
       /\/verified-testcase-sets(?::zip)?$/,
       { POST: '테스트케이스 일괄 검증 등록' },
@@ -174,6 +187,20 @@ export function actionLabel(log: OperationalAuditLog) {
     [/\/contact-inquiries\/[^/]+\/answer$/, { POST: '서비스 문의 답변 작성' }],
     [/\/contests$/, { POST: '대회 생성' }],
   ];
+  if (
+    method === 'POST' &&
+    /\/verification-tasks$/.test(path) &&
+    asRecord(log.details?.body).parent_task_id
+  )
+    return 'AI 검증 이어서 요청';
+  if (method === 'POST' && /\/operators$/.test(path)) {
+    if (log.details?.change_kind === 'created') return '운영자 추가';
+    if (log.details?.change_kind === 'updated')
+      return auditChanges(log).length
+        ? '운영자 정보·권한 변경'
+        : '운영자 정보·권한 저장';
+    return '운영자 등록·권한 설정';
+  }
   if (/\/scoreboard\/release$/.test(path)) {
     const action = asRecord(log.details?.body).action;
     return (
@@ -190,7 +217,62 @@ export function actionLabel(log: OperationalAuditLog) {
   }
   for (const [pattern, labels] of rules)
     if (pattern.test(path) && labels[method]) return labels[method];
+  if (/^(POST|PATCH|PUT|DELETE) \//.test(log.action))
+    return (
+      (
+        {
+          POST: '운영 작업 요청',
+          PATCH: '운영 정보 수정',
+          PUT: '운영 정보 저장',
+          DELETE: '운영 대상 삭제',
+        } as Record<string, string>
+      )[method] ?? '운영 작업'
+    );
   return log.action;
+}
+
+export function isVerificationAction(log: OperationalAuditLog) {
+  return (
+    log.method.toUpperCase() === 'POST' &&
+    /\/(?:verification-tasks(?:\/[^/]+\/stop)?|verification-runs\/[^/]+\/analysis)$/.test(
+      log.path,
+    )
+  );
+}
+
+export function operationSummary(log: OperationalAuditLog) {
+  const target = asRecord(log.details?.target),
+    body = asRecord(log.details?.body);
+  if (/\/operators(?:\/[^/]+)?$/.test(log.path)) {
+    const snapshot = Array.isArray(target.roles);
+    const roles = snapshot ? target.roles : body.roles;
+    if (Array.isArray(roles) && roles.length)
+      return `${snapshot ? (log.method.toUpperCase() === 'DELETE' ? '제거 전 역할' : '저장된 역할') : '요청 역할'}: ${valueLabel(roles, 'roles')}`;
+    return log.details?.change_kind === 'deleted'
+      ? '대회 운영자에서 제거했습니다.'
+      : '운영자 등록·설정 요청 기록입니다.';
+  }
+  if (isVerificationAction(log)) {
+    const analysis = asRecord(log.details?.analysis);
+    const status = (
+      {
+        queued: '대기',
+        running: '진행 중',
+        succeeded: '완료',
+        failed: '실패',
+        stopped: '중지',
+        awaiting_request: '요청 대기',
+      } as Record<string, string>
+    )[String(analysis.status)];
+    if (/\/stop$/.test(log.path))
+      return status
+        ? `중지 요청 당시 분석 상태: ${status}`
+        : '중지 요청을 접수한 기록입니다. 실제 종료 여부는 분석 화면에서 확인하세요.';
+    return status
+      ? `요청 당시 분석 상태: ${status} · 요청 접수와 분석 완료는 별개입니다.`
+      : '분석 요청을 접수한 기록입니다. 분석 완료 여부는 분석 화면에서 확인하세요.';
+  }
+  return log.details?.change_kind === 'deleted' ? '대상 삭제' : '';
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {
@@ -200,6 +282,8 @@ export function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function sameValue(a: unknown, b: unknown, field: string) {
+  if (field === 'roles' && Array.isArray(a) && Array.isArray(b))
+    return JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
   if (
     field.endsWith('_at') &&
     typeof a === 'string' &&
@@ -258,9 +342,11 @@ export function valueLabel(value: unknown, field = ''): string {
     return value.toLocaleString('ko-KR') + unit;
   }
   if (Array.isArray(value))
-    return value.map((item) => valueLabel(item)).join(', ') || '없음';
+    return value.map((item) => valueLabel(item, field)).join(', ') || '없음';
   if (typeof value === 'object') return JSON.stringify(value);
   const text = String(value);
+  if (field === 'roles')
+    return CONTEST_ROLES.find((role) => role.value === text)?.label ?? text;
   const enumerations: Record<string, Record<string, string>> = {
     visibility: {
       public: '공개',
@@ -300,6 +386,33 @@ export function targetLabel(log: OperationalAuditLog) {
   const target = asRecord(log.details?.target),
     body = asRecord(log.details?.body),
     entities = asRecord(log.details?.entities);
+  if (/\/operators(?:\/[^/]+)?$/.test(log.path)) {
+    const name = target.display_name || body.display_name;
+    const email = target.email || body.email || entities.operator_email;
+    return [
+      typeof name === 'string' ? name : '',
+      typeof email === 'string' ? (name ? `(${email})` : email) : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+  const related = asRecord(log.details?.related_target);
+  const problemTitle = target.problem_title || related.problem_title;
+  if (typeof problemTitle === 'string') {
+    const code = target.problem_code || related.problem_code;
+    const current =
+      !target.problem_title && related.label_source === 'current'
+        ? ' (현재 문제명)'
+        : '';
+    return [
+      code ? `${code}. ${problemTitle}${current}` : `${problemTitle}${current}`,
+      typeof target.original_filename === 'string'
+        ? `검증 코드 ${target.original_filename}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
   const name =
     target.title ||
     target.name ||
