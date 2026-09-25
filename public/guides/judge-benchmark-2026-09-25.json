@@ -1,0 +1,327 @@
+{
+  "measuredAt": "2026-09-25T23:54:32+09:00",
+  "method": "운영 채점 큐 → 자동 배정 → 실제 채점기 실행. 예제별 1개 테스트, 3회. 한 번에 1개 제출만 요청하고 다른 대기·실행 작업이 없는지 매번 확인. 노드 지정 없음. 전체 노드의 동일 부하 비교 실험은 아님.",
+  "timeLimitMs": 3000,
+  "memoryLimitMb": 256,
+  "limitsNote": "모든 예제의 언어별 제한을 명시적으로 3000ms / 256MB로 고정해 기본 언어 보정을 적용하지 않음.",
+  "nodeCount": 7,
+  "slotsPerNode": 2,
+  "agentVersion": "0.2.18",
+  "cpuObserved": {
+    "model": "Intel Xeon E5-2698 v4 @ 2.20GHz",
+    "node": "03",
+    "method": "격리 실행 프로그램에서 CPUID로 확인한 VM 노출 모델. 현재 동작 주파수나 모든 노드의 동일 사양을 보증하지 않음."
+  },
+  "compilerObserved": {
+    "gcc": "14.2.0",
+    "gccNode": "03",
+    "python": "3.13.13",
+    "pythonNode": "07"
+  },
+  "cases": [
+    {
+      "id": "hello-cpp",
+      "label": "42 출력",
+      "language": "cpp17",
+      "input": "",
+      "output": "42\n",
+      "source": "#include <iostream>\nint main() { std::cout << 42 << \"\\n\"; }\n",
+      "note": "단순 출력도 격리 실행 준비와 프로세스 시작 시간이 들어갑니다. 짧은 코드의 몇 ms 차이를 알고리즘 성능 차이로 해석하지 마세요.",
+      "runs": [
+        {
+          "runtime_ms": 33,
+          "memory_kb": 584,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:11.923401+00:00",
+          "finished_at": "2026-09-25 14:54:12.502718+00:00"
+        },
+        {
+          "runtime_ms": 17,
+          "memory_kb": 584,
+          "node": "zoj-judge-agent-07",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:12.745803+00:00",
+          "finished_at": "2026-09-25 14:54:13.319047+00:00"
+        },
+        {
+          "runtime_ms": 17,
+          "memory_kb": 580,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:13.559007+00:00",
+          "finished_at": "2026-09-25 14:54:14.313571+00:00"
+        }
+      ]
+    },
+    {
+      "id": "hello-python",
+      "label": "42 출력",
+      "language": "python313",
+      "input": "",
+      "output": "42\n",
+      "source": "print(42)\n",
+      "note": "Python 인터프리터가 시작한 뒤 출력합니다. 같은 출력 코드라도 C++ 실행 파일과 시작 비용이 다릅니다.",
+      "runs": [
+        {
+          "runtime_ms": 34,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:14.385746+00:00",
+          "finished_at": "2026-09-25 14:54:14.628094+00:00"
+        },
+        {
+          "runtime_ms": 34,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-07",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:14.794849+00:00",
+          "finished_at": "2026-09-25 14:54:15.060127+00:00"
+        },
+        {
+          "runtime_ms": 35,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:15.204457+00:00",
+          "finished_at": "2026-09-25 14:54:15.594109+00:00"
+        }
+      ]
+    },
+    {
+      "id": "hello-java",
+      "label": "42 출력",
+      "language": "java8",
+      "input": "",
+      "output": "42\n",
+      "source": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(42);\n    }\n}\n",
+      "note": "JVM을 시작하고 Main을 실행합니다. 언어 선택의 java8은 Java 8 호환 빌드 대상이며, 서버의 실제 JVM 버전과 같은 의미는 아닙니다.",
+      "runs": [
+        {
+          "runtime_ms": 66,
+          "memory_kb": 18728,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:15.630493+00:00",
+          "finished_at": "2026-09-25 14:54:16.599602+00:00"
+        },
+        {
+          "runtime_ms": 65,
+          "memory_kb": 19272,
+          "node": "zoj-judge-agent-07",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:16.846893+00:00",
+          "finished_at": "2026-09-25 14:54:17.678764+00:00"
+        },
+        {
+          "runtime_ms": 65,
+          "memory_kb": 19016,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:18.063141+00:00",
+          "finished_at": "2026-09-25 14:54:18.850295+00:00"
+        }
+      ]
+    },
+    {
+      "id": "loop-cpp",
+      "label": "나머지 연산 500만 회",
+      "language": "cpp17",
+      "input": "5000000\n",
+      "output": "239998879\n",
+      "source": "#include <iostream>\nint main() {\n    int n; std::cin >> n;\n    long long total = 0;\n    for (int i = 0; i < n; ++i) total += i % 97;\n    std::cout << total << \"\\n\";\n}\n",
+      "note": "컴파일러가 -O2로 최적화한 나머지 연산 반복입니다. 다른 연산·메모리 접근·입출력까지 모두 같은 속도로 처리한다는 뜻은 아닙니다.",
+      "runs": [
+        {
+          "runtime_ms": 33,
+          "memory_kb": 584,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:18.889988+00:00",
+          "finished_at": "2026-09-25 14:54:19.536245+00:00"
+        },
+        {
+          "runtime_ms": 33,
+          "memory_kb": 584,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:19.702106+00:00",
+          "finished_at": "2026-09-25 14:54:20.323814+00:00"
+        },
+        {
+          "runtime_ms": 33,
+          "memory_kb": 584,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:20.512911+00:00",
+          "finished_at": "2026-09-25 14:54:21.131323+00:00"
+        }
+      ]
+    },
+    {
+      "id": "loop-python",
+      "label": "나머지 연산 500만 회",
+      "language": "python313",
+      "input": "5000000\n",
+      "output": "239998879\n",
+      "source": "n = int(input())\ntotal = 0\nfor i in range(n):\n    total += i % 97\nprint(total)\n",
+      "note": "C++ 예제와 같은 반복 횟수·출력입니다. 이 코드에서는 언어 실행 방식의 차이가 크게 나타납니다. 언어별 제한은 해당 언어의 실제 풀이로 정하세요.",
+      "runs": [
+        {
+          "runtime_ms": 869,
+          "memory_kb": 3144,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:21.339985+00:00",
+          "finished_at": "2026-09-25 14:54:22.385878+00:00"
+        },
+        {
+          "runtime_ms": 820,
+          "memory_kb": 3224,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:22.554839+00:00",
+          "finished_at": "2026-09-25 14:54:23.530558+00:00"
+        },
+        {
+          "runtime_ms": 818,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:23.768784+00:00",
+          "finished_at": "2026-09-25 14:54:24.696099+00:00"
+        }
+      ]
+    },
+    {
+      "id": "array-cpp",
+      "label": "정수 100만 개 저장·합산",
+      "language": "cpp17",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "source": "#include <iostream>\n#include <vector>\nint main() {\n    int n; std::cin >> n;\n    std::vector<int> values(n);\n    for (int i = 0; i < n; ++i) values[i] = i;\n    long long total = 0;\n    for (int value : values) total += value;\n    std::cout << total << \"\\n\";\n}\n",
+      "note": "vector<int> 원소 자체는 약 3.8MiB입니다. 표의 값은 원소 크기의 단순 합계가 아니라 격리 실행에서 보고된 메모리입니다.",
+      "runs": [
+        {
+          "runtime_ms": 33,
+          "memory_kb": 4424,
+          "node": "zoj-judge-agent-07",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:24.998419+00:00",
+          "finished_at": "2026-09-25 14:54:25.612866+00:00"
+        },
+        {
+          "runtime_ms": 33,
+          "memory_kb": 4424,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:25.810915+00:00",
+          "finished_at": "2026-09-25 14:54:26.472080+00:00"
+        },
+        {
+          "runtime_ms": 33,
+          "memory_kb": 4424,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:26.623462+00:00",
+          "finished_at": "2026-09-25 14:54:27.286103+00:00"
+        }
+      ]
+    },
+    {
+      "id": "array-python",
+      "label": "정수 100만 개 저장·합산",
+      "language": "python313",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "source": "n = int(input())\nvalues = list(range(n))\nprint(sum(values))\n",
+      "note": "list(range(n))은 정수 객체와 목록을 함께 만듭니다. C++ int 배열과 같은 원소 수여도 메모리가 같지 않습니다.",
+      "runs": [
+        {
+          "runtime_ms": 116,
+          "memory_kb": 42560,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:27.453420+00:00",
+          "finished_at": "2026-09-25 14:54:27.717703+00:00"
+        },
+        {
+          "runtime_ms": 116,
+          "memory_kb": 42560,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:27.861635+00:00",
+          "finished_at": "2026-09-25 14:54:28.065359+00:00"
+        },
+        {
+          "runtime_ms": 116,
+          "memory_kb": 42564,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:28.269702+00:00",
+          "finished_at": "2026-09-25 14:54:28.581003+00:00"
+        }
+      ]
+    },
+    {
+      "id": "sleep-python",
+      "label": "0.2초 기다린 뒤 출력",
+      "language": "python313",
+      "input": "",
+      "output": "42\n",
+      "source": "import time\ntime.sleep(0.2)\nprint(42)\n",
+      "note": "0.2초 동안 계산하지 않고 기다려도 표시 시간이 늘어납니다. 현재 표시값이 순수 CPU 사용 시간이 아니라 경과 시간이라는 점을 확인할 수 있습니다.",
+      "runs": [
+        {
+          "runtime_ms": 267,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:28.693951+00:00",
+          "finished_at": "2026-09-25 14:54:29.097866+00:00"
+        },
+        {
+          "runtime_ms": 266,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:29.506209+00:00",
+          "finished_at": "2026-09-25 14:54:29.926742+00:00"
+        },
+        {
+          "runtime_ms": 267,
+          "memory_kb": 3136,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "status": "accepted",
+          "submitted_at": "2026-09-25 14:54:30.318408+00:00",
+          "finished_at": "2026-09-25 14:54:30.874870+00:00"
+        }
+      ]
+    }
+  ]
+}

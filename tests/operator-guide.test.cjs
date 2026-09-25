@@ -300,30 +300,93 @@ test('session demonstration reaches logout on all three devices by manual steps'
   assert.equal(host.querySelectorAll('.og-mini-modal').length, 3);
 });
 
-test('server comparison separates CPU time from wall time and changing the example limit is local', async () => {
+test('real execution examples show recorded source, input and measurements without executing code', async () => {
   await render('?section=judge-servers');
-  const node = () => host.querySelector('[aria-label="서버 B · 선택한 상황"]');
-  assert.match(node().textContent, /시간 안에 완료/);
-  await click(button('서로 다른 성능'));
-  assert.match(node().textContent, /CPU 1,250ms/);
-  assert.match(node().textContent, /시간 초과/);
-  await click(button('VM 자원 경합'));
-  assert.match(node().textContent, /CPU 800ms/);
-  assert.match(node().textContent, /실제 경과 1,300ms/);
-  assert.match(node().textContent, /시간 초과/);
-  const limit = host.querySelector('.og-server-controls select');
-  await act(async () => {
-    limit.value = '1500';
-    limit.dispatchEvent(new window.Event('change', { bubbles: true }));
-  });
-  assert.match(node().textContent, /시간 안에 완료/);
   assert.match(
-    host.querySelector('.og-server-demo').textContent,
-    /실제 서버나 문제의 제한을 변경하지/,
+    host.querySelector('.og-runtime-facts').textContent,
+    /7대.*14개.*v0.2.18/,
+  );
+  assert.match(host.querySelector('.og-benchmark-metrics').textContent, /33ms/);
+  assert.match(host.querySelector('.og-benchmark-code').textContent, /i % 97/);
+  const choice = host.querySelector('.og-benchmark-select select');
+  await act(async () => {
+    choice.value = 'array-python';
+    choice.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  assert.match(
+    host.querySelector('.og-benchmark-code').textContent,
+    /list\(range\(n\)\)/,
+  );
+  assert.match(
+    host.querySelector('.og-benchmark-metrics').textContent,
+    /116ms/,
+  );
+  assert.match(
+    host.querySelector('.og-benchmark-metrics').textContent,
+    /41.57MiB/,
+  );
+  assert.equal(
+    host.querySelectorAll('.og-benchmark-records tbody tr').length,
+    3,
   );
   assert.ok(
-    searchOperatorGuide('CPU 시간').some(
-      (r) => r.article.id === 'judge-time-metrics',
+    host.querySelector(
+      'a[download][href="/guides/judge-benchmark-2026-09-25.json"]',
+    ),
+  );
+});
+
+test('judge queue demonstration shows claim, execution and persistence with motion disabled', async () => {
+  await render('?section=judge-servers');
+  await click(button('채점 큐부터 결과까지'));
+  assert.equal(
+    host.querySelector('[aria-label="채점 과정 재생"]').disabled,
+    true,
+  );
+  await click(host.querySelector('[aria-label="3단계: 한 에이전트에 배정"]'));
+  assert.match(
+    host.querySelector('.og-flow-detail').textContent,
+    /작업 전용 토큰/,
+  );
+  assert.equal(
+    host.querySelector('.og-flow-map .is-occupied').textContent,
+    '슬롯 1 · 제출 A',
+  );
+  assert.doesNotMatch(
+    host.querySelector('.og-flow-map > div').textContent,
+    /제출 A/,
+  );
+  await click(
+    host.querySelector('[aria-label="7단계: 결과 저장과 슬롯 반환"]'),
+  );
+  assert.equal(host.querySelector('.og-flow-map .is-occupied'), null);
+  assert.match(
+    host.querySelector('.og-flow-detail').textContent,
+    /결과를 저장/,
+  );
+  assert.match(host.querySelector('.og-judge-flow').textContent, /오래된 토큰/);
+});
+
+test('downloadable benchmark preserves every displayed measurement and source', () => {
+  const { judgeBenchmark } = source('data/judgeBenchmark.ts');
+  const download = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../public/guides/judge-benchmark-2026-09-25.json',
+      ),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(judgeBenchmark, download);
+  assert.equal(judgeBenchmark.cases.length, 8);
+  for (const example of judgeBenchmark.cases) {
+    assert.equal(example.runs.length, 3);
+    assert.ok(example.runs.every((run) => run.status === 'accepted'));
+  }
+  assert.ok(
+    searchOperatorGuide('경과 시간').some(
+      (result) => result.article.id === 'judge-time-metrics',
     ),
   );
 });

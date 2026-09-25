@@ -955,7 +955,8 @@ export default function GuideVisual({
   if (scene === 'roles') return <RolesDemo />;
   if (scene === 'session') return <SessionDemo motion={motion} />;
   if (scene === 'judging') return <JudgingDemo motion={motion} />;
-  if (scene === 'server-performance') return <JudgeServerDemo />;
+  if (scene === 'server-performance')
+    return <JudgeServerDemo motion={motion} />;
   if (scene === 'scoreboard') return <ScoreboardDemo motion={motion} />;
   if (scene === 'notice') return <NoticeDemo motion={motion} />;
   if (scene === 'question') return <QuestionDemo motion={motion} />;
