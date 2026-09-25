@@ -168,6 +168,7 @@ export default function VerificationAnalysisPanel({
           ) : null}
           {canRequest &&
           (status === 'failed' ||
+            (analysis?.can_retry && !stale) ||
             (status === 'succeeded' &&
               analysis?.engine_version === 1 &&
               !stale)) ? (
@@ -181,10 +182,18 @@ export default function VerificationAnalysisPanel({
                 ? '요청 중…'
                 : status === 'failed'
                   ? '분석 다시 요청'
-                  : status === 'succeeded'
-                    ? '실제 채점으로 검증'
-                    : 'AI 분석하기'}
+                  : analysis?.can_retry
+                    ? '개선된 검증으로 다시 분석'
+                    : status === 'succeeded'
+                      ? '실제 채점으로 검증'
+                      : 'AI 분석하기'}
             </button>
+          ) : null}
+          {canRequest && analysis?.can_retry && !stale ? (
+            <p className="text-xs text-slate-500">
+              기존 기록은 보존합니다. 버튼을 누르면 설정된 예산으로 새 분석을
+              시작합니다.
+            </p>
           ) : null}
           {analysis?.coverage ? (
             <details className="rounded-lg border border-slate-200 bg-white p-3 text-xs leading-6 text-slate-600">
@@ -264,57 +273,63 @@ export function ReportBody({ report }: { report: VerificationReport }) {
           {report.verdict_assessment}
         </p>
       </section>
-      <section className="grid gap-3">
-        <h4 className="font-semibold text-slate-950">원인과 근거</h4>
-        {report.causes.map((cause, index) => (
-          <article
-            key={index}
-            className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
-          >
-            <h5 className="font-semibold text-slate-900">
-              {index + 1}. {cause.title}{' '}
-              <span className="text-xs font-normal text-slate-500">
-                {
-                  { high: '근거 충분', medium: '추가 확인 필요', low: '가설' }[
-                    cause.confidence
-                  ]
-                }
-              </span>
-            </h5>
-            <p className="break-words whitespace-pre-wrap">
-              {cause.explanation}
-            </p>
-            <p className="break-words whitespace-pre-wrap text-indigo-800">
-              근거: {cause.evidence}
-            </p>
-            {cause.code_reference ? (
-              <p className="text-xs break-words whitespace-pre-wrap">
-                관련 코드: {cause.code_reference}
+      {report.causes.length ? (
+        <section className="grid gap-3">
+          <h4 className="font-semibold text-slate-950">원인과 근거</h4>
+          {report.causes.map((cause, index) => (
+            <article
+              key={index}
+              className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+            >
+              <h5 className="font-semibold text-slate-900">
+                {index + 1}. {cause.title}{' '}
+                <span className="text-xs font-normal text-slate-500">
+                  {
+                    {
+                      high: '근거 충분',
+                      medium: '추가 확인 필요',
+                      low: '가설',
+                    }[cause.confidence]
+                  }
+                </span>
+              </h5>
+              <p className="break-words whitespace-pre-wrap">
+                {cause.explanation}
               </p>
-            ) : null}
-          </article>
-        ))}
-      </section>
-      <section className="grid gap-3">
-        <h4 className="font-semibold text-slate-950">수정 방법과 재검증</h4>
-        {report.fixes.map((fix, index) => (
-          <article
-            key={index}
-            className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
-          >
-            <h5 className="font-semibold text-slate-900">
-              {index + 1}. {fix.title}
-            </h5>
-            <p className="break-words whitespace-pre-wrap">{fix.change}</p>
-            {fix.code_example ? (
-              <Code label="수정 예시" value={fix.code_example} />
-            ) : null}
-            <p className="break-words whitespace-pre-wrap">
-              확인 방법: {fix.verification}
-            </p>
-          </article>
-        ))}
-      </section>
+              <p className="break-words whitespace-pre-wrap text-indigo-800">
+                근거: {cause.evidence}
+              </p>
+              {cause.code_reference ? (
+                <p className="text-xs break-words whitespace-pre-wrap">
+                  관련 코드: {cause.code_reference}
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
+      {report.fixes.length ? (
+        <section className="grid gap-3">
+          <h4 className="font-semibold text-slate-950">수정 방법과 재검증</h4>
+          {report.fixes.map((fix, index) => (
+            <article
+              key={index}
+              className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+            >
+              <h5 className="font-semibold text-slate-900">
+                {index + 1}. {fix.title}
+              </h5>
+              <p className="break-words whitespace-pre-wrap">{fix.change}</p>
+              {fix.code_example ? (
+                <Code label="수정 예시" value={fix.code_example} />
+              ) : null}
+              <p className="break-words whitespace-pre-wrap">
+                확인 방법: {fix.verification}
+              </p>
+            </article>
+          ))}
+        </section>
+      ) : null}
       {report.suggested_tests.length ? (
         <section className="grid gap-3">
           <h4 className="font-semibold text-slate-950">

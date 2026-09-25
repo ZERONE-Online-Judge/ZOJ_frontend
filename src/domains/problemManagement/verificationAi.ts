@@ -31,6 +31,8 @@ export type VerificationAnalysis = {
   phase?: string | null;
   calls?: number;
   tool_count?: number;
+  can_retry?: boolean;
+  stop_reason?: { code: string; message: string } | null;
   plan?: { title: string; status: 'pending' | 'in_progress' | 'done' }[];
   findings?: {
     id: string;
@@ -41,11 +43,19 @@ export type VerificationAnalysis = {
   }[];
   question?: { question: string; reason: string } | null;
   outcome?: 'completed' | 'inconclusive' | null;
-  limits?: { max_cost_usd: number; max_runs: number } | null;
+  limits?: {
+    max_cost_usd: number;
+    max_runs: number;
+    max_input_tokens?: number;
+    max_output_tokens?: number;
+    max_calls?: number;
+    max_tools?: number;
+  } | null;
   usage?: {
     input_tokens: number;
     output_tokens: number;
     estimated_cost_usd: number;
+    cached_input_tokens?: number;
     by_model?: Record<string, { calls: number }>;
   } | null;
   trace?: { tool: string; status: string; detail: string; at: string }[];

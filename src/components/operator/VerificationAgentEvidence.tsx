@@ -38,6 +38,7 @@ const tools: Record<string, string> = {
   finish_task: '작업 결과 작성',
   list_verification_runs: '채점 기록 찾기',
   read_verification_run: '채점 당시 코드와 로그 조회',
+  enable_tools: '필요한 도구 불러오기',
 };
 const codeName = (id: string) =>
   id === 'original'
@@ -60,8 +61,15 @@ export default function VerificationAgentEvidence({
         </p>
         {analysis.usage ? (
           <p className="text-slate-600">
-            입력 {analysis.usage.input_tokens.toLocaleString()} · 출력{' '}
-            {analysis.usage.output_tokens.toLocaleString()} 토큰
+            입력 {analysis.usage.input_tokens.toLocaleString()}
+            {analysis.limits?.max_input_tokens
+              ? ` / ${analysis.limits.max_input_tokens.toLocaleString()}`
+              : ''}
+            {' · '}출력 {analysis.usage.output_tokens.toLocaleString()}
+            {analysis.limits?.max_output_tokens
+              ? ` / ${analysis.limits.max_output_tokens.toLocaleString()}`
+              : ''}{' '}
+            토큰
             {' · '}예상 ${analysis.usage.estimated_cost_usd.toFixed(4)}
             {analysis.limits
               ? ` / 한도 $${analysis.limits.max_cost_usd.toFixed(2)}`
@@ -69,6 +77,23 @@ export default function VerificationAgentEvidence({
           </p>
         ) : null}
       </div>
+      {analysis.limits?.max_calls ? (
+        <p className="text-xs text-slate-500">
+          모델 호출 {analysis.calls ?? 0}/{analysis.limits.max_calls}회
+          {analysis.usage?.cached_input_tokens
+            ? ` · 캐시 재사용 입력 ${analysis.usage.cached_input_tokens.toLocaleString()}개`
+            : ''}
+          {' · '}입력 토큰은 각 호출의 누적량이며 비용 한도와 별도로 적용됩니다.
+        </p>
+      ) : null}
+      {analysis.stop_reason ? (
+        <p
+          role="status"
+          className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900"
+        >
+          {analysis.stop_reason.message}
+        </p>
+      ) : null}
       {analysis.plan?.length ? (
         <section className="grid gap-2 rounded-lg border border-slate-200 p-3">
           <h4 className="text-sm font-semibold text-slate-950">검증 계획</h4>

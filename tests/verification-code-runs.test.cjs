@@ -897,3 +897,53 @@ test('restored legacy verdict remains visible and explains why AI requires a fre
   assert.equal(button(entry, 'AI 분석하기'), undefined);
   assert.equal(analysisRequests, 0);
 });
+
+test('partial cached analysis explains separate token limits and upgrades only on a button click', async () => {
+  await restoreSavedReport();
+  savedRuns = {
+    ...savedRuns,
+    runs: savedRuns.runs.map((run) => ({ ...run, stale: false })),
+  };
+  await refreshSaved();
+  Object.assign(savedAnalysis.analysis, {
+    engine_version: 2,
+    phase: '일부 검증 후 종료',
+    calls: 6,
+    can_retry: true,
+    stop_reason: {
+      code: 'input_tokens',
+      message:
+        '누적 입력 55,174 + 다음 요청 예약 17,934 = 73,108 토큰으로 입력 한도 60,000개를 초과했습니다.',
+    },
+    usage: {
+      input_tokens: 55174,
+      output_tokens: 1084,
+      cached_input_tokens: 43008,
+      estimated_cost_usd: 0.0172281,
+    },
+    limits: {
+      max_cost_usd: 0.2,
+      max_runs: 6,
+      max_calls: 10,
+      max_input_tokens: 60000,
+      max_output_tokens: 16000,
+    },
+  });
+  const saved = row('saved.py');
+  await act(async () =>
+    [...saved.querySelectorAll('button')]
+      .find((n) => n.textContent.includes('저장된 AI 분석 보기'))
+      .click(),
+  );
+  await flush();
+  assert.match(saved.textContent, /입력 55,174 \/ 60,000/);
+  assert.match(saved.textContent, /모델 호출 6\/10회/);
+  assert.match(saved.textContent, /캐시 재사용 입력 43,008개/);
+  assert.match(saved.textContent, /73,108/);
+  assert.equal(analysisRequests, 0);
+  const retry = button(saved, '개선된 검증으로 다시 분석');
+  assert.ok(retry);
+  await act(async () => retry.click());
+  await flush();
+  assert.equal(analysisRequests, 1);
+});
