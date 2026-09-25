@@ -242,7 +242,7 @@ export default function VerificationAnalysisPanel({
   );
 }
 
-function ReportBody({ report }: { report: VerificationReport }) {
+export function ReportBody({ report }: { report: VerificationReport }) {
   return (
     <div className="grid min-w-0 gap-5 text-sm leading-7 text-slate-700">
       <section className="grid gap-2">

@@ -32,6 +32,12 @@ const tools: Record<string, string> = {
   workspace_candidate: '최종 후보 저장',
   escalate: '상위 모델 검토',
   finish_report: '보고서 작성',
+  update_plan: '검증 계획 갱신',
+  record_finding: '근거 기록',
+  ask_user: '조건 확인 요청',
+  finish_task: '작업 결과 작성',
+  list_verification_runs: '채점 기록 찾기',
+  read_verification_run: '채점 당시 코드와 로그 조회',
 };
 const codeName = (id: string) =>
   id === 'original'
@@ -63,6 +69,65 @@ export default function VerificationAgentEvidence({
           </p>
         ) : null}
       </div>
+      {analysis.plan?.length ? (
+        <section className="grid gap-2 rounded-lg border border-slate-200 p-3">
+          <h4 className="text-sm font-semibold text-slate-950">검증 계획</h4>
+          <ol className="grid gap-2 text-sm text-slate-700">
+            {analysis.plan.map((step, i) => (
+              <li className="flex gap-2" key={i}>
+                <span
+                  className={
+                    step.status === 'in_progress'
+                      ? 'font-semibold text-indigo-700'
+                      : 'text-slate-500'
+                  }
+                >
+                  {step.status === 'done'
+                    ? '완료'
+                    : step.status === 'in_progress'
+                      ? '진행'
+                      : '예정'}
+                </span>
+                <span className="min-w-0 break-words">{step.title}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+      {analysis.findings?.length ? (
+        <section className="grid gap-2">
+          <h4 className="text-sm font-semibold text-slate-950">
+            확인한 사실과 가설
+          </h4>
+          {analysis.findings.map((finding) => (
+            <details
+              key={finding.id}
+              className="rounded-lg border border-slate-200 p-3 text-sm"
+            >
+              <summary className="cursor-pointer font-medium text-slate-900">
+                <span className="mr-2 text-xs text-indigo-700">
+                  {
+                    {
+                      confirmed: '근거 확인',
+                      hypothesis: '가설',
+                      rejected: '기각',
+                    }[finding.status]
+                  }
+                </span>
+                {finding.title}
+              </summary>
+              <p className="mt-2 leading-6 break-words whitespace-pre-wrap text-slate-700">
+                {finding.detail}
+              </p>
+              {finding.evidence_refs.length ? (
+                <p className="mt-2 text-xs break-all text-slate-500">
+                  근거: {finding.evidence_refs.join(' · ')}
+                </p>
+              ) : null}
+            </details>
+          ))}
+        </section>
+      ) : null}
       {analysis.playground_runs?.length ? (
         <section className="grid min-w-0 gap-2">
           <h4 className="text-sm font-semibold text-slate-950">

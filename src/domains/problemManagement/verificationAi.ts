@@ -31,6 +31,16 @@ export type VerificationAnalysis = {
   phase?: string | null;
   calls?: number;
   tool_count?: number;
+  plan?: { title: string; status: 'pending' | 'in_progress' | 'done' }[];
+  findings?: {
+    id: string;
+    title: string;
+    detail: string;
+    status: 'confirmed' | 'hypothesis' | 'rejected';
+    evidence_refs: string[];
+  }[];
+  question?: { question: string; reason: string } | null;
+  outcome?: 'completed' | 'inconclusive' | null;
   limits?: { max_cost_usd: number; max_runs: number } | null;
   usage?: {
     input_tokens: number;
@@ -84,7 +94,13 @@ export type VerificationAnalysis = {
     files: { path: string; bytes: number }[];
   }[];
   analysis_id: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  status:
+    | 'queued'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'awaiting_input'
+    | 'stopped';
   model: string;
   created_at: string;
   completed_at?: string | null;
