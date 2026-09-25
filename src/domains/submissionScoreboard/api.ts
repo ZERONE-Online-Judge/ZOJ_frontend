@@ -332,7 +332,7 @@ export function createOperatorTestSubmission(
   contestId: string,
   problemId: string,
   token: string,
-  body: SubmissionCreateRequest,
+  body: SubmissionCreateRequest & { verification_asset_id?: string },
 ) {
   return apiRequest<Submission>(
     `/operator/contests/${contestId}/problems/${problemId}/test-submissions`,

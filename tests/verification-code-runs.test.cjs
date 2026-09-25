@@ -31,8 +31,27 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-let uploads, submissions, waits, reads, automaticWait;
+let uploads,
+  submissions,
+  waits,
+  reads,
+  automaticWait,
+  savedRuns,
+  savedAnalysis,
+  analysisReads,
+  analysisRequests;
 const mocks = {
+  '@/domains/problemManagement/verificationAi': {
+    listVerificationRuns: async () => savedRuns,
+    getVerificationAnalysis: async () => {
+      analysisReads++;
+      return savedAnalysis;
+    },
+    requestVerificationAnalysis: async () => {
+      analysisRequests++;
+      return savedAnalysis;
+    },
+  },
   '@/domains/identityAccess/queryIdentity': {
     tokenQueryIdentity: () => 'test-session',
   },
@@ -127,6 +146,10 @@ function Editor() {
     assetsByKind.set(kind, [...(assetsByKind.get(kind) ?? []), asset]);
   }
   return h(Section, {
+    contestId: 'contest',
+    token: 'token',
+    aiAvailable: api.aiAvailable,
+    historyError: api.historyError,
     assetsByKind,
     results: api.results,
     onUpload: api.upload,
@@ -143,6 +166,10 @@ beforeEach(async () => {
   waits = [];
   reads = [];
   automaticWait = null;
+  savedRuns = { available: false, model: 'gpt-5.4', runs: [] };
+  savedAnalysis = { available: false, analysis: null };
+  analysisReads = 0;
+  analysisRequests = 0;
   client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
@@ -193,7 +220,7 @@ async function resolve(gate, value) {
   await act(async () => gate.resolve(value));
 }
 async function flush() {
-  await act(async () => new Promise((done) => global.setImmediate(done)));
+  await act(async () => new Promise((done) => global.setTimeout(done, 10)));
 }
 
 test('all selected files appear in their category immediately and upload/judge independently', async () => {
@@ -211,6 +238,7 @@ test('all selected files appear in their category immediately and upload/judge i
   await resolve(uploads[1].gate, asset('second', 'second.cpp'));
   assert.equal(submissions.length, 1);
   assert.equal(submissions[0].body.source_code, 'second.cpp');
+  assert.equal(submissions[0].body.verification_asset_id, 'second');
   await resolve(
     submissions[0].gate,
     submission('second-submission', 'judging', {
@@ -469,4 +497,102 @@ test('compact results keep long logs collapsed and separate input, expected and 
   const raw = details.querySelector('details');
   assert.equal(raw.open, false);
   assert.equal(raw.querySelector('pre').textContent, judgeMessage);
+});
+
+async function restoreSavedReport({ available = true, partial = false } = {}) {
+  const report = {
+    summary: '<img src=x onerror=alert(1)> 합 계산 오류',
+    verdict_assessment: '실제 오답 판정과 코드가 일치합니다.',
+    causes: [
+      {
+        title: '상수 출력',
+        confidence: 'high',
+        evidence: '테스트 #1',
+        explanation: '항상 4를 출력합니다.',
+        code_reference: 'main.py:1',
+      },
+    ],
+    fixes: [
+      {
+        title: '입력 합산',
+        change: '두 수를 더합니다.',
+        code_example: 'print(a + b)',
+        verification: '경계값을 다시 채점합니다.',
+      },
+    ],
+    suggested_tests: [
+      { input: '-1 1', expected_output: '0', explanation: '미실행 제안' },
+    ],
+    limitations: ['실행하지 않은 정적 검토입니다.'],
+  };
+  const analysis = {
+    analysis_id: 'analysis',
+    status: 'succeeded',
+    model: 'gpt-5.4',
+    report,
+    coverage: {
+      partial,
+      total_testcases: 2,
+      full_testcases: partial ? 1 : 2,
+      partial_testcases: partial ? 1 : 0,
+      omitted_testcases: 0,
+      testcase_version: 1,
+      files: [],
+      notes: partial ? ['큰 입력은 앞부분만 제공'] : [],
+    },
+  };
+  savedAnalysis = { available, analysis };
+  savedRuns = {
+    available,
+    model: 'gpt-5.4',
+    runs: [
+      {
+        asset_id: 'saved',
+        asset: asset('saved', 'saved.py'),
+        expected_status: 'accepted',
+        stale: true,
+        submission: submission('saved-submission', 'wrong_answer', {
+          submitted_at: '2026-09-25T01:00:00Z',
+        }),
+        analysis: { ...analysis, report: undefined },
+      },
+    ],
+  };
+  await act(async () =>
+    client.invalidateQueries({ queryKey: ['operator', 'verification-runs'] }),
+  );
+  await flush();
+  return row('saved.py');
+}
+
+test('server verification history restores shared report and expanding never calls the paid POST', async () => {
+  const saved = await restoreSavedReport({ partial: true });
+  assert.ok(saved);
+  const expand = [...saved.querySelectorAll('button')].find((node) =>
+    node.textContent.includes('저장된 AI 분석 보기'),
+  );
+  await act(async () => expand.click());
+  await flush();
+  assert.match(saved.textContent, /수정 방법과 재검증/);
+  assert.match(saved.textContent, /일부 자료만 검토/);
+  assert.match(saved.textContent, /이전 채점 기준/);
+  assert.match(saved.textContent, /<img src=x onerror=alert\(1\)>/);
+  assert.equal(saved.querySelector('img'), null);
+  assert.equal(analysisReads, 1);
+  assert.equal(analysisRequests, 0);
+  assert.equal(submissions.length, 0);
+});
+
+test('saved reports remain readable with no configured API key and offer no paid request', async () => {
+  const saved = await restoreSavedReport({ available: false });
+  await act(async () =>
+    [...saved.querySelectorAll('button')]
+      .find((node) => node.textContent.includes('저장된 AI 분석 보기'))
+      .click(),
+  );
+  await flush();
+  assert.match(saved.textContent, /AI 연결이 설정되지 않았습니다/);
+  assert.match(saved.textContent, /입력 합산/);
+  assert.equal(button(saved, '분석 요청'), undefined);
+  assert.equal(analysisRequests, 0);
 });

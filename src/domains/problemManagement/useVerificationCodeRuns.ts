@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  listVerificationRuns,
+  type SavedVerificationRuns,
+  type VerificationAnalysis,
+} from '@/domains/problemManagement/verificationAi';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   getStorageObjectText,
@@ -32,6 +37,8 @@ export type VerificationRunResult = {
   filename: string;
   stage: 'uploading' | 'loading_source' | 'submitting' | 'judging' | 'done';
   submission?: Submission;
+  analysis?: VerificationAnalysis | null;
+  stale?: boolean;
 };
 
 export const VERIFICATION_CODE_KINDS: {
@@ -104,6 +111,29 @@ export default function useVerificationCodeRuns({
   const activeRunIds = useRef(new Set<string>());
   const runIdsByAsset = useRef(new Map<string, string>());
   const mounted = useRef(false);
+  const historyKey = [
+    'operator',
+    'verification-runs',
+    contestId,
+    problemId,
+    tokenQueryIdentity(token),
+  ];
+  const history = useQuery({
+    queryKey: historyKey,
+    queryFn: () => listVerificationRuns(contestId, problemId!, token),
+    enabled: Boolean(problemId && token),
+    refetchInterval: (query) =>
+      query.state.data?.runs.some(
+        (run) =>
+          isSubmissionPending(run.submission.status) ||
+          (query.state.data?.available &&
+            run.submission.status !== run.expected_status &&
+            (!run.analysis ||
+              ['queued', 'running'].includes(run.analysis.status))),
+      )
+        ? 3000
+        : false,
+  });
 
   useEffect(() => {
     mounted.current = true;
@@ -135,6 +165,7 @@ export default function useVerificationCodeRuns({
         : await getStorageObjectText(run.asset!.storage_key, token);
       if (!isActive()) return;
 
+      let verificationAsset = run.asset;
       if (file) {
         const asset = await uploadProblemAsset(
           contestId,
@@ -144,6 +175,7 @@ export default function useVerificationCodeRuns({
           `problems/${run.problemId}/verification-solutions/${run.expectedStatus}`,
         );
         if (!isActive()) return;
+        verificationAsset = asset;
         runIdsByAsset.current.set(asset.asset_id, run.id);
         updateRun(run.id, { asset });
         queryClient.setQueryData<ProblemAsset[]>(
@@ -166,12 +198,26 @@ export default function useVerificationCodeRuns({
         contestId,
         run.problemId,
         token,
-        { language, source_code: sourceCode },
+        {
+          language,
+          source_code: sourceCode,
+          verification_asset_id: verificationAsset?.asset_id,
+        },
       );
       while (isActive()) {
         const pending = isSubmissionPending(submission.status);
         updateRun(run.id, { submission, stage: pending ? 'judging' : 'done' });
-        if (!pending) break;
+        if (!pending) {
+          void queryClient.invalidateQueries({
+            queryKey: [
+              'operator',
+              'verification-runs',
+              contestId,
+              run.problemId,
+            ],
+          });
+          break;
+        }
         submission = await waitOperatorTestSubmissionStatus(
           contestId,
           submission.submission_id,
@@ -246,6 +292,17 @@ export default function useVerificationCodeRuns({
     const id = runIdsByAsset.current.get(asset.asset_id);
     if (id) dismiss(id);
     runIdsByAsset.current.delete(asset.asset_id);
+    queryClient.setQueryData<SavedVerificationRuns>(historyKey, (previous) =>
+      previous
+        ? {
+            ...previous,
+            runs: previous.runs.filter(
+              (run) => run.asset_id !== asset.asset_id,
+            ),
+          }
+        : previous,
+    );
+    void queryClient.invalidateQueries({ queryKey: historyKey });
   }
 
   function removeProblem(deletedProblemId: string) {
@@ -263,8 +320,49 @@ export default function useVerificationCodeRuns({
     }
   }
 
+  const saved = history.data?.runs ?? [];
+  const local = Object.values(runs).filter((run) => {
+    if (run.problemId !== problemId) return false;
+    if (run.stage !== 'done' || !run.submission) return true;
+    const latest = saved.find((item) => item.asset_id === run.asset?.asset_id);
+    return (
+      !latest ||
+      !run.submission.submitted_at ||
+      latest.submission.submitted_at <= run.submission.submitted_at
+    );
+  });
+  const merged: VerificationRunResult[] = local.map((run) => {
+    const persistent = saved.find(
+      (item) => item.submission.submission_id === run.submission?.submission_id,
+    );
+    return { ...run, analysis: persistent?.analysis, stale: persistent?.stale };
+  });
+  for (const savedRun of saved) {
+    if (local.some((run) => run.asset?.asset_id === savedRun.asset_id))
+      continue;
+    merged.push({
+      id: savedRun.submission.submission_id,
+      problemId: problemId!,
+      asset: savedRun.asset,
+      filename: savedRun.asset.original_filename,
+      expectedStatus: savedRun.expected_status,
+      stage: isSubmissionPending(savedRun.submission.status)
+        ? 'judging'
+        : 'done',
+      submission: savedRun.submission,
+      analysis: savedRun.analysis,
+      stale: savedRun.stale,
+    });
+  }
   return {
-    results: Object.values(runs).filter((run) => run.problemId === problemId),
+    results: merged,
+    aiAvailable: history.data?.available ?? false,
+    historyError: history.error
+      ? formatUserApiError(
+          history.error,
+          '저장된 검증 기록을 불러오지 못했습니다.',
+        )
+      : null,
     upload,
     rerun,
     dismiss,

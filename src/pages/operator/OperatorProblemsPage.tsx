@@ -2755,6 +2755,10 @@ function OperatorProblemsContent({
                     )}
                   </div>
                   <VerificationCodeSection
+                    contestId={contestId}
+                    token={token}
+                    aiAvailable={verificationRuns.aiAvailable}
+                    historyError={verificationRuns.historyError}
                     assetsByKind={verificationAssetsByKind}
                     onDelete={async (asset) => {
                       if (

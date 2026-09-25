@@ -1,3 +1,4 @@
+import VerificationAnalysisPanel from '@/components/operator/VerificationAnalysisPanel';
 import type { ProblemAsset } from '@/domains/problemManagement/types';
 import { parseVerificationDetails } from '@/domains/problemManagement/verificationDetails';
 import {
@@ -14,6 +15,10 @@ import {
 } from '@/domains/submissionScoreboard/status';
 
 export default function VerificationCodeSection({
+  contestId,
+  token,
+  aiAvailable,
+  historyError,
   assetsByKind,
   onDelete,
   onDismiss,
@@ -22,6 +27,10 @@ export default function VerificationCodeSection({
   onUpload,
   results,
 }: {
+  contestId: string;
+  token: string;
+  aiAvailable: boolean;
+  historyError?: string | null;
   assetsByKind: Map<VerificationCodeKind, ProblemAsset[]>;
   onDelete: (asset: ProblemAsset) => void;
   onDismiss: (id: string) => void;
@@ -41,7 +50,8 @@ export default function VerificationCodeSection({
           </h3>
           <p className="text-sm leading-6 font-normal text-slate-500">
             파일을 추가하면 자동으로 채점합니다. 각 코드가 기대한 결과로
-            판정되는지 확인하세요.
+            판정되는지 확인하세요. 판정과 AI 분석은 서버에 저장되어 다른
+            운영자도 볼 수 있습니다.
           </p>
         </div>
         {runningCount ? (
@@ -52,6 +62,11 @@ export default function VerificationCodeSection({
         ) : null}
       </div>
 
+      {historyError ? (
+        <p role="alert" className="text-sm text-rose-700">
+          {historyError}
+        </p>
+      ) : null}
       <div className="grid gap-3">
         {VERIFICATION_CODE_KINDS.map((kind) => {
           const assets = assetsByKind.get(kind.expectedStatus) ?? [];
@@ -130,6 +145,9 @@ export default function VerificationCodeSection({
                 <div className="divide-y divide-slate-100 border-t border-slate-200">
                   {rows.map((row) => (
                     <VerificationCodeRow
+                      contestId={contestId}
+                      token={token}
+                      aiAvailable={aiAvailable}
                       asset={row.asset}
                       expectedStatus={kind.expectedStatus}
                       filename={row.filename}
@@ -157,6 +175,9 @@ export default function VerificationCodeSection({
 }
 
 function VerificationCodeRow({
+  contestId,
+  token,
+  aiAvailable,
   asset,
   expectedStatus,
   filename,
@@ -167,6 +188,9 @@ function VerificationCodeRow({
   onRun,
   result,
 }: {
+  contestId: string;
+  token: string;
+  aiAvailable: boolean;
   asset?: ProblemAsset;
   expectedStatus: VerificationCodeKind;
   filename: string;
@@ -252,6 +276,19 @@ function VerificationCodeRow({
         <VerificationResultDetails
           key={result.submission?.submission_id ?? result.id}
           result={result}
+        />
+      ) : null}
+      {result?.submission &&
+      !isSubmissionPending(result.submission.status) &&
+      result.submission.status !== expectedStatus ? (
+        <VerificationAnalysisPanel
+          contestId={contestId}
+          problemId={result.problemId}
+          submissionId={result.submission.submission_id}
+          token={token}
+          available={aiAvailable}
+          initial={result.analysis}
+          stale={result.stale}
         />
       ) : null}
     </div>

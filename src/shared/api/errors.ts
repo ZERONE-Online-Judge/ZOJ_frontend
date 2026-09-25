@@ -75,6 +75,8 @@ export function formatUserApiError(error: unknown, fallback: string) {
 }
 
 function apiErrorUserMessage(error: ApiClientError) {
+  if (error.code.startsWith('verification_')) return error.message;
+
   if (error.code.startsWith('problem_archive_')) return error.message;
   if (
     [
