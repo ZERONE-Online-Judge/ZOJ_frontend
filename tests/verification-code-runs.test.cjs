@@ -990,9 +990,9 @@ test('candidate badges use server execution assessments and never infer success 
       }),
     ),
   );
-  const summaries = [...document.querySelectorAll('summary')].map(
-    (n) => n.textContent,
-  );
+  const summaries = [...document.querySelectorAll('summary')]
+    .map((n) => n.textContent)
+    .filter((text) => /^수정안 \d/.test(text));
   assert.match(summaries[0], /수정안 1.*전체 등록 테스트 통과/);
   assert.match(summaries[1], /수정안 2.*실행 검증 실패/);
   assert.match(summaries[2], /수정안 3.*추가 확인 필요/);

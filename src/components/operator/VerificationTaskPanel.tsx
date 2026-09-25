@@ -332,6 +332,38 @@ export default function VerificationTaskPanel({
                     ) : null}
                   </div>
                 </div>
+                {analysis.report ? (
+                  <ReportBody report={analysis.report} analysis={analysis} />
+                ) : null}
+                {!analysis.report && active(analysis.status) ? (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4"
+                  >
+                    <p className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 rounded-full bg-indigo-500 motion-safe:animate-pulse"
+                      />
+                      {analysis.status === 'queued'
+                        ? '분석 대기 중'
+                        : analysis.phase || '분석 진행 중'}
+                    </p>
+                    <p className="text-xs leading-6 text-slate-600">
+                      분석이 끝나면 이곳에 요약과 권장 조치가 표시됩니다. 화면을
+                      닫아도 작업은 계속됩니다.
+                    </p>
+                  </div>
+                ) : null}
+                {analysis.stop_reason ? (
+                  <p
+                    role="status"
+                    className="rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-900"
+                  >
+                    {analysis.stop_reason.message}
+                  </p>
+                ) : null}
                 {task.cancel_requested && active(analysis.status) ? (
                   <p role="status" className="text-sm text-amber-800">
                     이미 시작한 단계가 끝나면 중지합니다. 실행 기록과 파일은
@@ -362,16 +394,16 @@ export default function VerificationTaskPanel({
                     {analysis.error_message}
                   </p>
                 ) : null}
-                <VerificationAgentEvidence analysis={analysis} />
                 {analysis.outcome === 'inconclusive' ? (
                   <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
                     아직 결론을 확정하지 못했습니다. 확인한 범위와 남은 제한을
                     검토한 뒤 필요한 작업을 이어서 요청해 주세요.
                   </p>
                 ) : null}
-                {analysis.report ? (
-                  <ReportBody report={analysis.report} />
-                ) : null}
+                <VerificationAgentEvidence
+                  key={task.task_id}
+                  analysis={analysis}
+                />
               </>
             ) : null}
           </div>

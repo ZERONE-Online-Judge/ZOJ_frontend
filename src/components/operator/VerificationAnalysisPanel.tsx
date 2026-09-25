@@ -93,7 +93,7 @@ export default function VerificationAnalysisPanel({
             ? 'AI 분석 실패'
             : 'AI 분석하기';
   return (
-    <div className="grid min-w-0 gap-3 sm:ml-12">
+    <div className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -129,13 +129,19 @@ export default function VerificationAnalysisPanel({
       {open ? (
         <section
           aria-label="AI 판정 분석"
-          className="grid min-w-0 gap-4 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4 sm:p-5"
+          className="grid min-w-0 gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4"
         >
-          <p className="text-xs leading-5 text-slate-600">
-            {analysis?.engine_version === 2
-              ? '필요한 자료와 실제 실행을 바탕으로 판정 차이·테스트 누락·풀이와 채점 기준을 조사합니다. 공식 판정은 바꾸지 않으며, 실행 기록과 AI 의견을 함께 확인하세요.'
-              : '실제 채점 당시 자료를 검토한 AI 보조 의견입니다. 공식 판정은 바꾸지 않으며, 제안한 수정과 반례는 다시 채점해 확인하세요.'}
-          </p>
+          {analysis?.report ? (
+            <ReportBody report={analysis.report} analysis={analysis} />
+          ) : null}
+          {analysis?.stop_reason ? (
+            <p
+              role="status"
+              className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900"
+            >
+              {analysis.stop_reason.message}
+            </p>
+          ) : null}
           {!canRequest ? (
             <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
               AI 연결이 설정되지 않았습니다. 관리자가 서버 환경변수를 설정하면
@@ -149,11 +155,27 @@ export default function VerificationAnalysisPanel({
             </p>
           ) : null}
           {status === 'queued' || status === 'running' ? (
-            <p role="status" className="text-sm text-indigo-700">
-              {status === 'queued'
-                ? '분석 대기 중입니다. 대기 작업과 일일 사용 한도에 따라 시간이 걸릴 수 있습니다.'
-                : `${analysis?.phase || '문제와 코드, 테스트케이스를 검토하고 있습니다.'} · 이 화면을 닫아도 계속됩니다.`}
-            </p>
+            <div
+              role="status"
+              aria-live="polite"
+              className="grid gap-2 rounded-xl border border-indigo-100 bg-white p-4"
+            >
+              <div className="flex items-center gap-2 font-semibold text-indigo-900">
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full bg-indigo-500 motion-safe:animate-pulse"
+                />
+                {status === 'queued' ? '분석 대기 중' : '분석 진행 중'}
+              </div>
+              <p className="text-sm text-slate-600">
+                {status === 'queued'
+                  ? '분석 대기 중입니다. 대기 작업과 일일 사용 한도에 따라 시간이 걸릴 수 있습니다.'
+                  : `${analysis?.phase || '문제와 코드, 테스트케이스를 검토하고 있습니다.'} · 이 화면을 닫아도 계속됩니다.`}
+              </p>
+              <p className="text-xs text-slate-500">
+                분석이 끝나면 이곳에 요약과 권장 조치가 표시됩니다.
+              </p>
+            </div>
           ) : null}
           {analysis?.error_message || query.error || request.error ? (
             <p
@@ -256,7 +278,11 @@ export default function VerificationAnalysisPanel({
               분석’을 눌러 시작하세요.
             </p>
           ) : null}
-          {analysis?.report ? <ReportBody report={analysis.report} /> : null}
+          <p className="text-xs leading-5 text-slate-600">
+            {analysis?.engine_version === 2
+              ? '필요한 자료와 실제 실행을 바탕으로 판정 차이·테스트 누락·풀이와 채점 기준을 조사합니다. 공식 판정은 바꾸지 않으며, 실행 기록과 AI 의견을 함께 확인하세요.'
+              : '실제 채점 당시 자료를 검토한 AI 보조 의견입니다. 공식 판정은 바꾸지 않으며, 제안한 수정과 반례는 다시 채점해 확인하세요.'}
+          </p>
           {analysis ? (
             <p className="text-xs text-slate-500">
               {analysis.model}
@@ -272,28 +298,57 @@ export default function VerificationAnalysisPanel({
   );
 }
 
-export function ReportBody({ report }: { report: VerificationReport }) {
+export function ReportBody({
+  report,
+  analysis,
+}: {
+  report: VerificationReport;
+  analysis?: VerificationAnalysis;
+}) {
   return (
     <div className="grid min-w-0 gap-5 text-sm leading-7 text-slate-700">
-      <section className="grid gap-2">
-        <h4 className="font-semibold text-slate-950">분석 요약</h4>
-        <VerificationMarkdown>{report.summary}</VerificationMarkdown>
-        <VerificationMarkdown>{report.verdict_assessment}</VerificationMarkdown>
-      </section>
-      {report.sections?.map((section, index) => (
-        <section
-          key={index}
-          className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
-        >
-          <h4 className="font-semibold text-slate-950">{section.title}</h4>
-          <VerificationMarkdown>{section.body}</VerificationMarkdown>
-          {section.evidence_refs.length ? (
-            <p className="text-xs break-all text-slate-500">
-              실행·자료 근거: {section.evidence_refs.join(' · ')}
-            </p>
+      <section
+        aria-label="분석 요약"
+        className="grid min-w-0 gap-3 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm sm:p-5"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-base font-bold tracking-tight text-slate-950">
+            분석 요약
+          </h4>
+          {report.conclusion || analysis?.phase ? (
+            <span
+              className={
+                'rounded-full px-2.5 py-1 text-xs font-medium ' +
+                (report.conclusion === 'inconclusive' ||
+                analysis?.phase?.includes('일부')
+                  ? 'bg-amber-50 text-amber-800'
+                  : 'bg-indigo-50 text-indigo-700')
+              }
+            >
+              {report.conclusion
+                ? {
+                    test_gap: '테스트 보강 필요',
+                    expectation_error: '기대 판정 검토',
+                    solution_error: '풀이 검토',
+                    judge_issue: '채점 기준 검토',
+                    infrastructure_issue: '환경 점검 필요',
+                    inconclusive: '추가 검증 필요',
+                  }[report.conclusion]
+                : analysis?.phase}
+            </span>
           ) : null}
-        </section>
-      ))}
+        </div>
+        <div className="text-slate-950 [&_p]:text-base [&_p]:leading-8 [&_p]:font-medium">
+          <VerificationMarkdown>{report.summary}</VerificationMarkdown>
+        </div>
+        {report.verdict_assessment ? (
+          <div className="border-t border-slate-100 pt-2 text-slate-600">
+            <VerificationMarkdown>
+              {report.verdict_assessment}
+            </VerificationMarkdown>
+          </div>
+        ) : null}
+      </section>
       {report.recommendations?.length ? (
         <section className="grid gap-3">
           <h4 className="font-semibold text-slate-950">권장 조치</h4>
@@ -328,35 +383,6 @@ export function ReportBody({ report }: { report: VerificationReport }) {
           ))}
         </section>
       ) : null}
-      {report.causes.length ? (
-        <section className="grid gap-3">
-          <h4 className="font-semibold text-slate-950">원인과 근거</h4>
-          {report.causes.map((cause, index) => (
-            <article
-              key={index}
-              className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
-            >
-              <h5 className="font-semibold text-slate-900">
-                {index + 1}. {cause.title}{' '}
-                <span className="text-xs font-normal text-slate-500">
-                  {
-                    {
-                      high: '근거 충분',
-                      medium: '추가 확인 필요',
-                      low: '가설',
-                    }[cause.confidence]
-                  }
-                </span>
-              </h5>
-              <VerificationMarkdown>{cause.explanation}</VerificationMarkdown>
-              <VerificationMarkdown>{`근거: ${cause.evidence}`}</VerificationMarkdown>
-              {cause.code_reference ? (
-                <VerificationMarkdown>{`관련 코드: ${cause.code_reference}`}</VerificationMarkdown>
-              ) : null}
-            </article>
-          ))}
-        </section>
-      ) : null}
       {report.fixes.length ? (
         <section className="grid gap-3">
           <h4 className="font-semibold text-slate-950">
@@ -379,42 +405,109 @@ export function ReportBody({ report }: { report: VerificationReport }) {
           ))}
         </section>
       ) : null}
+      {report.sections?.length || report.causes.length ? (
+        <details className="group/report min-w-0 rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer p-4 text-sm font-semibold text-slate-900 focus-visible:outline-indigo-500">
+            상세 분석과 근거{' '}
+            <span className="ml-2 text-xs font-normal text-slate-500">
+              {(report.sections?.length ?? 0) + report.causes.length}개 항목
+            </span>
+          </summary>
+          <div className="grid min-w-0 gap-3 border-t border-slate-100 p-4">
+            {report.sections?.map((section, index) => (
+              <section
+                key={index}
+                className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <h4 className="font-semibold text-slate-950">
+                  {section.title}
+                </h4>
+                <VerificationMarkdown>{section.body}</VerificationMarkdown>
+                {section.evidence_refs.length ? (
+                  <p className="text-xs break-all text-slate-500">
+                    실행·자료 근거: {section.evidence_refs.join(' · ')}
+                  </p>
+                ) : null}
+              </section>
+            ))}
+            {report.causes.length ? (
+              <section className="grid gap-3">
+                <h4 className="font-semibold text-slate-950">원인과 근거</h4>
+                {report.causes.map((cause, index) => (
+                  <article
+                    key={index}
+                    className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+                  >
+                    <h5 className="font-semibold text-slate-900">
+                      {index + 1}. {cause.title}{' '}
+                      <span className="text-xs font-normal text-slate-500">
+                        {
+                          {
+                            high: '근거 충분',
+                            medium: '추가 확인 필요',
+                            low: '가설',
+                          }[cause.confidence]
+                        }
+                      </span>
+                    </h5>
+                    <VerificationMarkdown>
+                      {cause.explanation}
+                    </VerificationMarkdown>
+                    <VerificationMarkdown>{`근거: ${cause.evidence}`}</VerificationMarkdown>
+                    {cause.code_reference ? (
+                      <VerificationMarkdown>{`관련 코드: ${cause.code_reference}`}</VerificationMarkdown>
+                    ) : null}
+                  </article>
+                ))}
+              </section>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
       {report.suggested_tests.length ? (
-        <section className="grid gap-3">
-          <h4 className="font-semibold text-slate-950">
-            추가할 테스트케이스 제안
-          </h4>
-          <p className="text-xs text-slate-500">
-            제안 입력입니다. 실제 실행 여부는 채점 기록과 반례 교차 검증을
-            확인하세요. 입력 조건과 기대 출력을 확인한 뒤 등록하세요.
-          </p>
-          {report.suggested_tests.map((test, index) => (
-            <article
-              key={index}
-              className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
-            >
-              <div className="grid min-w-0 gap-3 md:grid-cols-2">
-                <Code label="제안 입력" value={test.input} />
-                <Code label="제안 기대 출력" value={test.expected_output} />
-              </div>
-              <VerificationMarkdown>{test.explanation}</VerificationMarkdown>
-            </article>
-          ))}
-        </section>
+        <details className="min-w-0 rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer p-4 font-semibold text-slate-950">
+            추가할 테스트케이스 제안{' '}
+            <span className="ml-2 text-xs font-normal text-slate-500">
+              {report.suggested_tests.length}개
+            </span>
+          </summary>
+          <div className="grid min-w-0 gap-3 border-t border-slate-100 p-4">
+            <p className="text-xs text-slate-500">
+              제안 입력입니다. 실제 실행 여부는 채점 기록과 반례 교차 검증을
+              확인하세요. 입력 조건과 기대 출력을 확인한 뒤 등록하세요.
+            </p>
+            {report.suggested_tests.map((test, index) => (
+              <article
+                key={index}
+                className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <div className="grid min-w-0 gap-3 md:grid-cols-2">
+                  <Code label="제안 입력" value={test.input} />
+                  <Code label="제안 기대 출력" value={test.expected_output} />
+                </div>
+                <VerificationMarkdown>{test.explanation}</VerificationMarkdown>
+              </article>
+            ))}
+          </div>
+        </details>
       ) : null}
       {report.limitations.length ? (
-        <section className="grid gap-2 rounded-lg bg-amber-50 p-3">
-          <h4 className="font-semibold text-amber-950">
-            추가 확인이 필요한 점
-          </h4>
-          <ul className="list-disc space-y-1 pl-5">
+        <details className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+          <summary className="cursor-pointer font-semibold text-amber-950">
+            추가 확인이 필요한 점{' '}
+            <span className="ml-2 text-xs font-normal text-amber-800">
+              {report.limitations.length}개
+            </span>
+          </summary>
+          <ul className="mt-3 list-disc space-y-1 pl-5">
             {report.limitations.map((item, index) => (
               <li key={index} className="break-words whitespace-pre-wrap">
                 <VerificationMarkdown>{item}</VerificationMarkdown>
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
     </div>
   );
