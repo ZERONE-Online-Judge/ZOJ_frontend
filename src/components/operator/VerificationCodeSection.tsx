@@ -1,4 +1,5 @@
 import VerificationAnalysisPanel from '@/components/operator/VerificationAnalysisPanel';
+import { formatDateTime } from '@/shared/lib/dateTime';
 import type { ProblemAsset } from '@/domains/problemManagement/types';
 import { parseVerificationDetails } from '@/domains/problemManagement/verificationDetails';
 import {
@@ -51,7 +52,8 @@ export default function VerificationCodeSection({
           <p className="text-sm leading-6 font-normal text-slate-500">
             파일을 추가하면 자동으로 채점합니다. 각 코드가 기대한 결과로
             판정되는지 확인하세요. AI 검증은 ‘AI 분석하기’를 눌렀을 때만
-            시작하며, 판정과 저장된 분석은 다른 운영자도 볼 수 있습니다.
+            시작합니다. 코드별 마지막 채점 결과와 AI 분석은 서버에 저장되어
+            새로고침하거나 다른 운영자가 열어도 함께 볼 수 있습니다.
           </p>
         </div>
         {runningCount ? (
@@ -396,6 +398,27 @@ function VerificationResultSummary({
             {progressText || verificationStageHelp(result.stage, actualStatus)}
           </p>
         </div>
+      ) : null}
+      {result.persisted ? (
+        <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs font-normal text-slate-500">
+          <span>서버 저장 · 운영자 공유</span>
+          {result.submission?.submitted_at ? (
+            <span>
+              마지막 채점 요청{' '}
+              <time dateTime={result.submission.submitted_at}>
+                {formatDateTime(result.submission.submitted_at)}
+              </time>
+            </span>
+          ) : null}
+          {result.submission?.submitted_by_name ? (
+            <span>· {result.submission.submitted_by_name}</span>
+          ) : null}
+        </p>
+      ) : null}
+      {result.stale && passed ? (
+        <p className="text-xs font-medium text-amber-800">
+          문제 자료가 변경됨 · 이전 채점 기준의 결과입니다.
+        </p>
       ) : null}
       {result.error ? (
         <p className="text-xs leading-5 font-normal break-words text-rose-600">

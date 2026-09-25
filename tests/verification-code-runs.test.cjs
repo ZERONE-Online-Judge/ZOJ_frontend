@@ -19,6 +19,7 @@ const {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  keepPreviousData,
 } = require('@tanstack/react-query');
 const h = React.createElement;
 
@@ -39,10 +40,15 @@ let uploads,
   savedRuns,
   savedAnalysis,
   analysisReads,
-  analysisRequests;
+  analysisRequests,
+  historyReads,
+  historyGate;
 const mocks = {
   '@/domains/problemManagement/verificationAi': {
-    listVerificationRuns: async () => savedRuns,
+    listVerificationRuns: async (contestId, problemId, token) => {
+      historyReads.push({ contestId, problemId, token });
+      return historyGate ? historyGate.promise : savedRuns;
+    },
     getVerificationAnalysis: async () => {
       analysisReads++;
       return savedAnalysis;
@@ -53,7 +59,7 @@ const mocks = {
     },
   },
   '@/domains/identityAccess/queryIdentity': {
-    tokenQueryIdentity: () => 'test-session',
+    tokenQueryIdentity: (token) => (token === 'token' ? 'test-session' : token),
   },
   '@/domains/problemManagement/api': {
     uploadProblemAsset: (contestId, problemId, token, file, category) => {
@@ -120,13 +126,13 @@ const Section = source(
 ).default;
 let root, client, api, changeProblem;
 
-function Editor() {
+function Editor({ token = 'token' } = {}) {
   const [problemId, setProblemId] = React.useState('problem-a');
   changeProblem = setProblemId;
   api = useVerificationCodeRuns({
     contestId: 'contest',
     problemId,
-    token: 'token',
+    token,
   });
   const assetsQuery = useQuery({
     queryKey: [
@@ -170,9 +176,17 @@ beforeEach(async () => {
   savedAnalysis = { available: false, analysis: null };
   analysisReads = 0;
   analysisRequests = 0;
+  historyReads = [];
+  historyGate = null;
   client = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
+      queries: {
+        retry: false,
+        gcTime: Infinity,
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+        placeholderData: keepPreviousData,
+      },
       mutations: { gcTime: Infinity },
     },
   });
@@ -707,4 +721,154 @@ test('mismatched verdict starts analysis only after the explicit AI button click
   await flush();
   assert.equal(analysisRequests, 1);
   assert.match(saved.textContent, /AI 분석 대기 중/);
+});
+
+async function refreshSaved() {
+  await act(async () =>
+    client.invalidateQueries({ queryKey: ['operator', 'verification-runs'] }),
+  );
+  await flush();
+}
+
+function savedEntry(id, status, extra = {}) {
+  return {
+    asset_id: 'persisted',
+    asset: asset('persisted', 'persisted.py'),
+    expected_status: 'accepted',
+    submission: submission(id, status, {
+      submitted_at: '2026-09-25T03:00:00Z',
+      submitted_by_name: '출제 운영자',
+      ...extra,
+    }),
+    analysis: null,
+    stale: false,
+  };
+}
+
+test('latest accepted verdict and logs survive a fresh browser session without AI configuration', async () => {
+  savedRuns.runs = [
+    savedEntry('last', 'accepted', {
+      judge_message: 'all 30 tests passed',
+      runtime_ms: 19,
+      memory_kb: 1024,
+    }),
+  ];
+  await act(async () => root.unmount());
+  client.clear();
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  root = createRoot(document.getElementById('root'));
+  await act(async () =>
+    root.render(
+      h(
+        QueryClientProvider,
+        { client },
+        h(Editor, { token: 'another-operator' }),
+      ),
+    ),
+  );
+  await flush();
+  const entry = row('persisted.py');
+  assert.match(entry.textContent, /통과.*판정.*맞았습니다/);
+  assert.match(entry.textContent, /서버 저장 · 운영자 공유/);
+  assert.match(entry.textContent, /출제 운영자/);
+  assert.match(entry.textContent, /all 30 tests passed/);
+  assert.equal(entry.querySelector('time').dateTime, '2026-09-25T03:00:00Z');
+  assert.equal(api.results[0].submission.runtime_ms, 19);
+  assert.equal(historyReads.at(-1).token, 'another-operator');
+  assert.equal(submissions.length, 0);
+  assert.equal(analysisRequests, 0);
+});
+
+test('server completion replaces local judging progress and polling failure', async () => {
+  await act(async () =>
+    api.rerun(asset('persisted', 'persisted.py'), 'accepted'),
+  );
+  await resolve(reads[0].gate, 'print(1)');
+  await resolve(
+    submissions[0].gate,
+    submission('last', 'judging', {
+      submitted_at: '2026-09-25T03:00:00Z',
+      progress_current: 1,
+      progress_total: 30,
+    }),
+  );
+  assert.match(row('persisted.py').textContent, /1\/30/);
+  savedRuns = {
+    ...savedRuns,
+    runs: [
+      savedEntry('last', 'accepted', { judge_message: 'saved final verdict' }),
+    ],
+  };
+  await refreshSaved();
+  assert.equal(api.results[0].stage, 'done');
+  assert.match(row('persisted.py').textContent, /통과/);
+  assert.equal(row('persisted.py').querySelector('[role="progressbar"]'), null);
+  await act(async () =>
+    waits[0].gate.reject(new Error('temporary network failure')),
+  );
+  await flush();
+  assert.equal(api.results[0].error, undefined);
+  assert.match(row('persisted.py').textContent, /saved final verdict/);
+  assert.doesNotMatch(
+    row('persisted.py').textContent,
+    /temporary network failure/,
+  );
+  assert.equal(analysisRequests, 0);
+});
+
+test('another operator newer request wins over unfinished local run using actual times', async () => {
+  await act(async () =>
+    api.rerun(asset('persisted', 'persisted.py'), 'accepted'),
+  );
+  await resolve(reads[0].gate, 'print(1)');
+  await resolve(
+    submissions[0].gate,
+    submission('old', 'judging', {
+      submitted_at: '2026-09-25T11:00:00+09:00',
+    }),
+  );
+  // Lexical comparison would incorrectly consider 11:00 newer than 03:00.
+  savedRuns = { ...savedRuns, runs: [savedEntry('new', 'accepted')] };
+  await refreshSaved();
+  assert.equal(api.results.length, 1);
+  assert.equal(api.results[0].submission.submission_id, 'new');
+  await resolve(
+    waits[0].gate,
+    submission('old', 'wrong_answer', {
+      submitted_at: '2026-09-25T11:00:00+09:00',
+    }),
+  );
+  await flush();
+  assert.equal(api.results[0].submission.submission_id, 'new');
+  assert.match(row('persisted.py').textContent, /통과/);
+});
+
+test('reopening within the global fresh-cache period fetches the newest shared result', async () => {
+  savedRuns.runs = [savedEntry('first', 'wrong_answer')];
+  await refreshSaved();
+  await act(async () => root.unmount());
+  savedRuns = { ...savedRuns, runs: [savedEntry('second', 'accepted')] };
+  const count = historyReads.length;
+  root = createRoot(document.getElementById('root'));
+  await act(async () =>
+    root.render(h(QueryClientProvider, { client }, h(Editor))),
+  );
+  await flush();
+  assert.ok(historyReads.length > count);
+  assert.equal(api.results[0].submission.submission_id, 'second');
+  assert.match(row('persisted.py').textContent, /통과/);
+  assert.equal(analysisRequests, 0);
+});
+
+test('changing problems does not display cached results from the previous problem', async () => {
+  savedRuns.runs = [savedEntry('last', 'accepted')];
+  await refreshSaved();
+  historyGate = deferred();
+  await act(async () => changeProblem('problem-b'));
+  assert.equal(api.results.length, 0);
+  assert.equal(row('persisted.py'), null);
+  await resolve(historyGate, { available: false, model: '', runs: [] });
+  historyGate = null;
 });

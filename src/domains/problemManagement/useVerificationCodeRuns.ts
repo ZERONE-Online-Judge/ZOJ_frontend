@@ -39,6 +39,7 @@ export type VerificationRunResult = {
   submission?: Submission;
   analysis?: VerificationAnalysis | null;
   stale?: boolean;
+  persisted?: boolean;
 };
 
 export const VERIFICATION_CODE_KINDS: {
@@ -122,6 +123,12 @@ export default function useVerificationCodeRuns({
     queryKey: historyKey,
     queryFn: () => listVerificationRuns(contestId, problemId!, token),
     enabled: Boolean(problemId && token),
+    // This is shared server history, even when the previous screen's cache is fresh.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: 'always',
+    placeholderData: () => undefined,
     refetchInterval: (query) =>
       query.state.data?.runs.some(
         (run) =>
@@ -153,6 +160,10 @@ export default function useVerificationCodeRuns({
 
   async function processRun(run: VerificationRunResult, file?: File) {
     const isActive = () => mounted.current && activeRunIds.current.has(run.id);
+    const refreshHistory = () =>
+      queryClient.invalidateQueries({
+        queryKey: ['operator', 'verification-runs', contestId, run.problemId],
+      });
     try {
       const language = languageFromFilename(run.filename);
       if (!language) {
@@ -204,18 +215,12 @@ export default function useVerificationCodeRuns({
           verification_asset_id: verificationAsset?.asset_id,
         },
       );
+      // The server owns the job from this point, including after this screen closes.
+      void refreshHistory();
       while (isActive()) {
         const pending = isSubmissionPending(submission.status);
         updateRun(run.id, { submission, stage: pending ? 'judging' : 'done' });
         if (!pending) {
-          void queryClient.invalidateQueries({
-            queryKey: [
-              'operator',
-              'verification-runs',
-              contestId,
-              run.problemId,
-            ],
-          });
           break;
         }
         submission = await waitOperatorTestSubmissionStatus(
@@ -237,6 +242,8 @@ export default function useVerificationCodeRuns({
       });
     } finally {
       activeRunIds.current.delete(run.id);
+      // Also recover a saved result when the browser's status request failed.
+      void refreshHistory();
     }
   }
 
@@ -323,19 +330,41 @@ export default function useVerificationCodeRuns({
   const saved = history.data?.runs ?? [];
   const local = Object.values(runs).filter((run) => {
     if (run.problemId !== problemId) return false;
-    if (run.stage !== 'done' || !run.submission) return true;
+    if (!run.submission) return true;
     const latest = saved.find((item) => item.asset_id === run.asset?.asset_id);
+    if (!latest) return true;
+    if (latest.submission.submission_id === run.submission.submission_id) {
+      // A completed server verdict supersedes stale progress or a polling error.
+      // Keep the stable local row key, but merge its data below.
+      return true;
+    }
+    const localTime = Date.parse(run.submission.submitted_at);
+    const serverTime = Date.parse(latest.submission.submitted_at);
     return (
-      !latest ||
-      !run.submission.submitted_at ||
-      latest.submission.submitted_at <= run.submission.submitted_at
+      Number.isFinite(localTime) &&
+      Number.isFinite(serverTime) &&
+      localTime > serverTime
     );
   });
   const merged: VerificationRunResult[] = local.map((run) => {
     const persistent = saved.find(
       (item) => item.submission.submission_id === run.submission?.submission_id,
     );
-    return { ...run, analysis: persistent?.analysis, stale: persistent?.stale };
+    const serverComplete =
+      persistent && !isSubmissionPending(persistent.submission.status);
+    return {
+      ...run,
+      ...(serverComplete
+        ? {
+            submission: persistent.submission,
+            stage: 'done' as const,
+            error: undefined,
+          }
+        : {}),
+      analysis: persistent?.analysis,
+      stale: persistent?.stale,
+      persisted: Boolean(persistent),
+    };
   });
   for (const savedRun of saved) {
     if (local.some((run) => run.asset?.asset_id === savedRun.asset_id))
@@ -352,6 +381,7 @@ export default function useVerificationCodeRuns({
       submission: savedRun.submission,
       analysis: savedRun.analysis,
       stale: savedRun.stale,
+      persisted: true,
     });
   }
   return {
