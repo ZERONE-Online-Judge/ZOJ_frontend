@@ -4,6 +4,29 @@ import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { VerificationCodeKind } from './useVerificationCodeRuns';
 
 export type VerificationReport = {
+  report_kind?: 'investigation';
+  conclusion?:
+    | 'test_gap'
+    | 'expectation_error'
+    | 'solution_error'
+    | 'judge_issue'
+    | 'infrastructure_issue'
+    | 'inconclusive';
+  sections?: { title: string; body: string; evidence_refs: string[] }[];
+  recommendations?: {
+    target:
+      | 'testcases'
+      | 'expectation'
+      | 'solution'
+      | 'judge'
+      | 'infrastructure'
+      | 'investigation';
+    title: string;
+    action: string;
+    verification: string;
+    artifact_id: string;
+    evidence_refs: string[];
+  }[];
   summary: string;
   verdict_assessment: string;
   causes: {
@@ -32,6 +55,26 @@ export type VerificationAnalysis = {
   calls?: number;
   tool_count?: number;
   can_retry?: boolean;
+  investigation_focus?: string;
+  probe_checks?: {
+    check_id: string;
+    status: 'cross_checked' | 'conflict' | 'incomplete';
+    validator_id: string;
+    reference_id: string;
+    experiment_id: string;
+    note: string;
+    input: string;
+    expected_output: string;
+    details?: {
+      validator?: { status?: string; exit_code?: number | null };
+      reference?: {
+        status?: string;
+        exit_code?: number | null;
+        output?: string;
+      };
+      expected_matches_reference?: boolean;
+    } | null;
+  }[];
   stop_reason?: { code: string; message: string } | null;
   plan?: { title: string; status: 'pending' | 'in_progress' | 'done' }[];
   findings?: {
@@ -70,6 +113,7 @@ export type VerificationAnalysis = {
     source: string;
     language: string;
     sha256: string;
+    purpose?: 'repair' | 'comparison';
     verification?: {
       status: 'passed' | 'failed' | 'inconclusive' | 'pending' | 'unverified';
       message: string;

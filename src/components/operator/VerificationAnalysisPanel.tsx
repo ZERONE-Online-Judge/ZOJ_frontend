@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import VerificationAgentEvidence from '@/components/operator/VerificationAgentEvidence';
+import VerificationMarkdown from '@/components/operator/VerificationMarkdown';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
@@ -132,7 +133,7 @@ export default function VerificationAnalysisPanel({
         >
           <p className="text-xs leading-5 text-slate-600">
             {analysis?.engine_version === 2
-              ? '필요한 자료를 찾아 검토하고 원본·수정 후보를 실제 채점기로 검증합니다. 공식 판정은 바꾸지 않으며, 실행 기록과 AI 의견을 함께 확인하세요.'
+              ? '필요한 자료와 실제 실행을 바탕으로 판정 차이·테스트 누락·풀이와 채점 기준을 조사합니다. 공식 판정은 바꾸지 않으며, 실행 기록과 AI 의견을 함께 확인하세요.'
               : '실제 채점 당시 자료를 검토한 AI 보조 의견입니다. 공식 판정은 바꾸지 않으며, 제안한 수정과 반례는 다시 채점해 확인하세요.'}
           </p>
           {!canRequest ? (
@@ -247,6 +248,14 @@ export default function VerificationAnalysisPanel({
               )}
             </p>
           ) : null}
+          {analysis?.can_retry &&
+          analysis.report?.report_kind !== 'investigation' ? (
+            <p className="rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-900">
+              이전 방식으로 작성된 보고서입니다. 반례의 유효성과 조치 방향은 새
+              검증에서 다시 확인할 수 있습니다. 위의 ‘개선된 검증으로 다시
+              분석’을 눌러 시작하세요.
+            </p>
+          ) : null}
           {analysis?.report ? <ReportBody report={analysis.report} /> : null}
           {analysis ? (
             <p className="text-xs text-slate-500">
@@ -268,11 +277,57 @@ export function ReportBody({ report }: { report: VerificationReport }) {
     <div className="grid min-w-0 gap-5 text-sm leading-7 text-slate-700">
       <section className="grid gap-2">
         <h4 className="font-semibold text-slate-950">분석 요약</h4>
-        <p className="break-words whitespace-pre-wrap">{report.summary}</p>
-        <p className="break-words whitespace-pre-wrap">
-          {report.verdict_assessment}
-        </p>
+        <VerificationMarkdown>{report.summary}</VerificationMarkdown>
+        <VerificationMarkdown>{report.verdict_assessment}</VerificationMarkdown>
       </section>
+      {report.sections?.map((section, index) => (
+        <section
+          key={index}
+          className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+        >
+          <h4 className="font-semibold text-slate-950">{section.title}</h4>
+          <VerificationMarkdown>{section.body}</VerificationMarkdown>
+          {section.evidence_refs.length ? (
+            <p className="text-xs break-all text-slate-500">
+              실행·자료 근거: {section.evidence_refs.join(' · ')}
+            </p>
+          ) : null}
+        </section>
+      ))}
+      {report.recommendations?.length ? (
+        <section className="grid gap-3">
+          <h4 className="font-semibold text-slate-950">권장 조치</h4>
+          {report.recommendations.map((item, index) => (
+            <article
+              key={index}
+              className="grid min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-3"
+            >
+              <p className="text-xs font-medium text-indigo-700">
+                {
+                  {
+                    testcases: '테스트 보강',
+                    expectation: '기대 판정 재검토',
+                    solution: '풀이 수정',
+                    judge: '채점 기준 검토',
+                    infrastructure: '실행 환경 점검',
+                    investigation: '추가 조사',
+                  }[item.target]
+                }
+              </p>
+              <h5 className="font-semibold text-slate-900">{item.title}</h5>
+              <VerificationMarkdown>{item.action}</VerificationMarkdown>
+              {item.verification ? (
+                <VerificationMarkdown>{item.verification}</VerificationMarkdown>
+              ) : null}
+              {item.artifact_id ? (
+                <p className="text-xs text-slate-500">
+                  관련 후보: {item.artifact_id}
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
       {report.causes.length ? (
         <section className="grid gap-3">
           <h4 className="font-semibold text-slate-950">원인과 근거</h4>
@@ -293,16 +348,10 @@ export function ReportBody({ report }: { report: VerificationReport }) {
                   }
                 </span>
               </h5>
-              <p className="break-words whitespace-pre-wrap">
-                {cause.explanation}
-              </p>
-              <p className="break-words whitespace-pre-wrap text-indigo-800">
-                근거: {cause.evidence}
-              </p>
+              <VerificationMarkdown>{cause.explanation}</VerificationMarkdown>
+              <VerificationMarkdown>{`근거: ${cause.evidence}`}</VerificationMarkdown>
               {cause.code_reference ? (
-                <p className="text-xs break-words whitespace-pre-wrap">
-                  관련 코드: {cause.code_reference}
-                </p>
+                <VerificationMarkdown>{`관련 코드: ${cause.code_reference}`}</VerificationMarkdown>
               ) : null}
             </article>
           ))}
@@ -310,7 +359,9 @@ export function ReportBody({ report }: { report: VerificationReport }) {
       ) : null}
       {report.fixes.length ? (
         <section className="grid gap-3">
-          <h4 className="font-semibold text-slate-950">수정 방법과 재검증</h4>
+          <h4 className="font-semibold text-slate-950">
+            이전 분석의 개선 제안
+          </h4>
           {report.fixes.map((fix, index) => (
             <article
               key={index}
@@ -319,13 +370,11 @@ export function ReportBody({ report }: { report: VerificationReport }) {
               <h5 className="font-semibold text-slate-900">
                 {index + 1}. {fix.title}
               </h5>
-              <p className="break-words whitespace-pre-wrap">{fix.change}</p>
+              <VerificationMarkdown>{fix.change}</VerificationMarkdown>
               {fix.code_example ? (
                 <Code label="수정 예시" value={fix.code_example} />
               ) : null}
-              <p className="break-words whitespace-pre-wrap">
-                확인 방법: {fix.verification}
-              </p>
+              <VerificationMarkdown>{`확인 방법: ${fix.verification}`}</VerificationMarkdown>
             </article>
           ))}
         </section>
@@ -336,8 +385,8 @@ export function ReportBody({ report }: { report: VerificationReport }) {
             추가할 테스트케이스 제안
           </h4>
           <p className="text-xs text-slate-500">
-            AI가 제안한 미실행 예시입니다. 입력 조건과 기대 출력을 확인한 뒤
-            등록하세요.
+            제안 입력입니다. 실제 실행 여부는 채점 기록과 반례 교차 검증을
+            확인하세요. 입력 조건과 기대 출력을 확인한 뒤 등록하세요.
           </p>
           {report.suggested_tests.map((test, index) => (
             <article
@@ -348,9 +397,7 @@ export function ReportBody({ report }: { report: VerificationReport }) {
                 <Code label="제안 입력" value={test.input} />
                 <Code label="제안 기대 출력" value={test.expected_output} />
               </div>
-              <p className="break-words whitespace-pre-wrap">
-                {test.explanation}
-              </p>
+              <VerificationMarkdown>{test.explanation}</VerificationMarkdown>
             </article>
           ))}
         </section>
@@ -363,7 +410,7 @@ export function ReportBody({ report }: { report: VerificationReport }) {
           <ul className="list-disc space-y-1 pl-5">
             {report.limitations.map((item, index) => (
               <li key={index} className="break-words whitespace-pre-wrap">
-                {item}
+                <VerificationMarkdown>{item}</VerificationMarkdown>
               </li>
             ))}
           </ul>

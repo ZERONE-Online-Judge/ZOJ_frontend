@@ -210,7 +210,7 @@ export default function VerificationTaskPanel({
         </div>
         <p className="text-xs leading-5 text-slate-500">
           요청당 예상 API 비용 한도 $
-          {list.data?.limits.max_cost_usd.toFixed(2) ?? '0.20'}. 같은
+          {list.data?.limits.max_cost_usd.toFixed(2) ?? '1.00'}. 같은
           자료·요청은 저장 결과를 재사용합니다. 이어서 요청하면 별도 예산으로
           작업합니다. testlib.h·checker·validator는 원본 그대로 검증합니다.
         </p>

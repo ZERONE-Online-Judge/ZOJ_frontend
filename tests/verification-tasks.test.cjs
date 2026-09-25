@@ -55,6 +55,7 @@ function source(relative) {
   loaded.paths = Module._nodeModulePaths(path.dirname(file));
   const native = loaded.require.bind(loaded);
   loaded.require = (id) => {
+    if (id.endsWith('.css')) return {};
     if (mocks[id]) return mocks[id];
     if (id.startsWith('@/') || id.startsWith('./')) {
       const absolute = id.startsWith('@/')

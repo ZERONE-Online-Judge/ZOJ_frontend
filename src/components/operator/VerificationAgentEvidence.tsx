@@ -1,3 +1,4 @@
+import VerificationMarkdown from '@/components/operator/VerificationMarkdown';
 import type { VerificationAnalysis } from '@/domains/problemManagement/verificationAi';
 
 const verdicts: Record<string, string> = {
@@ -22,6 +23,7 @@ const tools: Record<string, string> = {
   edit_code: '수정안 작성·실제 채점',
   run_code: '실제 채점',
   run_probe: '제안 반례 실행',
+  check_probe: '입력·기대 출력 교차 검증',
   workspace_copy: '작업 파일 가져오기',
   workspace_write: '작업 파일 작성',
   workspace_patch: '작업 파일 수정',
@@ -53,6 +55,11 @@ export default function VerificationAgentEvidence({
   analysis: VerificationAnalysis;
 }) {
   if (analysis.engine_version !== 2) return null;
+  const name = (id: string) =>
+    analysis.artifacts?.find((a) => a.artifact_id === id)?.purpose ===
+    'comparison'
+      ? `대조 코드 ${id.replace('candidate-', '')}`
+      : codeName(id);
   return (
     <div className="grid min-w-0 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-white p-3 text-xs">
@@ -141,14 +148,55 @@ export default function VerificationAgentEvidence({
                 </span>
                 {finding.title}
               </summary>
-              <p className="mt-2 leading-6 break-words whitespace-pre-wrap text-slate-700">
-                {finding.detail}
-              </p>
+              <VerificationMarkdown>{finding.detail}</VerificationMarkdown>
               {finding.evidence_refs.length ? (
                 <p className="mt-2 text-xs break-all text-slate-500">
                   근거: {finding.evidence_refs.join(' · ')}
                 </p>
               ) : null}
+            </details>
+          ))}
+        </section>
+      ) : null}
+      {analysis.probe_checks?.length ? (
+        <section className="grid min-w-0 gap-2">
+          <h4 className="text-sm font-semibold text-slate-950">
+            반례 교차 검증
+          </h4>
+          {analysis.probe_checks.map((check, index) => (
+            <details
+              key={check.check_id}
+              className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 text-xs"
+            >
+              <summary className="cursor-pointer font-semibold">
+                반례 {index + 1} ·{' '}
+                {
+                  {
+                    cross_checked: '입력·기대 출력 교차 확인',
+                    conflict: '불일치 발견',
+                    incomplete: '추가 확인 필요',
+                  }[check.status]
+                }
+              </summary>
+              <p className="mt-2 break-all">
+                validator: {check.validator_id || '미확보'} · 참조 풀이:{' '}
+                {check.reference_id || '미확보'}
+              </p>
+              <p className="mt-2 leading-6">{check.note}</p>
+              <pre
+                tabIndex={0}
+                className="mt-2 max-h-60 overflow-auto rounded bg-slate-900 p-3 text-slate-100"
+              >{`입력\n${check.input}\n제안 기대 출력\n${check.expected_output}`}</pre>
+              {check.details?.reference?.output != null ? (
+                <pre
+                  tabIndex={0}
+                  className="mt-2 max-h-40 overflow-auto rounded bg-slate-100 p-2"
+                >{`참조 풀이 실제 출력\n${check.details.reference.output}`}</pre>
+              ) : null}
+              <p className="mt-2 break-all text-slate-500">
+                근거: probe-check:{check.check_id} · experiment:
+                {check.experiment_id}
+              </p>
             </details>
           ))}
         </section>
@@ -235,7 +283,7 @@ export default function VerificationAgentEvidence({
               >
                 <summary className="cursor-pointer leading-6">
                   <span className="font-semibold text-slate-950">
-                    {codeName(run.artifact_id)}
+                    {name(run.artifact_id)}
                   </span>
                   {' · '}
                   {run.scope === 'probe'
@@ -274,7 +322,8 @@ export default function VerificationAgentEvidence({
                     <div className="grid min-w-0 gap-2 rounded bg-amber-50 p-2 text-amber-950">
                       <p>
                         기대 출력은 AI가 제안한 가설입니다. 공식 테스트에
-                        등록되지 않았으며, 입력 validator는 실행하지 않았습니다.
+                        등록되지 않았습니다. 별도 validator·참조 풀이 실행
+                        여부는 반례 교차 검증 기록에서 확인하세요.
                       </p>
                       <pre className="max-h-40 overflow-auto">{`입력\n${run.probe.input}\n제안 기대 출력\n${run.probe.expected_output}`}</pre>
                     </div>
@@ -301,7 +350,7 @@ export default function VerificationAgentEvidence({
           className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 text-xs"
         >
           <summary className="cursor-pointer font-semibold text-slate-900">
-            {codeName(item.artifact_id)} 코드 · {item.language}
+            {name(item.artifact_id)} 코드 · {item.language}
             <span
               className={
                 item.verification?.status === 'passed'
@@ -331,18 +380,23 @@ export default function VerificationAgentEvidence({
             </p>
           ) : null}
           <p className="my-2 text-slate-600">
-            별도로 보관한 수정 후보입니다. 원본 검증 코드는 유지됩니다. 위 실행
-            기록에서 판정과 테스트 범위를 확인하세요.
+            {item.purpose === 'comparison'
+              ? '원인을 비교하기 위한 실험용 코드입니다.'
+              : '별도로 보관한 수정 후보입니다.'}{' '}
+            원본 검증 코드는 유지됩니다. 위 실행 기록에서 판정과 테스트 범위를
+            확인하세요.
           </p>
           <a
             className="mb-2 inline-block font-semibold text-indigo-700 underline"
             download={`${item.artifact_id}.${({ python313: 'py', cpp17: 'cpp', c99: 'c', java8: 'java' } as Record<string, string>)[item.language] || 'txt'}`}
             href={`data:text/plain;charset=utf-8,${encodeURIComponent(item.source)}`}
           >
-            수정 후보 다운로드
+            {item.purpose === 'comparison'
+              ? '대조 코드 다운로드'
+              : '수정 후보 다운로드'}
           </a>
           <pre
-            aria-label={`${codeName(item.artifact_id)} 코드`}
+            aria-label={`${name(item.artifact_id)} 코드`}
             tabIndex={0}
             className="max-h-80 min-w-0 overflow-auto rounded bg-slate-900 p-3 leading-6 text-slate-100"
           >

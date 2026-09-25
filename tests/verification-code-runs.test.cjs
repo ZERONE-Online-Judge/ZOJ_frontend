@@ -97,6 +97,7 @@ function source(relative) {
   loaded.paths = Module._nodeModulePaths(path.dirname(filename));
   const nativeRequire = loaded.require.bind(loaded);
   loaded.require = (id) => {
+    if (id.endsWith('.css')) return {};
     if (mocks[id]) return mocks[id];
     if (!id.startsWith('@/')) return nativeRequire(id);
     return source(
@@ -590,10 +591,10 @@ test('server verification history restores shared report and expanding never cal
   );
   await act(async () => expand.click());
   await flush();
-  assert.match(saved.textContent, /수정 방법과 재검증/);
+  assert.match(saved.textContent, /이전 분석의 개선 제안/);
   assert.match(saved.textContent, /일부 자료만 검토/);
   assert.match(saved.textContent, /이전 채점 기준/);
-  assert.match(saved.textContent, /<img src=x onerror=alert\(1\)>/);
+  assert.doesNotMatch(saved.innerHTML, /onerror=/);
   assert.equal(saved.querySelector('img'), null);
   assert.equal(analysisReads, 1);
   assert.equal(analysisRequests, 0);
@@ -1000,4 +1001,68 @@ test('candidate badges use server execution assessments and never infer success 
   assert.match(summaries[5], /수정안 6.*미검증/);
   assert.match(document.body.textContent, /다시 실행하지 못한 제안 반례 2개/);
   assert.equal(analysisRequests, 0);
+});
+
+test('investigation report recommends test coverage without a repair template and displays checked probes', () => {
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const { ReportBody } = source(
+    'components/operator/VerificationAnalysisPanel.tsx',
+  );
+  const Evidence = source(
+    'components/operator/VerificationAgentEvidence.tsx',
+  ).default;
+  const report = {
+    summary: '등록 테스트 누락 조사',
+    verdict_assessment: '원본 전체 통과·교차 검증 반례 실패',
+    report_kind: 'investigation',
+    conclusion: 'test_gap',
+    sections: [
+      {
+        title: '동점 조건 검토',
+        body: '정확한 비교식 $a/b=c/d$를 확인했습니다.',
+        evidence_refs: ['trial:1'],
+      },
+    ],
+    recommendations: [
+      {
+        target: 'testcases',
+        title: '동점 입력 보강',
+        action: '검증된 입력을 등록하세요.',
+        verification: '원본 WA와 참조 풀이 대조',
+        artifact_id: '',
+        evidence_refs: ['probe-check:1'],
+      },
+    ],
+    causes: [],
+    fixes: [],
+    suggested_tests: [],
+    limitations: [],
+  };
+  const html = renderToStaticMarkup(h(ReportBody, { report }));
+  const doc = new JSDOM(html).window.document;
+  assert.ok(doc.querySelector('.katex'));
+  assert.match(doc.body.textContent, /테스트 보강/);
+  assert.doesNotMatch(doc.body.textContent, /수정 방법|수정 예시/);
+  const evidence = renderToStaticMarkup(
+    h(Evidence, {
+      analysis: {
+        engine_version: 2,
+        probe_checks: [
+          {
+            check_id: '1',
+            status: 'cross_checked',
+            validator_id: 'v',
+            reference_id: 'r',
+            experiment_id: 'e',
+            note: '원본 기준 교차 확인',
+            input: '2 3\n',
+            expected_output: '5\n',
+            details: { reference: { output: '5\n' } },
+          },
+        ],
+      },
+    }),
+  );
+  assert.match(evidence, /입력·기대 출력 교차 확인/);
+  assert.match(evidence, /참조 풀이 실제 출력/);
 });
