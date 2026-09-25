@@ -40,6 +40,7 @@ export type VerificationRunResult = {
   analysis?: VerificationAnalysis | null;
   stale?: boolean;
   persisted?: boolean;
+  snapshotAvailable?: boolean;
 };
 
 export const VERIFICATION_CODE_KINDS: {
@@ -364,6 +365,7 @@ export default function useVerificationCodeRuns({
       analysis: persistent?.analysis,
       stale: persistent?.stale,
       persisted: Boolean(persistent),
+      snapshotAvailable: persistent?.snapshot_available,
     };
   });
   for (const savedRun of saved) {
@@ -382,6 +384,7 @@ export default function useVerificationCodeRuns({
       analysis: savedRun.analysis,
       stale: savedRun.stale,
       persisted: true,
+      snapshotAvailable: savedRun.snapshot_available,
     });
   }
   return {

@@ -872,3 +872,28 @@ test('changing problems does not display cached results from the previous proble
   await resolve(historyGate, { available: false, model: '', runs: [] });
   historyGate = null;
 });
+
+test('restored legacy verdict remains visible and explains why AI requires a fresh judgment', async () => {
+  savedRuns = {
+    ...savedRuns,
+    available: true,
+    runs: [
+      {
+        ...savedEntry('legacy', 'wrong_answer', {
+          judge_message: 'old saved output',
+        }),
+        snapshot_available: false,
+      },
+    ],
+  };
+  await refreshSaved();
+  const entry = row('persisted.py');
+  assert.match(entry.textContent, /확인 필요/);
+  assert.match(entry.textContent, /old saved output/);
+  assert.match(
+    entry.textContent,
+    /AI 분석은 다시 채점한 뒤 요청할 수 있습니다/,
+  );
+  assert.equal(button(entry, 'AI 분석하기'), undefined);
+  assert.equal(analysisRequests, 0);
+});

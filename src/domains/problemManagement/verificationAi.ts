@@ -135,6 +135,7 @@ export type SavedVerificationRuns = {
     asset_id: string;
     asset: ProblemAsset;
     expected_status: VerificationCodeKind;
+    snapshot_available?: boolean;
     submission: Submission;
     stale: boolean;
     analysis: VerificationAnalysis | null;

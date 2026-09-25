@@ -283,15 +283,22 @@ function VerificationCodeRow({
       {result?.submission &&
       !isSubmissionPending(result.submission.status) &&
       result.submission.status !== expectedStatus ? (
-        <VerificationAnalysisPanel
-          contestId={contestId}
-          problemId={result.problemId}
-          submissionId={result.submission.submission_id}
-          token={token}
-          available={aiAvailable}
-          initial={result.analysis}
-          stale={result.stale}
-        />
+        result.snapshotAvailable === false ? (
+          <p className="text-xs leading-5 text-slate-500 sm:ml-12">
+            채점 당시 자료가 저장되지 않은 기록입니다. AI 분석은 다시 채점한 뒤
+            요청할 수 있습니다.
+          </p>
+        ) : (
+          <VerificationAnalysisPanel
+            contestId={contestId}
+            problemId={result.problemId}
+            submissionId={result.submission.submission_id}
+            token={token}
+            available={aiAvailable}
+            initial={result.analysis}
+            stale={result.stale}
+          />
+        )
       ) : null}
     </div>
   );
