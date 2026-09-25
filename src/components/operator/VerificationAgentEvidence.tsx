@@ -19,7 +19,7 @@ const tools: Record<string, string> = {
   search_file: '파일 검색',
   read_image: '이미지 확인',
   inspect_judge: '채점 환경 확인',
-  edit_code: '수정안 작성',
+  edit_code: '수정안 작성·실제 채점',
   run_code: '실제 채점',
   run_probe: '제안 반례 실행',
   workspace_copy: '작업 파일 가져오기',
@@ -29,7 +29,7 @@ const tools: Record<string, string> = {
   workspace_read: '작업 파일 읽기',
   workspace_list: '작업 파일 찾기',
   workspace_exec: '플레이그라운드 실행',
-  workspace_candidate: '최종 후보 저장',
+  workspace_candidate: '최종 후보 저장·실제 채점',
   escalate: '상위 모델 검토',
   finish_report: '보고서 작성',
   update_plan: '검증 계획 갱신',
@@ -302,7 +302,34 @@ export default function VerificationAgentEvidence({
         >
           <summary className="cursor-pointer font-semibold text-slate-900">
             {codeName(item.artifact_id)} 코드 · {item.language}
+            <span
+              className={
+                item.verification?.status === 'passed'
+                  ? 'ml-2 text-emerald-700'
+                  : 'ml-2 text-amber-800'
+              }
+            >
+              {item.verification
+                ? {
+                    passed: '전체 등록 테스트 통과',
+                    failed: '실행 검증 실패',
+                    inconclusive: '추가 확인 필요',
+                    pending: '실행 검증 중',
+                    unverified: '미검증',
+                  }[item.verification.status]
+                : '미검증'}
+            </span>
           </summary>
+          <p className="mt-2 rounded bg-slate-50 p-2 leading-5 text-slate-700">
+            {item.verification?.message ||
+              '전체 등록 테스트 실행 근거가 확인되지 않은 코드입니다.'}
+          </p>
+          {item.verification?.unreplayed_probes ? (
+            <p className="mt-2 text-amber-800">
+              이 후보로 다시 실행하지 못한 제안 반례{' '}
+              {item.verification.unreplayed_probes}개
+            </p>
+          ) : null}
           <p className="my-2 text-slate-600">
             별도로 보관한 수정 후보입니다. 원본 검증 코드는 유지됩니다. 위 실행
             기록에서 판정과 테스트 범위를 확인하세요.

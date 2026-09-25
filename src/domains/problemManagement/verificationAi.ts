@@ -70,6 +70,16 @@ export type VerificationAnalysis = {
     source: string;
     language: string;
     sha256: string;
+    verification?: {
+      status: 'passed' | 'failed' | 'inconclusive' | 'pending' | 'unverified';
+      message: string;
+      source_sha256: string;
+      registered_passed: boolean;
+      testcase_count: number;
+      execution_ids: string[];
+      unreplayed_probes: number;
+      probe_conflicts: number;
+    };
   }[];
   executions?: {
     submission_id: string;

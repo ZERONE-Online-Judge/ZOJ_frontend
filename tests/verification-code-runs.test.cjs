@@ -947,3 +947,57 @@ test('partial cached analysis explains separate token limits and upgrades only o
   await flush();
   assert.equal(analysisRequests, 1);
 });
+
+test('candidate badges use server execution assessments and never infer success from model text', async () => {
+  const Evidence = source(
+    'components/operator/VerificationAgentEvidence.tsx',
+  ).default;
+  const statuses = [
+    'passed',
+    'failed',
+    'inconclusive',
+    'pending',
+    'unverified',
+  ];
+  await act(async () =>
+    root.render(
+      h(Evidence, {
+        analysis: {
+          engine_version: 2,
+          artifacts: statuses
+            .map((status, i) => ({
+              artifact_id: `candidate-${i + 1}`,
+              language: 'python313',
+              source: 'print(5)',
+              sha256: 'same-source',
+              verification: {
+                status,
+                message: `server evidence ${status}`,
+                unreplayed_probes: status === 'inconclusive' ? 2 : 0,
+              },
+            }))
+            .concat([
+              {
+                artifact_id: 'candidate-6',
+                language: 'python313',
+                source: 'print(9)',
+                sha256: 'other-source',
+              },
+            ]),
+          report: { summary: '모든 코드는 완벽하게 검증되었습니다' },
+        },
+      }),
+    ),
+  );
+  const summaries = [...document.querySelectorAll('summary')].map(
+    (n) => n.textContent,
+  );
+  assert.match(summaries[0], /수정안 1.*전체 등록 테스트 통과/);
+  assert.match(summaries[1], /수정안 2.*실행 검증 실패/);
+  assert.match(summaries[2], /수정안 3.*추가 확인 필요/);
+  assert.match(summaries[3], /수정안 4.*실행 검증 중/);
+  assert.match(summaries[4], /수정안 5.*미검증/);
+  assert.match(summaries[5], /수정안 6.*미검증/);
+  assert.match(document.body.textContent, /다시 실행하지 못한 제안 반례 2개/);
+  assert.equal(analysisRequests, 0);
+});
