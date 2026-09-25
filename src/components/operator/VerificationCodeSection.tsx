@@ -50,8 +50,8 @@ export default function VerificationCodeSection({
           </h3>
           <p className="text-sm leading-6 font-normal text-slate-500">
             파일을 추가하면 자동으로 채점합니다. 각 코드가 기대한 결과로
-            판정되는지 확인하세요. 판정과 AI 분석은 서버에 저장되어 다른
-            운영자도 볼 수 있습니다.
+            판정되는지 확인하세요. AI 검증은 ‘AI 분석하기’를 눌렀을 때만
+            시작하며, 판정과 저장된 분석은 다른 운영자도 볼 수 있습니다.
           </p>
         </div>
         {runningCount ? (

@@ -24,8 +24,8 @@ const statuses: Record<string, string> = {
 };
 const examples = [
   '현재 테스트에서 놓치고 있는 경계값을 찾고, 기준 풀이와 대조 실험해 줘.',
-  'checker가 잘못된 출력을 통과시키는지 검토하고 반례로 확인해 줘.',
-  'validator가 문제의 입력 조건을 정확히 검사하는지 실행해서 확인해 줘.',
+  '등록된 checker를 수정하지 말고 잘못된 출력을 통과시키는지 반례로 확인해 줘.',
+  '등록된 validator를 수정하지 말고 입력 조건을 정확히 검사하는지 실행해서 확인해 줘.',
 ];
 const button =
   'rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50';
@@ -72,7 +72,8 @@ export default function VerificationTaskPanel({
   });
   const task = detail.data;
   const analysis = task?.analysis;
-  const busy = list.data?.tasks.some((t) => active(t.analysis.status));
+  const runningCount =
+    list.data?.tasks.filter((t) => active(t.analysis.status)).length ?? 0;
   const writable = Boolean(list.data?.available && list.data.can_run);
   const save = (value: VerificationTask) => {
     setSelectedId(value.task_id);
@@ -128,7 +129,7 @@ export default function VerificationTaskPanel({
         className="grid gap-3"
         onSubmit={(e) => {
           e.preventDefault();
-          if (writable && !busy && goal.trim().length >= 5) create.mutate();
+          if (writable && goal.trim().length >= 5) create.mutate();
         }}
       >
         {continuing ? (
@@ -197,9 +198,7 @@ export default function VerificationTaskPanel({
           )}
           <button
             type="submit"
-            disabled={
-              !writable || busy || create.isPending || goal.trim().length < 5
-            }
+            disabled={!writable || create.isPending || goal.trim().length < 5}
             className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
           >
             {create.isPending
@@ -213,7 +212,7 @@ export default function VerificationTaskPanel({
           요청당 예상 API 비용 한도 $
           {list.data?.limits.max_cost_usd.toFixed(2) ?? '0.20'}. 같은
           자료·요청은 저장 결과를 재사용합니다. 이어서 요청하면 별도 예산으로
-          작업합니다. 문제 원본과 공식 판정은 자동 변경하지 않습니다.
+          작업합니다. testlib.h·checker·validator는 원본 그대로 검증합니다.
         </p>
         {list.data && !list.data.available ? (
           <p className="text-sm text-amber-800">
@@ -226,10 +225,11 @@ export default function VerificationTaskPanel({
             작업 요청·중지에는 문제 테스트 권한이 필요합니다.
           </p>
         ) : null}
-        {busy ? (
+        {runningCount > 0 ? (
           <p role="status" className="text-xs text-indigo-700">
-            이 문제의 작업이 진행 중입니다. 완료하거나 중지한 뒤 다음 요청을
-            맡길 수 있습니다.
+            이 문제에서 {runningCount}개 작업이 진행 중입니다. 새 작업을 함께
+            요청할 수 있으며, 서버에서 최대 {list.data?.limits.concurrency ?? 3}
+            개를 동시에 처리합니다.
           </p>
         ) : null}
       </form>

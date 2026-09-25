@@ -48,7 +48,8 @@ export default function VerificationAnalysisPanel({
     refetchInterval: (state) => {
       const data = state.state.data;
       return data?.available &&
-        (!data.analysis || ['queued', 'running'].includes(data.analysis.status))
+        data.analysis &&
+        ['queued', 'running'].includes(data.analysis.status)
         ? 3000
         : false;
     },
@@ -89,7 +90,7 @@ export default function VerificationAnalysisPanel({
           ? 'AI 분석 중'
           : status === 'failed'
             ? 'AI 분석 실패'
-            : 'AI 판정 분석';
+            : 'AI 분석하기';
   return (
     <div className="grid min-w-0 gap-3 sm:ml-12">
       <div className="flex flex-wrap items-center gap-2">
@@ -97,7 +98,13 @@ export default function VerificationAnalysisPanel({
           type="button"
           aria-expanded={open}
           className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-800 hover:bg-indigo-100"
-          onClick={() => setOpen(!open)}
+          disabled={request.isPending}
+          onClick={() => {
+            if (!analysis || status === 'awaiting_request') {
+              setOpen(true);
+              if (canRequest) request.mutate();
+            } else setOpen(!open);
+          }}
         >
           {label} <span aria-hidden="true">{open ? '▴' : '▾'}</span>
         </button>
@@ -112,6 +119,12 @@ export default function VerificationAnalysisPanel({
           </span>
         ) : null}
       </div>
+      {!analysis || status === 'awaiting_request' ? (
+        <p className="text-xs text-slate-600">
+          버튼을 눌러야 AI 검증을 시작합니다. 판정 결과만으로 자동 분석하지
+          않습니다.
+        </p>
+      ) : null}
       {open ? (
         <section
           aria-label="AI 판정 분석"
@@ -125,8 +138,8 @@ export default function VerificationAnalysisPanel({
           {!canRequest ? (
             <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
               AI 연결이 설정되지 않았습니다. 관리자가 서버 환경변수를 설정하면
-              불일치 판정을 자동 분석합니다. 이미 저장된 분석은 계속 볼 수
-              있습니다.
+              AI 분석하기 버튼으로 분석을 요청할 수 있습니다. 저장된 분석은 계속
+              볼 수 있습니다.
             </p>
           ) : null}
           {query.isLoading ? (
@@ -154,10 +167,9 @@ export default function VerificationAnalysisPanel({
             </p>
           ) : null}
           {canRequest &&
-          (!analysis ||
-            status === 'failed' ||
+          (status === 'failed' ||
             (status === 'succeeded' &&
-              analysis.engine_version === 1 &&
+              analysis?.engine_version === 1 &&
               !stale)) ? (
             <button
               type="button"
@@ -171,7 +183,7 @@ export default function VerificationAnalysisPanel({
                   ? '분석 다시 요청'
                   : status === 'succeeded'
                     ? '실제 채점으로 검증'
-                    : '분석 요청'}
+                    : 'AI 분석하기'}
             </button>
           ) : null}
           {analysis?.coverage ? (

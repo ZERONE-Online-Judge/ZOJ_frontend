@@ -13,7 +13,7 @@ export type VerificationTask = {
 export type VerificationTasks = {
   available: boolean;
   can_run: boolean;
-  limits: { max_cost_usd: number; max_calls: number };
+  limits: { max_cost_usd: number; max_calls: number; concurrency?: number };
   sources: { asset_id: string; filename: string }[];
   tasks: VerificationTask[];
 };

@@ -187,6 +187,7 @@ export default function VerificationAgentEvidence({
             {analysis.workspace_files.map((file) => (
               <li key={file.path} className="break-all">
                 {file.path} · {file.bytes.toLocaleString()}바이트
+                {file.read_only ? ' · 읽기 전용 채점 파일' : ''}
               </li>
             ))}
           </ul>

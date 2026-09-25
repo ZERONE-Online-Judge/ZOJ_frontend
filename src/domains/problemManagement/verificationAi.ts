@@ -81,7 +81,12 @@ export type VerificationAnalysis = {
     judge_message: string;
     compile_message: string;
   }[];
-  workspace_files?: { path: string; bytes: number; sha256: string }[];
+  workspace_files?: {
+    path: string;
+    bytes: number;
+    sha256: string;
+    read_only?: boolean;
+  }[];
   playground_runs?: {
     request_id: string;
     command: string;
@@ -99,6 +104,7 @@ export type VerificationAnalysis = {
     | 'running'
     | 'succeeded'
     | 'failed'
+    | 'awaiting_request'
     | 'awaiting_input'
     | 'stopped';
   model: string;

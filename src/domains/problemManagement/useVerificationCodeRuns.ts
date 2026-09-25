@@ -128,8 +128,8 @@ export default function useVerificationCodeRuns({
           isSubmissionPending(run.submission.status) ||
           (query.state.data?.available &&
             run.submission.status !== run.expected_status &&
-            (!run.analysis ||
-              ['queued', 'running'].includes(run.analysis.status))),
+            run.analysis &&
+            ['queued', 'running'].includes(run.analysis.status)),
       )
         ? 3000
         : false,

@@ -196,7 +196,7 @@ test('answering continues from the chosen task and preserves the typed request',
 test('running work can be stopped without starting a new analysis', async () => {
   saved = fixture('running');
   await render();
-  assert.equal(button('검증 맡기기').disabled, true);
+  assert.match(document.body.textContent, /새 작업을 함께/);
   await act(async () => button('작업 중지').click());
   await flush();
   assert.equal(stops, 1);
@@ -211,4 +211,28 @@ test('read-only operators cannot submit or stop tasks', async () => {
   assert.equal(button('검증 맡기기').disabled, true);
   assert.equal(button('작업 중지'), undefined);
   assert.match(document.body.textContent, /문제 테스트 권한이 필요/);
+});
+
+test('a new independent task can be requested while another is running', async () => {
+  saved = fixture('running');
+  await render();
+  const textarea = document.querySelector('textarea');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      dom.window.HTMLTextAreaElement.prototype,
+      'value',
+    ).set.call(textarea, '별도 검증 코드도 함께 검사해 주세요.');
+    textarea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+  assert.equal(button('검증 맡기기').disabled, false);
+  await act(async () =>
+    document
+      .querySelector('form')
+      .dispatchEvent(
+        new dom.window.Event('submit', { bubbles: true, cancelable: true }),
+      ),
+  );
+  await flush();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].body.parent_task_id, null);
 });
