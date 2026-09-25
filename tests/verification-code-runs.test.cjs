@@ -596,3 +596,32 @@ test('saved reports remain readable with no configured API key and offer no paid
   assert.equal(button(saved, '분석 요청'), undefined);
   assert.equal(analysisRequests, 0);
 });
+
+test('agent shows real executions, escaped candidate downloads and cost without paid requests', async () => {
+  const saved = await restoreSavedReport();
+  Object.assign(savedAnalysis.analysis, {
+    engine_version: 2,
+    phase: '검증 완료',
+    model: 'gpt-5.4-mini',
+    tool_count: 8,
+    usage: { input_tokens: 4000, output_tokens: 2000, estimated_cost_usd: 0.012, by_model: { 'gpt-5.4-mini': { calls: 3 } } },
+    limits: { max_cost_usd: 0.2, max_runs: 6 },
+    executions: [
+      { submission_id: 'trial1', artifact_id: 'original', scope: 'selected', testcase_orders: [2], testcase_count: 1, status: 'wrong_answer', failed_testcase_order: 2, runtime_ms: 10, memory_kb: 1024, judge_message: '<script>bad()</script>', compile_message: '', agent_version: '0.2.18' },
+      { submission_id: 'trial2', artifact_id: 'candidate-1', scope: 'all', testcase_orders: null, testcase_count: 12, status: 'accepted', failed_testcase_order: null, runtime_ms: 11, memory_kb: 1030, judge_message: '', compile_message: '', agent_version: '0.2.18' },
+    ],
+    artifacts: [{ artifact_id: 'candidate-1', language: 'python313', source: 'print("<script>alert(1)</script>")', sha256: 'abc' }],
+    files_read: [{ file_id: 'original', offset: 0, complete: true }],
+    trace: [{ tool: 'run_code', status: 'completed', detail: 'accepted', at: '' }],
+  });
+  await act(async () => [...saved.querySelectorAll('button')].find(n => n.textContent.includes('저장된 AI 분석 보기')).click());
+  await flush();
+  assert.match(saved.textContent, /실제 채점 기록/);
+  assert.match(saved.textContent, /원본 코드.*선택 1개.*틀렸습니다/);
+  assert.match(saved.textContent, /수정안 1.*전체 12개.*정답/);
+  assert.match(saved.textContent, /\$0.0120.*한도 \$0.20/);
+  const link = saved.querySelector('a[download="candidate-1.py"]');
+  assert.equal(decodeURIComponent(link.href.split(',')[1]), 'print("<script>alert(1)</script>")');
+  assert.equal(saved.querySelector('script'), null);
+  assert.equal(analysisRequests, 0);
+});

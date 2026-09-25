@@ -1,4 +1,4 @@
-import { apiRequest } from '@/shared/api/client';
+import { apiRequest, apiBlobRequest } from '@/shared/api/client';
 import type { ProblemAsset } from './types';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { VerificationCodeKind } from './useVerificationCodeRuns';
@@ -27,6 +27,62 @@ export type VerificationReport = {
   limitations: string[];
 };
 export type VerificationAnalysis = {
+  engine_version?: number;
+  phase?: string | null;
+  calls?: number;
+  tool_count?: number;
+  limits?: { max_cost_usd: number; max_runs: number } | null;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    estimated_cost_usd: number;
+    by_model?: Record<string, { calls: number }>;
+  } | null;
+  trace?: { tool: string; status: string; detail: string; at: string }[];
+  files_read?: {
+    file_id: string;
+    offset?: number;
+    complete?: boolean;
+    image_attached?: boolean;
+  }[];
+  artifacts?: {
+    artifact_id: string;
+    source: string;
+    language: string;
+    sha256: string;
+  }[];
+  executions?: {
+    submission_id: string;
+    artifact_id: string;
+    scope: 'all' | 'selected' | 'probe';
+    probe?: {
+      input: string;
+      expected_output: string;
+      expected_output_source: string;
+      validator_checked: boolean;
+    } | null;
+    testcase_orders: number[] | null;
+    testcase_count: number;
+    status: string;
+    failed_testcase_order: number | null;
+    runtime_ms: number | null;
+    memory_kb: number | null;
+    agent_version: string | null;
+    judge_message: string;
+    compile_message: string;
+  }[];
+  workspace_files?: { path: string; bytes: number; sha256: string }[];
+  playground_runs?: {
+    request_id: string;
+    command: string;
+    exit_code: number | null;
+    timed_out: boolean;
+    stdout: string;
+    output_truncated: boolean;
+    wall_ms: number;
+    notes: string[];
+    files: { path: string; bytes: number }[];
+  }[];
   analysis_id: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
   model: string;
@@ -94,4 +150,16 @@ export function requestVerificationAnalysis(
   }>(`${base(contestId, problemId)}/${submissionId}/analysis`, token, {
     method: 'POST',
   });
+}
+
+export function downloadVerificationWorkspace(
+  contestId: string,
+  problemId: string,
+  submissionId: string,
+  token: string,
+) {
+  return apiBlobRequest(
+    `${base(contestId, problemId)}/${submissionId}/workspace.zip`,
+    token,
+  );
 }

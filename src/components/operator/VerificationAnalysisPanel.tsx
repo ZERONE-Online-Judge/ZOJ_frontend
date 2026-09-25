@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import VerificationAgentEvidence from '@/components/operator/VerificationAgentEvidence';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import {
   getVerificationAnalysis,
+  downloadVerificationWorkspace,
   requestVerificationAnalysis,
   type VerificationAnalysis,
   type VerificationReport,
@@ -41,6 +43,8 @@ export default function VerificationAnalysisPanel({
     queryFn: () =>
       getVerificationAnalysis(contestId, problemId, submissionId, token),
     enabled: open,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     refetchInterval: (state) => {
       const data = state.state.data;
       return data?.available &&
@@ -59,7 +63,21 @@ export default function VerificationAnalysisPanel({
       });
     },
   });
-  const analysis = query.data ? query.data.analysis : initial;
+  const download = useMutation({
+    mutationFn: () =>
+      downloadVerificationWorkspace(contestId, problemId, submissionId, token),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'verification-workspace.zip';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    },
+  });
+  const analysis = open
+    ? (query.data?.analysis ?? initial)
+    : (initial ?? query.data?.analysis);
   const canRequest = query.data?.available ?? available;
   const status = analysis?.status;
   const label =
@@ -100,8 +118,9 @@ export default function VerificationAnalysisPanel({
           className="grid min-w-0 gap-4 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4 sm:p-5"
         >
           <p className="text-xs leading-5 text-slate-600">
-            실제 채점 당시 자료를 검토한 AI 보조 의견입니다. 공식 판정은 바꾸지
-            않으며, 제안한 수정과 반례는 다시 채점해 확인하세요.
+            {analysis?.engine_version === 2
+              ? '필요한 자료를 찾아 검토하고 원본·수정 후보를 실제 채점기로 검증합니다. 공식 판정은 바꾸지 않으며, 실행 기록과 AI 의견을 함께 확인하세요.'
+              : '실제 채점 당시 자료를 검토한 AI 보조 의견입니다. 공식 판정은 바꾸지 않으며, 제안한 수정과 반례는 다시 채점해 확인하세요.'}
           </p>
           {!canRequest ? (
             <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
@@ -119,7 +138,7 @@ export default function VerificationAnalysisPanel({
             <p role="status" className="text-sm text-indigo-700">
               {status === 'queued'
                 ? '분석 대기 중입니다. 대기 작업과 일일 사용 한도에 따라 시간이 걸릴 수 있습니다.'
-                : '문제와 코드, 테스트케이스를 검토하고 있습니다. 이 화면을 닫아도 분석은 계속됩니다.'}
+                : `${analysis?.phase || '문제와 코드, 테스트케이스를 검토하고 있습니다.'} · 이 화면을 닫아도 계속됩니다.`}
             </p>
           ) : null}
           {analysis?.error_message || query.error || request.error ? (
@@ -134,7 +153,12 @@ export default function VerificationAnalysisPanel({
                   : analysis?.error_message}
             </p>
           ) : null}
-          {canRequest && (!analysis || status === 'failed') ? (
+          {canRequest &&
+          (!analysis ||
+            status === 'failed' ||
+            (status === 'succeeded' &&
+              analysis.engine_version === 1 &&
+              !stale)) ? (
             <button
               type="button"
               disabled={request.isPending}
@@ -145,7 +169,9 @@ export default function VerificationAnalysisPanel({
                 ? '요청 중…'
                 : status === 'failed'
                   ? '분석 다시 요청'
-                  : '분석 요청'}
+                  : status === 'succeeded'
+                    ? '실제 채점으로 검증'
+                    : '분석 요청'}
             </button>
           ) : null}
           {analysis?.coverage ? (
@@ -178,6 +204,27 @@ export default function VerificationAnalysisPanel({
                 <p key={index}>{note}</p>
               ))}
             </details>
+          ) : null}
+          {analysis ? <VerificationAgentEvidence analysis={analysis} /> : null}
+          {analysis?.workspace_files?.length ? (
+            <button
+              type="button"
+              onClick={() => download.mutate()}
+              disabled={download.isPending}
+              className="w-fit rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-800 disabled:opacity-50"
+            >
+              {download.isPending
+                ? '다운로드 준비 중…'
+                : '작업 파일 전체 다운로드'}
+            </button>
+          ) : null}
+          {download.error ? (
+            <p role="alert" className="text-sm text-rose-800">
+              {formatApiError(
+                download.error,
+                '작업 파일 다운로드에 실패했습니다.',
+              )}
+            </p>
           ) : null}
           {analysis?.report ? <ReportBody report={analysis.report} /> : null}
           {analysis ? (
