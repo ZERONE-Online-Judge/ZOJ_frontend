@@ -56,7 +56,7 @@ export default function ProblemArchivePanel({
       setFile(null);
       inspect.reset();
       setMessage(
-        `${problem.problem_code}. ${problem.title} 문제를 등록했습니다. 목록에서 선택해 내용을 확인하세요.`,
+        `${problem.problem_code}. ${problem.title} 문제를 등록했습니다. 활성 테스트케이스의 채점용 번들을 자동으로 준비합니다.`,
       );
       onImported(problem);
     },
@@ -326,9 +326,9 @@ export default function ProblemArchivePanel({
                   </p>
                 ) : null}
                 <p className="text-xs leading-6 text-slate-600">
-                  기존 문제를 덮어쓰지 않고 목록 마지막에 추가합니다. 파일
-                  무결성을 확인해 복원하며, 검증 코드는 등록 후 테스트케이스
-                  탭에서 다시 실행할 수 있습니다.
+                  새 문제를 목록 마지막에 추가하고, 활성 테스트케이스가 있으면
+                  채점용 번들을 자동 생성합니다. 검증 코드는 등록 후
+                  테스트케이스 탭에서 다시 실행할 수 있습니다.
                 </p>
                 {preview.has_external_links ? (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
