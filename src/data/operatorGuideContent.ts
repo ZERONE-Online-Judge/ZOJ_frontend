@@ -40,7 +40,7 @@ export type GuideCategory = {
   articles: GuideArticle[];
 };
 
-// Instructions describe shipped operator controls. Simulations use fictitious data.
+// Shipped operator instructions. Practice uses production UI with local example state.
 export const operatorGuideCategories: GuideCategory[] = [
   {
     id: 'start',
@@ -70,7 +70,7 @@ export const operatorGuideCategories: GuideCategory[] = [
         ],
         effect:
           '참가 유형마다 문제와 순위가 구분됩니다. 유형 이름만 만든 상태에서는 참가팀이나 문제가 자동으로 생기지 않습니다.',
-        note: '가이드의 체험 화면은 예시입니다. 실제 설정은 해당 관리 화면에서 저장해야 적용됩니다.',
+        note: '가이드의 연습 화면은 예제 데이터입니다. 실제 대회 설정은 해당 관리 화면에서 저장하면 적용됩니다.',
       },
       {
         id: 'home-monitor',
@@ -106,7 +106,7 @@ export const operatorGuideCategories: GuideCategory[] = [
   {
     id: 'settings',
     label: '설정 · 일정과 공개',
-    title: '설정 하나가 누구에게 무엇을 바꿀까요?',
+    title: '대회 설정과 참가자 공개 범위',
     scene: 'visibility',
     route: 'settings',
     permission: 'contest.settings.manage',

@@ -7,7 +7,6 @@ import {
 } from '@/components/operator/OperatorShell';
 import GuideVisual, {
   GuideIcon,
-  GuideOverviewArt,
 } from '@/components/operator/guide/GuideVisuals';
 import {
   operatorGuideCategories,
@@ -48,11 +47,6 @@ function GuideContent({
   session: StaffSession;
 }) {
   const [params, setParams] = useSearchParams();
-  const [motion, setMotion] = useState(
-    () =>
-      typeof window.matchMedia !== 'function' ||
-      !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
   const [copied, setCopied] = useState('');
   const [checked, setChecked] = useState<string[]>([]);
   const contentRef = useRef<HTMLElement>(null);
@@ -74,13 +68,6 @@ function GuideContent({
     (article) => article.id === selectedArticle,
   );
 
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const change = (event: MediaQueryListEvent) => setMotion(!event.matches);
-    preference.addEventListener('change', change);
-    return () => preference.removeEventListener('change', change);
-  }, []);
   useEffect(() => {
     const navigation = `${category.id}:${selectedArticle ?? ''}:${query}`;
     if (lastNavigation.current === navigation) return;
@@ -126,25 +113,25 @@ function GuideContent({
     <PageLayout
       variant="management"
       title="운영 가이드"
-      description="설정 방법부터 동작 원리, 상황별 해결 방법까지."
+      description="실제 화면으로 익히는 설정·채점·대회 운영 안내입니다."
       width="full"
     >
       <OperatorTabs contestId={contestId} />
-      <div className="operator-guide" data-motion={motion ? 'on' : 'off'}>
+      <div className="operator-guide">
         <header className="og-hero">
           <div className="og-hero-copy">
             <span className="og-eyebrow">
               <span /> ZOJ OPERATOR HANDBOOK
             </span>
             <h2>
-              대회 운영,
+              실제 화면으로 익히는
               <br />
-              이해하고 <em>시작하세요.</em>
+              <em>ZOJ 대회 운영</em>
             </h2>
             <p>
-              설정이 바뀌면 화면은 어떻게 달라질까요?
-              <br className="og-desktop-break" /> 직접 움직여 보고, 순서대로
-              따라 해보세요.
+              서비스와 같은 설정 카드·버튼·상세 창으로 조작을 연습하세요.
+              <br className="og-desktop-break" /> 저장 전후의 변화와 참가자에게
+              표시되는 결과를 함께 안내합니다.
             </p>
             <div className="og-hero-meta">
               <span>
@@ -155,13 +142,12 @@ function GuideContent({
                 <strong>{articleCount}</strong>개의 상세 안내
               </span>
               <i />
-              <span>직접 해보는 동작 예시</span>
+              <span>실제 화면 요소로 연습</span>
             </div>
             <a href="#operator-guide-content" className="og-start-link">
-              차근차근 시작하기 <GuideIcon kind="arrow" />
+              화면별 사용법 보기 <GuideIcon kind="arrow" />
             </a>
           </div>
-          <GuideOverviewArt />
         </header>
         <div className="og-find-bar">
           <div className="og-search">
@@ -190,15 +176,6 @@ function GuideContent({
               </button>
             )}
           </div>
-          <button
-            className="og-motion-toggle"
-            type="button"
-            aria-pressed={motion}
-            onClick={() => setMotion((value) => !value)}
-          >
-            <span className={motion ? 'is-on' : ''} />
-            {motion ? '애니메이션 켜짐' : '애니메이션 멈춤'}
-          </button>
         </div>
         <div className="og-popular">
           <span>많이 찾는 안내</span>
@@ -342,7 +319,6 @@ function GuideContent({
                 <GuideVisual
                   key={category.id}
                   scene={category.scene}
-                  motion={motion}
                   onTopic={goTo}
                 />
                 <nav

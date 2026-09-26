@@ -1,4 +1,5 @@
 const { test, beforeEach, afterEach, after } = require('node:test');
+const { setTimeout } = require('node:timers');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -228,6 +229,12 @@ test('private and unknown routes become noindex immediately and never retain pub
   await act(async () => navigate('/admin/contests'));
   assert.equal(document.title, '서비스 관리자 | ZOJ');
   assert.equal(meta('robots'), 'noindex,nofollow');
+  await act(async () =>
+    navigate('/operator/contests/private/guide?section=settings'),
+  );
+  assert.equal(document.title, '운영 가이드 | ZOJ');
+  assert.equal(meta('robots'), 'noindex,nofollow');
+  assert.equal(canonical(), undefined);
   assert.equal(requests.length, 0);
 });
 

@@ -7,10 +7,17 @@ const ts = require('typescript');
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {
   url: 'https://guide.test/',
+  pretendToBeVisual: true,
 });
 global.window = dom.window;
 global.document = dom.window.document;
 global.IS_REACT_ACT_ENVIRONMENT = true;
+dom.window.HTMLDialogElement.prototype.showModal = function () {
+  this.open = true;
+};
+dom.window.HTMLDialogElement.prototype.close = function () {
+  this.open = false;
+};
 const React = require('react');
 const { act } = React;
 const { createRoot } = require('react-dom/client');
@@ -19,6 +26,7 @@ const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 const h = React.createElement;
 let session;
 const mocks = {
+  '@/utils/Icons': { SvgIcon: () => null },
   '@/domains/identityAccess/sessionStore': {
     useSessionStore: (selector) => selector({ generalSession: session }),
   },
@@ -73,9 +81,6 @@ function source(relative) {
 }
 const { operatorGuideCategories, searchOperatorGuide } = source(
   'data/operatorGuideContent.ts',
-);
-const { guideAccessOutcome } = source(
-  'components/operator/guide/guideDemoLogic.ts',
 );
 const Page = source('pages/operator/OperatorGuidePage.tsx').default;
 let host, root, client;
@@ -199,26 +204,9 @@ test('search finds detailed instructions and requires every keyword', () => {
     ),
   );
 });
-test('visibility illustration never grants a visitor access through a private contest or resource', () => {
-  for (const contestPublic of [true, false])
-    for (const resource of ['private', 'participants', 'public']) {
-      assert.equal(
-        guideAccessOutcome(contestPublic, resource, 'operator'),
-        true,
-      );
-      assert.equal(
-        guideAccessOutcome(contestPublic, resource, 'participant'),
-        resource !== 'private',
-      );
-      assert.equal(
-        guideAccessOutcome(contestPublic, resource, 'guest'),
-        contestPublic && resource === 'public',
-      );
-    }
-});
 test('review-only operators can read the guide without receiving settings controls', async () => {
   await render('?section=settings');
-  assert.match(host.textContent, /설정 하나가 누구에게 무엇을 바꿀까요/);
+  assert.match(host.textContent, /대회 설정과 참가자 공개 범위/);
   assert.equal(host.querySelector('a[href$="/settings"]'), null);
   assert.ok(host.querySelector('a[href$="/guide"]'));
   assert.match(host.textContent, /해당 관리 화면을 열려면 담당 권한이 필요/);
@@ -230,7 +218,7 @@ test('unauthenticated visitors cannot open the operator guide', async () => {
   assert.equal(host.querySelector('.operator-guide'), null);
   assert.ok(host.querySelector('a[href="/login"]'));
 });
-test('deep links open the requested detailed article and reduced motion starts paused', async () => {
+test('deep links open the requested article without unrelated autoplay controls', async () => {
   await render('?section=participants&article=force-logout');
   const article = host.querySelector('#guide-force-logout');
   assert.equal(
@@ -239,8 +227,8 @@ test('deep links open the requested detailed article and reduced motion starts p
   );
   assert.equal(article.querySelector('[id^="guide-body"]').hidden, false);
   assert.match(article.textContent, /다른 대회의 세션도 영향을/);
-  assert.equal(host.querySelector('.operator-guide').dataset.motion, 'off');
-  assert.ok(button('애니메이션 멈춤'));
+  assert.equal(host.querySelector('.og-player'), null);
+  assert.equal(host.querySelector('.og-overview-art'), null);
 });
 test('search result navigation opens its exact category and article', async () => {
   await render('?q=countdown%3Afreeze');
@@ -256,48 +244,156 @@ test('search result navigation opens its exact category and article', async () =
   );
   assert.equal(host.querySelector('#operator-guide-search').value, '');
 });
-test('visibility interactions close dependent practice settings and remove invalid public choices', async () => {
+test('practice settings keep selection separate from saved values and support confirmed reset', async () => {
   await render('?section=settings');
-  const selects = [...host.querySelectorAll('.og-visibility-controls select')];
-  await act(async () => {
-    selects[1].value = 'public';
-    selects[1].dispatchEvent(new window.Event('change', { bubbles: true }));
-  });
-  assert.equal(host.querySelectorAll('.og-audience.is-allowed').length, 3);
-  await act(async () => {
-    selects[0].value = 'private';
-    selects[0].dispatchEvent(new window.Event('change', { bubbles: true }));
-  });
-  assert.equal(selects[1].value, 'participants');
-  assert.equal(selects[1].querySelector('option[value="public"]'), null);
-  await act(async () => {
-    selects[1].value = 'private';
-    selects[1].dispatchEvent(new window.Event('change', { bubbles: true }));
-  });
-  assert.equal(host.querySelector('.og-check-option input').disabled, true);
-  assert.equal(host.querySelectorAll('.og-audience.is-allowed').length, 1);
-});
-test('manual release demonstration reveals the third place first and keeps the winner hidden', async () => {
-  await render('?section=scoreboard');
-  await click(button('순위별 공개'));
-  await click(host.querySelector('[aria-label="3단계: 3위 공개"]'));
-  const board = host.querySelectorAll('.og-rank-board')[1];
-  const revealed = [
-    ...board.querySelectorAll('.og-rank-row:not(.is-concealed)'),
-  ];
-  assert.equal(revealed.length, 1);
-  assert.equal(revealed[0].querySelector('.og-rank-place').textContent, '3');
-  assert.match(revealed[0].textContent, /코발트/);
-  await click(host.querySelector('[aria-label="5단계: 1위 공개"]'));
-  assert.equal(board.querySelectorAll('.is-concealed').length, 0);
-});
-test('session demonstration reaches logout on all three devices by manual steps', async () => {
-  await render('?section=participants');
-  await click(
-    host.querySelector('[aria-label="4단계: 연결된 화면에 종료 안내"]'),
+  const input = host.querySelector(
+    'input[name="visibility_after_end"][value="public"]',
   );
-  assert.equal(host.querySelectorAll('.og-device.is-disconnected').length, 3);
-  assert.equal(host.querySelectorAll('.og-mini-modal').length, 3);
+  await click(input);
+  assert.match(
+    host.querySelector('.og-practice-feedback').textContent,
+    /적용된 종료 후 공개 범위: 비공개/,
+  );
+  assert.match(
+    host.querySelector('[aria-label="설정 저장"]').textContent,
+    /1개 항목 변경됨/,
+  );
+  await click(button('변경사항 저장'));
+  assert.match(
+    host.querySelector('.og-practice-feedback').textContent,
+    /적용된 종료 후 공개 범위: 공개/,
+  );
+  await click(
+    host.querySelector('input[name="visibility_after_end"][value="private"]'),
+  );
+  await click(button('되돌리기'));
+  assert.match(document.querySelector('dialog').textContent, /설정 변경 취소/);
+  await click(
+    [...document.querySelectorAll('dialog button')].find(
+      (el) => el.textContent === '되돌리기',
+    ),
+  );
+  assert.equal(input.checked, true);
+  assert.equal(button('변경사항 저장').disabled, true);
+});
+test('practice roles use the production selector and persist only into the example list', async () => {
+  await render('?section=operators');
+  await click(host.querySelector('[aria-label="운영자 추가 펼치기"]'));
+  const editor = host.querySelector('.og-practice-surface');
+  await click(editor.querySelector('input[value="problem_author"]'));
+  await click(editor.querySelector('button[type="submit"]'));
+  assert.equal(
+    editor
+      .querySelector('[aria-label="운영자 추가 펼치기"]')
+      .getAttribute('aria-expanded'),
+    'false',
+  );
+  assert.match(
+    editor.querySelector('[aria-label="부여된 권한"]').textContent,
+    /검수진.*출제진/,
+  );
+  await click(button('이름·이메일·권한 수정'));
+  assert.equal(
+    editor.querySelector('input[value="problem_author"]').checked,
+    true,
+  );
+  await click(editor.querySelector('input[value="participant_preview"]'));
+  assert.equal(
+    editor.querySelector('input[value="problem_author"]').checked,
+    false,
+  );
+  assert.equal(
+    editor.querySelector('input[value="problem_reviewer"]').checked,
+    false,
+  );
+});
+test('manual release uses the actual controls, table and confirmation before undo', async () => {
+  await render('?section=scoreboard');
+  await click(button('개별 순위 공개 시작'));
+  assert.equal(host.querySelectorAll('[data-scoreboard-row]').length, 3);
+  assert.equal(
+    (
+      host
+        .querySelector('.og-practice-result')
+        .textContent.match(/아직 공개되지 않은 순위/g) || []
+    ).length,
+    3,
+  );
+  await click(button('3위 공개'));
+  const board = host.querySelector('.og-practice-result');
+  assert.match(board.textContent, /코발트/);
+  assert.doesNotMatch(board.textContent, /라임/);
+  await click(button('되돌리기 (Undo)'));
+  assert.match(board.textContent, /코발트/);
+  await click(
+    [...document.querySelectorAll('dialog button')].find(
+      (el) => el.textContent === '되돌리기',
+    ),
+  );
+  assert.doesNotMatch(board.textContent, /코발트/);
+});
+test('session logout shows the real participant notice and clears only the example sessions', async () => {
+  await render('?section=participants');
+  await click(button('계정 로그아웃'));
+  assert.match(
+    host.querySelector('.og-practice-surface').textContent,
+    /세션 없음/,
+  );
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /로그아웃되었습니다/,
+  );
+  await click(
+    [...document.querySelectorAll('dialog button')].find(
+      (el) => el.textContent === '다시 로그인',
+    ),
+  );
+  assert.equal(document.querySelector('dialog'), null);
+  assert.ok(session.operatorSession);
+  await click(button('처음부터 다시하기'));
+  assert.match(
+    host.querySelector('.og-practice-surface').textContent,
+    /세션 2개/,
+  );
+});
+test('notice registration shows the saved countdown using the production editor', async () => {
+  await render('?section=notices');
+  await click(button('종료 카운트다운'));
+  assert.match(
+    host.querySelector('.og-practice-surface textarea').value,
+    /countdown:end/,
+  );
+  assert.equal(host.querySelector('.og-practice-result'), null);
+  await click(button('공지 등록'));
+  assert.match(
+    host.querySelector('.og-practice-result').textContent,
+    /종료 시각 안내/,
+  );
+  assert.doesNotMatch(
+    host.querySelector('.og-practice-result').textContent,
+    /countdown:end/,
+  );
+});
+test('private question practice keeps the actual answer form private', async () => {
+  await render('?section=board');
+  await click(button('비공개 전환'));
+  await click(button('답변 작성'));
+  const scope = host.querySelector('[aria-label="답변 공개 범위"]');
+  assert.equal(scope.disabled, true);
+  assert.equal(scope.value, 'questioner');
+  await click(button('답변 등록'));
+  assert.match(
+    host.querySelector('.operator-board-composer').textContent,
+    /답변 내용을 입력/,
+  );
+});
+test('log practice opens the actual diff dialog', async () => {
+  await render('?section=logs');
+  await click(button('상세 기록 보기'));
+  assert.match(
+    document.querySelector('dialog').textContent,
+    /실제 변경된 항목.*변경 전.*변경 후/,
+  );
 });
 
 test('real execution examples show recorded source, input and measurements without executing code', async () => {
@@ -336,35 +432,28 @@ test('real execution examples show recorded source, input and measurements witho
   );
 });
 
-test('judge queue demonstration shows claim, execution and persistence with motion disabled', async () => {
+test('judge steps display actual persisted-result UI without timed advancement', async () => {
   await render('?section=judge-servers');
   await click(button('채점 큐부터 결과까지'));
-  assert.equal(
-    host.querySelector('[aria-label="채점 과정 재생"]').disabled,
-    true,
-  );
-  await click(host.querySelector('[aria-label="3단계: 한 에이전트에 배정"]'));
+  assert.equal(host.querySelector('.og-player'), null);
+  await click(button('3. 한 에이전트에 배정'));
   assert.match(
     host.querySelector('.og-flow-detail').textContent,
     /작업 전용 토큰/,
   );
-  assert.equal(
-    host.querySelector('.og-flow-map .is-occupied').textContent,
-    '슬롯 1 · 제출 A',
+  assert.match(
+    host.querySelector('[aria-label="검수 채점 결과"]').textContent,
+    /채점 준비 중/,
   );
-  assert.doesNotMatch(
-    host.querySelector('.og-flow-map > div').textContent,
-    /제출 A/,
+  await click(button('7. 결과 저장과 슬롯 반환'));
+  assert.match(
+    host.querySelector('[aria-label="검수 채점 결과"]').textContent,
+    /맞았습니다.*33 ms/,
   );
-  await click(
-    host.querySelector('[aria-label="7단계: 결과 저장과 슬롯 반환"]'),
-  );
-  assert.equal(host.querySelector('.og-flow-map .is-occupied'), null);
   assert.match(
     host.querySelector('.og-flow-detail').textContent,
     /결과를 저장/,
   );
-  assert.match(host.querySelector('.og-judge-flow').textContent, /오래된 토큰/);
 });
 
 test('downloadable benchmark preserves every displayed measurement and source', () => {

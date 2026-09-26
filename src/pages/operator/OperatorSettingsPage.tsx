@@ -1,3 +1,4 @@
+import SettingsSaveBar from '@/components/operator/SettingsSaveBar';
 import './OperatorSettingsPage.css';
 import useConfirmation from '@/shared/ui/useConfirmation';
 import ContestVisibilitySettings from '@/components/operator/ContestVisibilitySettings';
@@ -11,7 +12,6 @@ import {
   OperatorAccessGate,
   OperatorPanel,
   OperatorTabs,
-  SettingsIcon,
 } from '@/components/operator/OperatorShell';
 import {
   getOperatorContestDashboard,
@@ -824,68 +824,36 @@ function OperatorSettingsContent({
                     />
                   </SettingsSection>
                 </fieldset>
-                <div
-                  className="operator-settings-savebar"
-                  aria-label="설정 저장"
-                >
-                  <div className="min-w-0" aria-live="polite">
-                    <strong>
-                      {changedCount
-                        ? `${changedCount}개 항목 변경됨`
-                        : savedMessage || '저장된 설정과 같습니다'}
-                    </strong>
-                    {formError || updateSettingsMutation.error ? (
-                      <p role="alert" className="text-rose-700">
-                        {formError ||
-                          formatApiError(
-                            updateSettingsMutation.error,
-                            '저장에 실패했습니다. 다시 시도해 주세요.',
-                          )}
-                      </p>
-                    ) : (
-                      <p>펼친 항목과 접힌 항목의 변경사항을 함께 저장합니다.</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      className="settings-reset"
-                      disabled={
-                        !changedCount || updateSettingsMutation.isPending
-                      }
-                      onClick={async () => {
-                        if (
-                          await confirm(
-                            '아직 저장하지 않은 변경사항을 모두 되돌릴까요?',
-                            {
-                              title: '설정 변경 취소',
-                              confirmLabel: '되돌리기',
-                            },
-                          )
-                        ) {
-                          setSettingsDraft(null);
-                          setFormError('');
-                          setSavedMessage('');
-                          updateSettingsMutation.reset();
-                        }
-                      }}
-                    >
-                      되돌리기
-                    </button>
-                    <button
-                      className="settings-save"
-                      disabled={
-                        !changedCount || updateSettingsMutation.isPending
-                      }
-                      type="submit"
-                    >
-                      <SettingsIcon />
-                      {updateSettingsMutation.isPending
-                        ? '저장 중…'
-                        : '변경사항 저장'}
-                    </button>
-                  </div>
-                </div>
+                <SettingsSaveBar
+                  changedCount={changedCount}
+                  pending={updateSettingsMutation.isPending}
+                  savedMessage={savedMessage}
+                  error={
+                    formError ||
+                    (updateSettingsMutation.error
+                      ? formatApiError(
+                          updateSettingsMutation.error,
+                          '저장에 실패했습니다. 다시 시도해 주세요.',
+                        )
+                      : '')
+                  }
+                  onReset={async () => {
+                    if (
+                      await confirm(
+                        '아직 저장하지 않은 변경사항을 모두 되돌릴까요?',
+                        {
+                          title: '설정 변경 취소',
+                          confirmLabel: '되돌리기',
+                        },
+                      )
+                    ) {
+                      setSettingsDraft(null);
+                      setFormError('');
+                      setSavedMessage('');
+                      updateSettingsMutation.reset();
+                    }
+                  }}
+                />
               </form>
             ) : (
               <p className="text-sm font-medium text-slate-600">

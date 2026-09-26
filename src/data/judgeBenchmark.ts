@@ -1,8 +1,10 @@
+import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
+
 // Recorded real judge results. Refresh alongside the downloadable snapshot.
 export type JudgeBenchmarkCase = {
   id: string;
   label: string;
-  language: string;
+  language: JudgeLanguage;
   input: string;
   output: string;
   source: string;
@@ -318,7 +320,7 @@ export const judgeBenchmark = {
       input: '',
       output: '42\n',
       source: 'import time\ntime.sleep(0.2)\nprint(42)\n',
-      note: '0.2초 동안 계산하지 않고 기다려도 표시 시간이 늘어납니다. 현재 표시값이 순수 CPU 사용 시간이 아니라 경과 시간이라는 점을 확인할 수 있습니다.',
+      note: '0.2초 동안 계산하지 않고 기다려도 표시 시간이 늘어납니다. 표시 시간은 프로그램의 경과 시간이며, 순수 CPU 사용 시간과 다릅니다.',
       runs: [
         {
           runtime_ms: 267,

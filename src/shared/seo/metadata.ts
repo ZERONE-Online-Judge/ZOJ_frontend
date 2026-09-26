@@ -119,6 +119,7 @@ function privatePageTitle(path: string): string | null {
   if (/^\/presentation\/contests\/[^/]+$/.test(path))
     return '대회 프레젠테이션';
   if (path === '/login') return '로그인';
+  if (/^\/operator\/contests\/[^/]+\/guide$/.test(path)) return '운영 가이드';
   if (/^\/admin(?:\/(?:contests|judge|audit-logs|inquiries))?$/.test(path)) {
     return '서비스 관리자';
   }
