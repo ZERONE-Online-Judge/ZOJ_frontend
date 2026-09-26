@@ -220,7 +220,7 @@ test('memory reference matches all real measurements and MLE probes', () => {
   assert.match(html, /72회 측정 기록/);
 });
 
-test('walkthrough reuses submission rows, finishes WA early and keeps sample navigation local', async () => {
+test('participant walkthrough autoplays and loops without controls or operator progress', async () => {
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM('<div id="test-root"></div>', {
     url: 'http://localhost/',
@@ -265,32 +265,62 @@ test('walkthrough reuses submission rows, finishes WA early and keeps sample nav
     assert.doesNotMatch(host.textContent, /17 ms/);
     await click('C++17');
     assert.match(host.querySelector('pre').textContent, /a \+ b/);
-    await click('채점 흐름 재생');
+    assert.ok(nextFrame, 'autoplay starts without a click');
+    assert.equal(
+      host.querySelectorAll('select, .judge-flow-steps button').length,
+      0,
+    );
+    assert.doesNotMatch(
+      host.textContent,
+      /일시정지|다시 재생|처음으로|진행률|테스트 \d|채점 메시지/,
+    );
     await act(() => nextFrame());
     assert.match(
       host.querySelector('.zoj-result-badge').textContent,
       /채점 준비 중/,
     );
-    await click('일시정지');
-    assert.equal(nextFrame, undefined);
-    const select = host.querySelector('select');
-    await act(() => {
-      select.value = 'wrong_answer';
-      select.dispatchEvent(new window.Event('change', { bubbles: true }));
-    });
-    assert.match(host.querySelector('pre').textContent, /a - b/);
-    await click('채점 흐름 재생');
-    for (let i = 0; i < 3; i++) await act(() => nextFrame());
+    await act(() => nextFrame());
     assert.match(
       host.querySelector('.zoj-result-badge').textContent,
-      /틀렸습니다/,
+      /채점 중/,
     );
-    assert.match(host.textContent, /두 번째 테스트에서 종료/);
+    assert.doesNotMatch(
+      host.querySelector('.zoj-result-badge').textContent,
+      /%/,
+    );
+    assert.equal(
+      host.querySelectorAll('.zoj-result-badge [style*="width"]').length,
+      0,
+    );
+    assert.doesNotMatch(host.textContent, /17 ms/);
+    await act(() => nextFrame());
+    assert.match(
+      host.querySelector('.zoj-result-badge').textContent,
+      /맞았습니다/,
+    );
     assert.match(host.textContent, /17 ms/);
-    assert.equal(nextFrame, undefined);
-    await click('처음으로');
+    assert.ok(nextFrame, 'terminal result automatically loops');
+    await act(() => nextFrame());
+    assert.match(
+      host.querySelector('.zoj-result-badge').textContent,
+      /채점 대기 중/,
+    );
     assert.doesNotMatch(host.textContent, /17 ms/);
     assert.equal(host.querySelectorAll('a[href*="/contests/"]').length, 0);
+    visible = false;
+    await act(() =>
+      root.render(
+        React.createElement(MemoryRouter, null, React.createElement(Journey)),
+      ),
+    );
+    assert.equal(nextFrame, undefined, 'background tab suspends timers');
+    visible = true;
+    await act(() =>
+      root.render(
+        React.createElement(MemoryRouter, null, React.createElement(Journey)),
+      ),
+    );
+    assert.ok(nextFrame, 'returning to the page resumes autoplay');
   } finally {
     await act(() => root.unmount());
     dom.window.close();

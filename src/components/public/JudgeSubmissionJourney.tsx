@@ -17,7 +17,7 @@ int main() {
     cout << a + b << '\\n';
     return 0;
 }`;
-const frames = [0, 1, 2, 2, 2, 3] as const;
+const stageDurations = [2400, 2400, 3600, 4800] as const;
 const descriptions = [
   [
     '제출한 코드가 목록에 나타나요',
@@ -28,8 +28,8 @@ const descriptions = [
     '테스트 자료와 실행 파일을 준비합니다. C++처럼 컴파일이 필요한 언어는 이 단계에서 컴파일해요.',
   ],
   [
-    '결과 칸에서 진행률을 확인해요',
-    '테스트 처리 현황에 따라 결과 문구와 노란 진행 막대가 갱신됩니다. 여러 테스트를 병렬로 처리하므로 숫자가 한 칸씩 증가하지 않을 수 있어요.',
+    '내 코드가 채점되고 있어요',
+    '결과 칸에 ‘채점 중’이 표시됩니다. 이 화면에서는 테스트별 진행 상황 대신 최종 판정이 나올 때까지 기다리면 돼요.',
   ],
   [
     '판정과 실행 정보가 남아요',
@@ -38,41 +38,28 @@ const descriptions = [
 ];
 
 export default function JudgeSubmissionJourney() {
-  const [frame, setFrame] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [outcome, setOutcome] = useState<'accepted' | 'wrong_answer'>(
-    'accepted',
-  );
-  const [submittedAt, setSubmittedAt] = useState(() =>
-    new Date().toISOString(),
-  );
+  const [{ step, submittedAt }, setScene] = useState(() => ({
+    step: 0,
+    submittedAt: new Date().toISOString(),
+  }));
   const isVisible = useDocumentVisibility();
-  const step = frames[frame];
-  const lastFrame = outcome === 'wrong_answer' ? 3 : 5;
-  const finished = frame === lastFrame;
-  const activeStep = finished ? 3 : step;
-  const status = finished ? outcome : stages[step];
-  const progress = finished
-    ? outcome === 'accepted'
-      ? 5
-      : 2
-    : Math.max(0, frame - 1);
+  const finished = step === stages.length - 1;
+  const status = stages[step];
 
   useEffect(() => {
-    if (!playing || !isVisible) return;
+    if (!isVisible) return;
     const timer = window.setTimeout(() => {
-      if (frame + 1 >= lastFrame) setPlaying(false);
-      setFrame(Math.min(frame + 1, lastFrame));
-    }, 2400);
+      setScene((current) => {
+        const next = (current.step + 1) % stages.length;
+        return {
+          step: next,
+          submittedAt:
+            next === 0 ? new Date().toISOString() : current.submittedAt,
+        };
+      });
+    }, stageDurations[step]);
     return () => window.clearTimeout(timer);
-  }, [frame, playing, isVisible, lastFrame]);
-
-  function reset(nextOutcome = outcome) {
-    setPlaying(false);
-    setOutcome(nextOutcome);
-    setFrame(0);
-    setSubmittedAt(new Date().toISOString());
-  }
+  }, [step, isVisible]);
 
   const submission: Submission = {
     submission_id: 'a1b2c3d4-demo',
@@ -81,19 +68,12 @@ export default function JudgeSubmissionJourney() {
     problem_title: 'A. 두 수의 합',
     team_name: '예시 참가팀',
     language: 'cpp17',
-    source_code:
-      outcome === 'accepted' ? source : source.replace('a + b', 'a - b'),
+    source_code: source,
     submitted_at: submittedAt,
     status,
-    progress_current: status === 'judging' ? progress : null,
-    progress_total: status === 'judging' ? 5 : null,
+    // Match the participant view with progress hidden; never inject operator diagnostics.
     runtime_ms: finished ? 17 : null,
     memory_kb: finished ? 584 : null,
-    judge_message:
-      finished && outcome === 'wrong_answer'
-        ? 'wrong answer: expected 5, found -1'
-        : null,
-    failed_testcase_order: finished && outcome === 'wrong_answer' ? 2 : null,
   };
   submission.code_length_bytes = new TextEncoder().encode(
     submission.source_code,
@@ -112,72 +92,26 @@ export default function JudgeSubmissionJourney() {
               </h2>
             </div>
             <p>
-              실제 채점현황 화면으로 따라가 보세요.
+              참가자의 채점현황이 자동으로 바뀌는 모습을 살펴보세요.
               <br />
               언어를 누르면 제출 코드도 펼쳐볼 수 있어요.
             </p>
           </div>
-          <div
-            className="judge-flow-steps"
-            role="group"
-            aria-label="채점 과정 예시 단계"
-          >
+          <ol className="judge-flow-steps" aria-label="채점 과정 예시 단계">
             {stages.map((stage, index) => (
-              <button
-                type="button"
+              <li
                 key={stage}
-                aria-pressed={index === activeStep}
-                className={index <= activeStep ? 'is-reached' : ''}
-                onClick={() => {
-                  setPlaying(false);
-                  setFrame(index === 3 ? lastFrame : index);
-                }}
+                aria-current={index === step ? 'step' : undefined}
+                className={index <= step ? 'is-reached' : ''}
               >
                 <span>0{index + 1}</span>
                 {index === 3 ? '결과 도착' : submissionStatusLabel(stage)}
-              </button>
+              </li>
             ))}
-          </div>
-          <div className="judge-journey-controls">
-            <label>
-              결과 예시
-              <select
-                value={outcome}
-                onChange={(event) =>
-                  reset(event.target.value as typeof outcome)
-                }
-              >
-                <option value="accepted">맞았습니다</option>
-                <option value="wrong_answer">틀렸습니다</option>
-              </select>
-            </label>
-            <div>
-              <button
-                type="button"
-                className="judge-journey-play"
-                onClick={() => {
-                  if (playing) {
-                    setPlaying(false);
-                    return;
-                  }
-                  if (finished) reset();
-                  setPlaying(true);
-                }}
-              >
-                {playing
-                  ? '일시정지'
-                  : finished
-                    ? '다시 재생'
-                    : '채점 흐름 재생'}
-              </button>
-              <button type="button" onClick={() => reset()}>
-                처음으로
-              </button>
-            </div>
-          </div>
+          </ol>
           <div
             className="judge-journey-screen zoj-participant"
-            aria-label="실제 채점현황 구성으로 보는 체험 화면"
+            aria-label="참가자 채점현황 예시"
           >
             <div className="judge-journey-screen-heading">
               <PageHeading
@@ -186,7 +120,7 @@ export default function JudgeSubmissionJourney() {
                 variant="contest"
                 description="대회 중에는 로그인한 참가팀의 제출만 확인합니다."
               />
-              <span className="judge-small-label">체험용 제출 1건</span>
+              <span className="judge-small-label">참가자 화면 · 예시</span>
             </div>
             <ContestSubmissionsTable
               preview
@@ -197,25 +131,16 @@ export default function JudgeSubmissionJourney() {
               C++17을 눌러 제출 코드를 확인해 보세요.
             </p>
           </div>
-          <div className="judge-journey-explanation" aria-live="polite">
-            <span aria-hidden="true">0{activeStep + 1}</span>
+          <div className="judge-journey-explanation">
+            <span aria-hidden="true">0{step + 1}</span>
             <div>
-              <h3>
-                {finished && outcome === 'wrong_answer'
-                  ? '오답이면 여기서 채점이 끝나요'
-                  : descriptions[activeStep][0]}
-              </h3>
-              <p>
-                {finished && outcome === 'wrong_answer'
-                  ? '모든 테스트를 통과해야만 정답이에요. 이 예시는 두 번째 테스트에서 종료됐습니다. 실제 화면의 ‘채점 메시지 보기’를 펼쳐 전달된 오류 내용을 확인해 보세요.'
-                  : descriptions[activeStep][1]}
-              </p>
+              <h3>{descriptions[step][0]}</h3>
+              <p>{descriptions[step][1]}</p>
             </div>
           </div>
           <p className="judge-section-footnote">
-            실제 화면과 같은 제출 목록·결과 표시를 사용하는 체험입니다. 코드와
-            수치는 설명용이며 실제 제출이나 채점 요청은 생성하지 않아요. 처리
-            시간과 결과 도착 순서는 제출마다 다를 수 있어요.
+            참가자 화면을 보여주는 자동 반복 예시예요. 코드와 수치는 설명용이며
+            실제 제출은 생성하지 않아요. 실제 대기·채점 시간은 제출마다 달라요.
           </p>
         </ExperienceReveal>
       </div>

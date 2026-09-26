@@ -47,7 +47,7 @@
   gap: 8px;
   margin-bottom: 24px;
 }
-.judge-flow-steps button {
+.judge-flow-steps li {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -59,25 +59,21 @@
     border-color 0.35s,
     color 0.35s,
     background 0.35s;
-  cursor: pointer;
 }
-.judge-flow-steps button span {
+.judge-flow-steps li span {
   color: #7b8193;
   font:
     13px ui-monospace,
     monospace;
 }
-.judge-flow-steps button.is-reached {
+.judge-flow-steps li.is-reached {
   border-color: #8e79e5;
 }
-.judge-flow-steps button[aria-pressed='true'] {
+.judge-flow-steps li[aria-current='step'] {
   color: #5b3cc4;
   background: #ece8fb;
   border-radius: 10px 10px 0 0;
   font-weight: 600;
-}
-.judge-flow-steps button:hover {
-  background: #ece8fb;
 }
 .judge-demo-badge {
   display: inline-flex;
@@ -408,7 +404,7 @@
   .judge-score-layout {
     gap: 28px;
   }
-  .judge-flow-steps button {
+  .judge-flow-steps li {
     gap: 8px;
     font-size: 12px;
   }
@@ -436,7 +432,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
-  .judge-flow-steps button {
+  .judge-flow-steps li {
     padding: 12px;
   }
   .judge-experience .judge-demo-surface {
@@ -663,38 +659,6 @@
 }
 
 /* Reuse the participant table and its mobile card layout inside the walkthrough. */
-.judge-journey-controls,
-.judge-journey-controls > div,
-.judge-journey-controls label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.judge-journey-controls {
-  justify-content: space-between;
-  margin-bottom: 20px;
-  font-size: 13px;
-  color: var(--xp-muted);
-}
-.judge-journey-controls :is(button, select) {
-  min-height: 42px;
-  border: 1px solid var(--zoj-border);
-  border-radius: 8px;
-  padding: 8px 14px;
-  background: white;
-  color: var(--xp-ink);
-  cursor: pointer;
-}
-.judge-journey-controls .judge-journey-play {
-  background: #172033;
-  border-color: #172033;
-  color: white;
-}
-.judge-journey-controls :is(button, select):focus-visible {
-  outline: 2px solid #818cf8;
-  outline-offset: 3px;
-}
 .judge-journey-screen {
   min-width: 0;
   padding: 28px;
