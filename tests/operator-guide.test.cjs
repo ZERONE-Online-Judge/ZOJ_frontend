@@ -630,7 +630,7 @@ test('operator guide separates the planned VM allocation from historical benchma
   const guide = source('data/judgeServerGuide.ts').judgeServerGuide;
   const measured = guide.articles.find((a) => a.id === 'judge-hundred-million');
   assert.equal(measured.table.rows.length, 16);
-  assert.match(JSON.stringify(measured), /14.512초/);
+  assert.match(JSON.stringify(measured), /3.726초/);
   assert.match(JSON.stringify(measured), /보장 상한이 아닙니다/);
   assert.match(
     JSON.stringify(

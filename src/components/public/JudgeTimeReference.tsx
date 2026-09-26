@@ -27,7 +27,7 @@ export default function JudgeTimeReference() {
   )!;
   const evidence = judgeTimeSources[selected.id];
   const estimate = estimateTimeBudget(
-    selected,
+    { ...selected, runtimeMs: { max: selected.serialMaxMs } },
     profileId === 'search' ? 'linear' : complexity,
     Number(inputSize),
     Number(factor),
@@ -58,7 +58,7 @@ export default function JudgeTimeReference() {
               </option>
             ))}
           </select>
-          <span>각 조건에서 측정한 최댓값이에요. 평균과는 달라요.</span>
+          <span>단독으로 3번 실행한 최댓값이에요.</span>
         </div>
         <div className="judge-time-profiles">
           {data.profiles.map((p) => {
@@ -83,13 +83,6 @@ export default function JudgeTimeReference() {
                       <small>초</small>
                     </strong>
                   </span>
-                  <span>
-                    <small>동시 요청 최대</small>
-                    <strong>
-                      {seconds(c.loadMaxMs)}
-                      <small>초</small>
-                    </strong>
-                  </span>
                 </span>
                 <span className="judge-time-description">{p.description}</span>
               </button>
@@ -97,9 +90,8 @@ export default function JudgeTimeReference() {
           })}
         </div>
         <p className="judge-section-footnote">
-          {data.displayDate} · 연산 4종 × 언어 4종 · 단독 48건 + 동시 요청 48건.
-          동시 요청은 12건을 한꺼번에 접수하고 제출당 테스트 4개를 실행한
-          조건이에요. 이진 탐색은 <strong>100만 번의 탐색</strong>이에요. 다른
+          {data.displayDate} · 연산 4종 × 언어 4종 · 단독 3회씩, 총 48건.
+          이진 탐색은 <strong>100만 번의 탐색</strong>이에요. 다른
           카드의 1억 회 반복과 단위가 달라요.
         </p>
         <details className="judge-inline-details judge-time-source">
@@ -108,9 +100,6 @@ export default function JudgeTimeReference() {
             <p>
               단독 3회:{' '}
               {evidence.serialMs.map((ms) => seconds(ms) + '초').join(' · ')}
-              <br />
-              동시 요청 중 3개 제출:{' '}
-              {evidence.loadMs.map((ms) => seconds(ms) + '초').join(' · ')}
             </p>
             {language === 'python313' && (
               <p>
@@ -189,7 +178,7 @@ export default function JudgeTimeReference() {
               </span>
               <p>
                 {number(estimate.count)} ÷ {number(selected.iterations)} ×{' '}
-                {seconds(selected.runtimeMs.max)}초 × {factor}
+                {seconds(selected.serialMaxMs)}초 × {factor}
               </p>
               <strong className="judge-time-budget">
                 {seconds(estimate.budgetMs)}초 <span>보수적 시간 예산</span>
@@ -223,12 +212,9 @@ export default function JudgeTimeReference() {
               CPython 3.13.13, Java는 Java 8 호환 환경입니다.
             </p>
             <p>
-              각 작업·언어를 단독으로 3번 실행했습니다. 이어 같은 작업의
-              C·C++·Python·Java를 각 3건씩, 총 12건 동시에 요청했습니다. 동시
-              요청의 제출마다 같은 테스트 4개를 넣었으며, 표시값은 제출 안
-              테스트들의 최대 시간입니다. 총 96개 제출·240개 테스트가 모두
-              정답이고 다른 채점 작업 유입은 없었습니다. 12건 요청이 모든 순간에
-              12건 실행됐다는 뜻은 아닙니다.
+              각 작업·언어를 단독으로 3번 실행했습니다. 총 48개 제출이 모두
+              정답이고 다른 채점 작업 유입은 없었습니다. 카드와 계산기는
+              단독 실행 3회 중 최댓값을 기준으로 합니다.
             </p>
             <p>
               실행마다 새 프로세스를 사용하고 준비 실행을 버리지 않았습니다.
@@ -257,7 +243,7 @@ export default function JudgeTimeReference() {
               href={data.snapshotPath}
               download
             >
-              소스·입력·기대 출력·96개 제출 기록 다운로드 ↓
+              소스·입력·기대 출력·전체 실험 기록 다운로드 ↓
             </a>
           </div>
         </details>

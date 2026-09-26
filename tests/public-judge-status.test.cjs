@@ -394,6 +394,8 @@ test('time reference preserves observed maxima, units, load conditions and all r
   const html = render(status);
   assert.match(html, /같은 1억 번도/);
   assert.match(html, /보수적 시간 예산/);
+  assert.doesNotMatch(html, /동시 요청 최대|동시 요청 중 3개 제출/);
+  assert.match(html, /7\.452/);
   assert.match(html, /최악 실행시간의 상한이 아니/);
   assert.doesNotMatch(html, /1억 번 계산하면, 이만큼/);
 });
