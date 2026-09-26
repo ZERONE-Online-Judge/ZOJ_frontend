@@ -1,9 +1,8 @@
-// Curated from the downloadable 2026-09-26 benchmark. Keep numbers in sync with its records.
+// Actual 100M-iteration runs. Arithmetic means are checked against all 20 downloadable records.
 export const participantJudgeBenchmark = {
   displayDate: '2026. 9. 26.',
-  snapshotPath: '/guides/judge-benchmark-2026-09-26.json',
-  nodeCount: 7,
-  slotsPerNode: 2,
+  snapshotPath: '/guides/judge-100m-benchmark-2026-09-26.json',
+  iterations: 100000000,
   environment: {
     scope: '전체 채점 에이전트 공통',
     cpu: 'Intel Xeon E5-2698 v4 @ 2.20GHz',
@@ -14,62 +13,44 @@ export const participantJudgeBenchmark = {
   },
   cases: [
     {
+      id: 'loop-c',
+      label: 'C99',
+      sampleCount: 5,
+      runtimeMs: {
+        mean: 166,
+        min: 165,
+        max: 167,
+      },
+    },
+    {
       id: 'loop-cpp',
       label: 'C++17',
-      source:
-        '#include <iostream>\nint main() {\n    int n; std::cin >> n;\n    long long total = 0;\n    for (int i = 0; i < n; ++i) total += i % 97;\n    std::cout << total << "\\n";\n}\n',
-      scenarios: [
-        {
-          batchSize: 1,
-          runtimeMs: 33.0,
-          memoryKb: 584.0,
-          queueWaitMs: 68.195,
-          batchCompletionMs: 629.277,
-        },
-        {
-          batchSize: 10,
-          runtimeMs: 33.5,
-          memoryKb: 584.0,
-          queueWaitMs: 242.221,
-          batchCompletionMs: 1019.852,
-        },
-        {
-          batchSize: 100,
-          runtimeMs: 34.0,
-          memoryKb: 584.0,
-          queueWaitMs: 3576.617,
-          batchCompletionMs: 8421.739,
-        },
-      ],
+      sampleCount: 5,
+      runtimeMs: {
+        mean: 165.6,
+        min: 165,
+        max: 166,
+      },
     },
     {
       id: 'loop-python',
       label: 'Python 3.13',
-      source:
-        'n = int(input())\ntotal = 0\nfor i in range(n):\n    total += i % 97\nprint(total)\n',
-      scenarios: [
-        {
-          batchSize: 1,
-          runtimeMs: 819.0,
-          memoryKb: 3136.0,
-          queueWaitMs: 131.431,
-          batchCompletionMs: 993.628,
-        },
-        {
-          batchSize: 10,
-          runtimeMs: 969.0,
-          memoryKb: 3136.0,
-          queueWaitMs: 230.63,
-          batchCompletionMs: 1452.827,
-        },
-        {
-          batchSize: 100,
-          runtimeMs: 1018.0,
-          memoryKb: 3136.0,
-          queueWaitMs: 6947.829,
-          batchCompletionMs: 15796.48,
-        },
-      ],
+      sampleCount: 5,
+      runtimeMs: {
+        mean: 14774.8,
+        min: 14300,
+        max: 15211,
+      },
+    },
+    {
+      id: 'loop-java',
+      label: 'Java 8 호환',
+      sampleCount: 5,
+      runtimeMs: {
+        mean: 216.2,
+        min: 216,
+        max: 217,
+      },
     },
   ],
 } as const;

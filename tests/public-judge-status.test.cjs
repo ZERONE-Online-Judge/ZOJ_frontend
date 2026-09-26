@@ -137,44 +137,42 @@ test('submission activity never changes public text or animation state', () => {
   );
 });
 
-test('participant performance examples retain the recorded benchmark units and medians', () => {
+test('participant runtime averages come from all five actual 100M runs for each language', () => {
   const curated = source(
     'data/participantJudgeBenchmark.ts',
   ).participantJudgeBenchmark;
   const recorded = JSON.parse(
     fs.readFileSync(
-      path.resolve(
-        __dirname,
-        '../public/guides/judge-benchmark-2026-09-26.json',
-      ),
+      path.resolve(__dirname, '../public' + curated.snapshotPath),
       'utf8',
     ),
   );
   assert.equal(curated.displayDate, recorded.displayDate);
-  assert.deepEqual(curated.environment, recorded.environment);
+  assert.equal(curated.iterations, 100000000);
+  assert.equal(recorded.measurementCount, 20);
+  assert.deepEqual(
+    curated.cases.map((item) => item.id),
+    ['loop-c', 'loop-cpp', 'loop-python', 'loop-java'],
+  );
   for (const example of curated.cases) {
     const reference = recorded.cases.find((item) => item.id === example.id);
-    assert.equal(example.source, reference.source);
+    assert.equal(reference.input, '100000000\n');
+    assert.equal(reference.output, '4799999352\n');
+    assert.equal(reference.runs.length, 5);
+    assert.equal(example.sampleCount, 5);
     assert.deepEqual(
-      example.scenarios.map((item) => item.batchSize),
-      [1, 10, 100],
+      reference.runs.map((run) => run.repeat),
+      [1, 2, 3, 4, 5],
     );
-    for (const scenario of example.scenarios) {
-      const load = reference.loadScenarios.find(
-        (item) => item.batchSize === scenario.batchSize,
-      );
-      for (const metric of [
-        'runtimeMs',
-        'memoryKb',
-        'queueWaitMs',
-        'batchCompletionMs',
-      ]) {
-        assert.equal(
-          scenario[metric],
-          load[metric].median,
-          `${example.id}/${scenario.batchSize}/${metric}`,
-        );
-      }
-    }
+    assert.ok(
+      reference.runs.every(
+        (run) => run.status === 'accepted' && run.other_jobs_observed === 0,
+      ),
+    );
+    const times = reference.runs.map((run) => run.runtime_ms);
+    assert.equal(example.runtimeMs.mean, times.reduce((a, b) => a + b, 0) / 5);
+    assert.equal(example.runtimeMs.min, Math.min(...times));
+    assert.equal(example.runtimeMs.max, Math.max(...times));
+    assert.deepEqual(example.runtimeMs, reference.runtimeMs);
   }
 });

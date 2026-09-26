@@ -629,12 +629,12 @@
 
 .judge-speed-reference {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 .judge-speed-card {
   border-radius: 18px;
-  padding: 30px;
+  padding: 24px;
 }
 .judge-speed-card.is-cpp {
   background: #171c30;
@@ -651,11 +651,11 @@
 .judge-experience .judge-speed-card > p {
   display: flex;
   align-items: baseline;
-  gap: 18px;
+  gap: 7px;
   margin-block: 20px;
 }
 .judge-speed-card strong {
-  font-size: clamp(28px, 3vw, 42px);
+  font-size: clamp(26px, 3vw, 38px);
   font-weight: 600;
   letter-spacing: -0.04em;
 }
@@ -699,16 +699,30 @@
 }
 @media (max-width: 767px) {
   .judge-speed-reference {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
   .judge-speed-card {
-    padding: 24px;
+    padding: 20px 16px;
   }
   .judge-speed-example {
     padding: 20px;
   }
   .judge-speed-example p {
     font-size: 13px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .judge-speed-reference {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .judge-speed-card small {
+    font-size: 10px;
+  }
+  .judge-speed-card > span {
+    font-size: 12px;
   }
 }
