@@ -136,3 +136,45 @@ test('submission activity never changes public text or animation state', () => {
     /다음 제출을 기다리는 중|코드를 확인하는 중|접수된 코드가 기다리는 중/,
   );
 });
+
+test('participant performance examples retain the recorded benchmark units and medians', () => {
+  const curated = source(
+    'data/participantJudgeBenchmark.ts',
+  ).participantJudgeBenchmark;
+  const recorded = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../public/guides/judge-benchmark-2026-09-26.json',
+      ),
+      'utf8',
+    ),
+  );
+  assert.equal(curated.displayDate, recorded.displayDate);
+  assert.deepEqual(curated.environment, recorded.environment);
+  for (const example of curated.cases) {
+    const reference = recorded.cases.find((item) => item.id === example.id);
+    assert.equal(example.source, reference.source);
+    assert.deepEqual(
+      example.scenarios.map((item) => item.batchSize),
+      [1, 10, 100],
+    );
+    for (const scenario of example.scenarios) {
+      const load = reference.loadScenarios.find(
+        (item) => item.batchSize === scenario.batchSize,
+      );
+      for (const metric of [
+        'runtimeMs',
+        'memoryKb',
+        'queueWaitMs',
+        'batchCompletionMs',
+      ]) {
+        assert.equal(
+          scenario[metric],
+          load[metric].median,
+          `${example.id}/${scenario.batchSize}/${metric}`,
+        );
+      }
+    }
+  }
+});

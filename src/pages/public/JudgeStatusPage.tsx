@@ -8,6 +8,7 @@ import {
 } from '@/components/common/PublicExperience';
 import { getPublicJudgeStatus } from '@/domains/auditMonitoring/api';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
+import JudgeParticipantExperience from '@/components/public/JudgeParticipantExperience';
 import './PublicExperience.css';
 
 export default function JudgeStatusPage() {
@@ -66,7 +67,7 @@ export default function JudgeStatusPage() {
             <p className="experience-lead">
               제출부터 결과까지, 코드를 살펴보는 채점 서버.
               <br />
-              서버 연결 상태와 채점 과정을 만나보세요.
+              지금의 연결 상태부터 판정과 점수까지, 함께 알아봐요.
             </p>
             <a className="experience-button is-lime" href="#judge-now">
               지금 상태 살펴보기 <ExperienceArrow />
@@ -219,57 +220,7 @@ export default function JudgeStatusPage() {
         </ExperienceReveal>
       </section>
 
-      <section className="experience-soft-section">
-        <div className="experience-container experience-section">
-          <ExperienceReveal>
-            <div className="experience-section-heading">
-              <div>
-                <p className="experience-eyebrow">A CODE’S JOURNEY</p>
-                <h2>
-                  제출한 코드는
-                  <br />
-                  이렇게 답을 찾아요.
-                </h2>
-              </div>
-              <p>
-                결과를 기다리는 시간에도,
-                <br />
-                채점은 차근차근 진행됩니다.
-              </p>
-            </div>
-            <ol className="judge-journey">
-              {[
-                [
-                  '01',
-                  '코드를 보내면',
-                  '대회 문제 화면에서 언어와 코드를 선택해 제출합니다.',
-                ],
-                [
-                  '02',
-                  '차례를 기다리고',
-                  '접수된 코드는 채점 서버에서 실행할 준비를 합니다.',
-                ],
-                [
-                  '03',
-                  '하나씩 확인해요',
-                  '테스트케이스로 정답과 실행 시간, 메모리를 확인합니다.',
-                ],
-                [
-                  '04',
-                  '결과가 도착해요',
-                  '대회 채점현황에서 내 제출의 판정을 확인할 수 있습니다.',
-                ],
-              ].map(([n, t, d]) => (
-                <li key={n}>
-                  <span>{n}</span>
-                  <h3>{t}</h3>
-                  <p>{d}</p>
-                </li>
-              ))}
-            </ol>
-          </ExperienceReveal>
-        </div>
-      </section>
+      <JudgeParticipantExperience />
       <section className="experience-container experience-section">
         <ExperienceReveal className="experience-callout">
           <div>

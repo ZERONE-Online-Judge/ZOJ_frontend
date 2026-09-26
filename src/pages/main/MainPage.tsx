@@ -36,7 +36,7 @@ const shortcuts = [
   {
     number: '03',
     title: '내 코드가 기다려진다면',
-    description: '지금 채점 서버의 상태를 확인해 보세요.',
+    description: '서버 상태부터 판정과 점수 계산까지 알아보세요.',
     to: '/judge-status',
     label: '채점 상태',
     symbol: '</>',
