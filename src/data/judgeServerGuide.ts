@@ -1,7 +1,7 @@
 import { judgeMemoryBenchmark as memoryBenchmark } from './judgeMemoryBenchmark';
 import type { GuideCategory } from './operatorGuideContent';
 import { judgeBenchmark } from './judgeBenchmark';
-import { participantJudgeBenchmark as runtimeBenchmark } from './participantJudgeBenchmark';
+import { judgeTimeBenchmark as timeBenchmark } from './judgeTimeBenchmark';
 import { judgeInfrastructure as infrastructure } from './judgeInfrastructure';
 
 const runRange = (id: string, field: 'runtime_ms' | 'memory_kb') => {
@@ -46,7 +46,7 @@ export const judgeServerGuide: GuideCategory = {
         '물리 서버에는 Intel Xeon E5-2698 v4 @ 2.20GHz CPU 2소켓과 256GB DDR4-2933Y ECC 메모리가 장착되어 있습니다. 채점 VM마다 10 vCPU와 26GiB 메모리를 할당합니다. DDR4-2933Y는 장착 모듈 규격이며 실제 동작 클럭을 뜻하는 표기는 아닙니다.',
         '6대 운영 기준에서 각 에이전트의 제출 슬롯은 2개, 합계 12개입니다. 슬롯은 동시에 맡을 제출 수입니다. VM의 10 vCPU를 제출 하나가 전용으로 쓰거나 단일 스레드 풀이가 10배 빨라지는 것은 아닙니다.',
         '모든 채점 VM의 CPU 모델은 Intel Xeon E5-2698 v4 @ 2.20GHz이며, C/C++ 컴파일러는 GCC 14.2.0, Python은 CPython 3.13.13입니다. 전체 채점 VM이 같은 실행 환경을 사용합니다. 2.20GHz는 CPU 모델의 정격 표기입니다.',
-        '노드의 10 vCPU·26GiB 안에서 최대 2개 제출이 각각 테스트 4개씩 실행됩니다. 테스트 작업은 노드당 최대 8개이며 실제 개수는 테스트 수와 준비 상태에 따라 다릅니다. 1억 회 실측은 테스트 1개·한 제출씩 실행한 기록이므로 다중 테스트 부하와 구분합니다.',
+        '노드의 10 vCPU·26GiB 안에서 최대 2개 제출이 각각 테스트 4개씩 실행됩니다. 테스트 작업은 노드당 최대 8개이며 실제 개수는 테스트 수와 준비 상태에 따라 다릅니다. 연산별 TLE 자료는 단독 실행과 12건 동시 요청·제출당 테스트 4개 조건을 구분합니다.',
         '같은 코드도 서버 성능과 실행 환경에 따라 시간이 달라집니다. 출제자 PC의 측정값을 그대로 시간 제한으로 옮기기보다 아래 실측 예제를 참고하고, 본인의 문제는 ZOJ 검증 코드 채점으로 확인하세요.',
       ],
       effect:
@@ -312,34 +312,64 @@ export const judgeServerGuide: GuideCategory = {
     },
     {
       id: 'judge-hundred-million',
-      title: '1억 회 계산의 언어별 실제 평균 시간',
+      title: '같은 1억 회도 연산에 따라 다른 실행 시간',
       summary:
-        '같은 나머지 계산·누적을 C·C++·Python·Java로 각각 5회, 총 20회 실제 채점한 결과입니다.',
-      stepsTitle: '실측 조건',
-      effectTitle: 'TLE 검증에 활용하기',
+        '단순 계산·의존 산술·메모리 접근·이진 탐색을 단독과 동시 요청 조건에서 실제 채점했습니다. 평균 대신 관측 최댓값으로 시간 예산을 잡습니다.',
+      stepsTitle: '실측 조건과 단위',
+      effectTitle: '최악 입력의 시간 예산 계산',
       steps: [
-        '입력으로 반복 횟수 100,000,000을 받아 total += i % 97을 0부터 99,999,999까지 수행합니다. 합계 4,799,999,352를 출력하고 20회 모두 정답을 확인했습니다.',
-        '운영 채점 큐에 한 번에 한 제출씩 넣어 매번 새 프로세스로 실행했습니다. 다른 채점 작업 유입은 없었으며 언어별 5회 전체를 포함한 산술평균입니다. Java의 JVM 시작과 JIT 비용도 포함됩니다.',
-        '측정용 제한은 모든 언어 120초·256MB입니다. 실제 문제의 시간·메모리 제한이나 언어 보정을 변경한 값이 아닙니다. 큐 대기·컴파일은 표시 실행 시간에 포함하지 않습니다.',
+        '작업 4종 × 언어 4종을 각각 단독 3회, 총 48건 실행했습니다. 이어 작업별로 4개 언어를 각 3건씩 총 12건 동시에 요청하고, 제출마다 동일 테스트 4개를 실행했습니다. 동시 요청 48건을 포함해 총 96개 제출·240개 테스트가 모두 정답입니다. 다른 채점 작업 유입은 없었습니다.',
+        '상수 나머지 누적·직전 결과에 의존하는 곱셈과 나머지·4194304개 인덱스 배열의 의존 접근은 각각 1억 회입니다. 이진 탐색은 1048576개 정렬 배열에서 100만 번 검색하며, 검색마다 최대 21회 비교합니다. 탐색 1회와 기본 비교 1회는 서로 다른 단위입니다.',
+        '입력으로 반복 횟수와 시작값을 받으며, 결과를 출력해 별도로 계산한 기대값과 비교했습니다. 결과가 사용되지 않는 반복문이나 정수 초 단위로 잘려 0초가 된 기록을 기준으로 삼지 않습니다. 컴파일러 최적화는 실제 채점과 같은 -O2를 유지합니다.',
+        '모든 언어 실험 제한은 120초·512MiB이며 문제의 기본 제한이나 언어 보정과 별개입니다. 매번 새 프로세스를 쓰고 준비 실행을 버리지 않았습니다. 배열 초기화·JVM/JIT·격리 준비는 표시 시간에 포함하며 큐 대기·컴파일·checker는 제외합니다. 제출 요약은 테스트 시간의 최댓값입니다.',
       ],
       table: {
-        headers: ['언어', '1억 회 평균', '최소~최대', '반복'],
-        rows: runtimeBenchmark.cases.map((item) => [
-          item.label,
-          `${(item.runtimeMs.mean / 1000).toFixed(4)}초`,
-          `${(item.runtimeMs.min / 1000).toFixed(3)}~${(item.runtimeMs.max / 1000).toFixed(3)}초`,
-          '5회 · 모두 정답',
+        headers: ['언어 · 작업', '작업 수', '단독 최대', '동시 요청 최대'],
+        rows: timeBenchmark.cases.map((item) => [
+          `${timeBenchmark.languages.find((l) => l.id === item.language)!.label} · ${timeBenchmark.profiles.find((p) => p.id === item.profile)!.label}`,
+          timeBenchmark.profiles.find((p) => p.id === item.profile)!.countLabel,
+          `${(item.serialMaxMs / 1000).toFixed(3)}초`,
+          `${(item.loadMaxMs / 1000).toFixed(3)}초`,
         ]),
       },
       effect:
-        'N=10,000인 N² 반복은 1억 회 규모입니다. 반복 안의 비용이 같은 단순 정수 연산일 때 위 수치를 출발점으로 삼고, 최대 입력·실제 자료구조·입출력·언어 제한을 적용한 검증 코드 채점으로 확인하세요. 일반적인 모든 N² 풀이의 실행 시간이 이 표와 같다는 뜻은 아닙니다.',
-      note: `${runtimeBenchmark.displayDate} 실측입니다. VM 10 vCPU 또는 CPU 2소켓을 이유로 단일 풀이의 예상 시간을 나누지 않습니다. 노드 수 축소 전 측정 자료이며, VM 자원·컴파일러·부하가 바뀌면 다시 검증합니다.`,
+        '보수적 시간 예산 = 최악 입력의 작업 수 ÷ 측정 작업 수 × 단독·동시 요청 중 최대 시간 × 여유 계수(기본 2). 먼저 반복문 본문과 비슷한 작업을 선택합니다. 계수 2는 계획상 여유이며 최악 실행시간의 보장 상한이 아닙니다. 채점 상태 페이지의 계산기에서 입력 크기·반복 구조·언어·연산 종류를 바꿔 볼 수 있습니다.',
+      note: `${timeBenchmark.displayDate} 실측입니다. 동일 구성의 6대 채점 VM을 사용하며, 실제 배정 노드는 원본 기록에 있습니다. 동시 12건 요청이 항상 12건 실행 또는 모든 노드 최대 부하를 의미하지 않습니다. 메모리 크기·캐시 경계·입력 분포가 달라지면 비례 추정도 벗어날 수 있습니다.`,
       references: [
         {
-          label: '4개 언어 소스·전체 20회 실행 기록',
-          url: 'https://zoj.kr' + runtimeBenchmark.snapshotPath,
+          label: '소스·입력·기대 출력·전체 96개 제출 기록',
+          url: 'https://zoj.kr' + timeBenchmark.snapshotPath,
+        },
+        {
+          label: '참가자용 연산별 시간 예산 계산기',
+          url: 'https://zoj.kr/judge-status#judge-performance',
+        },
+        {
+          label: '실행 시간과 연산 수에 관한 참고 글',
+          url: 'https://tjdtls690.github.io/studycontents/algorithm/2022-08-28-time_complexity_real_time/',
+        },
+        {
+          label: 'OpenJDK: 사용하지 않는 계산과 벤치마크 최적화',
+          url: 'https://github.com/openjdk/jmh/blob/master/jmh-samples/src/main/java/org/openjdk/jmh/samples/JMHSample_08_DeadCode.java',
         },
       ],
+    },
+    {
+      id: 'judge-worst-input-budget',
+      title: '최악의 입력에서 실제 작업 수를 계산하는 법',
+      summary:
+        '시간복잡도 기호를 초로 바로 바꾸지 않습니다. 최대 크기·반복문 범위·반복 안에서 하는 작업을 함께 셉니다.',
+      stepsTitle: '반복 횟수와 연산 비용 분리',
+      effectTitle: '시간 제한과 비교하기',
+      steps: [
+        'N=10000의 두 겹 전체 순회는 N²=100000000회입니다. j=i+1부터 도는 쌍 순회는 N(N-1)/2=49995000회입니다. 같은 O(N²)라도 실제 횟수부터 다릅니다.',
+        '한 단계에서 길이 L의 문자열을 비교한다면 공통 접두사가 긴 입력에서 최대 L개 문자를 살펴봅니다. 이진 탐색·트리 검색·정렬을 반복문 안에서 호출하면 그 내부 작업도 포함합니다. 정렬의 N log N은 규모 설명이며 정확한 비교 수나 문자열 처리 수와 같지 않습니다.',
+        '한 실행에서 T개 입력 묶음을 처리하면 Σ f(Nᵢ)를 계산합니다. 각 Nᵢ의 최댓값뿐 아니라 문제의 총합 제한도 반영합니다. 반면 별도 프로세스로 채점하는 독립 테스트 파일은 시간을 합산해 TLE를 판단하지 않습니다.',
+        '작업 종류가 일치하는 실측 최댓값에 작업 수 비율과 여유 계수를 곱합니다. 검색 벤치마크의 단위는 탐색 전체 1회이므로 log N을 다시 곱하지 않습니다. 배열 크기나 자료구조가 다른 경우 실제 코드로 다시 측정합니다.',
+      ],
+      effect:
+        '문제의 실제 언어별 제한을 확인하고 최대 입력·편향된 입력·반복 실행 결과와 비교합니다. CPU 10코어 또는 VM 6대라는 이유로 단일 스레드 시간을 나누지 않습니다. 계산된 예산은 설계 참고값이며 채점 결과를 대체하지 않습니다.',
+      note: '실측 최대는 관측한 표본의 최대입니다. 무한 루프, 긴 문자열, 해시 충돌, 할당·GC, 입출력 등은 벤치마크보다 비쌀 수 있습니다. 일반 코드 전체를 보장하는 “1초당 최소 연산 수”는 제공하지 않습니다.',
     },
     {
       id: 'judge-tle-investigation',
@@ -350,8 +380,8 @@ export const judgeServerGuide: GuideCategory = {
       effectTitle: '결과에서 확인할 내용',
       steps: [
         '문제와 검증 코드를 선택하고 “최대 입력에서 TLE가 타당한지, 더 빠른 풀이가 필요한지 검증해줘”처럼 요청합니다. AI 분석하기를 누르거나 자유 검증 요청을 제출해야 시작됩니다.',
-        'inspect_judge는 물리 CPU·VM 할당, 6대 운영 계획과 실제 활성 대수, 언어별 1억 회 실측, 문제·언어·테스트별 제한을 알려줍니다. 상세 원문은 파일 목록의 judge-performance에서 필요한 범위만 읽습니다.',
-        'estimate_runtime은 언어·입력 크기·복잡도·단계당 반복 비용 가정을 받아 반복 규모와 실측 기준의 환산 시간을 계산합니다. 결과는 가설로 표시하며 판정이나 보장 시간으로 사용하지 않습니다.',
+        'inspect_judge는 물리 CPU·VM 할당, 6대 운영 계획과 실제 활성 대수, 언어·연산별 실측 최댓값, 문제·언어·테스트별 제한을 알려줍니다. 상세 원문은 파일 목록의 judge-performance에서 필요한 범위만 읽습니다.',
+        'estimate_runtime은 언어·연산 profile·최대 입력·반복 구조·단계당 작업 수·한 실행의 입력 묶음 수·여유 계수를 받아 관측 최댓값 기반 시간 예산을 계산합니다. 실제 작업과 맞는 profile을 선택하고, 탐색 전체 비용에 log N을 중복 적용하지 않습니다. 결과는 시간 보장이나 판정이 아닙니다.',
         '에이전트는 원본과 수정 후보를 기존 채점기의 run_code로 실패 테스트·최대 입력에서 검증합니다. 제한에 가까우면 반복 실행의 편차도 확인하고, 실행 범위와 실제 시간·판정에 근거해 결론을 작성합니다.',
       ],
       effect:

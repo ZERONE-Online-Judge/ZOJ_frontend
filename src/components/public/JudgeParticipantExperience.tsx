@@ -7,7 +7,7 @@ import {
   submissionStatusLabel,
   submissionStatusTone,
 } from '@/domains/submissionScoreboard/status';
-import { participantJudgeBenchmark as benchmark } from '@/data/participantJudgeBenchmark';
+import JudgeTimeReference from '@/components/public/JudgeTimeReference';
 import './JudgeParticipantExperience.css';
 
 const verdicts = [
@@ -107,93 +107,6 @@ function VerdictBadge({ status }: { status: string }) {
     <span className={`judge-demo-badge is-${submissionStatusTone(status)}`}>
       {submissionStatusLabel(status)}
     </span>
-  );
-}
-
-function Performance() {
-  return (
-    <section
-      className="experience-container experience-section"
-      id="judge-performance"
-    >
-      <ExperienceReveal>
-        <div className="experience-section-heading">
-          <div>
-            <p className="experience-eyebrow">A FEEL FOR SPEED</p>
-            <h2>1억 번 계산하면, 이만큼 걸려요.</h2>
-          </div>
-          <p>ZOJ 채점기에서 언어별 5회 실행한 평균이에요.</p>
-        </div>
-        <div className="judge-speed-reference">
-          {benchmark.cases.map((item, index) => (
-            <article
-              className={`judge-speed-card ${index < 2 ? 'is-cpp' : 'is-python'}`}
-              key={item.id}
-            >
-              <span>{item.label}</span>
-              <p>
-                <strong>{(item.runtimeMs.mean / 1000).toFixed(3)}</strong>
-                <span>초</span>
-              </p>
-              <small>
-                최소 {(item.runtimeMs.min / 1000).toFixed(3)} · 최대{' '}
-                {(item.runtimeMs.max / 1000).toFixed(3)}초
-              </small>
-            </article>
-          ))}
-        </div>
-        <div className="judge-speed-example">
-          <span className="judge-small-label">무엇을 계산했나요?</span>
-          <p>
-            <code>total += i % 97</code> — 나머지를 구하고 더하는 일을{' '}
-            <strong>1억 번</strong> 반복했어요.
-            <br />N = 10,000인 N² 풀이도 반복 횟수는 1억 번이므로, 풀이의 규모를
-            가늠할 때 참고하세요.
-          </p>
-        </div>
-        <p className="judge-section-footnote">
-          {benchmark.displayDate} 실측 · 각 언어 5회 모두 정답. 반복문 안에서
-          하는 일과 최적화에 따라 시간은 달라져요. 대기·컴파일 시간은 포함하지
-          않아요.
-        </p>
-        <details className="judge-inline-details judge-speed-evidence">
-          <summary>측정 조건과 실행 기록 보기</summary>
-          <div>
-            <p>
-              입력으로 반복 횟수 100,000,000을 받아 0부터 99,999,999까지
-              계산하고, 합계 4,799,999,352를 출력해 정답을 확인했습니다. 언어별
-              5회 실행 시간을 모두 더해 5로 나눈 산술평균입니다. 최솟값·최댓값도
-              같은 5회 기록에서 가져왔어요.
-            </p>
-            <p>
-              실제 채점 큐에 한 번에 한 작업씩 넣고, 매번 새 프로세스로
-              실행했습니다. 별도 준비 실행을 제외하지 않았으며 Java 실행
-              시간에는 JVM 시작과 JIT 비용도 포함됩니다. 다른 채점 작업 유입이
-              없는 조건에서 측정했습니다.
-            </p>
-            <p>
-              공통 CPU는 {benchmark.environment.cpu}입니다. C99·C++17은 GCC{' '}
-              {benchmark.environment.gcc} / -O2, Python은 CPython{' '}
-              {benchmark.environment.python}, Java는 서비스의 Java 8 호환 채점
-              환경입니다. 측정용 제한은 모든 언어에 120초·256MB를 동일하게
-              적용했으며, 실제 대회 문제의 제한과는 별개입니다.
-            </p>
-            <p>
-              표시 시간은 채점기에 저장된 테스트 실행 시간이며 격리 실행 준비와
-              프로세스 시작을 포함합니다. 이 수치를 모든 종류의 연산에 같은
-              속도로 적용할 수는 없어요.
-            </p>
-            <a
-              href={benchmark.snapshotPath}
-              download
-              className="experience-text-link"
-            >
-              4개 언어 코드와 전체 20회 기록 다운로드 ↓
-            </a>
-          </div>
-        </details>
-      </ExperienceReveal>
-    </section>
   );
 }
 
@@ -447,7 +360,7 @@ export default function JudgeParticipantExperience() {
         <a href="#judge-scoreboard">점수 계산 ↗</a>
       </nav>
       <JudgeSubmissionJourney />
-      <Performance />
+      <JudgeTimeReference />
       <JudgeMemoryReference />
       <Verdicts />
       <Scoreboard />

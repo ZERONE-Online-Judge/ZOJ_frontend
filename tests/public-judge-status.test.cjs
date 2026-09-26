@@ -329,3 +329,99 @@ test('participant walkthrough autoplays and loops without controls or operator p
     delete global.IS_REACT_ACT_ENVIRONMENT;
   }
 });
+
+test('time reference preserves observed maxima, units, load conditions and all raw samples', () => {
+  const { judgeTimeBenchmark: data } = source('data/judgeTimeBenchmark.ts');
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.resolve(__dirname, '../public' + data.snapshotPath),
+      'utf8',
+    ),
+  );
+  const { judgeTimeSources: sources } = source('data/judgeTimeSources.ts');
+  assert.equal(raw.cases.length, 16);
+  assert.equal(raw.cases.flatMap((c) => c.runs).length, 96);
+  assert.equal(
+    raw.cases.flatMap((c) => c.runs).reduce((sum, r) => sum + r.testcases, 0),
+    240,
+  );
+  for (const c of data.cases) {
+    const evidence = raw.cases.find((r) => r.id === c.id);
+    assert.equal(sources[c.id].source, evidence.source);
+    assert.deepEqual(
+      sources[c.id].serialMs,
+      evidence.runs
+        .filter((r) => r.condition === 'serial')
+        .map((r) => r.runtime_ms),
+    );
+    assert.equal(c.sampleCount, 6);
+    assert.ok(
+      evidence.runs.every(
+        (r) => r.status === 'accepted' && r.other_jobs_observed === 0,
+      ),
+    );
+    assert.equal(
+      c.runtimeMs.max,
+      Math.max(...evidence.runs.map((r) => r.runtime_ms)),
+    );
+    assert.equal(
+      c.serialMaxMs,
+      Math.max(
+        ...evidence.runs
+          .filter((r) => r.condition === 'serial')
+          .map((r) => r.runtime_ms),
+      ),
+    );
+    assert.equal(
+      c.loadMaxMs,
+      Math.max(
+        ...evidence.runs
+          .filter((r) => r.condition === 'mixed12')
+          .map((r) => r.runtime_ms),
+      ),
+    );
+    assert.equal(c.iterations, c.profile === 'search' ? 1000000 : 100000000);
+    assert.ok(
+      evidence.source.includes(
+        c.language === 'python313'
+          ? 'print('
+          : c.language === 'java8'
+            ? 'System.out.println'
+            : 'printf(',
+      ),
+    );
+  }
+  const html = render(status);
+  assert.match(html, /같은 1억 번도/);
+  assert.match(html, /보수적 시간 예산/);
+  assert.match(html, /최악 실행시간의 상한이 아니/);
+  assert.doesNotMatch(html, /1억 번 계산하면, 이만큼/);
+});
+
+test('time budget distinguishes full pairs, triangular pairs, search calls and extrapolation', () => {
+  const { estimateTimeBudget: calc, judgeTimeBenchmark: data } = source(
+    'data/judgeTimeBenchmark.ts',
+  );
+  const c = data.cases.find(
+    (c) => c.language === 'cpp17' && c.profile === 'memory',
+  );
+  assert.equal(calc(c, 'quadratic', 10000).count, 100000000);
+  assert.equal(calc(c, 'quadratic', 10000).budgetMs, c.runtimeMs.max * 2);
+  assert.equal(calc(c, 'pairs', 10000).count, 49995000);
+  assert.equal(calc(c, 'pairs', 1).budgetMs, 0);
+  assert.equal(calc(c, 'n_log_n', 1).count, 0);
+  assert.equal(calc(c, 'n_log_n', 3).count, 6);
+  assert.equal(calc(c, 'linear', 100000001).extrapolated, true);
+  const search = data.cases.find(
+    (c) => c.language === 'cpp17' && c.profile === 'search',
+  );
+  assert.equal(
+    calc(search, 'linear', 1000000, 3).budgetMs,
+    search.runtimeMs.max * 3,
+  );
+  assert.equal(calc(search, 'n_log_n', 1000000), null);
+  for (const n of [NaN, Infinity, 0, -1, 1.5, 1000000001])
+    assert.equal(calc(c, 'linear', n), null);
+  for (const margin of [NaN, Infinity, 0, 11])
+    assert.equal(calc(c, 'linear', 100, margin), null);
+});
