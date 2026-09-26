@@ -26,6 +26,10 @@ export default function JudgeBenchmarkExamples({
   const accepted = scenario.statuses.accepted ?? 0;
   return (
     <section className="og-measured-example" aria-label="실측 실행 예제">
+      <p className="og-muted">
+        이 기록은 7대·14슬롯 구성에서 측정한 결과입니다. 6대 운영 기준의 동시
+        부하 측정값은 아닙니다.
+      </p>
       <label className="og-benchmark-select">
         확인할 코드
         <select

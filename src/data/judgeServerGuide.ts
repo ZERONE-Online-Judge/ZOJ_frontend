@@ -1,5 +1,7 @@
 import type { GuideCategory } from './operatorGuideContent';
 import { judgeBenchmark } from './judgeBenchmark';
+import { participantJudgeBenchmark as runtimeBenchmark } from './participantJudgeBenchmark';
+import { judgeInfrastructure as infrastructure } from './judgeInfrastructure';
 
 const runRange = (id: string, field: 'runtime_ms' | 'memory_kb') => {
   const values = judgeBenchmark.cases
@@ -35,13 +37,15 @@ export const judgeServerGuide: GuideCategory = {
     {
       id: 'server-speed',
       title: '현재 ZOJ가 제공하는 채점 환경',
-      summary: `${judgeBenchmark.displayDate} 기준 제공 구성은 에이전트 7대, 노드당 제출 슬롯 2개, 합계 14개입니다.`,
+      summary: `운영 기준은 채점 VM ${infrastructure.vm.planned_count}대이며, 각 VM에 ${infrastructure.vm.vcpus_per_agent} vCPU·${infrastructure.vm.memory_gib_per_agent}GiB를 할당합니다. 7대에서 6대로 축소 운영하는 구성입니다.`,
       stepsTitle: '제공 환경을 이렇게 이해하세요',
       effectTitle: '대회 운영자가 관리하는 범위',
       steps: [
         '채점 서버 설치·VM 자원 배정·에이전트 연결과 업데이트는 ZOJ가 담당합니다. 대회 운영자가 서버 사양을 직접 맞추거나 VM을 구성할 필요는 없습니다.',
-        '채점 에이전트 7대의 제공 버전은 모두 v0.2.18이며, 노드당 제출 슬롯은 2개입니다. 슬롯은 한 번에 맡을 수 있는 제출 수이며, 14개의 물리 코어나 초당 14개 처리량이라는 뜻은 아닙니다.',
-        '모든 채점 VM의 CPU 모델은 Intel Xeon E5-2698 v4 @ 2.20GHz이며, C/C++ 컴파일러는 GCC 14.2.0, Python은 CPython 3.13.13입니다. 7대 모두 같은 구성입니다. 2.20GHz는 CPU 모델의 정격 표기입니다.',
+        '물리 서버에는 Intel Xeon E5-2698 v4 @ 2.20GHz CPU 2소켓과 256GB DDR4-2933Y ECC 메모리가 장착되어 있습니다. 채점 VM마다 10 vCPU와 26GiB 메모리를 할당합니다. DDR4-2933Y는 장착 모듈 규격이며 실제 동작 클럭을 뜻하는 표기는 아닙니다.',
+        '6대 운영 기준에서 각 에이전트의 제출 슬롯은 2개, 합계 12개입니다. 슬롯은 동시에 맡을 제출 수입니다. VM의 10 vCPU를 제출 하나가 전용으로 쓰거나 단일 스레드 풀이가 10배 빨라지는 것은 아닙니다.',
+        '모든 채점 VM의 CPU 모델은 Intel Xeon E5-2698 v4 @ 2.20GHz이며, C/C++ 컴파일러는 GCC 14.2.0, Python은 CPython 3.13.13입니다. 전체 채점 VM이 같은 실행 환경을 사용합니다. 2.20GHz는 CPU 모델의 정격 표기입니다.',
+        '노드의 10 vCPU·26GiB 안에서 최대 2개 제출이 각각 테스트 4개씩 실행됩니다. 테스트 작업은 노드당 최대 8개이며 실제 개수는 테스트 수와 준비 상태에 따라 다릅니다. 1억 회 실측은 테스트 1개·한 제출씩 실행한 기록이므로 다중 테스트 부하와 구분합니다.',
         '같은 코드도 서버 성능과 실행 환경에 따라 시간이 달라집니다. 출제자 PC의 측정값을 그대로 시간 제한으로 옮기기보다 아래 실측 예제를 참고하고, 본인의 문제는 ZOJ 검증 코드 채점으로 확인하세요.',
       ],
       effect:
@@ -51,19 +55,36 @@ export const judgeServerGuide: GuideCategory = {
         rows: [
           [
             '채점 에이전트',
-            '7대 · 모두 v0.2.18',
-            `${judgeBenchmark.displayDate} 제공 구성`,
+            '6대 · 각 10 vCPU / 26GiB',
+            '7대에서 6대로 축소 운영 기준 · 실제 연결 수와 구분',
           ],
           [
             '제출 슬롯',
-            '각 2개 · 합계 14개',
+            '각 2개 · 합계 12개(6대 기준)',
             '각 에이전트가 동시에 맡는 제출 수',
           ],
           [
-            '채점 VM CPU',
-            'Intel Xeon E5-2698 v4 @ 2.20GHz',
-            '전체 채점 VM 공통',
+            '물리 서버 CPU',
+            'Intel Xeon E5-2698 v4 @ 2.20GHz × 2소켓',
+            '채점 VM이 공유하는 호스트',
           ],
+          ['물리 서버 메모리', '256GB · DDR4-2933Y ECC', '장착 용량·모듈 규격'],
+          [
+            'VM별 자원',
+            '10 vCPU · 26GiB',
+            '컨테이너 제한도 CPU 10 · 메모리 26g',
+          ],
+          [
+            '테스트 병렬 실행',
+            '제출당 최대 4개 · 노드당 최대 8개',
+            '제출 슬롯 2개 × 테스트 병렬 4개',
+          ],
+          [
+            '격리 기본값',
+            '3초 · 1024MB · PID 128',
+            '문제·언어·테스트 제한이 없을 때의 fallback',
+          ],
+          ['출력 상한', '10MiB', '에이전트 출력 제한 설정'],
           ['C/C++ 컴파일러', 'GCC 14.2.0', '전체 채점 에이전트 공통'],
           ['Python', 'CPython 3.13.13', '전체 채점 에이전트 공통'],
           ['C / C++ 빌드', 'C99 / C++17 · -O2', '현재 에이전트의 컴파일 옵션'],
@@ -79,7 +100,7 @@ export const judgeServerGuide: GuideCategory = {
           ],
         ],
       },
-      note: `위 구성의 기준일은 ${judgeBenchmark.displayDate}입니다. 현재 가동 여부는 채점 현황에 표시됩니다. 제출 슬롯은 동시 제출 수이며, 제출에 전용으로 할당한 CPU 코어 수가 아닙니다.`,
+      note: `위 구성은 서비스 운영자가 제공한 ${infrastructure.as_of} 운영 기준입니다. 실제 가동 대수는 채점 현황에서 확인합니다. 아래 7대·14슬롯의 동시 부하 실측은 축소 전 기록이며 6대 구성의 처리량 측정값으로 바꾸어 읽지 않습니다.`,
       references: [
         { label: '현재 채점 현황', url: 'https://zoj.kr/judge-status' },
         {
@@ -207,6 +228,54 @@ export const judgeServerGuide: GuideCategory = {
       ],
     },
     {
+      id: 'judge-hundred-million',
+      title: '1억 회 계산의 언어별 실제 평균 시간',
+      summary:
+        '같은 나머지 계산·누적을 C·C++·Python·Java로 각각 5회, 총 20회 실제 채점한 결과입니다.',
+      stepsTitle: '실측 조건',
+      effectTitle: 'TLE 검증에 활용하기',
+      steps: [
+        '입력으로 반복 횟수 100,000,000을 받아 total += i % 97을 0부터 99,999,999까지 수행합니다. 합계 4,799,999,352를 출력하고 20회 모두 정답을 확인했습니다.',
+        '운영 채점 큐에 한 번에 한 제출씩 넣어 매번 새 프로세스로 실행했습니다. 다른 채점 작업 유입은 없었으며 언어별 5회 전체를 포함한 산술평균입니다. Java의 JVM 시작과 JIT 비용도 포함됩니다.',
+        '측정용 제한은 모든 언어 120초·256MB입니다. 실제 문제의 시간·메모리 제한이나 언어 보정을 변경한 값이 아닙니다. 큐 대기·컴파일은 표시 실행 시간에 포함하지 않습니다.',
+      ],
+      table: {
+        headers: ['언어', '1억 회 평균', '최소~최대', '반복'],
+        rows: runtimeBenchmark.cases.map((item) => [
+          item.label,
+          `${(item.runtimeMs.mean / 1000).toFixed(4)}초`,
+          `${(item.runtimeMs.min / 1000).toFixed(3)}~${(item.runtimeMs.max / 1000).toFixed(3)}초`,
+          '5회 · 모두 정답',
+        ]),
+      },
+      effect:
+        'N=10,000인 N² 반복은 1억 회 규모입니다. 반복 안의 비용이 같은 단순 정수 연산일 때 위 수치를 출발점으로 삼고, 최대 입력·실제 자료구조·입출력·언어 제한을 적용한 검증 코드 채점으로 확인하세요. 일반적인 모든 N² 풀이의 실행 시간이 이 표와 같다는 뜻은 아닙니다.',
+      note: `${runtimeBenchmark.displayDate} 실측입니다. VM 10 vCPU 또는 CPU 2소켓을 이유로 단일 풀이의 예상 시간을 나누지 않습니다. 노드 수 축소 전 측정 자료이며, VM 자원·컴파일러·부하가 바뀌면 다시 검증합니다.`,
+      references: [
+        {
+          label: '4개 언어 소스·전체 20회 실행 기록',
+          url: 'https://zoj.kr' + runtimeBenchmark.snapshotPath,
+        },
+      ],
+    },
+    {
+      id: 'judge-tle-investigation',
+      title: '검증 에이전트는 TLE를 어떻게 조사하나요?',
+      summary:
+        '서버 구성·실측 기준과 실제 제한을 도구로 조회한 뒤, 복잡도 계산 가설을 실제 채점으로 확인합니다.',
+      stepsTitle: '문제별 요청창에서 TLE 검증 요청하기',
+      effectTitle: '결과에서 확인할 내용',
+      steps: [
+        '문제와 검증 코드를 선택하고 “최대 입력에서 TLE가 타당한지, 더 빠른 풀이가 필요한지 검증해줘”처럼 요청합니다. AI 분석하기를 누르거나 자유 검증 요청을 제출해야 시작됩니다.',
+        'inspect_judge는 물리 CPU·VM 할당, 6대 운영 계획과 실제 활성 대수, 언어별 1억 회 실측, 문제·언어·테스트별 제한을 알려줍니다. 상세 원문은 파일 목록의 judge-performance에서 필요한 범위만 읽습니다.',
+        'estimate_runtime은 언어·입력 크기·복잡도·단계당 반복 비용 가정을 받아 반복 규모와 실측 기준의 환산 시간을 계산합니다. 결과는 가설로 표시하며 판정이나 보장 시간으로 사용하지 않습니다.',
+        '에이전트는 원본과 수정 후보를 기존 채점기의 run_code로 실패 테스트·최대 입력에서 검증합니다. 제한에 가까우면 반복 실행의 편차도 확인하고, 실행 범위와 실제 시간·판정에 근거해 결론을 작성합니다.',
+      ],
+      effect:
+        '보고서에서 “복잡도로 추정한 시간”과 “실제로 채점한 시간”을 구분하세요. 플레이그라운드의 성능은 공식 채점기와 다르며, 26GiB VM 메모리는 해당 문제에 허용된 메모리가 아닙니다. 기준 파일을 수정하거나 시간 제한을 자동으로 완화하여 통과시키지 않습니다.',
+      note: 'N²=1억이라는 숫자만으로 TLE를 확정하지 않습니다. 무한 루프, 느린 입출력, 컨테이너·문자열 연산 비용과 실제 유효 제한도 함께 조사합니다.',
+    },
+    {
       id: 'judge-measured-examples',
       title: '이 시스템에서 실제로 실행한 코드와 결과',
       summary:
@@ -242,7 +311,7 @@ export const judgeServerGuide: GuideCategory = {
         '확인할 코드를 선택한 뒤 단독 1건·동시 10건·동시 100건을 전환합니다. 각 조건은 3회 반복이며, 표본은 각각 3건·30건·300건입니다. 버튼을 눌러도 새 채점은 발생하지 않습니다.',
         '코드 실행 시간은 실제 프로그램 실행 구간입니다. 큐 대기 시간은 제출 생성부터 에이전트의 최초 배정까지입니다. 컴파일과 자료 준비는 큐 대기 이후에 진행합니다.',
         '각 요청의 결과 저장 시간은 큐 대기·자료 준비·컴파일·테스트 실행·출력 검사·결과 저장을 포함합니다. 전체 묶음 완료는 10건 또는 100건 중 마지막 결과가 저장될 때까지입니다.',
-        '동시 100건을 넣어도 제출 슬롯은 총 14개입니다. 에이전트가 슬롯이 비는 대로 다음 작업을 가져갑니다. 큐에 넣은 요청 수와 같은 순간 실행 중인 프로그램 수를 구분하세요.',
+        '이 동시 부하 실험 당시 구성은 7대·14슬롯입니다. 6대 운영 기준은 12슬롯이며 해당 구성의 동시 부하를 다시 측정한 수치는 아닙니다. 에이전트가 슬롯이 비는 대로 다음 작업을 가져갑니다. 큐에 넣은 요청 수와 같은 순간 실행 중인 프로그램 수를 구분하세요.',
         '중앙값은 일반적인 기록의 위치, P95는 기록의 95%가 그 값 이하인 지점입니다. 전체 묶음 완료에는 세 회차의 중앙값과 최솟값~최댓값을 함께 제공합니다.',
       ],
       effect:

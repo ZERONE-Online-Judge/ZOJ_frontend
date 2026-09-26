@@ -400,7 +400,7 @@ test('real execution examples show recorded source, input and measurements witho
   await render('?section=judge-servers');
   assert.match(
     host.querySelector('.og-runtime-facts').textContent,
-    /7대.*14개.*v0.2.18/,
+    /6대.*10 vCPU.*26GiB/,
   );
   assert.match(host.querySelector('.og-benchmark-metrics').textContent, /33ms/);
   assert.match(host.querySelector('.og-load-selector').textContent, /총 3건/);
@@ -532,7 +532,10 @@ test('common environment is described for every node and load summaries match al
   );
   const text = JSON.stringify(environment);
   assert.doesNotMatch(text, /03번|07번/);
-  assert.match(text, /7대 모두 같은 구성/);
+  assert.match(text, /전체 채점 VM이 같은 실행 환경/);
+  assert.match(text, /6대/);
+  assert.match(text, /10 vCPU/);
+  assert.match(text, /26GiB/);
   assert.match(text, /전체 채점 에이전트 공통/);
   const raw = JSON.parse(
     fs.readFileSync(
@@ -602,4 +605,36 @@ test('common environment is described for every node and load summaries match al
       );
     }
   }
+});
+
+test('operator guide separates the planned VM allocation from historical benchmarks', () => {
+  const { judgeInfrastructure: config } = source('data/judgeInfrastructure.ts');
+  const archived = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../public/guides/judge-environment-2026-09-26.json',
+      ),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(config, archived);
+  assert.equal(config.vm.planned_count, 6);
+  assert.equal(config.vm.vcpus_per_agent, 10);
+  assert.equal(config.vm.memory_gib_per_agent, 26);
+  assert.equal(
+    config.agent_configuration.submission_slots *
+      config.agent_configuration.testcases_parallel_per_submission,
+    8,
+  );
+  const guide = source('data/judgeServerGuide.ts').judgeServerGuide;
+  const measured = guide.articles.find((a) => a.id === 'judge-hundred-million');
+  assert.equal(measured.table.rows.length, 4);
+  assert.match(JSON.stringify(measured), /14.7748초/);
+  assert.match(
+    JSON.stringify(
+      guide.articles.find((a) => a.id === 'judge-tle-investigation'),
+    ),
+    /estimate_runtime/,
+  );
 });

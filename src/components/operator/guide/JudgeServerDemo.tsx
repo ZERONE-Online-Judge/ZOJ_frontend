@@ -3,6 +3,7 @@ import ProblemReviewResult from '@/components/operator/ProblemReviewResult';
 import { guideTime } from './guideFixtures';
 import { judgeBenchmark } from '@/data/judgeBenchmark';
 import JudgeBenchmarkExamples from './JudgeBenchmarkExamples';
+import { judgeInfrastructure } from '@/data/judgeInfrastructure';
 
 const flow = [
   {
@@ -71,16 +72,16 @@ export default function JudgeServerDemo() {
       </div>
       <div className="og-runtime-facts">
         <div>
-          <strong>7대</strong>
-          <span>운영 채점 에이전트</span>
+          <strong>{judgeInfrastructure.vm.planned_count}대</strong>
+          <span>축소 운영 기준 · 실제 연결 수와 구분</span>
         </div>
         <div>
-          <strong>14개</strong>
-          <span>전체 제출 슬롯 · 노드당 2개</span>
+          <strong>{judgeInfrastructure.vm.vcpus_per_agent} vCPU</strong>
+          <span>각 채점 VM의 CPU 할당</span>
         </div>
         <div>
-          <strong>v0.2.18</strong>
-          <span>제공 에이전트 버전</span>
+          <strong>{judgeInfrastructure.vm.memory_gib_per_agent}GiB</strong>
+          <span>각 채점 VM의 메모리 할당</span>
         </div>
       </div>
       <div
@@ -93,7 +94,7 @@ export default function JudgeServerDemo() {
           aria-pressed={view === 'examples'}
           onClick={() => setView('examples')}
         >
-          실제 실행 예제
+          기존 7대 구성 실행 기록
         </button>
         <button
           type="button"
