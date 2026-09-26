@@ -360,3 +360,15 @@ export function waitOperatorTestSubmissionStatus(
     token,
   );
 }
+
+export function rejudgeSystemError(
+  contestId: string,
+  submissionId: string,
+  token: string,
+) {
+  return apiRequest<Submission>(
+    `/operator/contests/${contestId}/submissions/${submissionId}/rejudge`,
+    token,
+    { method: 'POST' },
+  );
+}

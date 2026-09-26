@@ -176,3 +176,45 @@ test('participant runtime averages come from all five actual 100M runs for each 
     assert.deepEqual(example.runtimeMs, reference.runtimeMs);
   }
 });
+
+test('memory reference matches all real measurements and MLE probes', () => {
+  const curated = source('data/judgeMemoryBenchmark.ts').judgeMemoryBenchmark;
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.resolve(__dirname, '../public' + curated.snapshotPath),
+      'utf8',
+    ),
+  );
+  assert.equal(raw.measurementCount, 72);
+  assert.equal(
+    raw.cases.reduce((n, c) => n + c.runs.length, 0),
+    72,
+  );
+  for (const example of curated.cases) {
+    const recorded = raw.cases.find((c) => c.id === example.id);
+    const values = recorded.runs.map((r) => r.memory_kb);
+    assert.equal(values.length, example.group === 'measurement' ? 5 : 3);
+    assert.equal(
+      example.memoryKiB.mean,
+      values.reduce((a, b) => a + b, 0) / values.length,
+    );
+    assert.equal(example.memoryKiB.min, Math.min(...values));
+    assert.equal(example.memoryKiB.max, Math.max(...values));
+    assert.ok(
+      recorded.runs.every(
+        (r) =>
+          r.status === example.expected_status && r.other_jobs_observed === 0,
+      ),
+    );
+    assert.deepEqual(recorded.memoryKiB, example.memoryKiB);
+    assert.equal(
+      Number(recorded.output.trim()),
+      Math.max(0, (example.elements * (example.elements - 1)) / 2),
+    );
+  }
+  const html = render(status);
+  assert.match(html, /메모리 실측 원소 수/);
+  assert.match(html, /41.56/);
+  assert.match(html, /시스템 에러와 채점 진행 중인 제출은 제외/);
+  assert.match(html, /72회 측정 기록/);
+});

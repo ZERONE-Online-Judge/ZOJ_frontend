@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   keepPreviousData,
+  useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ import { listParticipantTeams } from '@/domains/teamParticipation/api';
 import type { ParticipantTeam } from '@/domains/teamParticipation/types';
 import {
   getOperatorSubmission,
+  rejudgeSystemError,
   getOperatorSubmissionFilters,
   listOperatorSubmissionsPage,
   waitOperatorSubmissionStatus,
@@ -92,6 +94,11 @@ export default function OperatorSubmissionsPage() {
           <OperatorSubmissionsContent
             contestId={contestId}
             token={session.accessToken}
+            canRejudge={hasContestPermission(
+              session,
+              contestId,
+              'contest.problem.test',
+            )}
             canViewProblems={hasContestPermission(
               session,
               contestId,
@@ -121,9 +128,11 @@ function OperatorSubmissionsContent({
   token,
   canViewProblems,
   canViewParticipants,
+  canRejudge,
 }: {
   contestId: string;
   token: string;
+  canRejudge: boolean;
   canViewProblems: boolean;
   canViewParticipants: boolean;
 }) {
@@ -199,6 +208,31 @@ function OperatorSubmissionsContent({
     placeholderData: keepPreviousData,
   });
 
+  const retryMutation = useMutation({
+    mutationFn: (submissionId: string) =>
+      rejudgeSystemError(contestId, submissionId, token),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Submission>(
+        [
+          'operator',
+          'submission-detail',
+          contestId,
+          updated.submission_id,
+          queryIdentity,
+        ],
+        (old) => ({ ...old, ...updated }),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'submissions', contestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['operator', 'dashboard', contestId],
+      });
+    },
+  });
+  const retry = (submissionId: string) => {
+    if (!retryMutation.isPending) retryMutation.mutate(submissionId);
+  };
   const divisions = dashboardQuery.data?.divisions ?? [];
   const problems = filtersQuery.data?.problems ?? [];
   const filteredProblems = divisionId
@@ -345,6 +379,23 @@ function OperatorSubmissionsContent({
       width="full"
     >
       <OperatorTabs contestId={contestId} />
+      {retryMutation.isError ? (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg bg-rose-50 p-4 text-sm text-rose-700"
+        >
+          {formatApiError(retryMutation.error, '재채점을 요청하지 못했습니다.')}
+        </p>
+      ) : null}
+      {retryMutation.isSuccess ? (
+        <p
+          role="status"
+          className="mb-4 rounded-lg bg-indigo-50 p-4 text-sm text-indigo-700"
+        >
+          재채점을 요청했습니다. 원래 제출 시각과 코드를 유지하고 실제 채점
+          결과를 반영합니다.
+        </p>
+      ) : null}
 
       {dashboardQuery.error ||
       filtersQuery.error ||
@@ -483,6 +534,8 @@ function OperatorSubmissionsContent({
         title="제출 목록"
       >
         <OperatorSubmissionsTable
+          onRetry={canRejudge ? retry : undefined}
+          retryPending={retryMutation.isPending}
           onSelectOwner={(submissionId) =>
             setSelectedOwnerSubmissionId(submissionId)
           }
@@ -517,7 +570,9 @@ function OperatorSubmissionsContent({
 
       {selectedSubmissionId ? (
         <SubmissionDetailModal
-          error={selectedSubmissionQuery.error}
+          onRetry={canRejudge ? retry : undefined}
+          retryPending={retryMutation.isPending}
+          error={selectedSubmissionQuery.error || retryMutation.error}
           isLoading={selectedSubmissionQuery.isLoading}
           onClose={() => setSelectedSubmissionId('')}
           problemById={problemById}
@@ -634,12 +689,16 @@ function codeLength(submission: Submission) {
 }
 
 function OperatorSubmissionsTable({
+  onRetry,
+  retryPending,
   onSelectOwner,
   onSelectProblem,
   onSelectSubmission,
   problemById,
   submissions,
 }: {
+  onRetry?: (submissionId: string) => void;
+  retryPending: boolean;
   onSelectOwner: (submissionId: string) => void;
   onSelectProblem: (problemId: string) => void;
   onSelectSubmission: (submissionId: string) => void;
@@ -717,6 +776,16 @@ function OperatorSubmissionsTable({
                 </td>
                 <td className={cellClass}>
                   <SubmissionStatusBadge submission={submission} compact />
+                  {onRetry && submission.status === 'system_error' ? (
+                    <button
+                      type="button"
+                      disabled={retryPending}
+                      onClick={() => onRetry(submission.submission_id)}
+                      className="mt-2 rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-50"
+                    >
+                      재채점
+                    </button>
+                  ) : null}
                 </td>
                 <td className={`${cellClass} font-medium`}>
                   {judgeLanguageLabel(submission.language)}
@@ -947,12 +1016,16 @@ function TeamDetailModal({
 }
 
 function SubmissionDetailModal({
+  onRetry,
+  retryPending,
   error,
   isLoading,
   onClose,
   problemById,
   submission,
 }: {
+  onRetry?: (submissionId: string) => void;
+  retryPending: boolean;
   error: unknown;
   isLoading: boolean;
   onClose: () => void;
@@ -992,6 +1065,22 @@ function SubmissionDetailModal({
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
             {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
           </p>
+        ) : null}
+        {onRetry && submission?.status === 'system_error' ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-indigo-50 p-4">
+            <p className="text-sm text-indigo-800">
+              시스템 에러는 오답 패널티에 포함되지 않습니다. 같은 코드를 현재
+              문제의 테스트와 제한으로 다시 채점합니다.
+            </p>
+            <button
+              type="button"
+              disabled={retryPending}
+              onClick={() => onRetry(submission.submission_id)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {retryPending ? '요청 중…' : '시스템 에러 재채점'}
+            </button>
+          </div>
         ) : null}
         {submission ? (
           <SubmissionDetailContent

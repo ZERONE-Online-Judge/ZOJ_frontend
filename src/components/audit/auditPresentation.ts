@@ -108,6 +108,7 @@ export function actionLabel(log: OperationalAuditLog) {
     [/\/problems:copy$/, { POST: '문제 복사' }],
     [/\/problem-archives:inspect$/, { POST: '문제 ZIP 파일 확인' }],
     [/\/problem-archives:import$/, { POST: '문제 ZIP 가져오기' }],
+    [/\/submissions\/[^/]+\/rejudge$/, { POST: '시스템 에러 제출 재채점' }],
     [/\/test-submissions$/, { POST: '검증 제출 실행' }],
     [/\/verification-tasks\/[^/]+\/stop$/, { POST: 'AI 검증 작업 중지 요청' }],
     [/\/verification-tasks$/, { POST: 'AI 검증 작업 요청' }],

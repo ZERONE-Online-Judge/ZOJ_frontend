@@ -1,3 +1,4 @@
+import JudgeMemoryReference from '@/components/public/JudgeMemoryReference';
 import { useState } from 'react';
 import { ExperienceReveal } from '@/components/common/PublicExperience';
 import ContestScoreboardProblemCell from '@/components/contest/scoreboard/ContestScoreboardProblemCell';
@@ -541,8 +542,8 @@ function Scoreboard() {
             <div>
               <p>
                 현재 집계 대상은 틀렸습니다·런타임 에러·시간 초과·메모리
-                초과·출력 초과·시스템 에러입니다. 해당 문제의 첫 정답 전에 나온
-                결과만 세며, 컴파일 에러와 채점 진행 중인 제출은 제외합니다.
+                초과·출력 초과입니다. 해당 문제의 첫 정답 전에 나온 결과만 세며,
+                컴파일 에러·시스템 에러와 채점 진행 중인 제출은 제외합니다.
               </p>
               <p>
                 시스템 에러가 보이면 운영자에게 알려 주세요. 재채점으로 판정이
@@ -581,11 +582,13 @@ export default function JudgeParticipantExperience() {
       >
         <a href="#judge-journey">채점 흐름 ↗</a>
         <a href="#judge-performance">실행 시간 ↗</a>
+        <a href="#judge-memory">메모리 사용 ↗</a>
         <a href="#judge-verdicts">결과 읽기 ↗</a>
         <a href="#judge-scoreboard">점수 계산 ↗</a>
       </nav>
       <Journey />
       <Performance />
+      <JudgeMemoryReference />
       <Verdicts />
       <Scoreboard />
     </>

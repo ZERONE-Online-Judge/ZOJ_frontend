@@ -1,0 +1,1243 @@
+{
+  "schemaVersion": 1,
+  "displayDate": "2026. 9. 26.",
+  "measuredAt": "2026-09-26T13:50:28.765015+00:00",
+  "finishedAt": "2026-09-26T13:52:19.111655+00:00",
+  "snapshotPath": "/guides/judge-memory-benchmark-2026-09-26.json",
+  "measurementCount": 72,
+  "method": "언어별 동일 코드에 N=0·100만·1000만을 넣어 각각 5회. 별도 낮은 제한의 실패 사례는 각 3회. 한 번에 한 제출·새 프로세스. 모든 원소를 기록하고 합계를 검증. 다른 작업 관측 0건.",
+  "timeLimitMs": 30000,
+  "measurementMemoryLimitMb": 512,
+  "measurementUnit": "KiB (1024 bytes); UI MiB = KiB / 1024",
+  "memoryMetric": "isolate cg-mem, fallback max-rss",
+  "excludedReadRaceSamples": 1,
+  "environment": {
+    "version": "zoj-judge-environment-2026-09-26-v1",
+    "as_of": "2026-09-26",
+    "source": "service-owner-provided configuration",
+    "host": {
+      "cpu_model": "Intel Xeon E5-2698 v4 @ 2.20GHz",
+      "cpu_sockets": 2,
+      "memory_capacity_gb": 256,
+      "memory_module_spec": "DDR4-2933Y ECC",
+      "memory_effective_rate_mt_s": null
+    },
+    "vm": {
+      "planned_count": 6,
+      "transition": "7대에서 6대로 축소 운영 예정",
+      "vcpus_per_agent": 10,
+      "memory_gib_per_agent": 26,
+      "submission_slots_per_agent": 2,
+      "planned_submission_slots": 12
+    },
+    "scope_notes": [
+      "6대는 축소 운영 기준이며 실제 활성 에이전트 수는 inspect_judge.active_agents로 별도 조회합니다.",
+      "10 vCPU·26GiB는 VM 할당량입니다. 단일 풀이에 전용 10코어·26GiB를 보장하지 않으며 문제·언어·테스트의 제한을 적용합니다.",
+      "DDR4-2933Y는 장착 메모리 모듈 표기입니다. 실제 메모리 동작 속도로 환산하지 않습니다.",
+      "기존 7대·14슬롯 동시 부하 기록을 6대·12슬롯의 측정값으로 간주하지 않습니다.",
+      "각 노드의 동시 제출 2건 × 제출별 테스트 병렬 4개로 테스트 작업은 최대 8개입니다. 테스트 수·준비 상태에 따라 실제 동시 실행 수는 줄어듭니다. checker·컴파일 등의 프로세스 수와 동일하지 않습니다.",
+      "3초·1024MB는 에이전트 fallback입니다. 테스트별 재정의, 언어별 제한, 문제 기본값·언어 보정을 먼저 적용하며 26GiB VM 전체가 제출 메모리 제한이 아닙니다."
+    ],
+    "agent_configuration": {
+      "source": "service-owner supplied agent settings",
+      "container_cpus": 10,
+      "container_memory": "26g",
+      "submission_slots": 2,
+      "testcases_parallel_per_submission": 4,
+      "max_parallel_testcases_per_agent": 8,
+      "sandbox_mode": "isolate",
+      "fallback_time_seconds": 3,
+      "fallback_memory_mb": 1024,
+      "sandbox_pids_limit": 128,
+      "output_limit_bytes": 10485760,
+      "poll_interval_seconds": 1,
+      "long_poll_seconds": 20
+    }
+  },
+  "cases": [
+    {
+      "id": "c99-0",
+      "label": "C99 · int32_t 배열",
+      "language": "c99",
+      "source": "#include <stdio.h>\n#include <stdint.h>\n#include <stdlib.h>\nint main(void) {\n  int n; if (scanf(\"%d\", &n) != 1 || n < 0) return 1;\n  volatile int32_t *a = n ? malloc((size_t)n * sizeof(int32_t)) : NULL;\n  if (n && !a) return 2;\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  printf(\"%lld\\n\", total);\n  free((void *)a);\n  return 0;\n}\n",
+      "input": "0\n",
+      "output": "0\n",
+      "elements": 0,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 335.2,
+        "min": 328,
+        "max": 340
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 340,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:28.836694+00:00",
+          "finished_at": "2026-09-26 13:50:29.377762+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 328,
+          "runtime_ms": 18,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:29.665140+00:00",
+          "finished_at": "2026-09-26 13:50:30.113115+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 340,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:30.480880+00:00",
+          "finished_at": "2026-09-26 13:50:30.770895+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 328,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:30.892822+00:00",
+          "finished_at": "2026-09-26 13:50:31.165713+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 340,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:31.303930+00:00",
+          "finished_at": "2026-09-26 13:50:31.655023+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "c99-1000000",
+      "label": "C99 · int32_t 배열",
+      "language": "c99",
+      "source": "#include <stdio.h>\n#include <stdint.h>\n#include <stdlib.h>\nint main(void) {\n  int n; if (scanf(\"%d\", &n) != 1 || n < 0) return 1;\n  volatile int32_t *a = n ? malloc((size_t)n * sizeof(int32_t)) : NULL;\n  if (n && !a) return 2;\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  printf(\"%lld\\n\", total);\n  free((void *)a);\n  return 0;\n}\n",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "elements": 1000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 4176,
+        "min": 4168,
+        "max": 4180
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 4180,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:31.731039+00:00",
+          "finished_at": "2026-09-26 13:50:32.138926+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 4168,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:32.547181+00:00",
+          "finished_at": "2026-09-26 13:50:32.825815+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 4180,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:32.965558+00:00",
+          "finished_at": "2026-09-26 13:50:33.267996+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 4172,
+          "runtime_ms": 35,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:33.377084+00:00",
+          "finished_at": "2026-09-26 13:50:33.714817+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 4180,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:33.788846+00:00",
+          "finished_at": "2026-09-26 13:50:34.354504+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "c99-10000000",
+      "label": "C99 · int32_t 배열",
+      "language": "c99",
+      "source": "#include <stdio.h>\n#include <stdint.h>\n#include <stdlib.h>\nint main(void) {\n  int n; if (scanf(\"%d\", &n) != 1 || n < 0) return 1;\n  volatile int32_t *a = n ? malloc((size_t)n * sizeof(int32_t)) : NULL;\n  if (n && !a) return 2;\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  printf(\"%lld\\n\", total);\n  free((void *)a);\n  return 0;\n}\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 39490.4,
+        "min": 39488,
+        "max": 39500
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:34.619967+00:00",
+          "finished_at": "2026-09-26 13:50:34.851340+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:35.031015+00:00",
+          "finished_at": "2026-09-26 13:50:35.400190+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:35.441650+00:00",
+          "finished_at": "2026-09-26 13:50:35.802185+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:35.851514+00:00",
+          "finished_at": "2026-09-26 13:50:36.441496+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 39500,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:36.665332+00:00",
+          "finished_at": "2026-09-26 13:50:36.960175+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "c99-mle",
+      "label": "C99 · int32_t 배열",
+      "language": "c99",
+      "source": "#include <stdio.h>\n#include <stdint.h>\n#include <stdlib.h>\nint main(void) {\n  int n; if (scanf(\"%d\", &n) != 1 || n < 0) return 1;\n  volatile int32_t *a = n ? malloc((size_t)n * sizeof(int32_t)) : NULL;\n  if (n && !a) return 2;\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  printf(\"%lld\\n\", total);\n  free((void *)a);\n  return 0;\n}\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 32,
+      "expected_status": "memory_limit_exceeded",
+      "group": "limit-probe",
+      "sampleCount": 3,
+      "memoryKiB": {
+        "mean": 32768,
+        "min": 32768,
+        "max": 32768
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:37.091782+00:00",
+          "finished_at": "2026-09-26 13:50:37.460735+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 2,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:37.503081+00:00",
+          "finished_at": "2026-09-26 13:50:37.828017+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 3,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:37.913839+00:00",
+          "finished_at": "2026-09-26 13:50:38.486581+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        }
+      ]
+    },
+    {
+      "id": "cpp17-0",
+      "label": "C++17 · vector<int32_t>",
+      "language": "cpp17",
+      "source": "#include <cstdint>\n#include <iostream>\n#include <vector>\nint main() {\n  int n; std::cin >> n;\n  std::vector<int32_t> values(n);\n  volatile int32_t *a = values.data();\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  std::cout << total << \"\\n\";\n}\n",
+      "input": "0\n",
+      "output": "0\n",
+      "elements": 0,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 833.6,
+        "min": 576,
+        "max": 1848
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 584,
+          "runtime_ms": 18,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:38.743332+00:00",
+          "finished_at": "2026-09-26 13:50:39.354024+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 1848,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:39.559665+00:00",
+          "finished_at": "2026-09-26 13:50:40.475834+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 584,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:40.776023+00:00",
+          "finished_at": "2026-09-26 13:50:41.489970+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 576,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:41.590492+00:00",
+          "finished_at": "2026-09-26 13:50:42.358068+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 576,
+          "runtime_ms": 17,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:42.405490+00:00",
+          "finished_at": "2026-09-26 13:50:43.355310+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "cpp17-1000000",
+      "label": "C++17 · vector<int32_t>",
+      "language": "cpp17",
+      "source": "#include <cstdint>\n#include <iostream>\n#include <vector>\nint main() {\n  int n; std::cin >> n;\n  std::vector<int32_t> values(n);\n  volatile int32_t *a = values.data();\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  std::cout << total << \"\\n\";\n}\n",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "elements": 1000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 4624.8,
+        "min": 4416,
+        "max": 5436
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 4428,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:43.639433+00:00",
+          "finished_at": "2026-09-26 13:50:44.397525+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 4416,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:44.452799+00:00",
+          "finished_at": "2026-09-26 13:50:45.442821+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 5436,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:45.670230+00:00",
+          "finished_at": "2026-09-26 13:50:46.622339+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 4424,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:46.889961+00:00",
+          "finished_at": "2026-09-26 13:50:47.537735+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 4420,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:47.704315+00:00",
+          "finished_at": "2026-09-26 13:50:48.494609+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "cpp17-10000000",
+      "label": "C++17 · vector<int32_t>",
+      "language": "cpp17",
+      "source": "#include <cstdint>\n#include <iostream>\n#include <vector>\nint main() {\n  int n; std::cin >> n;\n  std::vector<int32_t> values(n);\n  volatile int32_t *a = values.data();\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  std::cout << total << \"\\n\";\n}\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 39492,
+        "min": 39488,
+        "max": 39500
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:48.533484+00:00",
+          "finished_at": "2026-09-26 13:50:49.284754+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:49.348942+00:00",
+          "finished_at": "2026-09-26 13:50:50.294172+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 39496,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:50.570318+00:00",
+          "finished_at": "2026-09-26 13:50:51.293541+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 39488,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:51.384307+00:00",
+          "finished_at": "2026-09-26 13:50:52.053136+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 39500,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:52.197087+00:00",
+          "finished_at": "2026-09-26 13:50:52.836815+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "cpp17-mle",
+      "label": "C++17 · vector<int32_t>",
+      "language": "cpp17",
+      "source": "#include <cstdint>\n#include <iostream>\n#include <vector>\nint main() {\n  int n; std::cin >> n;\n  std::vector<int32_t> values(n);\n  volatile int32_t *a = values.data();\n  for (int i = 0; i < n; ++i) a[i] = i;\n  long long total = 0;\n  for (int i = 0; i < n; ++i) total += a[i];\n  std::cout << total << \"\\n\";\n}\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 32,
+      "expected_status": "memory_limit_exceeded",
+      "group": "limit-probe",
+      "sampleCount": 3,
+      "memoryKiB": {
+        "mean": 32768,
+        "min": 32768,
+        "max": 32768
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:53.026042+00:00",
+          "finished_at": "2026-09-26 13:50:53.653067+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 2,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:50:53.840690+00:00",
+          "finished_at": "2026-09-26 13:50:54.637831+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 3,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 32768,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:42.362974+00:00",
+          "finished_at": "2026-09-26 13:51:43.331994+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        }
+      ]
+    },
+    {
+      "id": "python313-0",
+      "label": "Python 3.13 · list(range(N))",
+      "language": "python313",
+      "source": "n = int(input())\nvalues = list(range(n))\nprint(sum(values))\n",
+      "input": "0\n",
+      "output": "0\n",
+      "elements": 0,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 3140.8,
+        "min": 3136,
+        "max": 3160
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 3136,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:43.609620+00:00",
+          "finished_at": "2026-09-26 13:51:43.754345+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 3136,
+          "runtime_ms": 33,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:44.020798+00:00",
+          "finished_at": "2026-09-26 13:51:44.264303+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 3136,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:44.432071+00:00",
+          "finished_at": "2026-09-26 13:51:44.822823+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 3136,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:44.843776+00:00",
+          "finished_at": "2026-09-26 13:51:44.970901+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 3160,
+          "runtime_ms": 34,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:45.255058+00:00",
+          "finished_at": "2026-09-26 13:51:45.407070+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "python313-1000000",
+      "label": "Python 3.13 · list(range(N))",
+      "language": "python313",
+      "source": "n = int(input())\nvalues = list(range(n))\nprint(sum(values))\n",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "elements": 1000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 42560,
+        "min": 42560,
+        "max": 42560
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 42560,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:45.680497+00:00",
+          "finished_at": "2026-09-26 13:51:45.895007+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 42560,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:46.091338+00:00",
+          "finished_at": "2026-09-26 13:51:46.397121+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 42560,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:46.501225+00:00",
+          "finished_at": "2026-09-26 13:51:47.032268+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 42560,
+          "runtime_ms": 117,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:47.315383+00:00",
+          "finished_at": "2026-09-26 13:51:47.540957+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 42560,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:47.726730+00:00",
+          "finished_at": "2026-09-26 13:51:47.951465+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "python313-10000000",
+      "label": "Python 3.13 · list(range(N))",
+      "language": "python313",
+      "source": "n = int(input())\nvalues = list(range(n))\nprint(sum(values))\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 395823.2,
+        "min": 395752,
+        "max": 395844
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 395844,
+          "runtime_ms": 668,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:48.153945+00:00",
+          "finished_at": "2026-09-26 13:51:49.016968+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 395752,
+          "runtime_ms": 769,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:49.371101+00:00",
+          "finished_at": "2026-09-26 13:51:50.245269+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 395840,
+          "runtime_ms": 667,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:50.591681+00:00",
+          "finished_at": "2026-09-26 13:51:51.554151+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 395840,
+          "runtime_ms": 667,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:51.808938+00:00",
+          "finished_at": "2026-09-26 13:51:52.592656+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 395840,
+          "runtime_ms": 718,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:52.624054+00:00",
+          "finished_at": "2026-09-26 13:51:53.666800+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "python313-mle",
+      "label": "Python 3.13 · list(range(N))",
+      "language": "python313",
+      "source": "n = int(input())\nvalues = list(range(n))\nprint(sum(values))\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 128,
+      "expected_status": "memory_limit_exceeded",
+      "group": "limit-probe",
+      "sampleCount": 3,
+      "memoryKiB": {
+        "mean": 131072,
+        "min": 131072,
+        "max": 131072
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 131072,
+          "runtime_ms": 166,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:53.856569+00:00",
+          "finished_at": "2026-09-26 13:51:54.133304+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 2,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 131072,
+          "runtime_ms": 166,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:54.267239+00:00",
+          "finished_at": "2026-09-26 13:51:54.641076+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 3,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 131072,
+          "runtime_ms": 167,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:54.676891+00:00",
+          "finished_at": "2026-09-26 13:51:55.173886+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        }
+      ]
+    },
+    {
+      "id": "java8-0",
+      "label": "Java 8 호환 · int[]",
+      "language": "java8",
+      "source": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\npublic class Main {\n  static volatile int[] values;\n  public static void main(String[] args) throws Exception {\n    int n = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());\n    int[] a = new int[n];\n    values = a;\n    for (int i = 0; i < n; ++i) a[i] = i;\n    long total = 0;\n    for (int value : a) total += value;\n    System.out.println(total);\n  }\n}\n",
+      "input": "0\n",
+      "output": "0\n",
+      "elements": 0,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 19404.8,
+        "min": 19224,
+        "max": 19548
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 19548,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:55.506985+00:00",
+          "finished_at": "2026-09-26 13:51:57.083029+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 19508,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-05",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:57.129486+00:00",
+          "finished_at": "2026-09-26 13:51:58.215295+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 19472,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:58.350201+00:00",
+          "finished_at": "2026-09-26 13:51:59.275028+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 19272,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:51:59.569023+00:00",
+          "finished_at": "2026-09-26 13:52:00.491883+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 19224,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:00.790341+00:00",
+          "finished_at": "2026-09-26 13:52:01.810515+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "java8-1000000",
+      "label": "Java 8 호환 · int[]",
+      "language": "java8",
+      "source": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\npublic class Main {\n  static volatile int[] values;\n  public static void main(String[] args) throws Exception {\n    int n = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());\n    int[] a = new int[n];\n    values = a;\n    for (int i = 0; i < n; ++i) a[i] = i;\n    long total = 0;\n    for (int value : a) total += value;\n    System.out.println(total);\n  }\n}\n",
+      "input": "1000000\n",
+      "output": "499999500000\n",
+      "elements": 1000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 23883.2,
+        "min": 23596,
+        "max": 24132
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 23596,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:02.023626+00:00",
+          "finished_at": "2026-09-26 13:52:03.294518+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 23976,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-06",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:03.648866+00:00",
+          "finished_at": "2026-09-26 13:52:04.823360+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 24132,
+          "runtime_ms": 66,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:04.867886+00:00",
+          "finished_at": "2026-09-26 13:52:05.889959+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 24092,
+          "runtime_ms": 115,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:06.086300+00:00",
+          "finished_at": "2026-09-26 13:52:07.013810+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 23620,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:07.304034+00:00",
+          "finished_at": "2026-09-26 13:52:08.650749+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "java8-10000000",
+      "label": "Java 8 호환 · int[]",
+      "language": "java8",
+      "source": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\npublic class Main {\n  static volatile int[] values;\n  public static void main(String[] args) throws Exception {\n    int n = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());\n    int[] a = new int[n];\n    values = a;\n    for (int i = 0; i < n; ++i) a[i] = i;\n    long total = 0;\n    for (int value : a) total += value;\n    System.out.println(total);\n  }\n}\n",
+      "input": "10000000\n",
+      "output": "49999995000000\n",
+      "elements": 10000000,
+      "memory_limit_mb": 512,
+      "expected_status": "accepted",
+      "group": "measurement",
+      "sampleCount": 5,
+      "memoryKiB": {
+        "mean": 59027.2,
+        "min": 58684,
+        "max": 59716
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "accepted",
+          "memory_kb": 58948,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:08.942585+00:00",
+          "finished_at": "2026-09-26 13:52:10.042755+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 2,
+          "status": "accepted",
+          "memory_kb": 58888,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-03",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:10.161949+00:00",
+          "finished_at": "2026-09-26 13:52:11.064287+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 3,
+          "status": "accepted",
+          "memory_kb": 59716,
+          "runtime_ms": 166,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:11.380386+00:00",
+          "finished_at": "2026-09-26 13:52:12.737297+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 4,
+          "status": "accepted",
+          "memory_kb": 58900,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:13.003037+00:00",
+          "finished_at": "2026-09-26 13:52:14.135854+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        },
+        {
+          "repeat": 5,
+          "status": "accepted",
+          "memory_kb": 58684,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:14.222028+00:00",
+          "finished_at": "2026-09-26 13:52:15.251080+00:00",
+          "other_jobs_observed": 0,
+          "message": null
+        }
+      ]
+    },
+    {
+      "id": "java8-mle",
+      "label": "Java 8 호환 · int[]",
+      "language": "java8",
+      "source": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\npublic class Main {\n  static volatile int[] values;\n  public static void main(String[] args) throws Exception {\n    int n = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());\n    int[] a = new int[n];\n    values = a;\n    for (int i = 0; i < n; ++i) a[i] = i;\n    long total = 0;\n    for (int value : a) total += value;\n    System.out.println(total);\n  }\n}\n",
+      "input": "20000000\n",
+      "output": "199999990000000\n",
+      "elements": 20000000,
+      "memory_limit_mb": 128,
+      "expected_status": "memory_limit_exceeded",
+      "group": "limit-probe",
+      "sampleCount": 3,
+      "memoryKiB": {
+        "mean": 19252,
+        "min": 19228,
+        "max": 19268
+      },
+      "runs": [
+        {
+          "repeat": 1,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 19268,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-02",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:15.455299+00:00",
+          "finished_at": "2026-09-26 13:52:16.635621+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 2,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 19260,
+          "runtime_ms": 65,
+          "node": "zoj-judge-agent-04",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:16.674129+00:00",
+          "finished_at": "2026-09-26 13:52:17.707295+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        },
+        {
+          "repeat": 3,
+          "status": "memory_limit_exceeded",
+          "memory_kb": 19228,
+          "runtime_ms": 116,
+          "node": "zoj-judge-agent-01",
+          "agent_version": "0.2.18",
+          "submitted_at": "2026-09-26 13:52:17.892888+00:00",
+          "finished_at": "2026-09-26 13:52:18.783969+00:00",
+          "other_jobs_observed": 0,
+          "message": "memory limit exceeded on testcase 1"
+        }
+      ]
+    }
+  ]
+}

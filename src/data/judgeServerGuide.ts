@@ -1,3 +1,4 @@
+import { judgeMemoryBenchmark as memoryBenchmark } from './judgeMemoryBenchmark';
 import type { GuideCategory } from './operatorGuideContent';
 import { judgeBenchmark } from './judgeBenchmark';
 import { participantJudgeBenchmark as runtimeBenchmark } from './participantJudgeBenchmark';
@@ -211,7 +212,7 @@ export const judgeServerGuide: GuideCategory = {
       stepsTitle: '메모리 결과를 읽는 순서',
       effectTitle: '메모리 제한을 정할 때',
       steps: [
-        '현재 isolate 경로는 메타데이터의 cg-mem을 우선 사용하고, 없으면 max-rss를 읽습니다. 두 값이 모두 없으면 자식 프로세스 사용량을 보조값으로 사용합니다. 표시는 계측 도구의 보고값이지 메모리 내용을 바이트별로 센 값은 아닙니다.',
+        '현재 isolate 경로는 메타데이터의 cg-mem을 우선 사용하고, 없으면 max-rss를 읽습니다. 두 값이 모두 없으면 메모리 측정값이 없는 상태로 처리합니다. 표시는 계측 도구의 보고값이지 메모리 내용을 바이트별로 센 값은 아닙니다.',
         '제출 요약 메모리는 집계된 테스트 중 최댓값입니다. 시간 최댓값과 메모리 최댓값은 서로 다른 테스트에서 나올 수 있으며, 병렬 테스트의 메모리를 모두 더한 값도 아닙니다.',
         `단독 실행에서 C++ vector<int> 100만 개의 메모리는 ${runRange('array-cpp', 'memory_kb')}KiB이며, Python list(range(1000000))은 ${runRange('array-python', 'memory_kb')}KiB입니다. 같은 원소 개수여도 자료구조·객체 표현·런타임 때문에 크기가 달라집니다.`,
         '이 값은 제출 프로그램 실행에서 얻은 값입니다. 제출 코드 컴파일이나 checker가 사용한 메모리를 합쳐 표시하지 않습니다. 메모리 할당 실패를 프로그램이 직접 처리하거나 언어가 예외로 종료하면 항상 같은 실패 메시지가 나오지는 않습니다.',
@@ -224,6 +225,88 @@ export const judgeServerGuide: GuideCategory = {
         {
           label: '채점기 · isolate 메모리 값 읽기',
           url: agentSource + '#L980',
+        },
+      ],
+    },
+    {
+      id: 'judge-memory-reference',
+      title: '정수 100만·1000만 개의 언어별 메모리 실측',
+      summary:
+        'C·C++·Python·Java에서 같은 수를 저장하고 합산한 결과입니다. 조건별 5회, 정상 실행 60회 모두 정답입니다.',
+      stepsTitle: '측정 방법과 숫자 읽기',
+      steps: [
+        '동일 코드에 N=0, 1,000,000, 10,000,000을 넣어 각각 5회 실행했습니다. C는 int32_t 배열, C++은 vector<int32_t>, Python은 list(range(N)), Java는 int[]를 사용합니다. 모든 원소를 채운 뒤 합계를 출력해 실제 저장과 접근을 확인했습니다.',
+        '모든 정상 측정의 제한은 30초·512MiB입니다. 명시적인 언어별 제한을 사용하여 기본 언어 보정을 적용하지 않았습니다. 실제 운영 채점 큐에서 한 번에 한 제출씩 새 프로세스로 실행했으며 다른 작업은 관측되지 않았습니다.',
+        '표의 단위는 MiB입니다. 채점기의 KiB 보고값을 1024로 나누었습니다. 1MiB=1,048,576바이트이며, 문제 설정의 MB는 실행 시 이 이진 단위로 변환합니다. 평균·최소·최대와 소스는 다운로드 기록에 보관합니다.',
+        '표에는 해당 프로그램의 실행 환경 비용이 포함됩니다. 빈 배열 수치를 모든 프로그램의 고정 시작 비용으로 빼지 마세요. 같은 원소 수라도 Python의 객체·참조, Java의 JVM·힙, 자료구조의 여유 공간 때문에 차이가 납니다.',
+      ],
+      table: {
+        headers: [
+          '언어·저장 방식',
+          '빈 배열 평균',
+          '100만 개 평균',
+          '1000만 개 평균',
+        ],
+        rows: ['c99', 'cpp17', 'python313', 'java8'].map((language) => {
+          const cases = memoryBenchmark.cases.filter(
+            (c) => c.language === language && c.group === 'measurement',
+          );
+          return [
+            cases[0].label,
+            ...cases.map((c) => `${(c.memoryKiB.mean / 1024).toFixed(2)}MiB`),
+          ];
+        }),
+      },
+      effectTitle: '공간 복잡도를 실제 제한과 연결하기',
+      effect:
+        '4바이트 정수 배열은 원소 수 × 4바이트가 데이터 크기입니다. 1000×1000은 약 3.81MiB, 10000×10000은 약 381.47MiB입니다. 실행 환경·복사본·컨테이너 용량은 별도이며 Python 리스트에 이 공식을 그대로 적용하지 않습니다. 최대 입력의 실제 채점 결과로 확인하세요.',
+      note: 'VM의 26GiB는 제출 하나의 메모리 허용량이 아닙니다. 제출 요약은 실행한 테스트의 메모리 최댓값이며 병렬 테스트 4개의 메모리를 합산하지 않습니다.',
+      references: [
+        {
+          label: '4개 언어 소스·72회 측정 원본',
+          url: `https://zoj.kr${memoryBenchmark.snapshotPath}`,
+        },
+      ],
+    },
+    {
+      id: 'judge-mle-investigation',
+      title: 'MLE를 실제로 재현하고 원인 찾기',
+      summary:
+        '낮은 메모리 제한에서 12회 모두 MLE를 확인했습니다. 표시 메모리와 제한 숫자만으로 원인을 단정하지 않습니다.',
+      stepsTitle: '문제 관리에서 확인할 순서',
+      steps: [
+        '실패 테스트의 입력 크기와 유효 메모리 제한을 확인합니다. 테스트별 지정, 언어별 지정, 문제 기본값·언어 보정 순서입니다. 전체 VM 메모리나 예제용 512MiB와 혼동하지 않습니다.',
+        '배열·DP·그래프·문자열·객체의 최대 개수와 동시에 살아 있는 복사본을 계산합니다. 필요한 행만 남기는 DP, 불필요한 복사 제거, 더 작은 자료형·저장 방식 등 문제에 맞는 수정 후보를 검토합니다.',
+        'Java에는 전체 메모리 제한 외에 -Xmx 힙 상한이 있습니다. 유효 제한 128MiB 이하는 힙 64MiB, 256MiB 이하는 128MiB, 512MiB 이하는 256MiB입니다. 그 이상은 전체 제한의 60%를 256~512MiB 범위로 제한합니다. 스레드 스택은 -Xss256k입니다.',
+        'Java의 int[20,000,000]은 데이터만 약 76.29MiB입니다. 전체 제한 128MiB·힙 64MiB에서 배열 할당 자체가 실패하여 3회 모두 MLE였고, 보고 메모리는 약 18.8MiB였습니다. 사용량이 제한보다 낮다는 이유로 오판정으로 보지 않습니다.',
+        '최대 입력과 실패 입력에서 원본·수정 후보를 같은 제한으로 재채점합니다. 메모리를 줄인 대신 시간이 늘어날 수 있으므로 TLE도 함께 확인합니다. 스택 초과·할당 실패는 언어와 종료 경로에 따라 런타임 에러일 수 있어 상세 메시지도 읽습니다.',
+      ],
+      table: {
+        headers: ['실제 실패 사례', '원소 수', '적용 제한', '결과'],
+        rows: memoryBenchmark.cases
+          .filter((c) => c.group === 'limit-probe')
+          .map((c) => [
+            c.label,
+            c.elements.toLocaleString('en-US'),
+            `${c.memory_limit_mb}MiB`,
+            '3회 모두 MLE',
+          ]),
+      },
+      effectTitle: '판정을 구분하세요',
+      effect:
+        'MLE는 제출 프로그램의 메모리 문제입니다. checker 준비·번들·격리 환경 장애 같은 시스템 에러와 구분합니다. 시스템 에러는 운영자 제출 화면에서 원인 복구 후 재채점하며 오답 패널티에 포함하지 않습니다.',
+      references: [
+        {
+          label: '실제 MLE 실행 기록',
+          url: `https://zoj.kr${memoryBenchmark.snapshotPath}`,
+        },
+        {
+          label: 'isolate 메모리 제한과 보고값',
+          url: 'https://www.ucw.cz/isolate/isolate.1.html',
+        },
+        {
+          label: 'Python 객체 크기와 참조의 구분',
+          url: 'https://docs.python.org/3/library/sys.html#sys.getsizeof',
         },
       ],
     },
