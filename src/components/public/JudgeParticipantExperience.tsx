@@ -250,27 +250,6 @@ function Journey() {
 }
 
 function Performance() {
-  const [language, setLanguage] = useState(0);
-  const [batch, setBatch] = useState(1);
-  const [size, setSize] = useState(0);
-  const example = benchmark.cases[language];
-  const scenario = example.scenarios.find((item) => item.batchSize === batch)!;
-  const n = [1000, 10000, 100000][size];
-  const growth = [
-    { label: 'O(N)', name: '한 번씩 살펴보기', count: n, ratio: n / 1000 },
-    {
-      label: 'O(N log₂ N)',
-      name: '정렬처럼',
-      count: Math.round(n * Math.log2(n)),
-      ratio: (n * Math.log2(n)) / (1000 * Math.log2(1000)),
-    },
-    {
-      label: 'O(N²)',
-      name: '모든 쌍 살펴보기',
-      count: n ** 2,
-      ratio: (n / 1000) ** 2,
-    },
-  ];
   return (
     <section
       className="experience-container experience-section"
@@ -280,207 +259,69 @@ function Performance() {
         <div className="experience-section-heading">
           <div>
             <p className="experience-eyebrow">A FEEL FOR SPEED</p>
-            <h2>이 코드, 얼마나 걸릴까요?</h2>
+            <h2>1초에 얼마나 계산할 수 있나요?</h2>
           </div>
+          <p>풀이를 고를 때는 이 정도를 기준으로 잡아 보세요.</p>
+        </div>
+        <div className="judge-speed-reference">
+          <article className="judge-speed-card is-cpp">
+            <span>C++ · 단순 정수 반복</span>
+            <p>
+              <strong>1억 회</strong>
+              <i>≈</i>
+              <strong>1초</strong>
+            </p>
+            <small>1천만 회는 약 0.1초 · 10억 회는 약 10초</small>
+          </article>
+          <article className="judge-speed-card is-python">
+            <span>Python · 단순 정수 반복</span>
+            <p>
+              <strong>500만 회</strong>
+              <i>≈</i>
+              <strong>1초</strong>
+            </p>
+            <small>같은 반복문도 언어에 따라 걸리는 시간이 달라요.</small>
+          </article>
+        </div>
+        <div className="judge-speed-example">
+          <span className="judge-small-label">이렇게 계산해 보세요</span>
           <p>
-            실제 실행 시간으로 감을 잡고,
+            C++에서 N이 10,000이고 이중 반복문이 N²번 돈다면,
             <br />
-            입력 크기로 풀이를 골라 보세요.
+            <strong>10,000 × 10,000 = 1억 회 → 약 1초 규모</strong>로 생각하면
+            돼요.
           </p>
         </div>
-        <div className="judge-learning-grid">
-          <article className="judge-demo-surface judge-benchmark-card">
-            <p className="judge-small-label">ZOJ 채점기에서 실제 실행</p>
-            <h3>500만 번, 나머지를 더하면.</h3>
-            <p className="judge-card-intro">
-              0부터 4,999,999까지 <code>i % 97</code>을 합산한 같은 작업이에요.
+        <p className="judge-section-footnote">
+          풀이 계획을 위한 어림 기준이에요. 반복 안에서 하는 일,
+          입출력·자료구조·최적화에 따라 달라지므로 시간 제한에 여유를 두세요.
+          대기·컴파일 시간은 코드 실행 시간에 포함하지 않아요.
+        </p>
+        <details className="judge-inline-details judge-speed-evidence">
+          <summary>이 기준은 어디서 나온 건가요?</summary>
+          <div>
+            <p>
+              ZOJ 채점기에서 <code>total += i % 97</code>을 500만 번 반복한 실행
+              시간은 C++ {benchmark.cases[0].scenarios[0].runtimeMs}ms, Python{' '}
+              {benchmark.cases[1].scenarios[0].runtimeMs}ms입니다.{' '}
+              {benchmark.displayDate} 단독 실행 3회의 중앙값이며, C++은 GCC{' '}
+              {benchmark.environment.gcc} / -O2, Python은 CPython{' '}
+              {benchmark.environment.python}입니다.
             </p>
-            <div
-              className="judge-segmented"
-              role="group"
-              aria-label="실행 예제 언어"
+            <p>
+              위의 초당 반복 횟수는 이 기록을 바탕으로 여유를 두고 단순화한 계산
+              기준입니다. 1억 회의 직접 측정값이나 모든 연산의 보장 속도는
+              아닙니다.
+            </p>
+            <a
+              href={benchmark.snapshotPath}
+              download
+              className="experience-text-link"
             >
-              {benchmark.cases.map((item, index) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  aria-pressed={language === index}
-                  onClick={() => setLanguage(index)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <pre className="judge-code-preview">
-              <code>
-                {language === 0
-                  ? 'for (int i = 0; i < 5000000; ++i)\n    total += i % 97;'
-                  : 'for i in range(5000000):\n    total += i % 97'}
-              </code>
-            </pre>
-            <div className="judge-burst-control">
-              <span>동시에 접수하면</span>
-              <div
-                className="judge-segmented"
-                role="group"
-                aria-label="동시 제출 예제 건수"
-              >
-                {[1, 10, 100].map((count) => (
-                  <button
-                    type="button"
-                    key={count}
-                    aria-pressed={batch === count}
-                    onClick={() => setBatch(count)}
-                  >
-                    {count}건
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="judge-benchmark-values" aria-live="polite">
-              <div>
-                <span>코드 실행</span>
-                <p
-                  key={`${language}-${batch}-runtime`}
-                  className="judge-animate-in"
-                >
-                  <b>{scenario.runtimeMs.toLocaleString('ko-KR')}</b> ms
-                </p>
-              </div>
-              <div>
-                <span>큐에서 대기</span>
-                <p
-                  key={`${language}-${batch}-queue`}
-                  className="judge-animate-in"
-                >
-                  <b>{(scenario.queueWaitMs / 1000).toFixed(2)}</b> 초
-                </p>
-              </div>
-            </div>
-            <div className="judge-measure-row">
-              <span>{batch}건 모두 결과가 나오기까지</span>
-              <strong>
-                {(scenario.batchCompletionMs / 1000).toFixed(2)}초
-              </strong>
-            </div>
-            <p className="judge-benchmark-date">
-              {benchmark.displayDate} 실측 · 조건별 3회 반복의 중앙값
-            </p>
-            <p className="judge-card-caption">
-              접수가 몰리면 기다림이 길어져요.{' '}
-              <strong>
-                큐 대기·컴파일 시간은 코드 실행 시간에 더하지 않아요.
-              </strong>{' '}
-              부하에 따라 실행 시간 자체도 달라질 수 있어요.
-            </p>
-            <details className="judge-inline-details">
-              <summary>실행 조건과 전체 코드 보기</summary>
-              <div>
-                <p>
-                  {benchmark.displayDate} · 7대 × 2자리에서 같은 예제를 조건별
-                  3회 실행한 기록의 중앙값입니다. 테스트 1개, 시간
-                  3,000ms·메모리 256MB, 언어 기본 보정 없이 실행했습니다. 전체
-                  완료 시간은 3회 묶음의 중앙값입니다.
-                </p>
-                <p>
-                  채점기 공통 CPU는 {benchmark.environment.cpu}입니다. C++은 GCC{' '}
-                  {benchmark.environment.gcc} / -O2, Python은 CPython{' '}
-                  {benchmark.environment.python}입니다.
-                </p>
-                <p>
-                  채점 큐 등록부터 측정한 값으로, 브라우저·네트워크·HTTP 요청
-                  시간은 포함하지 않습니다. 각 테스트의 격리 실행 준비가 표시
-                  시간에 포함됩니다. 모든 풀이를 초당 연산 수 하나로 환산할 수는
-                  없어요.
-                </p>
-                <pre>
-                  <code>{example.source}</code>
-                </pre>
-                <p>
-                  입력: <code>5000000</code> · 출력: <code>239998879</code>
-                </p>
-                <a
-                  href={benchmark.snapshotPath}
-                  download
-                  className="experience-text-link"
-                >
-                  전체 실측 기록 다운로드 ↓
-                </a>
-              </div>
-            </details>
-          </article>
-          <article className="judge-demo-surface judge-complexity-card">
-            <p className="judge-small-label">
-              입력은 커져도, 풀이가 버틸 수 있게
-            </p>
-            <h3>N이 10배가 되면?</h3>
-            <p className="judge-card-intro">
-              입력 크기를 바꿔 보세요. 풀이 방식에 따라 해야 할 일의 증가 폭이
-              달라져요.
-            </p>
-            <div
-              className="judge-segmented"
-              role="group"
-              aria-label="시간복잡도 예제 입력 크기"
-            >
-              {[1000, 10000, 100000].map((count, index) => (
-                <button
-                  type="button"
-                  key={count}
-                  aria-pressed={size === index}
-                  onClick={() => setSize(index)}
-                >
-                  N = {count.toLocaleString('ko-KR')}
-                </button>
-              ))}
-            </div>
-            <div className="judge-growth-list" aria-live="polite">
-              {growth.map((item) => (
-                <div className="judge-growth-row" key={item.label}>
-                  <div>
-                    <b>{item.label}</b>
-                    <span>{item.name}</span>
-                  </div>
-                  <p>
-                    약 {item.count.toLocaleString('ko-KR')}
-                    <small>
-                      처음보다{' '}
-                      {item.ratio.toLocaleString('ko-KR', {
-                        maximumFractionDigits: 1,
-                      })}
-                      배
-                    </small>
-                  </p>
-                  <div className="judge-growth-track" aria-hidden="true">
-                    <span
-                      style={{
-                        width: `${10 + Math.log10(item.ratio) * 22.5}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="judge-card-caption">
-              숫자는 <strong>N, N log₂ N, N²의 크기 비교</strong>예요. 정확한
-              명령어 횟수나 실행 시간은 아니며, 막대는 증가 배율을 로그 눈금으로
-              보여줘요.
-            </p>
-            <p className="judge-card-caption">
-              최대 N부터 확인하고, 그 크기에 맞는 풀이를 골라요. 같은 복잡도여도
-              언어·자료구조·입출력에 따라 시간은 달라집니다.
-            </p>
-          </article>
-        </div>
-        <div className="judge-timing-note">
-          <span aria-hidden="true">↗</span>
-          <p>
-            <strong>결과의 시간·메모리는 테스트별 최댓값이에요.</strong> 세
-            테스트가 80ms, 120ms, 90ms라면 표시 시간은 120ms예요. 메모리도
-            테스트 중 최댓값이며, 가장 오래 걸린 테스트와 같지 않을 수 있어요.
-            실제 시간·메모리 제한은 문제와 언어에 적용된 값을 확인하세요.
-          </p>
-        </div>
+              예제 코드와 실측 기록 다운로드 ↓
+            </a>
+          </div>
+        </details>
       </ExperienceReveal>
     </section>
   );
