@@ -2,12 +2,8 @@ import { useState } from 'react';
 import ProblemReviewResult from '@/components/operator/ProblemReviewResult';
 import { guideTime } from './guideFixtures';
 import { judgeBenchmark } from '@/data/judgeBenchmark';
+import JudgeBenchmarkExamples from './JudgeBenchmarkExamples';
 
-const languageNames: Record<string, string> = {
-  cpp17: 'C++17',
-  python313: 'Python 3.13',
-  java8: 'Java 8 호환',
-};
 const flow = [
   {
     title: '제출과 작업 저장',
@@ -52,10 +48,6 @@ const flow = [
     status: '판정 완료',
   },
 ];
-const median = (values: number[]) =>
-  [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
-const mib = (kb: number) => (kb / 1024).toFixed(2);
-
 export default function JudgeServerDemo() {
   const [view, setView] = useState('examples');
   const [selected, setSelected] = useState('loop-cpp');
@@ -64,8 +56,6 @@ export default function JudgeServerDemo() {
     setStep(index);
   }
   const example = judgeBenchmark.cases.find((item) => item.id === selected)!;
-  const times = example.runs.map((run) => run.runtime_ms);
-  const memories = example.runs.map((run) => run.memory_kb);
   const current = flow[step];
 
   return (
@@ -75,7 +65,9 @@ export default function JudgeServerDemo() {
           <span className="og-eyebrow">ZOJ가 제공하는 채점 환경</span>
           <h3>코드가 결과가 되기까지</h3>
         </div>
-        <span className="og-example-label">2026. 9. 25. 기준</span>
+        <span className="og-example-label">
+          {judgeBenchmark.displayDate} 기준
+        </span>
       </div>
       <div className="og-runtime-facts">
         <div>
@@ -112,110 +104,7 @@ export default function JudgeServerDemo() {
         </button>
       </div>
       {view === 'examples' ? (
-        <section className="og-measured-example" aria-label="실측 실행 예제">
-          <label className="og-benchmark-select">
-            확인할 코드
-            <select
-              value={selected}
-              onChange={(event) => setSelected(event.target.value)}
-            >
-              {judgeBenchmark.cases.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label} · {languageNames[item.language]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="og-benchmark-metrics" aria-live="polite">
-            <div>
-              <span>표시 시간 중앙값</span>
-              <strong>
-                {median(times).toLocaleString()}
-                <small>ms</small>
-              </strong>
-              <p>
-                3회 범위 {Math.min(...times)}~{Math.max(...times)}ms
-              </p>
-            </div>
-            <div>
-              <span>메모리 최댓값</span>
-              <strong>
-                {mib(Math.max(...memories))}
-                <small>MiB</small>
-              </strong>
-              <p>{Math.max(...memories).toLocaleString()}KiB · 원시 값 기준</p>
-            </div>
-            <div>
-              <span>실제 판정</span>
-              <strong>
-                정답<small>3 / 3회</small>
-              </strong>
-              <p>각 실행은 테스트 1개</p>
-            </div>
-          </div>
-          <div className="og-benchmark-code">
-            <div>
-              <strong>실행한 코드</strong>
-              <span>{languageNames[example.language]}</span>
-            </div>
-            <pre tabIndex={0} aria-label="실행한 소스 코드">
-              <code>{example.source}</code>
-            </pre>
-          </div>
-          <div className="og-benchmark-io">
-            <div>
-              <span>입력</span>
-              <pre>{example.input || '(입력 없음)'}</pre>
-            </div>
-            <div>
-              <span>기대 출력 = 실제 출력</span>
-              <pre>{example.output}</pre>
-            </div>
-          </div>
-          <p className="og-server-takeaway">{example.note}</p>
-          <details className="og-benchmark-records">
-            <summary>3회 측정값과 조건 보기</summary>
-            <p>
-              측정 조건은 예제별 테스트 1개·3회 실행, 언어별 시간 제한
-              3,000ms·메모리 제한 256MB입니다. 기본 언어 보정은 적용하지 않은
-              결과입니다. 측정 중 다른 제출의 채점 대기·실행 작업은 0건입니다.
-            </p>
-            <div className="og-table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>회차</th>
-                    <th>채점기</th>
-                    <th>시간</th>
-                    <th>메모리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {example.runs.map((run, index) => (
-                    <tr key={index}>
-                      <th>{index + 1}회</th>
-                      <td>{run.node.slice(-2)}번</td>
-                      <td>{run.runtime_ms}ms</td>
-                      <td>{run.memory_kb.toLocaleString()}KiB</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p>
-              측정 시각은 2026. 9. 25. 23:54 KST입니다. 노드는 일반 채점과 같은
-              큐에서 자동 배정됩니다. 아래 값은 해당 입력·제한·실행 회차의
-              결과입니다. 실행 시간은 입력과 동시 부하에 따라 달라집니다.
-            </p>
-          </details>
-          <a
-            className="og-benchmark-download"
-            href="/guides/judge-benchmark-2026-09-25.json"
-            download
-          >
-            예제 8종 · 소스와 측정 기록 다운로드 ↓
-          </a>
-        </section>
+        <JudgeBenchmarkExamples example={example} onSelect={setSelected} />
       ) : (
         <section className="og-judge-flow" aria-label="채점 처리 과정">
           <div
@@ -281,8 +170,9 @@ export default function JudgeServerDemo() {
       )}
       <p className="og-demo-note">
         서버 설치·자원 배정·채점기 운영은 ZOJ가 담당합니다. 운영자는 문제의
-        제한·테스트·검증 코드를 관리합니다. 제공 구성은 2026. 9. 25. 기준이며,
-        현재 연결 상태는 채점 현황에 표시됩니다.
+        제한·테스트·검증 코드를 관리합니다. 제공 구성은{' '}
+        {judgeBenchmark.displayDate} 기준이며, 현재 연결 상태는 채점 현황에
+        표시됩니다.
       </p>
     </div>
   );

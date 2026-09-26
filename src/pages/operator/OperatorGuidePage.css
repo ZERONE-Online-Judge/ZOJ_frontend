@@ -1159,3 +1159,67 @@
   font-size: 11px;
   margin-left: 28px;
 }
+
+.og-load-selector {
+  margin-top: 18px;
+}
+.og-load-selector > span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 9px;
+}
+.og-load-selector .og-practice-tabs {
+  margin-bottom: 8px;
+}
+.og-load-selector > p,
+.og-load-comparison > p {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.8;
+}
+.og-load-comparison {
+  margin: 22px 0;
+}
+.og-load-comparison h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.og-load-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+.og-load-comparison th,
+.og-load-comparison td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+.og-load-comparison thead {
+  background: #f8fafc;
+  color: #475569;
+}
+.og-load-comparison small {
+  display: block;
+  font-weight: 400;
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 5px;
+}
+.og-load-comparison .og-load-selected {
+  background: #eef2ff;
+  color: #3730a3;
+}
+.og-load-comparison > p {
+  margin-top: 10px;
+}
+.og-benchmark-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 14px;
+}

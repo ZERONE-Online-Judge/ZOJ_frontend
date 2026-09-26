@@ -403,6 +403,7 @@ test('real execution examples show recorded source, input and measurements witho
     /7대.*14개.*v0.2.18/,
   );
   assert.match(host.querySelector('.og-benchmark-metrics').textContent, /33ms/);
+  assert.match(host.querySelector('.og-load-selector').textContent, /총 3건/);
   assert.match(host.querySelector('.og-benchmark-code').textContent, /i % 97/);
   const choice = host.querySelector('.og-benchmark-select select');
   await act(async () => {
@@ -419,7 +420,13 @@ test('real execution examples show recorded source, input and measurements witho
   );
   assert.match(
     host.querySelector('.og-benchmark-metrics').textContent,
-    /41.57MiB/,
+    new RegExp(
+      (
+        source('data/judgeBenchmark.ts').judgeBenchmark.cases.find(
+          (item) => item.id === 'array-python',
+        ).loadScenarios[0].memoryKb.max / 1024
+      ).toFixed(2) + 'MiB',
+    ),
   );
   assert.equal(
     host.querySelectorAll('.og-benchmark-records tbody tr').length,
@@ -427,7 +434,7 @@ test('real execution examples show recorded source, input and measurements witho
   );
   assert.ok(
     host.querySelector(
-      'a[download][href="/guides/judge-benchmark-2026-09-25.json"]',
+      'a[download][href="/guides/judge-benchmark-2026-09-26.json"]',
     ),
   );
 });
@@ -448,7 +455,7 @@ test('judge steps display actual persisted-result UI without timed advancement',
   await click(button('7. 결과 저장과 슬롯 반환'));
   assert.match(
     host.querySelector('[aria-label="검수 채점 결과"]').textContent,
-    /맞았습니다.*33 ms/,
+    /맞았습니다.*34 ms/,
   );
   assert.match(
     host.querySelector('.og-flow-detail').textContent,
@@ -462,7 +469,7 @@ test('downloadable benchmark preserves every displayed measurement and source', 
     fs.readFileSync(
       path.resolve(
         __dirname,
-        '../public/guides/judge-benchmark-2026-09-25.json',
+        '../public/guides/judge-benchmark-2026-09-26.json',
       ),
       'utf8',
     ),
@@ -478,4 +485,121 @@ test('downloadable benchmark preserves every displayed measurement and source', 
       (result) => result.article.id === 'judge-time-metrics',
     ),
   );
+});
+
+test('load selection compares measured execution, queue wait and batch completion without starting work', async () => {
+  await render('?section=judge-servers');
+  const choice = host.querySelector('.og-benchmark-select select');
+  await act(async () => {
+    choice.value = 'loop-python';
+    choice.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  await click(button('동시 100건'));
+  assert.equal(button('동시 100건').getAttribute('aria-pressed'), 'true');
+  assert.match(host.querySelector('.og-load-selector').textContent, /총 300건/);
+  const metrics = host.querySelector('.og-benchmark-metrics').textContent;
+  assert.match(metrics, /1,018ms/);
+  assert.match(metrics, /큐 대기 시간 중앙값6\.95초/);
+  assert.match(metrics, /100건 모두 완료.*15\.80초/);
+  assert.match(metrics, /300 \/ 300건/);
+  assert.equal(host.querySelectorAll('.og-load-comparison tbody tr').length, 3);
+  assert.equal(
+    host.querySelector('.og-load-selected').dataset.batchSize,
+    '100',
+  );
+  await click(button('동시 10건'));
+  assert.match(host.querySelector('.og-load-selector').textContent, /총 30건/);
+  assert.match(
+    host.querySelector('.og-benchmark-metrics').textContent,
+    /969ms/,
+  );
+  assert.match(
+    host.querySelector('.og-benchmark-records').textContent,
+    /HTTP 요청 처리 시간/,
+  );
+  assert.ok(
+    host.querySelector(
+      'a[download][href="/guides/judge-load-benchmark-2026-09-26.json"]',
+    ),
+  );
+});
+
+test('common environment is described for every node and load summaries match all raw records', () => {
+  const { judgeBenchmark } = source('data/judgeBenchmark.ts');
+  const { judgeServerGuide } = source('data/judgeServerGuide.ts');
+  const environment = judgeServerGuide.articles.find(
+    (a) => a.id === 'server-speed',
+  );
+  const text = JSON.stringify(environment);
+  assert.doesNotMatch(text, /03번|07번/);
+  assert.match(text, /7대 모두 같은 구성/);
+  assert.match(text, /전체 채점 에이전트 공통/);
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../public/guides/judge-load-benchmark-2026-09-26.json',
+      ),
+      'utf8',
+    ),
+  );
+  assert.equal(raw.batches.length, 72);
+  assert.equal(
+    raw.batches.reduce((sum, b) => sum + b.samples.length, 0),
+    2664,
+  );
+  const median = (values) => {
+    const v = [...values].sort((a, b) => a - b);
+    return (
+      Math.round(
+        ((v[Math.floor((v.length - 1) / 2)] + v[Math.floor(v.length / 2)]) /
+          2) *
+          1000,
+      ) / 1000
+    );
+  };
+  for (const example of judgeBenchmark.cases) {
+    for (const scenario of example.loadScenarios) {
+      const batches = raw.batches.filter(
+        (b) => b.case_id === example.id && b.batch_size === scenario.batchSize,
+      );
+      const samples = batches.flatMap((b) => b.samples);
+      assert.equal(batches.length, 3);
+      assert.equal(samples.length, scenario.sampleCount);
+      assert.equal(samples.length, scenario.batchSize * 3);
+      assert.equal(
+        scenario.statuses.accepted,
+        samples.filter((s) => s.status === 'accepted').length,
+      );
+      assert.ok(batches.every((b) => b.other_jobs_observed === 0));
+      for (const [field, stats] of [
+        ['runtime_ms', scenario.runtimeMs],
+        ['queue_wait_ms', scenario.queueWaitMs],
+        ['completion_ms', scenario.completionMs],
+        ['memory_kb', scenario.memoryKb],
+      ]) {
+        const values = samples.map((s) => s[field]).sort((a, b) => a - b);
+        assert.equal(stats.min, values[0]);
+        assert.equal(stats.max, values.at(-1));
+        assert.ok(
+          Math.abs(stats.median - median(values)) <= 0.00101,
+          `${example.id} ${scenario.batchSize}: median rounding`,
+        );
+        assert.equal(stats.p95, values[Math.ceil(values.length * 0.95) - 1]);
+      }
+      assert.equal(
+        scenario.batchCompletionMs.median,
+        median(
+          batches.map((b) =>
+            Math.max(...b.samples.map((s) => s.completion_ms)),
+          ),
+        ),
+      );
+      assert.ok(
+        samples.every(
+          (s) => s.completion_ms >= s.queue_wait_ms && !s.reassigned,
+        ),
+      );
+    }
+  }
 });
