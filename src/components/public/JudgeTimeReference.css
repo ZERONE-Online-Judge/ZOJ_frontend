@@ -167,15 +167,21 @@
 .judge-time-source {
   margin-top: 18px;
 }
-.judge-time-source pre {
+.judge-inline-details.judge-time-source pre {
   max-width: 100%;
   overflow: auto;
   padding: 16px;
   background: #f1f5f9;
+  color: #1e293b;
   border-radius: 10px;
   font-size: 12px;
   line-height: 1.7;
 }
 .judge-time-source p {
   line-height: 1.8;
+}
+
+.judge-inline-details.judge-time-source pre code {
+  color: inherit;
+  background: transparent;
 }
