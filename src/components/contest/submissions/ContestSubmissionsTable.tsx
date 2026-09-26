@@ -11,6 +11,8 @@ import { SvgIcon } from '@/utils/Icons';
 
 type ContestSubmissionsTableProps = {
   contestId: string;
+  /** Render sample submissions without navigation to a real contest. */
+  preview?: boolean;
   fallbackMemberName?: string;
   fallbackTeamName?: string;
   problems?: Problem[];
@@ -125,6 +127,7 @@ function submissionSourceCode(submission: Submission) {
 
 export default function ContestSubmissionsTable({
   contestId,
+  preview = false,
   fallbackMemberName,
   fallbackTeamName,
   problems = [],
@@ -193,12 +196,18 @@ export default function ContestSubmissionsTable({
                       data-label="문제"
                       title={submissionProblemTitle(submission, problemById)}
                     >
-                      <Link
-                        className="zoj-truncate-safe hover:text-zoj-blue max-w-full transition"
-                        to={`/contests/${contestId}/problems/${problemId}`}
-                      >
-                        {submissionProblem(submission, problemById)}
-                      </Link>
+                      {preview ? (
+                        <span className="zoj-truncate-safe max-w-full">
+                          {submissionProblem(submission, problemById)}
+                        </span>
+                      ) : (
+                        <Link
+                          className="zoj-truncate-safe hover:text-zoj-blue max-w-full transition"
+                          to={`/contests/${contestId}/problems/${problemId}`}
+                        >
+                          {submissionProblem(submission, problemById)}
+                        </Link>
+                      )}
                     </td>
                     <td data-label="결과" className={cellClassName}>
                       <ContestSubmissionResultBadge
@@ -235,7 +244,7 @@ export default function ContestSubmissionsTable({
                         >
                           {judgeLanguageLabel(submission.language)}
                         </button>
-                        {sourceCode ? (
+                        {sourceCode && !preview ? (
                           <Link
                             className="text-zoj-blue text-xs font-black whitespace-nowrap transition hover:text-slate-950"
                             to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}

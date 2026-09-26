@@ -1,3 +1,4 @@
+import JudgeSubmissionJourney from '@/components/public/JudgeSubmissionJourney';
 import JudgeMemoryReference from '@/components/public/JudgeMemoryReference';
 import { useState } from 'react';
 import { ExperienceReveal } from '@/components/common/PublicExperience';
@@ -8,41 +9,6 @@ import {
 } from '@/domains/submissionScoreboard/status';
 import { participantJudgeBenchmark as benchmark } from '@/data/participantJudgeBenchmark';
 import './JudgeParticipantExperience.css';
-
-const journey = [
-  {
-    status: 'waiting',
-    title: '차례를 기다려요',
-    description:
-      '접수된 코드는 대기열에 들어갑니다. 빈 실행 자리가 생기면 채점 에이전트가 작업을 가져가요.',
-    detail: '접수 완료 · 채점 서버 배정 대기',
-    progress: 0,
-  },
-  {
-    status: 'preparing',
-    title: '실행을 준비해요',
-    description:
-      '문제의 테스트 자료를 준비하고, 필요한 언어는 컴파일합니다. 컴파일에 실패하면 여기서 결과가 나와요.',
-    detail: '테스트 자료 준비 → 컴파일',
-    progress: 0,
-  },
-  {
-    status: 'judging',
-    title: '테스트로 확인해요',
-    description:
-      '격리된 환경에서 테스트마다 코드를 실행해요. 시간·메모리 제한을 확인하고, 문제의 채점 프로그램이 출력을 검사합니다.',
-    detail: '테스트 3 / 5 · 60%',
-    progress: 60,
-  },
-  {
-    status: 'accepted',
-    title: '결과가 도착해요',
-    description:
-      '판정과 실행 시간·메모리가 저장됩니다. 채점현황에서 확인할 수 있고, 정답이면 스코어보드에도 반영돼요.',
-    detail: '테스트 5 / 5 · 결과 저장 완료',
-    progress: 100,
-  },
-] as const;
 
 const verdicts = [
   {
@@ -141,112 +107,6 @@ function VerdictBadge({ status }: { status: string }) {
     <span className={`judge-demo-badge is-${submissionStatusTone(status)}`}>
       {submissionStatusLabel(status)}
     </span>
-  );
-}
-
-function Journey() {
-  const [step, setStep] = useState(0);
-  const current = journey[step];
-  return (
-    <section className="experience-soft-section" id="judge-journey">
-      <div className="experience-container experience-section">
-        <ExperienceReveal>
-          <div className="experience-section-heading">
-            <div>
-              <p className="experience-eyebrow">A CODE’S JOURNEY</p>
-              <h2>
-                기다리는 동안에도,
-                <br />
-                코드는 앞으로 가고 있어요.
-              </h2>
-            </div>
-            <p>단계를 눌러 채점 과정을 따라가 보세요.</p>
-          </div>
-          <div
-            className="judge-flow-steps"
-            role="group"
-            aria-label="채점 과정 예시 단계"
-          >
-            {journey.map((item, index) => (
-              <button
-                type="button"
-                key={item.status}
-                aria-pressed={index === step}
-                onClick={() => setStep(index)}
-                className={index <= step ? 'is-reached' : ''}
-              >
-                <span>0{index + 1}</span>
-                {index === 3 ? '결과 도착' : submissionStatusLabel(item.status)}
-              </button>
-            ))}
-          </div>
-          <div className="judge-demo-surface judge-flow-demo">
-            <div className="judge-demo-copy" aria-live="polite">
-              <p className="judge-small-label">채점 흐름 예시</p>
-              <h3 key={current.title} className="judge-animate-in">
-                {current.title}
-              </h3>
-              <p>{current.description}</p>
-              <button
-                type="button"
-                className="experience-text-link"
-                onClick={() => setStep((step + 1) % journey.length)}
-              >
-                {step === 3 ? '처음부터 다시 보기 ↺' : '다음 단계 보기 →'}
-              </button>
-            </div>
-            <div
-              className="judge-submission-preview"
-              aria-label="채점현황 예시"
-            >
-              <div className="judge-window-title">
-                <span>
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                채점현황 · 예시
-              </div>
-              <div className="judge-preview-row">
-                <span>
-                  A. 두 수의 합<small>solution.cpp · C++17</small>
-                </span>
-                <VerdictBadge status={current.status} />
-              </div>
-              <div
-                className="judge-demo-progress"
-                role="progressbar"
-                aria-label="예시 테스트 진행률"
-                aria-valuenow={current.progress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <span style={{ width: `${current.progress}%` }} />
-              </div>
-              <p className="judge-preview-detail">{current.detail}</p>
-              <div className="judge-test-dots" aria-hidden="true">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <span
-                    className={
-                      step === 3 || (step === 2 && i < 3) ? 'is-done' : ''
-                    }
-                    key={i}
-                  >
-                    {step === 3 || (step === 2 && i < 3)
-                      ? '✓'
-                      : String(i + 1).padStart(2, '0')}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="judge-section-footnote">
-            위 화면은 설명용 예시예요. 여러 제출을 동시에 처리하므로 제출 순서와
-            결과 도착 순서는 다를 수 있어요.
-          </p>
-        </ExperienceReveal>
-      </div>
-    </section>
   );
 }
 
@@ -586,7 +446,7 @@ export default function JudgeParticipantExperience() {
         <a href="#judge-verdicts">결과 읽기 ↗</a>
         <a href="#judge-scoreboard">점수 계산 ↗</a>
       </nav>
-      <Journey />
+      <JudgeSubmissionJourney />
       <Performance />
       <JudgeMemoryReference />
       <Verdicts />

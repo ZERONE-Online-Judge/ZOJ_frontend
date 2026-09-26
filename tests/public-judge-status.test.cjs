@@ -20,6 +20,7 @@ function source(relative) {
   const native = loaded.require.bind(loaded);
   loaded.require = (id) => {
     if (id.endsWith('.css')) return {};
+    if (id === '@/utils/Icons') return { SvgIcon: () => null };
     if (id === '@tanstack/react-query')
       return {
         useQuery: (value) => {
@@ -217,4 +218,84 @@ test('memory reference matches all real measurements and MLE probes', () => {
   assert.match(html, /41.56/);
   assert.match(html, /시스템 에러와 채점 진행 중인 제출은 제외/);
   assert.match(html, /72회 측정 기록/);
+});
+
+test('walkthrough reuses submission rows, finishes WA early and keeps sample navigation local', async () => {
+  const { JSDOM } = require('jsdom');
+  const dom = new JSDOM('<div id="test-root"></div>', {
+    url: 'http://localhost/',
+  });
+  global.window = dom.window;
+  global.document = dom.window.document;
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const { createRoot } = require('react-dom/client');
+  const { act } = React;
+  const host = document.getElementById('test-root');
+  const root = createRoot(host);
+  let nextFrame;
+  window.setTimeout = (fn) => {
+    nextFrame = fn;
+    return 1;
+  };
+  window.clearTimeout = () => {
+    nextFrame = undefined;
+  };
+  window.setInterval = () => 1;
+  window.clearInterval = () => {};
+  const Journey = source(
+    'components/public/JudgeSubmissionJourney.tsx',
+  ).default;
+  const click = async (label) => {
+    const button = [...host.querySelectorAll('button')].find(
+      (node) => node.textContent === label,
+    );
+    assert.ok(button, label);
+    await act(() => button.click());
+  };
+  visible = true;
+  try {
+    await act(() =>
+      root.render(
+        React.createElement(MemoryRouter, null, React.createElement(Journey)),
+      ),
+    );
+    assert.equal(host.querySelectorAll('.zoj-submission-row').length, 1);
+    assert.equal(host.querySelectorAll('a[href*="/contests/"]').length, 0);
+    assert.match(host.textContent, /채점 대기 중/);
+    assert.doesNotMatch(host.textContent, /17 ms/);
+    await click('C++17');
+    assert.match(host.querySelector('pre').textContent, /a \+ b/);
+    await click('채점 흐름 재생');
+    await act(() => nextFrame());
+    assert.match(
+      host.querySelector('.zoj-result-badge').textContent,
+      /채점 준비 중/,
+    );
+    await click('일시정지');
+    assert.equal(nextFrame, undefined);
+    const select = host.querySelector('select');
+    await act(() => {
+      select.value = 'wrong_answer';
+      select.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+    assert.match(host.querySelector('pre').textContent, /a - b/);
+    await click('채점 흐름 재생');
+    for (let i = 0; i < 3; i++) await act(() => nextFrame());
+    assert.match(
+      host.querySelector('.zoj-result-badge').textContent,
+      /틀렸습니다/,
+    );
+    assert.match(host.textContent, /두 번째 테스트에서 종료/);
+    assert.match(host.textContent, /17 ms/);
+    assert.equal(nextFrame, undefined);
+    await click('처음으로');
+    assert.doesNotMatch(host.textContent, /17 ms/);
+    assert.equal(host.querySelectorAll('a[href*="/contests/"]').length, 0);
+  } finally {
+    await act(() => root.unmount());
+    dom.window.close();
+    delete global.window;
+    delete global.document;
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
 });
