@@ -1,4 +1,5 @@
 import type { Rejudging, RejudgingDetail, RejudgingTarget } from './rejudging';
+import type { RejudgingNotificationPage } from './rejudgingNotifications';
 import type {
   OperatorScoreboardResponse,
   OperatorPresentationScoreboardResponse,
@@ -9,6 +10,37 @@ import type {
   SubmissionCreateRequest,
 } from '@/domains/submissionScoreboard/types';
 import { apiPageRequest, apiRequest } from '@/shared/api/client';
+
+function notificationSearch(contestId?: string, offset?: number) {
+  const search = new URLSearchParams();
+  if (contestId) search.set('contest_id', contestId);
+  if (offset) search.set('offset', String(offset));
+  return search.size ? `?${search}` : '';
+}
+
+export function getRejudgingNotifications(
+  token: string,
+  contestId?: string,
+  offset = 0,
+) {
+  return apiRequest<RejudgingNotificationPage>(
+    `/notifications/rejudging${notificationSearch(contestId, offset)}`,
+    token,
+  );
+}
+
+export function updateRejudgingNotification(
+  token: string,
+  notificationId: string,
+  action: 'read' | 'delete',
+  contestId?: string,
+) {
+  return apiRequest<{ notification_id: string }>(
+    `/notifications/rejudging/${encodeURIComponent(notificationId)}${action === 'read' ? '/read' : ''}${notificationSearch(contestId)}`,
+    token,
+    { method: action === 'read' ? 'POST' : 'DELETE' },
+  );
+}
 
 export type OperatorSubmissionFilters = {
   problems: {

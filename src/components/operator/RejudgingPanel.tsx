@@ -263,7 +263,8 @@ function RequestModal({
         </label>
         <p className="text-xs text-slate-500">
           원래 제출 시각과 소스는 유지됩니다. 결과를 확인한 뒤 ‘새 결과 반영’을
-          눌러야 판정과 점수가 바뀝니다.
+          눌러야 판정과 점수가 바뀝니다. 판정 변경을 반영하면 입력한 사유가 해당
+          참가자에게 알림으로 안내됩니다.
         </p>
         {create.error ? <ErrorMessage error={create.error} /> : null}
       </div>
@@ -533,7 +534,7 @@ function ComparisonModal({
         >
           <p className="text-sm leading-7 text-slate-700">
             {confirmation === 'apply'
-              ? `${batch.total}개 제출의 새 결과를 함께 반영합니다. 이 중 ${batch.changed_verdicts}개의 판정이 바뀝니다. 정답 취소나 오답 패널티가 발생할 수 있으며 원래 제출 시각으로 점수를 계산합니다. 고정된 순위 발표 결과는 유지됩니다. 이전 결과는 이 작업 기록에 보존됩니다.`
+              ? `${batch.total}개 제출의 새 결과를 함께 반영합니다. 이 중 ${batch.changed_verdicts}개의 판정이 바뀝니다. 판정이 바뀐 참가자에게 기존·새 판정과 입력한 사유를 알림으로 안내합니다. 정답 취소나 오답 패널티가 발생할 수 있으며 원래 제출 시각으로 점수를 계산합니다. 고정된 순위 발표 결과는 유지됩니다. 이전 결과는 이 작업 기록에 보존됩니다.`
               : '대기 작업을 취소하고 실행 중인 작업의 결과를 받지 않습니다. 진행 중인 실행이 끝나더라도 판정과 점수에 반영하지 않으며 이미 도착한 기록은 보존됩니다.'}
           </p>
           {decision.error ? <ErrorMessage error={decision.error} /> : null}

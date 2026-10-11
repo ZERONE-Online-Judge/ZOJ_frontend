@@ -3,7 +3,12 @@ import HeaderPanel, {
   type HeaderIconName,
 } from '@/components/layout/HeaderPanel';
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useMatch, useNavigate } from 'react-router-dom';
 import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
@@ -17,7 +22,11 @@ import type {
   ContestNotice,
   ContestQuestion,
 } from '@/domains/serviceCommunication/types';
-import { listSubmissionsPage } from '@/domains/submissionScoreboard/api';
+import {
+  getRejudgingNotifications,
+  listSubmissionsPage,
+  updateRejudgingNotification,
+} from '@/domains/submissionScoreboard/api';
 import {
   isSubmissionTerminal,
   submissionStatusLabel,
@@ -25,7 +34,7 @@ import {
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import { formatDateTime } from '@/shared/lib/dateTime';
 
-type HeaderNotificationType = 'answer' | 'notice' | 'submission';
+type HeaderNotificationType = 'answer' | 'notice' | 'submission' | 'rejudging';
 
 type HeaderNotification = {
   body: string;
@@ -36,6 +45,8 @@ type HeaderNotification = {
   sourceKey: string;
   title: string;
   type: HeaderNotificationType;
+  reason?: string;
+  serverId?: string;
 };
 
 type NotificationStore = {
@@ -135,11 +146,13 @@ const notificationLabels: Record<HeaderNotificationType, string> = {
   notice: '대회 공지',
   answer: '질문 답변',
   submission: '채점 결과',
+  rejudging: '재채점 결과 변경',
 };
 const notificationIcons: Record<HeaderNotificationType, HeaderIconName> = {
   notice: 'bell',
   answer: 'answer',
   submission: 'submission',
+  rejudging: 'submission',
 };
 
 function NotificationContent({
@@ -166,6 +179,11 @@ function NotificationContent({
         </span>
         <strong>{notification.title}</strong>
         <span>{notification.body}</span>
+        {notification.reason ? (
+          <span className="header-notification-reason">
+            사유: {notification.reason}
+          </span>
+        ) : null}
         <time dateTime={notification.createdAt}>
           {formatNotificationAge(notification.createdAt, now)}
         </time>
@@ -183,6 +201,8 @@ export default function HeaderNotifications() {
   const {
     activeParticipantSession,
     ensureParticipantSession,
+    generalSession,
+    participantSession,
     isPreview,
     participantContest,
     token,
@@ -191,6 +211,72 @@ export default function HeaderNotifications() {
   const [now, setNow] = useState(() => Date.now());
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const participantToken = activeParticipantSession?.accessToken ?? token;
+  const queryClient = useQueryClient();
+  const notificationToken =
+    generalSession?.accessToken ??
+    (participantSession?.isPreview
+      ? undefined
+      : participantSession?.accessToken) ??
+    (!isPreview ? activeParticipantSession?.accessToken : undefined);
+  const notificationContestId = generalSession
+    ? undefined
+    : (participantSession?.contestId ?? contestId);
+  const notificationQueryKey = [
+    'rejudging-notifications',
+    tokenQueryIdentity(notificationToken),
+    notificationContestId ?? 'all',
+  ];
+  const rejudgingQuery = useInfiniteQuery({
+    enabled: Boolean(notificationToken),
+    queryKey: notificationQueryKey,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      getRejudgingNotifications(
+        notificationToken!,
+        notificationContestId,
+        pageParam,
+      ),
+    getNextPageParam: (page) => page.next_offset ?? undefined,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+  });
+  const notificationUpdate = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'read' | 'delete' }) =>
+      updateRejudgingNotification(
+        notificationToken!,
+        id,
+        action,
+        notificationContestId,
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: notificationQueryKey }),
+  });
+  const rejudgingChanges = useMemo(() => {
+    if (!notificationToken) return [];
+    return [
+      ...new Map(
+        (rejudgingQuery.data?.pages.flatMap((page) => page.items) ?? []).map(
+          (item) => [item.notification_id, item],
+        ),
+      ).values(),
+    ];
+  }, [notificationToken, rejudgingQuery.data]);
+  const rejudgingNotifications = useMemo<HeaderNotification[]>(
+    () =>
+      rejudgingChanges.map((item) => ({
+        id: `rejudging:${item.notification_id}`,
+        sourceKey: `rejudging:${item.notification_id}`,
+        serverId: item.notification_id,
+        type: 'rejudging',
+        title: `${item.contest_title} · ${item.problem_code} 판정이 변경됐습니다`,
+        body: `${submissionStatusLabel(item.old_status)} → ${submissionStatusLabel(item.new_status)}`,
+        reason: item.reason,
+        createdAt: item.created_at,
+        dismissedAt: item.read_at ?? undefined,
+        href: `/contests/${encodeURIComponent(item.contest_id)}/problems/${encodeURIComponent(item.problem_id)}?submissionId=${encodeURIComponent(item.submission_id)}`,
+      })),
+    [rejudgingChanges],
+  );
   const previewSelection = useQuery({
     enabled: isPreview && Boolean(contestId && participantToken),
     queryKey: [
@@ -219,15 +305,37 @@ export default function HeaderNotifications() {
     participantContest?.member.name ?? activeParticipantSession?.member.name;
 
   useEffect(() => {
-    if (store.notifications.length === 0) return;
+    if (store.notifications.length + rejudgingNotifications.length === 0)
+      return;
 
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [store.notifications.length]);
+  }, [store.notifications.length, rejudgingNotifications.length]);
 
   useEffect(() => {
     writeStore(store);
   }, [store]);
+
+  useEffect(() => {
+    if (!rejudgingChanges.length) return;
+    const timer = window.setTimeout(
+      () =>
+        setStore((current) => {
+          const sourceSeen = { ...current.sourceSeen };
+          let changed = false;
+          for (const item of rejudgingChanges) {
+            const key = `rejudged:${item.contest_id}:${item.submission_id}:${item.new_status}`;
+            if (!sourceSeen[key]) {
+              sourceSeen[key] = true;
+              changed = true;
+            }
+          }
+          return changed ? { ...current, sourceSeen } : current;
+        }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [rejudgingChanges]);
 
   const noticesQuery = useQuery({
     enabled: canPollContestNotifications,
@@ -398,13 +506,24 @@ export default function HeaderNotifications() {
   useEffect(() => {
     const submissions = submissionsQuery.data?.data;
     if (!contestId || !submissions) return;
+    if (notificationToken && rejudgingQuery.isPending) return;
 
     const timer = window.setTimeout(() => {
       setStore((current) => {
         const prefix = `submission:${contestId}:`;
         const hasBaseline = hasSeenPrefix(current, prefix);
         const next: NotificationStore = {
-          notifications: [...current.notifications],
+          notifications: current.notifications.filter(
+            (notification) =>
+              !rejudgingChanges.some(
+                (change) =>
+                  notification.type === 'submission' &&
+                  notification.sourceKey ===
+                    `${prefix}${change.submission_id}:${change.new_status}` &&
+                  new Date(notification.createdAt).getTime() >=
+                    new Date(change.created_at).getTime(),
+              ),
+          ),
           sourceSeen: { ...current.sourceSeen },
         };
 
@@ -412,8 +531,25 @@ export default function HeaderNotifications() {
           if (!isSubmissionTerminal(submission.status)) return;
 
           const sourceKey = `${prefix}${submission.submission_id}:${submission.status}`;
+          if (
+            next.sourceSeen[
+              `rejudged:${contestId}:${submission.submission_id}:${submission.status}`
+            ]
+          ) {
+            next.sourceSeen[sourceKey] = true;
+            return;
+          }
           if (next.sourceSeen[sourceKey]) return;
           next.sourceSeen[sourceKey] = true;
+
+          if (
+            rejudgingChanges.some(
+              (change) =>
+                change.submission_id === submission.submission_id &&
+                change.new_status === submission.status,
+            )
+          )
+            return;
 
           if (!hasBaseline) return;
           next.notifications.unshift({
@@ -433,21 +569,41 @@ export default function HeaderNotifications() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [contestId, submissionsQuery.data]);
+  }, [
+    contestId,
+    notificationToken,
+    rejudgingChanges,
+    rejudgingQuery.isPending,
+    submissionsQuery.data,
+  ]);
 
   const toastNotifications = useMemo(
     () =>
-      store.notifications
+      [...store.notifications, ...rejudgingNotifications]
         .filter((notification) => !notification.dismissedAt)
         .sort(latestFirst),
-    [store.notifications],
+    [store.notifications, rejudgingNotifications],
   );
   const panelNotifications = useMemo(
-    () => [...store.notifications].sort(latestFirst),
-    [store.notifications],
+    () => [...store.notifications, ...rejudgingNotifications].sort(latestFirst),
+    [store.notifications, rejudgingNotifications],
   );
 
-  function dismissNotification(notificationId: string) {
+  async function dismissNotification(notificationId: string) {
+    const notification = rejudgingNotifications.find(
+      (item) => item.id === notificationId,
+    );
+    if (notification?.serverId) {
+      try {
+        await notificationUpdate.mutateAsync({
+          id: notification.serverId,
+          action: 'read',
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    }
     setStore((current) => ({
       ...current,
       notifications: current.notifications.map((notification) =>
@@ -456,9 +612,17 @@ export default function HeaderNotifications() {
           : notification,
       ),
     }));
+    return true;
   }
 
   function removeNotification(notification: HeaderNotification) {
+    if (notification.serverId) {
+      notificationUpdate.mutate({
+        id: notification.serverId,
+        action: 'delete',
+      });
+      return;
+    }
     setStore((current) => ({
       ...current,
       notifications: current.notifications.filter(
@@ -469,14 +633,19 @@ export default function HeaderNotifications() {
     }));
   }
 
-  function openNotification(notification: HeaderNotification) {
-    dismissNotification(notification.id);
+  async function openNotification(notification: HeaderNotification) {
+    if (!(await dismissNotification(notification.id))) return;
     setIsPanelOpen(false);
     navigate(notification.href);
   }
 
   return (
     <>
+      {notificationUpdate.isError ? (
+        <p role="alert" className="header-notification-error">
+          알림 상태를 저장하지 못했습니다. 다시 시도해 주세요.
+        </p>
+      ) : null}
       <button
         aria-label="알림"
         aria-expanded={isPanelOpen}
@@ -533,6 +702,17 @@ export default function HeaderNotifications() {
           description="대회 소식부터 내 질문의 답변, 채점 결과까지."
           onClose={() => setIsPanelOpen(false)}
         >
+          {rejudgingQuery.isError ? (
+            <p role="alert">
+              재채점 알림을 불러오지 못했습니다.{' '}
+              <button
+                type="button"
+                onClick={() => void rejudgingQuery.refetch()}
+              >
+                다시 시도
+              </button>
+            </p>
+          ) : null}
           {panelNotifications.length ? (
             <>
               <div className="header-section-heading">
@@ -567,6 +747,18 @@ export default function HeaderNotifications() {
                   </li>
                 ))}
               </ul>
+              {rejudgingQuery.hasNextPage ? (
+                <button
+                  className="header-toast-more"
+                  disabled={rejudgingQuery.isFetchingNextPage}
+                  onClick={() => void rejudgingQuery.fetchNextPage()}
+                  type="button"
+                >
+                  {rejudgingQuery.isFetchingNextPage
+                    ? '불러오는 중…'
+                    : '이전 재채점 알림 더 보기'}
+                </button>
+              ) : null}
             </>
           ) : (
             <div className="header-empty">
