@@ -14,10 +14,8 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { z } from 'zod';
-import PublicHero from '@/components/common/PublicHero';
-import { ExperienceArrow } from '@/components/common/PublicExperience';
 import './LoginPage.css';
-import { loginGuideSections } from '@/data/loginGuideContent';
+import { loginGuideQuestions } from '@/data/loginGuideContent';
 import { loginPageText } from '@/data/uiText';
 import {
   requestGeneralOtp,
@@ -406,7 +404,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="public-experience login-experience">
+    <div className="login-page">
       {shouldShowContestLoginModal ? (
         <ModalDialog
           titleId="contest-login-required-title"
@@ -466,224 +464,189 @@ export default function LoginPage() {
         </ModalDialog>
       ) : null}
 
-      <PublicHero className="login-hero">
-        <div className="experience-hero-grid">
-          <div className="experience-hero-copy">
-            <p className="experience-eyebrow">ZOJ / LOGIN</p>
-            <h1>{loginPageText.title}</h1>
-            <p className="experience-lead">
-              참가자와 운영자 모두 등록된 이메일로 로그인하세요.
-              <br />
-              비밀번호 없이 이메일 인증번호를 사용합니다.
+      <div className="login-shell">
+        <form
+          className="login-card"
+          aria-labelledby="login-card-title"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitLogin({ email, otpCode });
+          }}
+        >
+          <div className="login-card-heading">
+            <h1 id="login-card-title">
+              {presentationLogin ? '프레젠테이션 로그인' : loginPageText.title}
+            </h1>
+            <p>
+              {presentationLogin
+                ? '인증번호 없이 해당 대회의 발표 화면을 엽니다.'
+                : otpRequested
+                  ? '이메일로 받은 인증번호를 입력해 주세요.'
+                  : '등록된 이메일로 인증번호를 받아 로그인하세요.'}
             </p>
-            <ol className="login-steps" aria-label="로그인 순서">
-              <li
-                className={!otpRequested ? 'is-current' : 'is-complete'}
-                aria-current={!otpRequested ? 'step' : undefined}
-              >
-                <span>{otpRequested ? '✓' : '01'}</span>
-                <div>
-                  <strong>로그인 인증번호 받기</strong>
-                  <p>등록된 이메일을 입력하고 인증번호를 받으세요.</p>
-                </div>
-              </li>
-              <li
-                className={otpRequested ? 'is-current' : ''}
-                aria-current={otpRequested ? 'step' : undefined}
-              >
-                <span>02</span>
-                <div>
-                  <strong>인증번호로 로그인</strong>
-                  <p>메일로 받은 인증번호를 입력하면 로그인됩니다.</p>
-                </div>
-              </li>
-            </ol>
-            <Link
-              to="/support/help"
-              className="experience-text-link login-help-link"
-            >
-              로그인에 도움이 필요하신가요? <ExperienceArrow />
-            </Link>
           </div>
-          <form
-            className="login-card"
-            aria-labelledby="login-card-title"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void submitLogin({ email, otpCode });
-            }}
-          >
-            <div className="login-card-heading">
-              <span className="login-step-label">
-                {presentationLogin
-                  ? '프레젠테이션 전용 계정'
-                  : `${otpRequested ? '2' : '1'} / 2 · ${otpRequested ? '인증번호 확인' : '이메일 입력'}`}
-              </span>
-              <h2 id="login-card-title">
-                {presentationLogin
-                  ? '발표 화면으로 바로 접속'
-                  : otpRequested
-                    ? '인증번호로 로그인'
-                    : '이메일로 로그인'}
-              </h2>
-              <p>
-                {presentationLogin
-                  ? '인증번호 없이 해당 대회의 프레젠테이션만 열립니다.'
-                  : otpRequested
-                    ? '메일로 받은 인증번호를 입력하고 로그인 버튼을 누르세요.'
-                    : '등록된 이메일로 로그인 인증번호를 받아 주세요.'}
-              </p>
-            </div>
-            <label className="grid gap-2">
-              <span className="text-sm font-bold text-slate-800">
-                {loginPageText.emailLabel}
-              </span>
-              <input
-                autoComplete="email"
-                aria-invalid={Boolean(emailError)}
-                aria-describedby={emailError ? 'login-email-error' : undefined}
-                className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
-                disabled={isSubmitting}
-                placeholder={loginPageText.emailPlaceholder}
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  const nextEmail = event.target.value;
-                  setEmail(nextEmail);
-                  if (emailError) setEmailError('');
-                  if (
-                    otpRequested &&
-                    requestedOtpEmail &&
-                    nextEmail.trim() !== requestedOtpEmail
-                  ) {
-                    resetOtpAfterEmailChange();
-                  }
-                }}
-              />
-            </label>
+
+          <div className="login-field">
+            <label htmlFor="login-email">{loginPageText.emailLabel}</label>
+            <input
+              id="login-email"
+              autoComplete="email"
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? 'login-email-error' : undefined}
+              disabled={isSubmitting}
+              placeholder={loginPageText.emailPlaceholder}
+              type="email"
+              value={email}
+              onChange={(event) => {
+                const nextEmail = event.target.value;
+                setEmail(nextEmail);
+                if (emailError) setEmailError('');
+                if (
+                  otpRequested &&
+                  requestedOtpEmail &&
+                  nextEmail.trim() !== requestedOtpEmail
+                ) {
+                  resetOtpAfterEmailChange();
+                }
+              }}
+            />
             {emailError && (
               <p
                 id="login-email-error"
                 role="alert"
-                className="text-sm font-medium text-red-700"
+                className="login-field-error"
               >
                 {emailError}
               </p>
             )}
+          </div>
 
-            <button
-              className={
-                otpRequested ? 'login-action is-secondary' : 'login-action'
-              }
-              disabled={presentationLogin ? isSubmitting : !canRequestOtp}
-              onClick={otpRequested ? requestOtp : undefined}
-              type={otpRequested ? 'button' : 'submit'}
-            >
-              <svg
-                aria-hidden="true"
-                className="size-5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
+          {otpRequested ? (
+            <>
+              <div className="login-field">
+                <div className="login-field-heading">
+                  <label htmlFor="login-otp">{loginPageText.otpLabel}</label>
+                  <span id="login-otp-expiry" className="login-expiry">
+                    {otpExpiresSeconds > 0
+                      ? `남은 시간 ${formatSeconds(otpExpiresSeconds)}`
+                      : loginPageText.otpExpiredLabel}
+                  </span>
+                </div>
+                <input
+                  id="login-otp"
+                  autoComplete="one-time-code"
+                  aria-describedby="login-otp-expiry"
+                  inputMode="numeric"
+                  disabled={isSubmitting}
+                  placeholder={loginPageText.otpPlaceholder}
+                  ref={otpInputRef}
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value)}
+                />
+              </div>
+              <button
+                className="login-action"
+                disabled={isSubmitting || otpExpiresSeconds <= 0}
+                type="submit"
               >
-                <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h10A2.5 2.5 0 0 1 17.5 5v10a2.5 2.5 0 0 1-2.5 2.5H5A2.5 2.5 0 0 1 2.5 15V5Zm2.2-.5 5.3 4.25L15.3 4.5H4.7Zm10.8 2.1-5.03 4.03a.75.75 0 0 1-.94 0L4.5 6.6V15c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V6.6Z" />
-              </svg>
+                {isSubmitting
+                  ? loginPageText.loginSubmitting
+                  : loginPageText.loginButton}
+              </button>
+              <div className="login-resend">
+                <span>메일을 받지 못하셨나요?</span>
+                <button
+                  disabled={!canRequestOtp}
+                  onClick={requestOtp}
+                  type="button"
+                >
+                  {cooldownSeconds > 0
+                    ? `${cooldownSeconds}초 후 재전송`
+                    : '인증번호 다시 받기'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              className="login-action"
+              disabled={presentationLogin ? isSubmitting : !canRequestOtp}
+              type="submit"
+            >
               {presentationLogin
                 ? isSubmitting
                   ? '접속 중…'
                   : '프레젠테이션 열기'
-                : cooldownSeconds > 0
-                  ? `${loginPageText.cooldownLabel} ${cooldownSeconds}초`
-                  : otpRequested
-                    ? '인증번호 다시 받기'
+                : isSubmitting
+                  ? loginPageText.otpRequesting
+                  : cooldownSeconds > 0
+                    ? `${cooldownSeconds}초 후 재전송`
                     : loginPageText.otpRequestButton}
             </button>
+          )}
 
-            {otpRequested && (
-              <>
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-slate-800">
-                    {loginPageText.otpLabel}
+          <PageNotice message={message} status={messageStatus} />
+          {!presentationLogin && (
+            <p className="login-form-note">
+              {otpRequested
+                ? loginPageText.spamHelp
+                : '참가자와 운영자 모두 같은 화면에서 로그인합니다.'}
+            </p>
+          )}
+        </form>
+
+        <details className="login-help">
+          <summary>
+            <svg
+              className="login-help-icon"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M9.7 9a2.4 2.4 0 0 1 4.6 1c0 1.8-2.3 1.9-2.3 3.5" />
+              <path d="M12 16h.01" strokeLinecap="round" strokeWidth="2.5" />
+            </svg>
+            <span>로그인 안내 · 자주 묻는 질문</span>
+            <svg
+              className="login-help-chevron"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="m7 10 5 5 5-5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </summary>
+          <div className="login-help-body">
+            {loginGuideQuestions.map((question) => (
+              <details className="login-faq" key={question.title}>
+                <summary>
+                  <span>{question.title}</span>
+                  <span className="login-faq-toggle" aria-hidden="true">
+                    +
                   </span>
-                  <input
-                    autoComplete="one-time-code"
-                    inputMode="numeric"
-                    disabled={isSubmitting}
-                    className="focus:border-zoj-blue h-12 w-full rounded border border-slate-300 px-4 text-base transition outline-none focus:ring-2 focus:ring-blue-100"
-                    placeholder={loginPageText.otpPlaceholder}
-                    ref={otpInputRef}
-                    value={otpCode}
-                    onChange={(event) => setOtpCode(event.target.value)}
-                  />
-                </label>
-                <button
-                  className="login-action"
-                  disabled={isSubmitting || otpExpiresSeconds <= 0}
-                  type="submit"
-                >
-                  <svg
-                    aria-hidden="true"
-                    className="size-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M10 1.5 17 4v5.25c0 4.12-2.96 7.94-7 9.25-4.04-1.31-7-5.13-7-9.25V4l7-2.5Zm3.53 6.97a.75.75 0 0 0-1.06-1.06L9 10.88 7.53 9.41a.75.75 0 0 0-1.06 1.06l2 2c.3.3.77.3 1.06 0l4-4Z" />
-                  </svg>
-                  {isSubmitting
-                    ? loginPageText.loginSubmitting
-                    : loginPageText.loginButton}
-                </button>
-                <p className="login-expiry">
-                  {loginPageText.otpExpiryLabel}:{' '}
-                  {otpExpiresSeconds > 0
-                    ? formatSeconds(otpExpiresSeconds)
-                    : loginPageText.otpExpiredLabel}
-                </p>
-              </>
-            )}
-
-            <PageNotice message={message} status={messageStatus} />
-            {!presentationLogin && (
-              <p className="login-spam-help">
-                {otpRequested
-                  ? loginPageText.spamHelp
-                  : '참가자·운영자로 등록된 이메일로 로그인할 수 있습니다.'}
-              </p>
-            )}
-          </form>
-        </div>
-      </PublicHero>
-      <section
-        className="experience-container login-help"
-        aria-labelledby="login-help-title"
-      >
-        <div>
-          <p className="experience-eyebrow">A LITTLE HELP</p>
-          <h2 id="login-help-title">로그인 전에 알아두세요.</h2>
-          <p>
-            처음 방문하셨나요?
-            <br />
-            궁금한 내용을 펼쳐 확인해 보세요.
-          </p>
-        </div>
-        <div className="login-help-details">
-          {loginGuideSections.map((section) => (
-            <details key={section.title}>
-              <summary>
-                {section.title}
-                <span aria-hidden="true">+</span>
-              </summary>
-              <ul>
-                {section.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </details>
-          ))}
-          <Link to="/support/contact" className="experience-text-link">
-            해결되지 않았다면, 서비스 문의 <ExperienceArrow />
-          </Link>
-        </div>
-      </section>
+                </summary>
+                <div className="login-faq-answer">
+                  {question.answers.map((answer) => (
+                    <p key={answer}>{answer}</p>
+                  ))}
+                </div>
+              </details>
+            ))}
+            <div className="login-support-links">
+              <Link to="/support/help">도움말 보기</Link>
+              <Link to="/support/contact">서비스 문의</Link>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
