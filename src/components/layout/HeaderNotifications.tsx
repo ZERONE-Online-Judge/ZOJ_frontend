@@ -2,7 +2,7 @@ import HeaderPanel, {
   HeaderIcon,
   type HeaderIconName,
 } from '@/components/layout/HeaderPanel';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useInfiniteQuery,
   useMutation,
@@ -123,6 +123,8 @@ export default function HeaderNotifications() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const queryClient = useQueryClient();
   const queryKey = ['notifications', tokenQueryIdentity(token), scope ?? 'all'];
+  const inboxIdentity = JSON.stringify(queryKey);
+  const autoReadRequest = useRef<string | null>(null);
   const query = useInfiniteQuery({
     enabled: Boolean(token),
     queryKey,
@@ -145,6 +147,7 @@ export default function HeaderNotifications() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
+  const mutateNotification = update.mutate;
   const notifications = useMemo<HeaderNotification[]>(
     () =>
       !token
@@ -184,6 +187,24 @@ export default function HeaderNotifications() {
     return () => window.clearInterval(timer);
   }, [notifications.length]);
 
+  function openPanel() {
+    autoReadRequest.current = token ? inboxIdentity : null;
+    setIsPanelOpen(true);
+  }
+
+  useEffect(() => {
+    // Mark once per opening, after a successful load. Polling/new arrivals and
+    // manual unread changes must not repeatedly trigger a bulk read request.
+    if (autoReadRequest.current !== inboxIdentity) {
+      autoReadRequest.current = null;
+      return;
+    }
+    if (isPanelOpen && token && query.isSuccess) {
+      autoReadRequest.current = null;
+      mutateNotification({ action: 'read-all' });
+    }
+  }, [inboxIdentity, isPanelOpen, token, query.isSuccess, mutateNotification]);
+
   async function openNotification(notification: HeaderNotification) {
     try {
       if (!notification.readAt)
@@ -207,7 +228,7 @@ export default function HeaderNotifications() {
         aria-expanded={isPanelOpen}
         aria-haspopup="dialog"
         className="header-action"
-        onClick={() => setIsPanelOpen(true)}
+        onClick={openPanel}
         type="button"
       >
         <HeaderIcon name="bell" />
@@ -241,7 +262,7 @@ export default function HeaderNotifications() {
             <button
               className="header-toast-more"
               type="button"
-              onClick={() => setIsPanelOpen(true)}
+              onClick={openPanel}
             >
               새 알림 {toasts.length}개 모두 보기 ↗
             </button>

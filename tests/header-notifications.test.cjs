@@ -94,7 +94,10 @@ function source(relative) {
                 : {
                     ...item,
                     ...(action === 'dismiss'
-                      ? { dismissed_at: '2026-10-11T15:00:00Z' }
+                      ? {
+                          dismissed_at: '2026-10-11T15:00:00Z',
+                          read_at: item.read_at ?? '2026-10-11T15:00:00Z',
+                        }
                       : {
                           read_at:
                             action === 'read' ? '2026-10-11T15:00:00Z' : null,
@@ -106,10 +109,14 @@ function source(relative) {
         readAllNotifications: async (token) => {
           updateCalls.push({ token, action: 'read-all' });
           if (failUpdate) throw new Error('offline');
-          serverItems = serverItems.map((item) => ({
-            ...item,
-            read_at: '2026-10-11T15:00:00Z',
-          }));
+          serverItems = serverItems.map((item) =>
+            item.owner && item.owner !== token
+              ? item
+              : {
+                  ...item,
+                  read_at: '2026-10-11T15:00:00Z',
+                },
+          );
           return { updated_count: serverItems.length };
         },
       };
@@ -219,6 +226,7 @@ async function click(element) {
 }
 async function openPanel() {
   await click(document.querySelector('button[aria-label="알림"]'));
+  await settle();
 }
 
 test('all notification kinds arrive on first login without browser storage or a polling baseline', async () => {
@@ -230,10 +238,11 @@ test('all notification kinds arrive on first login without browser storage or a 
   await mount();
   await openPanel();
   assert.equal(panel().querySelectorAll('.header-notification-card').length, 4);
-  assert.equal(badge(), '3');
+  assert.equal(badge(), undefined);
+  assert.equal(updateCalls[0].action, 'read-all');
   assert.equal(window.localStorage.getItem(storageKey), null);
   assert(!document.body.textContent.includes('previous private account'));
-  assert.equal(getCalls.length, 1); // No notice/question/submission source polling.
+  assert(getCalls.length >= 1); // Only the inbox API is polled.
 });
 
 test('deleting read or unread notifications removes only that item and persists on remount', async () => {
@@ -242,9 +251,9 @@ test('deleting read or unread notifications removes only that item and persists 
   await click(removeButtons()[0]);
   await settle();
   assert.equal(panel().querySelectorAll('.header-notification-card').length, 2);
-  assert.equal(badge(), '1');
+  assert.equal(badge(), undefined);
   assert.equal(currentPath, '/contests/contest');
-  assert.equal(updateCalls[0].action, 'delete');
+  assert(updateCalls.some((call) => call.action === 'delete'));
   await act(async () => root.unmount());
   root = createRoot(document.querySelector('main'));
   await mount();
@@ -252,16 +261,16 @@ test('deleting read or unread notifications removes only that item and persists 
   assert.equal(panel().querySelectorAll('.header-notification-card').length, 2);
 });
 
-test('closing a toast preserves unread count and its server history', async () => {
+test('closing a toast marks only that notification read and preserves history', async () => {
   await mount();
   await click(document.querySelector('button[aria-label="알림 닫기"]'));
   await settle();
   assert.equal(updateCalls[0].action, 'dismiss');
-  assert.equal(badge(), '2');
+  assert.equal(badge(), '1');
   assert.equal(document.querySelectorAll('.header-toast').length, 1);
   await openPanel();
   assert.equal(panel().querySelectorAll('.header-notification-card').length, 3);
-  assert(panel().textContent.includes('읽지 않은 알림 2개'));
+  assert(panel().textContent.includes('읽지 않은 알림 0개'));
 });
 
 test('opening an unread notification saves read state and follows the submission link', async () => {
@@ -271,22 +280,19 @@ test('opening an unread notification saves read state and follows the submission
     }),
   ];
   await mount();
-  await openPanel();
-  await click(document.querySelector('.header-notification-open'));
+  await click(document.querySelector('.header-toast > button'));
   await settle();
   assert.equal(updateCalls[0].action, 'read');
   assert.equal(currentPath, '/contests/contest/problems/problem');
   assert.equal(badge(), undefined);
 });
 
-test('read state can be toggled without navigating or restoring dismissed toasts', async () => {
+test('manual unread marking remains effective after automatic panel read', async () => {
   serverItems = [
     notification('n1', 'notice', { dismissed_at: '2026-10-11T13:00:00Z' }),
   ];
   await mount();
   await openPanel();
-  await click(document.querySelector('.header-notification-read'));
-  await settle();
   assert.equal(badge(), undefined);
   assert(
     document
@@ -296,6 +302,10 @@ test('read state can be toggled without navigating or restoring dismissed toasts
   await click(document.querySelector('.header-notification-read'));
   await settle();
   assert.equal(badge(), '1');
+  assert.equal(
+    updateCalls.filter((call) => call.action === 'read-all').length,
+    1,
+  );
   assert.equal(currentPath, '/contests/contest');
   await click(
     document.querySelector('.header-panel button[aria-label="알림 닫기"]'),
@@ -303,15 +313,26 @@ test('read state can be toggled without navigating or restoring dismissed toasts
   assert.equal(document.querySelectorAll('.header-toast').length, 0);
 });
 
-test('read-all includes notifications on unloaded server pages', async () => {
+test('opening the panel automatically reads every page and later arrivals can be manually read', async () => {
   serverPageSize = 1;
   await mount();
-  await openPanel();
   assert.equal(badge(), '2');
-  await click(document.querySelector('.header-notification-read-all'));
-  await settle();
+  await openPanel();
   assert.equal(updateCalls[0].action, 'read-all');
   assert(serverItems.every((item) => item.read_at));
+  assert.equal(badge(), undefined);
+  serverItems.unshift(notification('new'));
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ['notifications'] });
+  });
+  await settle();
+  assert.equal(badge(), '1');
+  assert.equal(
+    updateCalls.filter((call) => call.action === 'read-all').length,
+    1,
+  );
+  await click(document.querySelector('.header-notification-read-all'));
+  await settle();
   assert.equal(badge(), undefined);
 });
 
@@ -319,7 +340,7 @@ test('pagination shows earlier notifications once and uses the total unread coun
   serverPageSize = 1;
   await mount();
   await openPanel();
-  assert.equal(badge(), '2');
+  assert.equal(badge(), undefined);
   const more = () =>
     [...document.querySelectorAll('button')].find(
       (button) => button.textContent === '이전 알림 더 보기',
@@ -357,6 +378,7 @@ test('failed inbox fetching shows a retry control instead of falsely reporting a
       .textContent.includes('불러오지 못했습니다'),
   );
   assert(!panel().textContent.includes('아직 도착한'));
+  assert.equal(updateCalls.length, 0); // A failed load must not mark unseen history read.
   failFetch = false;
   await click(
     [...panel().querySelectorAll('button')].find(
