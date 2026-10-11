@@ -50,6 +50,7 @@ const roleScopes = {
     'contest.notice.emergency_publish',
   ],
   staff_manager: ['contest.staff.view', 'contest.staff.manage'],
+  problems_viewer: ['contest.problem.view'],
   submissions_viewer: [
     'contest.submission.view',
     'contest.submission.source.view',
@@ -79,7 +80,11 @@ const roleScopes = {
     'contest.generator.view',
     'contest.generator.manage',
   ],
-  problem_reviewer: ['contest.problem.review', 'contest.problem.test'],
+  problem_reviewer: [
+    'contest.problem.view',
+    'contest.problem.review',
+    'contest.problem.test',
+  ],
   participant_preview: ['contest.participant.preview'],
 };
 const roleTabs = {
@@ -88,6 +93,7 @@ const roleTabs = {
   posts_manager: ['', 'board'],
   notices_manager: ['', 'notices'],
   staff_manager: ['', 'operators'],
+  problems_viewer: ['problem-review'],
   submissions_viewer: ['', 'submissions'],
   scoreboard_viewer: ['', 'scoreboard'],
   scoreboard_manager: ['', 'scoreboard'],
@@ -345,7 +351,11 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
           ? ['questions']
           : role === 'notices_manager'
             ? ['notices']
-            : role === 'problem_author'
+            : [
+                  'problem_author',
+                  'problem_reviewer',
+                  'problems_viewer',
+                ].includes(role)
               ? ['problems']
               : [];
     assert.deepEqual(reads.sort(), expectedReads.sort());
@@ -360,6 +370,7 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
       'contest.scoreboard.view',
       'contest.scoreboard.manage',
       'contest.problem.manage',
+      'contest.problem.view',
       'contest.problem.review',
       'contest.problem.test',
       'contest.problem.resource.manage',
@@ -403,7 +414,7 @@ test('multiple roles combine permissions and navigation without granting unrelat
     'audit-logs',
     'guide',
   ]);
-  assert.deepEqual(reads, ['dashboard']);
+  assert.deepEqual(reads.sort(), ['dashboard', 'problems']);
   assert.equal(
     hasContestPermission(session, 'contest', 'contest.problem.test'),
     true,
@@ -561,7 +572,11 @@ test('role labels cover every supported role and preserve configured multi-role 
         staffWith(['contest.view', ...roleScopes[role]]),
         'contest',
       ),
-      [role],
+      role === 'problem_author'
+        ? ['problems_viewer', 'problem_author', 'problem_reviewer']
+        : role === 'problem_reviewer'
+          ? ['problems_viewer', 'problem_reviewer']
+          : [role],
     );
   }
   const staff = {
@@ -571,6 +586,7 @@ test('role labels cover every supported role and preserve configured multi-role 
   assert.deepEqual(contestRolesForAccount(staff, 'contest'), [
     'participants_manager',
     'problem_reviewer',
+    'problems_viewer',
   ]);
   assert.deepEqual(contestRolesForAccount(staff, 'other'), []);
   assert.deepEqual(
@@ -589,6 +605,7 @@ test('role titles use master, author, operator, reviewer priority for every role
     posts_manager: '운영진',
     notices_manager: '운영진',
     staff_manager: '운영진',
+    problems_viewer: '운영진',
     submissions_viewer: '운영진',
     scoreboard_viewer: '운영진',
     scoreboard_manager: '운영진',
@@ -649,7 +666,6 @@ test('legacy partial scopes derive titles without requiring modern role assignme
       '마스터',
     );
   for (const scope of [
-    'contest.problem.view',
     'contest.problem.manage',
     'contest.problem.create',
     'contest.problem.update',
@@ -673,6 +689,7 @@ test('legacy partial scopes derive titles without requiring modern role assignme
     );
   for (const scope of [
     'contest.view',
+    'contest.problem.view',
     'contest.notice.view',
     'contest.notice.create',
     'contest.board.answer.create',
@@ -778,7 +795,7 @@ test('session mapping and storage preserve explicit roles and assigned master pr
   assert.deepEqual(restored, general);
   assert.deepEqual(
     contestRolesForAccount(restored.operatorSession.staff, 'other'),
-    ['participants_manager', 'problem_reviewer'],
+    ['participants_manager', 'problem_reviewer', 'problems_viewer'],
   );
   assert.equal(
     isAssignedContestMaster(restored.operatorSession.staff, 'contest'),

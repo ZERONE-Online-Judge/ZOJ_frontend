@@ -41,6 +41,11 @@ export const CONTEST_ROLES = [
       '운영진의 이름과 역할을 관리합니다. 마스터 권한은 부여할 수 없습니다.',
   },
   {
+    value: 'problems_viewer',
+    label: '대회 운영진 · 문제 확인',
+    description: '문제 모아보기에서 지문, 예제와 첨부 이미지를 확인합니다.',
+  },
+  {
     value: 'submissions_viewer',
     label: '대회 운영진 · 제출 확인',
     description: '참가팀의 제출, 소스 코드와 채점 결과를 확인합니다.',
@@ -87,6 +92,7 @@ const roleScopes: Record<Exclude<ContestRole, 'master' | 'owner'>, string> = {
   posts_manager: 'contest.board.question.manage',
   notices_manager: 'contest.notice.manage',
   staff_manager: 'contest.staff.manage',
+  problems_viewer: 'contest.problem.view',
   submissions_viewer: 'contest.submission.view',
   scoreboard_viewer: 'contest.scoreboard.view',
   scoreboard_manager: 'contest.scoreboard.manage',
@@ -103,6 +109,15 @@ export type ContestRoleTitle =
   | '운영진'
   | '검수진'
   | '미리보기';
+
+export function withIncludedContestRoles(
+  roles: readonly ContestRole[],
+): ContestRole[] {
+  const included = new Set(roles);
+  if (included.has('problem_author')) included.add('problem_reviewer');
+  if (included.has('problem_reviewer')) included.add('problems_viewer');
+  return [...included];
+}
 
 export function contestRoleTitle(
   roles: readonly ContestRole[],
@@ -127,7 +142,6 @@ export function contestRoleTitleForScopes(
   const authorScopes = [
     'contest.problem',
     'contest.problem.*',
-    'contest.problem.view',
     roleScopes.problem_author,
     'contest.problem.create',
     'contest.problem.update',
@@ -185,30 +199,32 @@ export function contestRolesForAccount(
   contestId: string,
 ): ContestRole[] {
   const configured = account.contest_roles?.[contestId];
-  if (configured) return configured;
+  if (configured) return withIncludedContestRoles(configured);
   const scopes = account.contest_scopes[contestId] ?? [];
   if (scopes.includes('contest.owner')) return ['owner'];
   if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
     return ['master'];
-  return CONTEST_ROLES.flatMap(({ value }) => {
-    if (
-      value === 'owner' ||
-      value === 'master' ||
-      !scopes.includes(roleScopes[value])
-    )
-      return [];
-    if (
-      value === 'scoreboard_viewer' &&
-      scopes.includes(roleScopes.scoreboard_manager)
-    )
-      return [];
-    if (
-      value === 'problem_reviewer' &&
-      scopes.includes(roleScopes.problem_author)
-    )
-      return [];
-    return [value];
-  });
+  return withIncludedContestRoles(
+    CONTEST_ROLES.flatMap(({ value }) => {
+      if (
+        value === 'owner' ||
+        value === 'master' ||
+        !scopes.includes(roleScopes[value])
+      )
+        return [];
+      if (
+        value === 'scoreboard_viewer' &&
+        scopes.includes(roleScopes.scoreboard_manager)
+      )
+        return [];
+      if (
+        value === 'problem_reviewer' &&
+        scopes.includes(roleScopes.problem_author)
+      )
+        return [];
+      return [value];
+    }),
+  );
 }
 
 export function isAssignedContestMaster(

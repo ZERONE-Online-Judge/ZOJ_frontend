@@ -361,7 +361,7 @@ test('new operator requires name and roles, allows multiple roles, and treats ma
       body: {
         email: 'new@example.test',
         display_name: '검수 운영자',
-        roles: ['problem_reviewer', 'participants_manager'],
+        roles: ['problem_reviewer', 'problems_viewer', 'participants_manager'],
       },
     },
   ]);
@@ -396,11 +396,32 @@ test('choosing an author also selects and locks review until author is removed',
   await click(role('출제진'));
   assert.equal(role('검수진').checked, true);
   assert.equal(role('검수진').disabled, true);
+  assert.equal(role('문제 확인').checked, true);
+  assert.equal(role('문제 확인').disabled, true);
   await click(button('운영자 추가'));
   assert.deepEqual(creates[0].body.roles, [
-    'problem_reviewer',
     'problem_author',
+    'problem_reviewer',
+    'problems_viewer',
   ]);
+});
+
+test('problem viewing is independent and review locks its included view permission', async () => {
+  await render();
+  await input(inputByLabel('이메일 (필수)'), 'viewer@example.test');
+  await input(inputByLabel('이름 (필수)'), '문제 확인 담당');
+  await click(role('문제 확인'));
+  assert.equal(role('검수진').checked, false);
+  assert.equal(role('출제진').checked, false);
+  await click(button('운영자 추가'));
+  assert.deepEqual(creates[0].body.roles, ['problems_viewer']);
+  await click(role('검수진'));
+  assert.equal(role('문제 확인').checked, true);
+  assert.equal(role('문제 확인').disabled, true);
+  await click(role('검수진'));
+  assert.equal(role('문제 확인').disabled, false);
+  await click(role('문제 확인'));
+  assert.equal(role('문제 확인').checked, false);
 });
 
 test('notice, board, and audit roles can be selected independently and saved together', async () => {
@@ -582,6 +603,8 @@ test('editing submits old email in the route and new email, name and roles in th
   assert.equal(inputByLabel('이메일 (필수)').disabled, false);
   await input(inputByLabel('이메일 (필수)'), 'new-reviewer@example.test');
   assert.equal(role('검수진').checked, true);
+  assert.equal(role('문제 확인').checked, true);
+  assert.equal(role('문제 확인').disabled, true);
   await input(inputByLabel('이름 (필수)'), '  출제 검수자  ');
   await click(role('출제진'));
   await click(button('변경사항 저장'));
@@ -593,7 +616,7 @@ test('editing submits old email in the route and new email, name and roles in th
       body: {
         display_name: '출제 검수자',
         email: 'new-reviewer@example.test',
-        roles: ['problem_reviewer', 'problem_author'],
+        roles: ['problem_reviewer', 'problems_viewer', 'problem_author'],
       },
     },
   ]);

@@ -1,6 +1,7 @@
 import { ChoiceCard, SettingsCard } from '@/components/common/ManagementCards';
 import {
   CONTEST_ROLES,
+  withIncludedContestRoles,
   type ContestRole,
 } from '@/domains/identityAccess/contestRoles';
 
@@ -15,32 +16,25 @@ export default function ContestRoleSelector({
   onChange: (roles: ContestRole[]) => void;
   value: ContestRole[];
 }) {
+  const selectedRoles = withIncludedContestRoles(value);
+  const includesReview = selectedRoles.includes('problem_author');
+  const includesProblemView = selectedRoles.includes('problem_reviewer');
   function toggleRole(role: ContestRole, checked: boolean) {
     if (!checked) {
-      onChange(value.filter((item) => item !== role));
-      return;
-    }
-    if (role === 'problem_author') {
-      onChange([
-        ...value.filter(
-          (item) => item !== 'master' && item !== 'participant_preview',
-        ),
-        ...(value.includes('problem_reviewer')
-          ? []
-          : ['problem_reviewer' as const]),
-        role,
-      ]);
+      onChange(
+        withIncludedContestRoles(selectedRoles.filter((item) => item !== role)),
+      );
       return;
     }
     onChange(
       role === 'master' || role === 'participant_preview'
         ? [role]
-        : [
-            ...value.filter(
+        : withIncludedContestRoles([
+            ...selectedRoles.filter(
               (item) => item !== 'master' && item !== 'participant_preview',
             ),
             role,
-          ],
+          ]),
     );
   }
 
@@ -48,7 +42,7 @@ export default function ContestRoleSelector({
     <SettingsCard
       title="권한 (필수)"
       disabled={disabled}
-      description="담당할 권한을 하나 이상 선택하세요. 대회 마스터와 참가자 미리보기는 각각 단독으로 선택합니다. 출제진을 선택하면 검수진 권한도 자동으로 포함됩니다."
+      description="담당할 권한을 하나 이상 선택하세요. 대회 마스터와 참가자 미리보기는 각각 단독으로 선택합니다. 검수진은 문제 확인 권한을, 출제진은 검수진과 문제 확인 권한을 자동으로 포함합니다."
       hint={
         !canAssignMaster
           ? '대회 마스터 권한은 마스터만 부여할 수 있습니다.'
@@ -63,15 +57,11 @@ export default function ContestRoleSelector({
         ).map((role) => (
           <ChoiceCard
             key={role.value}
-            checked={
-              value.includes(role.value) ||
-              (role.value === 'problem_reviewer' &&
-                value.includes('problem_author'))
-            }
+            checked={selectedRoles.includes(role.value)}
             disabled={
               disabled ||
-              (role.value === 'problem_reviewer' &&
-                value.includes('problem_author'))
+              (role.value === 'problem_reviewer' && includesReview) ||
+              (role.value === 'problems_viewer' && includesProblemView)
             }
             onChange={(checked) => toggleRole(role.value, checked)}
             type="checkbox"

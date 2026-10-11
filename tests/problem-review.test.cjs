@@ -239,9 +239,7 @@ function button(text) {
 }
 function problemButton(title) {
   return [
-    ...container.querySelectorAll(
-      'aside[aria-label="검수할 문제 목록"] button',
-    ),
+    ...container.querySelectorAll('aside[aria-label="문제 목록"] button'),
   ].find((b) => b.textContent.includes(title));
 }
 async function click(element) {
@@ -274,6 +272,46 @@ const submission = (id, status = 'waiting') => ({
   status,
   language: 'cpp17',
   submitted_at: new Date().toISOString(),
+});
+
+test('problem viewers read and navigate statements without review or editorial controls', async () => {
+  session.operatorSession.staff.contest_scopes.contest = [
+    'contest.view',
+    'contest.problem.view',
+  ];
+  await render();
+  assert.ok(problemButton('두 수의 합'));
+  assert.match(
+    container.querySelector('[aria-label="문제 본문"]').textContent,
+    /일반부 문제 본문/,
+  );
+  assert.ok(assetReads.length > 0);
+  assert.equal(editor(), null);
+  assert.equal(button('테스트 제출'), undefined);
+  assert.doesNotMatch(
+    container.textContent,
+    /검수 코드 제출|해설 확인|일반부 풀이/,
+  );
+  assert.equal(creates.length, 0);
+  await click(problemButton('경로 찾기'));
+  assert.match(
+    container.querySelector('[aria-label="문제 본문"]').textContent,
+    /고등부 문제 본문/,
+  );
+});
+
+test('legacy review scopes still include reading and allow review submissions', async () => {
+  session.operatorSession.staff.contest_scopes.contest = [
+    'contest.view',
+    'contest.problem.review',
+    'contest.problem.test',
+  ];
+  await render();
+  assert.ok(editor());
+  assert.doesNotMatch(container.textContent, /해설 확인/);
+  await input(editor(), 'code');
+  await click(button('테스트 제출'));
+  assert.equal(creates.length, 1);
 });
 
 test('review tab lists all divisions, filters and links to a problem while keeping editorial collapsed', async () => {

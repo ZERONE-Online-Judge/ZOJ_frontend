@@ -36,7 +36,10 @@ export default function OperatorHomePage() {
     <OperatorAccessGate contestId={contestId} permission="contest.view">
       {(session) =>
         !hasContestPermission(session, contestId, operatorHomePermissions) &&
-        hasContestPermission(session, contestId, 'contest.problem.review') ? (
+        hasContestPermission(session, contestId, [
+          'contest.problem.view',
+          'contest.problem.review',
+        ]) ? (
           <Navigate
             replace
             to={`/operator/contests/${contestId}/problem-review`}
@@ -174,7 +177,7 @@ function OperatorHomeContent({
                 to={`/operator/contests/${contestId}/problems`}
               />
             ) : null}
-            {can('contest.problem.review') ? (
+            {can(['contest.problem.view', 'contest.problem.review']) ? (
               <OperatorQuickLink
                 icon={<ProblemIcon />}
                 label="문제 모아보기"

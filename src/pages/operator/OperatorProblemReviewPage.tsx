@@ -13,6 +13,7 @@ import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel'
 import ProblemReviewResult from '@/components/operator/ProblemReviewResult';
 import { getOperatorContestDashboard } from '@/domains/contestAdministration/api';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
+import { hasContestPermission } from '@/domains/identityAccess/permissions';
 import {
   getOperatorProblems,
   getProblemAssets,
@@ -37,19 +38,29 @@ export default function OperatorProblemReviewPage() {
   return (
     <OperatorAccessGate
       contestId={contestId}
-      permission="contest.problem.review"
+      permission={['contest.problem.view', 'contest.problem.review']}
     >
       {(session) =>
         contestId ? (
           <ProblemReviewContent
-            key={`${contestId}:${session.staff.email}`}
+            key={`${contestId}:${session.staff.email}:${hasContestPermission(session, contestId, 'contest.problem.test')}`}
             contestId={contestId}
             token={session.accessToken}
             reviewer={session.staff.email}
+            canSubmit={hasContestPermission(
+              session,
+              contestId,
+              'contest.problem.test',
+            )}
+            canViewEditorial={hasContestPermission(
+              session,
+              contestId,
+              'contest.problem.resource.view',
+            )}
           />
         ) : (
           <PageLayout variant="management" width="full" title="문제 모아보기">
-            <p>검수할 대회를 먼저 선택해 주세요.</p>
+            <p>확인할 대회를 먼저 선택해 주세요.</p>
           </PageLayout>
         )
       }
@@ -61,10 +72,14 @@ function ProblemReviewContent({
   contestId,
   token,
   reviewer,
+  canSubmit,
+  canViewEditorial,
 }: {
   contestId: string;
   token: string;
   reviewer: string;
+  canSubmit: boolean;
+  canViewEditorial: boolean;
 }) {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState('');
@@ -74,7 +89,7 @@ function ProblemReviewContent({
     queryFn: () => getOperatorContestDashboard(contestId, token),
   });
   const problemsQuery = useQuery({
-    queryKey: ['operator', 'problems', contestId, identity],
+    queryKey: ['operator', 'problems', contestId, identity, canViewEditorial],
     queryFn: () => getOperatorProblems(contestId, token),
   });
   const { runs, submit, resume } = useProblemReviewRuns(contestId, token);
@@ -131,7 +146,11 @@ function ProblemReviewContent({
       width="full"
       title="문제 모아보기"
       eyebrow={dashboard.data?.contest.title ?? 'Operator'}
-      description="문제와 예제를 읽고 직접 풀어보며 검수하세요. 테스트 제출은 참가팀 성적에 반영되지 않습니다."
+      description={
+        canSubmit
+          ? '문제와 예제를 읽고 직접 풀어보며 검수하세요. 테스트 제출은 참가팀 성적에 반영되지 않습니다.'
+          : '참가 유형별 문제 지문, 예제와 첨부 이미지를 확인하세요.'
+      }
     >
       <OperatorTabs contestId={contestId} />
       <section className="flex min-w-0 flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -176,9 +195,7 @@ function ProblemReviewContent({
           role="alert"
           className="flex flex-wrap items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
         >
-          <p>
-            {formatUserApiError(error, '검수할 문제를 불러오지 못했습니다.')}
-          </p>
+          <p>{formatUserApiError(error, '문제를 불러오지 못했습니다.')}</p>
           <button
             className="font-medium underline underline-offset-4"
             type="button"
@@ -198,7 +215,7 @@ function ProblemReviewContent({
       ) : selected ? (
         <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
           <aside
-            aria-label="검수할 문제 목록"
+            aria-label="문제 목록"
             className="grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-white p-3 lg:sticky lg:top-4"
           >
             <div className="flex items-center justify-between px-1">
@@ -281,11 +298,13 @@ function ProblemReviewContent({
               contestId={contestId}
               token={token}
               reviewer={reviewer}
+              canSubmit={canSubmit}
+              canViewEditorial={canViewEditorial}
               problem={selected}
               runs={selectedRuns}
-              onSubmit={(language, code) =>
-                submit(selected.problem_id, language, code)
-              }
+              onSubmit={(language, code) => {
+                if (canSubmit) submit(selected.problem_id, language, code);
+              }}
               onResume={resume}
             />
           </div>
@@ -326,6 +345,8 @@ function ReviewWorkspace({
   runs,
   onSubmit,
   onResume,
+  canSubmit,
+  canViewEditorial,
 }: {
   contestId: string;
   token: string;
@@ -334,6 +355,8 @@ function ReviewWorkspace({
   runs: ProblemReviewRun[];
   onSubmit: (language: JudgeLanguage, code: string) => void;
   onResume: (run: ProblemReviewRun) => void;
+  canSubmit: boolean;
+  canViewEditorial: boolean;
 }) {
   const draftScope = `operator-review:${reviewer}:${contestId}`;
   const [draft, setDraft] = useState(() => {
@@ -357,6 +380,7 @@ function ReviewWorkspace({
       contestId,
       problem.problem_id,
       tokenQueryIdentity(token),
+      canViewEditorial,
     ],
     queryFn: () => getProblemAssets(contestId, problem.problem_id, token),
   });
@@ -376,7 +400,9 @@ function ReviewWorkspace({
   }
 
   return (
-    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]">
+    <div
+      className={`grid min-w-0 items-start gap-5 ${canSubmit ? 'xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]' : ''}`}
+    >
       <div className="grid min-w-0 gap-4">
         {assets.error ? (
           <p
@@ -399,7 +425,7 @@ function ReviewWorkspace({
         >
           <ProblemStatementPanel problem={problem} assets={assets.data} />
         </section>
-        {problem.editorial?.trim() ? (
+        {canViewEditorial && problem.editorial?.trim() ? (
           <details className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <summary className="cursor-pointer px-4 py-4 text-sm font-medium text-slate-600">
               해설 확인
@@ -410,75 +436,77 @@ function ReviewWorkspace({
           </details>
         ) : null}
       </div>
-      <div className="grid min-w-0 gap-4">
-        <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 [&_h2]:text-base">
-          <ProblemSubmitPanel
-            title="검수 코드 제출"
-            layout="standalone"
-            editorHeight={360}
-            language={draft.language}
-            sourceCode={draft.sourceCode}
-            isSubmitting={pending}
-            onLanguageChange={(language) => updateDraft({ language })}
-            onSourceCodeChange={(sourceCode) => updateDraft({ sourceCode })}
-            onSubmit={() => {
-              setSelectedRunId('');
-              onSubmit(draft.language, draft.sourceCode);
-            }}
-            submitLabel="테스트 제출"
-            submittingLabel="채점 진행 중"
-            message=""
-            messageStatus="idle"
-            footer={
-              <p className="text-xs leading-5 text-slate-500">
-                작성 코드는 계정·대회·문제별로 이 브라우저에 자동 저장됩니다.
-              </p>
-            }
-          />
-        </section>
-        {runs.length ? (
-          <section className="grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-slate-900">
-              이번 검수의 제출 이력{' '}
-              <span className="font-normal text-slate-400">
-                {runs.length}건
-              </span>
-            </h3>
-            <div className="grid max-h-48 gap-1 overflow-y-auto">
-              {runs.map((run, index) => (
-                <button
-                  key={run.id}
-                  type="button"
-                  aria-pressed={selectedRun?.id === run.id}
-                  onClick={() => setSelectedRunId(run.id)}
-                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs ${selectedRun?.id === run.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                  <span>
-                    #{runs.length - index} ·{' '}
-                    {new Date(run.startedAt).toLocaleTimeString('ko-KR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}{' '}
-                    · {judgeLanguageLabel(run.language)}
-                  </span>
-                  <span className="font-medium">{runLabel(run)}</span>
-                </button>
-              ))}
-            </div>
+      {canSubmit ? (
+        <div className="grid min-w-0 gap-4">
+          <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 [&_h2]:text-base">
+            <ProblemSubmitPanel
+              title="검수 코드 제출"
+              layout="standalone"
+              editorHeight={360}
+              language={draft.language}
+              sourceCode={draft.sourceCode}
+              isSubmitting={pending}
+              onLanguageChange={(language) => updateDraft({ language })}
+              onSourceCodeChange={(sourceCode) => updateDraft({ sourceCode })}
+              onSubmit={() => {
+                setSelectedRunId('');
+                onSubmit(draft.language, draft.sourceCode);
+              }}
+              submitLabel="테스트 제출"
+              submittingLabel="채점 진행 중"
+              message=""
+              messageStatus="idle"
+              footer={
+                <p className="text-xs leading-5 text-slate-500">
+                  작성 코드는 계정·대회·문제별로 이 브라우저에 자동 저장됩니다.
+                </p>
+              }
+            />
           </section>
-        ) : (
-          <p className="px-1 text-xs leading-5 text-slate-500">
-            코드를 제출하면 진행률과 결과가 여기에 표시됩니다.
-          </p>
-        )}
-        {selectedRun ? (
-          <ProblemReviewResult
-            run={selectedRun}
-            onResume={() => onResume(selectedRun)}
-          />
-        ) : null}
-      </div>
+          {runs.length ? (
+            <section className="grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-slate-900">
+                이번 검수의 제출 이력{' '}
+                <span className="font-normal text-slate-400">
+                  {runs.length}건
+                </span>
+              </h3>
+              <div className="grid max-h-48 gap-1 overflow-y-auto">
+                {runs.map((run, index) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    aria-pressed={selectedRun?.id === run.id}
+                    onClick={() => setSelectedRunId(run.id)}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs ${selectedRun?.id === run.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    <span>
+                      #{runs.length - index} ·{' '}
+                      {new Date(run.startedAt).toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}{' '}
+                      · {judgeLanguageLabel(run.language)}
+                    </span>
+                    <span className="font-medium">{runLabel(run)}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <p className="px-1 text-xs leading-5 text-slate-500">
+              코드를 제출하면 진행률과 결과가 여기에 표시됩니다.
+            </p>
+          )}
+          {selectedRun ? (
+            <ProblemReviewResult
+              run={selectedRun}
+              onResume={() => onResume(selectedRun)}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

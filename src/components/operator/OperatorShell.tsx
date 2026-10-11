@@ -105,7 +105,7 @@ const operatorTabs = [
     label: operatorNavText.problemReview,
     path: 'problem-review',
     icon: ProblemIcon,
-    permission: 'contest.problem.review',
+    permission: ['contest.problem.view', 'contest.problem.review'],
   },
   {
     label: operatorNavText.submissions,

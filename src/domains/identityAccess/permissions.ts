@@ -142,7 +142,10 @@ export function hasContestPermission(
   }
   if (isServiceMaster(session)) return true;
 
-  return contestScopesFor(session, contestId).some((scope) =>
-    scopeMatches(scope, permission as ContestPermissionCode),
+  return contestScopesFor(session, contestId).some(
+    (scope) =>
+      scopeMatches(scope, permission as ContestPermissionCode) ||
+      (permission === 'contest.problem.view' &&
+        scopeMatches(scope, 'contest.problem.review')),
   );
 }
