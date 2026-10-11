@@ -144,6 +144,7 @@ const mocks = {
     },
   },
   '@/domains/submissionScoreboard/api': {
+    listRejudgings: async () => ({ batches: [], total: 0 }),
     getOperatorSubmissionFilters: async (contestId, token) => {
       record('filters', { contestId, token });
       return { problems: [problem], teams: [team] };
@@ -611,10 +612,10 @@ test('reviewer and submission roles share a home with only their authorized quic
     assert.equal(links.includes(label), false, label);
   assert.match(container.textContent, /전체 제출 수/);
   assert.doesNotMatch(container.textContent, /전체 참가팀/);
-  assert.deepEqual(
-    reads.map((request) => request.kind),
-    ['dashboard'],
-  );
+  assert.deepEqual(reads.map((request) => request.kind).sort(), [
+    'dashboard',
+    'problems',
+  ]);
 });
 
 for (const [scopes, expectedLinks] of [

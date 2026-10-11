@@ -1,3 +1,4 @@
+import type { Rejudging, RejudgingDetail, RejudgingTarget } from './rejudging';
 import type {
   OperatorScoreboardResponse,
   OperatorPresentationScoreboardResponse,
@@ -370,5 +371,51 @@ export function rejudgeSystemError(
     `/operator/contests/${contestId}/submissions/${submissionId}/rejudge`,
     token,
     { method: 'POST' },
+  );
+}
+
+function rejudgingPath(contestId: string) {
+  return `/operator/contests/${contestId}/rejudgings`;
+}
+export function createRejudging(
+  contestId: string,
+  token: string,
+  target: RejudgingTarget,
+  reason: string,
+) {
+  return apiRequest<Rejudging>(rejudgingPath(contestId), token, {
+    method: 'POST',
+    body: JSON.stringify({ ...target, reason }),
+  });
+}
+export function listRejudgings(contestId: string, token: string, offset = 0) {
+  return apiRequest<{ batches: Rejudging[]; total: number }>(
+    `${rejudgingPath(contestId)}?offset=${offset}&limit=10`,
+    token,
+  );
+}
+export function getRejudging(
+  contestId: string,
+  token: string,
+  id: string,
+  offset = 0,
+) {
+  return apiRequest<RejudgingDetail>(
+    `${rejudgingPath(contestId)}/${id}?offset=${offset}&limit=50`,
+    token,
+  );
+}
+export function decideRejudging(
+  contestId: string,
+  token: string,
+  id: string,
+  action: 'apply' | 'cancel',
+) {
+  return apiRequest<Rejudging>(
+    `${rejudgingPath(contestId)}/${id}/${action}`,
+    token,
+    {
+      method: 'POST',
+    },
   );
 }

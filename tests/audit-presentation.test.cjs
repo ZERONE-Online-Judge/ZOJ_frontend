@@ -327,3 +327,35 @@ test('unknown raw API action remains in details but is not a primary label', () 
     '운영 작업 요청',
   );
 });
+
+test('staged rejudging logs describe request, apply and cancellation precisely', () => {
+  const details = {
+    rejudge: {
+      total: 12,
+      changed_verdicts: 3,
+      reason: 'Fix outputs',
+      problem_code: 'A',
+      problem_title: 'Sum',
+    },
+  };
+  for (const [suffix, label] of [
+    ['', '재채점 비교 작업 요청'],
+    ['/batch/apply', '재채점 결과 반영'],
+    ['/batch/cancel', '재채점 작업 취소'],
+  ]) {
+    const entry = log({
+      path: '/api/operator/contests/c/rejudgings' + suffix,
+      details,
+    });
+    assert.equal(actionLabel(entry), label);
+    assert.equal(targetLabel(entry), 'A. Sum');
+    assert.match(operationSummary(entry), /12개 제출/);
+    assert.match(operationSummary(entry), /Fix outputs/);
+  }
+  assert.match(
+    operationSummary(
+      log({ path: '/api/operator/contests/c/rejudgings/batch/apply', details }),
+    ),
+    /판정 변경 3개/,
+  );
+});

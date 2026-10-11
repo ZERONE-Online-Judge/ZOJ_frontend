@@ -1,6 +1,11 @@
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import ModalDialog from '@/shared/ui/ModalDialog';
 import SubmissionDetailContent from '@/components/operator/SubmissionDetailContent';
+import RejudgingPanel from '@/components/operator/RejudgingPanel';
+import {
+  canRejudgeSubmission,
+  type RejudgingTarget,
+} from '@/domains/submissionScoreboard/rejudging';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -153,6 +158,8 @@ function OperatorSubmissionsContent({
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const currentCursor = cursorStack.at(-1);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState('');
+  const [rejudgingTarget, setRejudgingTarget] =
+    useState<RejudgingTarget | null>(null);
   const [selectedProblemPreviewId, setSelectedProblemPreviewId] = useState('');
   const [selectedOwnerSubmissionId, setSelectedOwnerSubmissionId] =
     useState('');
@@ -528,6 +535,26 @@ function OperatorSubmissionsContent({
                 ))}
               </select>
             </label>
+            {canRejudge ? (
+              <button
+                type="button"
+                disabled={!problemId}
+                className="h-10 rounded-lg border border-indigo-200 px-3 text-sm font-semibold text-indigo-700 disabled:opacity-50"
+                title={
+                  problemId
+                    ? '선택한 문제와 팀의 완료된 참가자 제출을 재채점합니다'
+                    : '문제를 먼저 선택하세요'
+                }
+                onClick={() =>
+                  setRejudgingTarget({
+                    problem_id: problemId,
+                    ...(teamId ? { team_id: teamId } : {}),
+                  })
+                }
+              >
+                선택 범위 재채점
+              </button>
+            ) : null}
           </div>
         }
         description="참가자 제출, 문제 검수·테스트, 참가자 미리보기 채점을 함께 표시합니다. 팀을 선택하면 해당 참가 팀의 제출만 표시됩니다."
@@ -568,8 +595,29 @@ function OperatorSubmissionsContent({
         ) : null}
       </OperatorPanel>
 
+      <RejudgingPanel
+        contestId={contestId}
+        token={token}
+        canRejudge={canRejudge}
+        target={rejudgingTarget}
+        targetLabel={
+          rejudgingTarget?.submission_id
+            ? `제출 ${displaySubmissionId(rejudgingTarget.submission_id)}`
+            : `${problemById.get(rejudgingTarget?.problem_id ?? '')?.problem_code ?? ''}. ${problemById.get(rejudgingTarget?.problem_id ?? '')?.title ?? ''}${rejudgingTarget?.team_id ? ` · ${filteredTeams.find((team) => team.participant_team_id === rejudgingTarget.team_id)?.team_name ?? '선택 팀'}` : ' · 모든 팀'}`
+        }
+        onCloseRequest={() => setRejudgingTarget(null)}
+      />
+
       {selectedSubmissionId ? (
         <SubmissionDetailModal
+          onRejudge={
+            canRejudge
+              ? (submissionId) => {
+                  setSelectedSubmissionId('');
+                  setRejudgingTarget({ submission_id: submissionId });
+                }
+              : undefined
+          }
           onRetry={canRejudge ? retry : undefined}
           retryPending={retryMutation.isPending}
           error={selectedSubmissionQuery.error || retryMutation.error}
@@ -1016,6 +1064,7 @@ function TeamDetailModal({
 }
 
 function SubmissionDetailModal({
+  onRejudge,
   onRetry,
   retryPending,
   error,
@@ -1024,6 +1073,7 @@ function SubmissionDetailModal({
   problemById,
   submission,
 }: {
+  onRejudge?: (submissionId: string) => void;
   onRetry?: (submissionId: string) => void;
   retryPending: boolean;
   error: unknown;
@@ -1066,6 +1116,21 @@ function SubmissionDetailModal({
             {formatApiError(error, '제출 상세를 불러오지 못했습니다')}
           </p>
         ) : null}
+        {onRejudge && canRejudgeSubmission(submission) ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-200 p-4">
+            <p className="text-sm text-slate-600">
+              기존 판정을 유지하며 다시 채점하고, 새 결과를 비교한 뒤
+              반영합니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => onRejudge(submission!.submission_id)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              결과 비교 재채점
+            </button>
+          </div>
+        ) : null}
         {onRetry && submission?.status === 'system_error' ? (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-indigo-50 p-4">
             <p className="text-sm text-indigo-800">
@@ -1078,7 +1143,7 @@ function SubmissionDetailModal({
               onClick={() => onRetry(submission.submission_id)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {retryPending ? '요청 중…' : '시스템 에러 재채점'}
+              {retryPending ? '요청 중…' : '시스템 에러 즉시 재채점'}
             </button>
           </div>
         ) : null}

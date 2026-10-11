@@ -219,6 +219,7 @@ const mocks = {
   '@/domains/problemManagement/api': { getOperatorProblems: async () => [] },
   '@/domains/teamParticipation/api': { listParticipantTeams: async () => [] },
   '@/domains/submissionScoreboard/api': {
+    listRejudgings: async () => ({ batches: [], total: 0 }),
     getOperatorSubmissionFilters: async () => ({ problems: [], teams: [] }),
     listOperatorSubmissionsPage: async () => ({
       data: submissions,

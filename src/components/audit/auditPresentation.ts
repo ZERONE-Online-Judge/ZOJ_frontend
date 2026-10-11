@@ -108,6 +108,9 @@ export function actionLabel(log: OperationalAuditLog) {
     [/\/problems:copy$/, { POST: '문제 복사' }],
     [/\/problem-archives:inspect$/, { POST: '문제 ZIP 파일 확인' }],
     [/\/problem-archives:import$/, { POST: '문제 ZIP 가져오기' }],
+    [/\/rejudgings$/, { POST: '재채점 비교 작업 요청' }],
+    [/\/rejudgings\/[^/]+\/apply$/, { POST: '재채점 결과 반영' }],
+    [/\/rejudgings\/[^/]+\/cancel$/, { POST: '재채점 작업 취소' }],
     [/\/submissions\/[^/]+\/rejudge$/, { POST: '시스템 에러 제출 재채점' }],
     [/\/test-submissions$/, { POST: '검증 제출 실행' }],
     [/\/verification-tasks\/[^/]+\/stop$/, { POST: 'AI 검증 작업 중지 요청' }],
@@ -244,6 +247,19 @@ export function isVerificationAction(log: OperationalAuditLog) {
 export function operationSummary(log: OperationalAuditLog) {
   const target = asRecord(log.details?.target),
     body = asRecord(log.details?.body);
+  const rejudging = asRecord(log.details?.rejudge);
+  if (/\/rejudgings(?:\/[^/]+\/(?:apply|cancel))?$/.test(log.path)) {
+    const reason =
+      typeof rejudging.reason === 'string' ? rejudging.reason : body.reason;
+    const count = Number(rejudging.total);
+    const scope = Number.isFinite(count) ? `${count}개 제출` : '선택한 제출';
+    const operation = /\/apply$/.test(log.path)
+      ? `${scope} 결과 반영 · 판정 변경 ${Number(rejudging.changed_verdicts) || 0}개`
+      : /\/cancel$/.test(log.path)
+        ? `${scope} 작업 취소 · 기존 판정 유지`
+        : `${scope} 재채점 요청 · 결과 반영 전 기존 판정 유지`;
+    return reason ? `${operation} · 사유: ${reason}` : operation;
+  }
   if (/\/operators(?:\/[^/]+)?$/.test(log.path)) {
     const snapshot = Array.isArray(target.roles);
     const roles = snapshot ? target.roles : body.roles;
@@ -387,6 +403,13 @@ export function targetLabel(log: OperationalAuditLog) {
   const target = asRecord(log.details?.target),
     body = asRecord(log.details?.body),
     entities = asRecord(log.details?.entities);
+  const rejudging = asRecord(log.details?.rejudge);
+  if (
+    /\/rejudgings(?:\/[^/]+\/(?:apply|cancel))?$/.test(log.path) &&
+    typeof rejudging.problem_title === 'string'
+  ) {
+    return `${rejudging.problem_code ? `${rejudging.problem_code}. ` : ''}${rejudging.problem_title}`;
+  }
   if (/\/operators(?:\/[^/]+)?$/.test(log.path)) {
     const name = target.display_name || body.display_name;
     const email = target.email || body.email || entities.operator_email;
