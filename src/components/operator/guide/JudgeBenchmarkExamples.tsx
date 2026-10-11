@@ -25,7 +25,7 @@ export default function JudgeBenchmarkExamples({
   )!;
   const accepted = scenario.statuses.accepted ?? 0;
   return (
-    <section className="og-measured-example" aria-label="실측 실행 예제">
+    <section className="og-measured-example" aria-label="채점 성능 측정 기록">
       <p className="og-muted">
         이 기록은 7대·14슬롯 구성에서 측정한 결과입니다. 6대 운영 기준의 동시
         부하 측정값은 아닙니다.
@@ -46,7 +46,7 @@ export default function JudgeBenchmarkExamples({
       <div className="og-load-selector">
         <span>동시에 채점 큐에 넣는 요청 수</span>
         <div
-          className="og-practice-tabs"
+          className="og-benchmark-tabs"
           role="group"
           aria-label="동시 채점 요청 수"
         >

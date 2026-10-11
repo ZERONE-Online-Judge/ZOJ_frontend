@@ -27,7 +27,6 @@ export const judgeServerGuide: GuideCategory = {
   title: 'ZOJ는 코드를 어디서, 어떻게 채점하나요?',
   description:
     'ZOJ가 제공하는 실제 채점 환경, 예제 코드의 시간·메모리 실측, 대기열부터 판정 저장까지의 과정을 안내합니다. 운영자가 직접 설정하는 문제 제한·테스트·검증 작업과 연결해 읽어 보세요.',
-  scene: 'server-performance',
   checklist: [
     '표시 시간은 전체 채점 소요 시간·순수 CPU 시간과 다름을 이해',
     '사용할 언어의 정답·느린 풀이를 전체 테스트로 검증',

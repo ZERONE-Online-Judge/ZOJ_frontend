@@ -584,20 +584,14 @@
   gap: 8px;
   color: #4338ca;
 }
-/* Practice renders production components. Their styles and controls stay intact. */
-.og-practice-wrapper {
-  min-width: 0;
-}
-.og-practice,
-.og-server-demo {
+.og-server-reference {
   min-width: 0;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   background: #fff;
   overflow: hidden;
 }
-.og-practice-header,
-.og-demo-top {
+.og-reference-header {
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -606,16 +600,14 @@
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
-.og-practice-header h3,
-.og-demo-top h3 {
+.og-reference-header h3 {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.5;
   margin-top: 7px;
   letter-spacing: -0.025em;
 }
-.og-practice-tag,
-.og-example-label {
+.og-reference-date {
   flex-shrink: 0;
   display: inline-flex;
   border: 1px solid #cbd5e1;
@@ -625,84 +617,13 @@
   color: #475569;
   background: white;
 }
-.og-practice-steps {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 18px 24px 10px;
-  list-style: none;
-}
-.og-practice-steps li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  color: #475569;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.og-practice-steps li > span {
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  font-size: 10px;
-  background: #eef2ff;
-  color: #4f46e5;
-  text-align: center;
-  flex: none;
-}
-.og-practice-safety {
-  padding: 2px 24px 18px;
-  color: #64748b;
-  font-size: 11px;
-}
-.og-practice-surface {
-  padding: 22px;
-  max-height: 680px;
-  overflow: auto;
-  overscroll-behavior: contain;
-  border-top: 1px solid #e2e8f0;
-  background: white;
-  position: relative;
-  isolation: isolate;
-}
-.og-practice-surface .operator-settings-savebar {
-  position: sticky;
-  bottom: -22px;
-  z-index: 2;
-}
-.og-practice-feedback {
-  padding: 13px 15px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #475569;
-  margin: 16px 0 0 !important;
-  line-height: 1.8;
-}
-.og-practice-result {
-  margin-top: 20px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  overflow: hidden;
-  min-width: 0;
-}
-.og-practice-result > h4 {
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
-  background: #f8fafc;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e2e8f0;
-}
-.og-practice-tabs {
+.og-benchmark-tabs {
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
-.og-practice-tabs > button,
-.og-server-scenarios > button {
+.og-benchmark-tabs > button {
   border: 1px solid #e2e8f0;
   border-radius: 7px;
   padding: 8px 12px;
@@ -711,57 +632,10 @@
   font-size: 12px;
   font-weight: 600;
 }
-.og-practice-tabs > button[aria-pressed='true'],
-.og-server-scenarios > button[aria-pressed='true'] {
+.og-benchmark-tabs > button[aria-pressed='true'] {
   background: #eef2ff;
   border-color: #c7d2fe;
   color: #4338ca;
-}
-.og-practice-reset {
-  display: block;
-  margin: 10px 0 0 auto;
-  border: 0;
-  background: none;
-  font-size: 11px;
-  color: #64748b;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.og-practice-navigation {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 20px;
-}
-.og-practice-navigation > button {
-  min-width: 0;
-  border: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 9px;
-  padding: 17px;
-  text-align: left;
-}
-.og-practice-navigation > button:hover {
-  background: #f8faff;
-  border-color: #c7d2fe;
-}
-.og-practice-navigation strong {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-}
-.og-practice-navigation strong > span {
-  font-size: 10px;
-  color: #4f46e5;
-  flex-shrink: 0;
-}
-.og-practice-navigation p {
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.8;
-  margin-top: 8px;
 }
 .og-runtime-facts {
   display: grid;
@@ -781,14 +655,7 @@
   font-size: 11px;
   color: #64748b;
 }
-.og-server-scenarios {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 0 24px 20px;
-}
-.og-measured-example,
-.og-judge-flow {
+.og-measured-example {
   padding: 22px 24px;
   border-top: 1px solid #e2e8f0;
 }
@@ -926,30 +793,11 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.og-demo-note {
+.og-reference-note {
   font-size: 11px;
   color: #64748b;
   line-height: 1.9;
   margin: 18px 24px !important;
-}
-.og-flow-detail {
-  margin-top: 16px;
-  background: #eef2ff;
-  border-radius: 9px;
-  padding: 18px;
-}
-.og-flow-detail > span {
-  font-size: 11px;
-  color: #4f46e5;
-}
-.og-flow-detail h4 {
-  font-size: 15px;
-  margin: 7px 0;
-}
-.og-flow-detail p {
-  font-size: 12px;
-  color: #475569;
-  line-height: 1.9;
 }
 @media (max-width: 1100px) {
   .og-layout {
@@ -1017,39 +865,12 @@
   .og-category-header > p {
     font-size: 12px;
   }
-  .og-practice-header,
-  .og-demo-top {
+  .og-reference-header {
     padding: 17px;
     gap: 10px;
   }
-  .og-practice-header h3,
-  .og-demo-top h3 {
+  .og-reference-header h3 {
     font-size: 16px;
-  }
-  .og-practice-header .og-eyebrow {
-    font-size: 9px;
-    letter-spacing: 0.03em;
-  }
-  .og-practice-tag {
-    font-size: 9px;
-  }
-  .og-practice-steps {
-    padding: 14px 16px 10px;
-  }
-  .og-practice-safety {
-    padding: 0 16px 15px;
-    font-size: 10px;
-  }
-  .og-practice-surface {
-    padding: 13px;
-    max-height: 70vh;
-  }
-  .og-practice-surface .operator-settings-savebar {
-    bottom: -13px;
-  }
-  .og-practice-navigation {
-    grid-template-columns: 1fr;
-    padding: 14px;
   }
   .og-article h3 > button {
     padding: 16px;
@@ -1080,11 +901,7 @@
   .og-runtime-facts span {
     font-size: 10px;
   }
-  .og-server-scenarios {
-    padding: 0 16px 16px;
-  }
-  .og-measured-example,
-  .og-judge-flow {
+  .og-measured-example {
     padding: 16px;
   }
   .og-benchmark-metrics {
@@ -1110,7 +927,7 @@
     font-size: 11px;
     padding: 13px;
   }
-  .og-demo-note {
+  .og-reference-note {
     margin: 16px !important;
     font-size: 10px;
   }
@@ -1170,7 +987,7 @@
   color: #475569;
   margin-bottom: 9px;
 }
-.og-load-selector .og-practice-tabs {
+.og-load-selector .og-benchmark-tabs {
   margin-bottom: 8px;
 }
 .og-load-selector > p,

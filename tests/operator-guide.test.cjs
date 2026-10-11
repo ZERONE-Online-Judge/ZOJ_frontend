@@ -12,12 +12,6 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>', {
 global.window = dom.window;
 global.document = dom.window.document;
 global.IS_REACT_ACT_ENVIRONMENT = true;
-dom.window.HTMLDialogElement.prototype.showModal = function () {
-  this.open = true;
-};
-dom.window.HTMLDialogElement.prototype.close = function () {
-  this.open = false;
-};
 const React = require('react');
 const { act } = React;
 const { createRoot } = require('react-dom/client');
@@ -244,155 +238,33 @@ test('search result navigation opens its exact category and article', async () =
   );
   assert.equal(host.querySelector('#operator-guide-search').value, '');
 });
-test('practice settings keep selection separate from saved values and support confirmed reset', async () => {
-  await render('?section=settings');
-  const input = host.querySelector(
-    'input[name="visibility_after_end"][value="public"]',
-  );
-  await click(input);
-  assert.match(
-    host.querySelector('.og-practice-feedback').textContent,
-    /적용된 종료 후 공개 범위: 비공개/,
-  );
-  assert.match(
-    host.querySelector('[aria-label="설정 저장"]').textContent,
-    /1개 항목 변경됨/,
-  );
-  await click(button('변경사항 저장'));
-  assert.match(
-    host.querySelector('.og-practice-feedback').textContent,
-    /적용된 종료 후 공개 범위: 공개/,
-  );
-  await click(
-    host.querySelector('input[name="visibility_after_end"][value="private"]'),
-  );
-  await click(button('되돌리기'));
-  assert.match(document.querySelector('dialog').textContent, /설정 변경 취소/);
-  await click(
-    [...document.querySelectorAll('dialog button')].find(
-      (el) => el.textContent === '되돌리기',
-    ),
-  );
-  assert.equal(input.checked, true);
-  assert.equal(button('변경사항 저장').disabled, true);
-});
-test('practice roles use the production selector and persist only into the example list', async () => {
-  await render('?section=operators');
-  await click(host.querySelector('[aria-label="운영자 추가 펼치기"]'));
-  const editor = host.querySelector('.og-practice-surface');
-  await click(editor.querySelector('input[value="problem_author"]'));
-  await click(editor.querySelector('button[type="submit"]'));
-  assert.equal(
-    editor
-      .querySelector('[aria-label="운영자 추가 펼치기"]')
-      .getAttribute('aria-expanded'),
-    'false',
-  );
-  assert.match(
-    editor.querySelector('[aria-label="부여된 권한"]').textContent,
-    /검수진.*출제진/,
-  );
-  await click(button('이름·이메일·권한 수정'));
-  assert.equal(
-    editor.querySelector('input[value="problem_author"]').checked,
-    true,
-  );
-  await click(editor.querySelector('input[value="participant_preview"]'));
-  assert.equal(
-    editor.querySelector('input[value="problem_author"]').checked,
-    false,
-  );
-  assert.equal(
-    editor.querySelector('input[value="problem_reviewer"]').checked,
-    false,
-  );
-});
-test('manual release uses the actual controls, table and confirmation before undo', async () => {
-  await render('?section=scoreboard');
-  await click(button('개별 순위 공개 시작'));
-  assert.equal(host.querySelectorAll('[data-scoreboard-row]').length, 3);
-  assert.equal(
-    (
-      host
-        .querySelector('.og-practice-result')
-        .textContent.match(/아직 공개되지 않은 순위/g) || []
-    ).length,
-    3,
-  );
-  await click(button('3위 공개'));
-  const board = host.querySelector('.og-practice-result');
-  assert.match(board.textContent, /코발트/);
-  assert.doesNotMatch(board.textContent, /라임/);
-  await click(button('되돌리기 (Undo)'));
-  assert.match(board.textContent, /코발트/);
-  await click(
-    [...document.querySelectorAll('dialog button')].find(
-      (el) => el.textContent === '되돌리기',
-    ),
-  );
-  assert.doesNotMatch(board.textContent, /코발트/);
-});
-test('session logout shows the real participant notice and clears only the example sessions', async () => {
-  await render('?section=participants');
-  await click(button('계정 로그아웃'));
-  assert.match(
-    host.querySelector('.og-practice-surface').textContent,
-    /세션 없음/,
-  );
-  assert.match(
-    document.querySelector('dialog').textContent,
-    /로그아웃되었습니다/,
-  );
-  await click(
-    [...document.querySelectorAll('dialog button')].find(
-      (el) => el.textContent === '다시 로그인',
-    ),
-  );
-  assert.equal(document.querySelector('dialog'), null);
-  assert.ok(session.operatorSession);
-  await click(button('처음부터 다시하기'));
-  assert.match(
-    host.querySelector('.og-practice-surface').textContent,
-    /세션 2개/,
-  );
-});
-test('notice registration shows the saved countdown using the production editor', async () => {
-  await render('?section=notices');
-  await click(button('종료 카운트다운'));
-  assert.match(
-    host.querySelector('.og-practice-surface textarea').value,
-    /countdown:end/,
-  );
-  assert.equal(host.querySelector('.og-practice-result'), null);
-  await click(button('공지 등록'));
-  assert.match(
-    host.querySelector('.og-practice-result').textContent,
-    /종료 시각 안내/,
-  );
+test('every guide category shows instructions without practice widgets', async () => {
+  await render();
+  for (const category of operatorGuideCategories) {
+    const link = [
+      ...host.querySelectorAll('[aria-label="가이드 카테고리"] button'),
+    ].find((el) => el.querySelector('strong').textContent === category.label);
+    await click(link);
+    const content = host.querySelector('.og-content');
+    assert.equal(content.getAttribute('aria-label'), category.title);
+    assert.equal(
+      content.querySelectorAll('.og-article').length,
+      category.articles.length,
+    );
+    assert.equal(
+      content.querySelector(
+        'form, textarea, dialog, [class*="og-practice"], [aria-label="검수 채점 결과"]',
+      ),
+      null,
+    );
+    assert.doesNotMatch(
+      content.textContent,
+      /연습용 예제|처음부터 다시하기|데이터에만 적용/,
+    );
+  }
   assert.doesNotMatch(
-    host.querySelector('.og-practice-result').textContent,
-    /countdown:end/,
-  );
-});
-test('private question practice keeps the actual answer form private', async () => {
-  await render('?section=board');
-  await click(button('비공개 전환'));
-  await click(button('답변 작성'));
-  const scope = host.querySelector('[aria-label="답변 공개 범위"]');
-  assert.equal(scope.disabled, true);
-  assert.equal(scope.value, 'questioner');
-  await click(button('답변 등록'));
-  assert.match(
-    host.querySelector('.operator-board-composer').textContent,
-    /답변 내용을 입력/,
-  );
-});
-test('log practice opens the actual diff dialog', async () => {
-  await render('?section=logs');
-  await click(button('상세 기록 보기'));
-  assert.match(
-    document.querySelector('dialog').textContent,
-    /실제 변경된 항목.*변경 전.*변경 후/,
+    host.querySelector('.og-hero').textContent,
+    /조작을 연습|화면 요소로 연습/,
   );
 });
 
@@ -436,30 +308,6 @@ test('real execution examples show recorded source, input and measurements witho
     host.querySelector(
       'a[download][href="/guides/judge-benchmark-2026-09-26.json"]',
     ),
-  );
-});
-
-test('judge steps display actual persisted-result UI without timed advancement', async () => {
-  await render('?section=judge-servers');
-  await click(button('채점 큐부터 결과까지'));
-  assert.equal(host.querySelector('.og-player'), null);
-  await click(button('3. 한 에이전트에 배정'));
-  assert.match(
-    host.querySelector('.og-flow-detail').textContent,
-    /작업 전용 토큰/,
-  );
-  assert.match(
-    host.querySelector('[aria-label="검수 채점 결과"]').textContent,
-    /채점 준비 중/,
-  );
-  await click(button('7. 결과 저장과 슬롯 반환'));
-  assert.match(
-    host.querySelector('[aria-label="검수 채점 결과"]').textContent,
-    /맞았습니다.*34 ms/,
-  );
-  assert.match(
-    host.querySelector('.og-flow-detail').textContent,
-    /결과를 저장/,
   );
 });
 

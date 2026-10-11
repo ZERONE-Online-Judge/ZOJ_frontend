@@ -5,9 +5,8 @@ import {
   OperatorAccessGate,
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
-import GuideVisual, {
-  GuideIcon,
-} from '@/components/operator/guide/GuideVisuals';
+import { GuideIcon } from '@/components/operator/guide/GuideIcon';
+import JudgeServerReference from '@/components/operator/guide/JudgeServerReference';
 import {
   operatorGuideCategories,
   searchOperatorGuide,
@@ -113,7 +112,7 @@ function GuideContent({
     <PageLayout
       variant="management"
       title="운영 가이드"
-      description="실제 화면으로 익히는 설정·채점·대회 운영 안내입니다."
+      description="설정·채점·대회 운영의 사용법과 문제 대처 안내입니다."
       width="full"
     >
       <OperatorTabs contestId={contestId} />
@@ -124,14 +123,14 @@ function GuideContent({
               <span /> ZOJ OPERATOR HANDBOOK
             </span>
             <h2>
-              실제 화면으로 익히는
+              기능별로 살펴보는
               <br />
               <em>ZOJ 대회 운영</em>
             </h2>
             <p>
-              서비스와 같은 설정 카드·버튼·상세 창으로 조작을 연습하세요.
-              <br className="og-desktop-break" /> 저장 전후의 변화와 참가자에게
-              표시되는 결과를 함께 안내합니다.
+              각 기능의 설정 방법과 적용 결과를 확인하세요.
+              <br className="og-desktop-break" /> 참가자에게 표시되는 내용과
+              문제 발생 시 대처 방법을 함께 안내합니다.
             </p>
             <div className="og-hero-meta">
               <span>
@@ -142,7 +141,7 @@ function GuideContent({
                 <strong>{articleCount}</strong>개의 상세 안내
               </span>
               <i />
-              <span>실제 화면 요소로 연습</span>
+              <span>설정 방법부터 문제 대처까지</span>
             </div>
             <a href="#operator-guide-content" className="og-start-link">
               화면별 사용법 보기 <GuideIcon kind="arrow" />
@@ -316,11 +315,7 @@ function GuideContent({
                     </p>
                   ) : null}
                 </header>
-                <GuideVisual
-                  key={category.id}
-                  scene={category.scene}
-                  onTopic={goTo}
-                />
+                {category.id === 'judge-servers' && <JudgeServerReference />}
                 <nav
                   className="og-article-toc"
                   aria-label="이 카테고리의 상세 안내"

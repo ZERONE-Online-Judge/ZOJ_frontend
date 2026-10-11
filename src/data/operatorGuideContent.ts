@@ -1,20 +1,6 @@
 import type { ContestPermissionCode } from '@/domains/identityAccess/permissions';
 import { judgeServerGuide } from './judgeServerGuide';
 
-export type GuideScene =
-  | 'journey'
-  | 'visibility'
-  | 'roles'
-  | 'notice'
-  | 'question'
-  | 'session'
-  | 'pipeline'
-  | 'review'
-  | 'judging'
-  | 'server-performance'
-  | 'scoreboard'
-  | 'audit'
-  | 'diagnosis';
 export type GuideArticle = {
   id: string;
   title: string;
@@ -33,20 +19,18 @@ export type GuideCategory = {
   title: string;
   label: string;
   description: string;
-  scene: GuideScene;
   route?: string;
   permission?: ContestPermissionCode;
   checklist: string[];
   articles: GuideArticle[];
 };
 
-// Shipped operator instructions. Practice uses production UI with local example state.
+// Operator instructions for the available management screens.
 export const operatorGuideCategories: GuideCategory[] = [
   {
     id: 'start',
     label: '시작하기 · 홈',
     title: '처음부터 끝까지, 운영의 순서',
-    scene: 'journey',
     route: '',
     description:
       '준비 → 점검 → 진행 → 발표 → 종료 후 공개. 먼저 전체 흐름을 익히고 담당 화면으로 이동하세요.',
@@ -70,7 +54,7 @@ export const operatorGuideCategories: GuideCategory[] = [
         ],
         effect:
           '참가 유형마다 문제와 순위가 구분됩니다. 유형 이름만 만든 상태에서는 참가팀이나 문제가 자동으로 생기지 않습니다.',
-        note: '가이드의 연습 화면은 예제 데이터입니다. 실제 대회 설정은 해당 관리 화면에서 저장하면 적용됩니다.',
+        note: '대회 설정은 해당 관리 화면에서 저장하면 적용됩니다.',
       },
       {
         id: 'home-monitor',
@@ -107,7 +91,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'settings',
     label: '설정 · 일정과 공개',
     title: '대회 설정과 참가자 공개 범위',
-    scene: 'visibility',
     route: 'settings',
     permission: 'contest.settings.manage',
     description:
@@ -234,7 +217,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'operators',
     label: '운영자 · 역할과 권한',
     title: '필요한 역할을 필요한 사람에게',
-    scene: 'roles',
     route: 'operators',
     permission: 'contest.staff.manage',
     description:
@@ -305,7 +287,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'notices',
     label: '공지 · 긴급 전달',
     title: '평소의 안내와 지금 필요한 알림',
-    scene: 'notice',
     route: 'notices',
     permission: 'contest.notice.view',
     description:
@@ -370,7 +351,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'board',
     label: '게시판 · 질문과 답변',
     title: '질문을 놓치지 않고 답변하기',
-    scene: 'question',
     route: 'board',
     permission: 'contest.board.question.view',
     description:
@@ -414,7 +394,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'participants',
     label: '참가팀 · 유형과 세션',
     title: '참가 유형부터 로그인 문제까지',
-    scene: 'session',
     route: 'participants',
     permission: 'contest.participant.view',
     description:
@@ -498,7 +477,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'problems',
     label: '문제 관리 · 출제',
     title: '문제와 채점 데이터를 완성하기',
-    scene: 'pipeline',
     route: 'problems',
     permission: 'contest.problem.manage',
     description:
@@ -646,7 +624,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'review',
     label: '문제 모아보기 · 검수',
     title: '출제 화면과 다른 시선으로 검수하기',
-    scene: 'review',
     route: 'problem-review',
     permission: 'contest.problem.view',
     description:
@@ -693,7 +670,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'submissions',
     label: '제출 · 채점 결과',
     title: '제출 한 건의 여정을 따라가기',
-    scene: 'judging',
     route: 'submissions',
     permission: 'contest.submission.view',
     description:
@@ -781,7 +757,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'scoreboard',
     label: '스코어보드 · 프리즈와 발표',
     title: '채점은 계속, 공개는 계획대로',
-    scene: 'scoreboard',
     route: 'scoreboard',
     permission: 'contest.scoreboard.view',
     description:
@@ -894,7 +869,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'logs',
     label: '운영로그 · 이력 추적',
     title: '무슨 일이 있었는지 기록으로 확인하기',
-    scene: 'audit',
     route: 'audit-logs',
     permission: 'contest.access_log.view',
     description:
@@ -963,7 +937,6 @@ export const operatorGuideCategories: GuideCategory[] = [
     id: 'help',
     label: '문제 해결 · 상황별 점검',
     title: '증상에서 시작하는 해결 순서',
-    scene: 'diagnosis',
     description:
       '권한 → 대회 단계 → 공개 정책 → 관련 기록 순서로 확인하면 원인을 좁힐 수 있습니다.',
     checklist: [

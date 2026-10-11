@@ -1,18 +1,4 @@
-import { useState, type ReactNode } from 'react';
-import type { GuideScene } from '@/data/operatorGuideContent';
-import JudgeServerDemo from './JudgeServerDemo';
-import {
-  SettingsPractice,
-  RolesPractice,
-  SessionPractice,
-  NoticePractice,
-  BoardPractice,
-  ScoreboardPractice,
-  ProblemPractice,
-  SubmissionPractice,
-  AuditPractice,
-  NavigationPractice,
-} from './GuidePractice';
+import type { ReactNode } from 'react';
 export function GuideIcon({
   kind = 'book',
   className = '',
@@ -88,47 +74,5 @@ export function GuideIcon({
     >
       {paths[kind] ?? paths.book}
     </svg>
-  );
-}
-
-export default function GuideVisual({
-  scene,
-  onTopic,
-}: {
-  scene: GuideScene;
-  onTopic: (category: string, article: string) => void;
-}) {
-  const [revision, setRevision] = useState(0);
-  const demos: Record<
-    Exclude<GuideScene, 'journey' | 'diagnosis'>,
-    ReactNode
-  > = {
-    visibility: <SettingsPractice />,
-    roles: <RolesPractice />,
-    session: <SessionPractice />,
-    notice: <NoticePractice />,
-    question: <BoardPractice />,
-    pipeline: <ProblemPractice />,
-    review: <ProblemPractice review />,
-    judging: <SubmissionPractice />,
-    scoreboard: <ScoreboardPractice />,
-    audit: <AuditPractice />,
-    'server-performance': <JudgeServerDemo />,
-  };
-  if (scene === 'journey' || scene === 'diagnosis')
-    return (
-      <NavigationPractice onTopic={onTopic} help={scene === 'diagnosis'} />
-    );
-  return (
-    <div className="og-practice-wrapper">
-      <div key={revision}>{demos[scene]}</div>
-      <button
-        className="og-practice-reset"
-        type="button"
-        onClick={() => setRevision((value) => value + 1)}
-      >
-        처음부터 다시하기
-      </button>
-    </div>
   );
 }
