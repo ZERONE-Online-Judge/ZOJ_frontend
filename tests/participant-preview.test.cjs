@@ -28,7 +28,7 @@ const {
 } = require('react-router-dom');
 const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
 let state, calls, serverDivision, rejectOptions, savedSession, currentPath;
-let notices, questions;
+let notices, questions, notificationItems;
 const listeners = new Set();
 const division = (id) => ({
   division_id: id,
@@ -132,6 +132,13 @@ async function apiRequest(url, token, init) {
       body: JSON.parse(init.body).body,
       answers: [],
       created_at: new Date().toISOString(),
+    };
+  if (url.startsWith('/notifications'))
+    return {
+      items: notificationItems,
+      next_offset: null,
+      unread_count: notificationItems.filter((item) => !item.read_at).length,
+      total_count: notificationItems.length,
     };
   if (url.endsWith('/notices')) return notices;
   if (url.endsWith('/boards')) return questions;
@@ -266,6 +273,7 @@ beforeEach(() => {
   serverDivision = null;
   rejectOptions = false;
   savedSession = null;
+  notificationItems = [];
   notices = [];
   questions = [];
   document.body.innerHTML = '';
@@ -512,72 +520,53 @@ test('preview displays the same dismissible emergency notice as normal participa
   assert.equal(container.textContent.includes('긴급 공지 확인'), false);
 });
 
-test('preview notifications poll actual participant APIs only after a server selection is confirmed', async () => {
+test('preview keeps the account inbox independent of division selection and does not poll judging sources', async () => {
   state.participantSession = previewSession();
   await render('/contests/contest', true);
+  assert.ok(
+    calls.some(
+      (call) => call.url === '/notifications' && call.token === 'general-token',
+    ),
+  );
   assert.equal(
-    calls.some((call) => call.url.startsWith('/contests/')),
+    calls.some(
+      (call) =>
+        call.url.startsWith('/contests/') &&
+        ['/notices', '/boards', '/submissions?limit=10'].some((suffix) =>
+          call.url.endsWith(suffix),
+        ),
+    ),
     false,
   );
   await click(button('미리보기 시작'));
   await flush();
-  for (const suffix of ['/notices', '/boards', '/submissions?limit=10']) {
-    assert.ok(
-      calls.some(
-        (call) => call.url.endsWith(suffix) && call.token === 'general-token',
-      ),
-    );
-  }
+  assert.equal(
+    calls.some((call) => call.url.endsWith('/submissions?limit=10')),
+    false,
+  );
 });
 
-test('active preview receives new notice and answer notifications without a real participant registration', async () => {
+test('active preview shows its own server account inbox without creating participant source alerts', async () => {
   state.participantSession = previewSession();
   serverDivision = 'a';
-  const timestamp = new Date().toISOString();
-  notices = [
-    {
-      contest_notice_id: 'first-notice',
-      title: '기존 공지',
-      published_at: timestamp,
-    },
-  ];
-  questions = [
-    {
-      contest_question_id: 'question',
-      title: '내 질문',
-      author_name: '점검자',
-      answers: [{ contest_answer_id: 'first-answer', created_at: timestamp }],
-    },
-  ];
+  notificationItems = ['notice', 'answer'].map((type) => ({
+    notification_id: type,
+    notification_type: type,
+    contest_id: 'other-contest',
+    contest_title: '내가 참가한 대회',
+    title: type === 'notice' ? '새 대회 공지' : '내 질문 답변',
+    body: '서버에 저장된 개인 알림',
+    href: '/contests/other-contest/board',
+    created_at: new Date().toISOString(),
+    read_at: null,
+    dismissed_at: null,
+  }));
   await render('/contests/contest', true);
   await flush();
-  await flush();
-  notices = [
-    ...notices,
-    {
-      contest_notice_id: 'new-notice',
-      title: '새 공지',
-      published_at: timestamp,
-    },
-  ];
-  questions = [
-    {
-      ...questions[0],
-      answers: [
-        ...questions[0].answers,
-        { contest_answer_id: 'new-answer', created_at: timestamp },
-      ],
-    },
-  ];
-  await act(async () => {
-    await client.invalidateQueries({ queryKey: ['contest-notices'] });
-    await client.invalidateQueries({ queryKey: ['contest-questions'] });
-  });
-  await flush();
-  await flush();
-  assert.ok(container.textContent.includes('공지 올라왔습니다'));
-  assert.ok(container.textContent.includes('내 질문글에 답변이 달렸습니다'));
+  assert.ok(container.textContent.includes('새 대회 공지'));
+  assert.ok(container.textContent.includes('내 질문 답변'));
   assert.equal(state.generalSession.participantContests.length, 0);
+  assert.equal(window.localStorage.getItem('zoj.headerNotifications.v1'), null);
 });
 
 test('ordinary participants retain the pre-start navigation and problem lock', async () => {

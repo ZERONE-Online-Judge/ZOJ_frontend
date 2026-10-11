@@ -6,93 +6,30 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
 import { useMatch, useNavigate } from 'react-router-dom';
-import { contestQueryKeys } from '@/domains/contestRuntime/queryKeys';
 import { useContestParticipantSession } from '@/domains/contestRuntime/useContestParticipantSession';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
-import { getParticipantPreview } from '@/domains/teamParticipation/api';
 import {
-  getContestNotices,
-  getContestQuestions,
-} from '@/domains/serviceCommunication/api';
-import type {
-  ContestNotice,
-  ContestQuestion,
-} from '@/domains/serviceCommunication/types';
-import {
-  getRejudgingNotifications,
-  listSubmissionsPage,
-  updateRejudgingNotification,
-} from '@/domains/submissionScoreboard/api';
-import {
-  isSubmissionTerminal,
-  submissionStatusLabel,
-} from '@/domains/submissionScoreboard/status';
-import type { Submission } from '@/domains/submissionScoreboard/types';
+  getNotifications,
+  updateNotification,
+  readAllNotifications,
+} from '@/domains/serviceCommunication/notifications';
 import { formatDateTime } from '@/shared/lib/dateTime';
 
 type HeaderNotificationType = 'answer' | 'notice' | 'submission' | 'rejudging';
-
 type HeaderNotification = {
-  body: string;
-  createdAt: string;
-  dismissedAt?: string;
-  href: string;
   id: string;
-  sourceKey: string;
-  title: string;
   type: HeaderNotificationType;
+  title: string;
+  body: string;
+  href: string;
+  createdAt: string;
+  readAt?: string;
+  dismissedAt?: string;
   reason?: string;
-  serverId?: string;
 };
-
-type NotificationStore = {
-  notifications: HeaderNotification[];
-  sourceSeen: Record<string, true>;
-};
-
-const NOTIFICATION_STORAGE_KEY = 'zoj.headerNotifications.v1';
-
-function emptyStore(): NotificationStore {
-  return { notifications: [], sourceSeen: {} };
-}
-
-function readStore(): NotificationStore {
-  if (typeof window === 'undefined') return emptyStore();
-
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(NOTIFICATION_STORAGE_KEY) ?? '',
-    ) as Partial<NotificationStore>;
-
-    return {
-      notifications: Array.isArray(parsed.notifications)
-        ? parsed.notifications
-        : [],
-      sourceSeen:
-        parsed.sourceSeen && typeof parsed.sourceSeen === 'object'
-          ? (parsed.sourceSeen as Record<string, true>)
-          : {},
-    };
-  } catch {
-    return emptyStore();
-  }
-}
-
-function writeStore(store: NotificationStore) {
-  window.localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(store));
-}
-
-function hasSeenPrefix(store: NotificationStore, prefix: string) {
-  return Object.keys(store.sourceSeen).some((key) => key.startsWith(prefix));
-}
-
-function latestFirst(a: HeaderNotification, b: HeaderNotification) {
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-}
 
 function formatNotificationAge(value: string, now: number) {
   const createdAt = new Date(value).getTime();
@@ -108,38 +45,6 @@ function formatNotificationAge(value: string, now: number) {
   if (diffHours < 10) return `${diffHours}시간전`;
 
   return formatDateTime(value);
-}
-
-function problemLabel(submission: Submission) {
-  return (
-    submission.problem?.problem_code ??
-    submission.problem_code ??
-    submission.problem?.title ??
-    submission.problem_title ??
-    '문제'
-  );
-}
-
-function submissionHref(contestId: string, submission: Submission) {
-  if (submission.problem_id) {
-    return `/contests/${contestId}/problems/${submission.problem_id}?submissionId=${encodeURIComponent(
-      submission.submission_id,
-    )}`;
-  }
-
-  return `/contests/${contestId}/submissions`;
-}
-
-function answerBelongsToParticipant(
-  question: ContestQuestion,
-  teamName?: string,
-  memberName?: string,
-) {
-  if (!teamName && !memberName) return false;
-  return (
-    (teamName ? question.team_name === teamName : false) ||
-    (memberName ? question.author_name === memberName : false)
-  );
 }
 
 const notificationLabels: Record<HeaderNotificationType, string> = {
@@ -170,10 +75,10 @@ function NotificationContent({
       <span className="header-notification-content">
         <span className="header-notification-meta">
           {notificationLabels[notification.type]}
-          {!notification.dismissedAt ? (
+          {!notification.readAt ? (
             <>
               <i aria-hidden="true" />
-              <span className="sr-only">새 알림</span>
+              <span className="header-notification-unread">읽지 않음</span>
             </>
           ) : null}
         </span>
@@ -194,454 +99,105 @@ function NotificationContent({
 
 export default function HeaderNotifications() {
   const navigate = useNavigate();
-  const contestNestedMatch = useMatch('/contests/:contestId/*');
-  const contestExactMatch = useMatch('/contests/:contestId');
-  const contestMatch = contestNestedMatch ?? contestExactMatch;
-  const contestId = contestMatch?.params.contestId ?? '';
+  const nested = useMatch('/contests/:contestId/*');
+  const exact = useMatch('/contests/:contestId');
+  const contestId = (nested ?? exact)?.params.contestId ?? '';
   const {
-    activeParticipantSession,
-    ensureParticipantSession,
     generalSession,
     participantSession,
+    activeParticipantSession,
     isPreview,
-    participantContest,
-    token,
   } = useContestParticipantSession(contestId);
-  const [store, setStore] = useState<NotificationStore>(() => readStore());
-  const [now, setNow] = useState(() => Date.now());
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const participantToken = activeParticipantSession?.accessToken ?? token;
-  const queryClient = useQueryClient();
-  const notificationToken =
+  const token =
     generalSession?.accessToken ??
-    (participantSession?.isPreview
-      ? undefined
-      : participantSession?.accessToken) ??
-    (!isPreview ? activeParticipantSession?.accessToken : undefined);
-  const notificationContestId = generalSession
+    (!participantSession?.isPreview
+      ? participantSession?.accessToken
+      : undefined) ??
+    (!isPreview && !activeParticipantSession?.isPreview
+      ? activeParticipantSession?.accessToken
+      : undefined);
+  const scope = generalSession
     ? undefined
     : (participantSession?.contestId ?? contestId);
-  const notificationQueryKey = [
-    'rejudging-notifications',
-    tokenQueryIdentity(notificationToken),
-    notificationContestId ?? 'all',
-  ];
-  const rejudgingQuery = useInfiniteQuery({
-    enabled: Boolean(notificationToken),
-    queryKey: notificationQueryKey,
+  const [now, setNow] = useState(() => Date.now());
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const queryKey = ['notifications', tokenQueryIdentity(token), scope ?? 'all'];
+  const query = useInfiniteQuery({
+    enabled: Boolean(token),
+    queryKey,
     initialPageParam: 0,
-    queryFn: ({ pageParam }) =>
-      getRejudgingNotifications(
-        notificationToken!,
-        notificationContestId,
-        pageParam,
-      ),
+    queryFn: ({ pageParam }) => getNotifications(token!, scope, pageParam),
     getNextPageParam: (page) => page.next_offset ?? undefined,
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
-  const notificationUpdate = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: 'read' | 'delete' }) =>
-      updateRejudgingNotification(
-        notificationToken!,
-        id,
-        action,
-        notificationContestId,
-      ),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: notificationQueryKey }),
+  const update = useMutation({
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id?: string;
+      action: 'read' | 'unread' | 'dismiss' | 'delete' | 'read-all';
+    }) => {
+      if (action === 'read-all') await readAllNotifications(token!, scope);
+      else await updateNotification(token!, id!, action, scope);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
-  const rejudgingChanges = useMemo(() => {
-    if (!notificationToken) return [];
-    return [
-      ...new Map(
-        (rejudgingQuery.data?.pages.flatMap((page) => page.items) ?? []).map(
-          (item) => [item.notification_id, item],
-        ),
-      ).values(),
-    ];
-  }, [notificationToken, rejudgingQuery.data]);
-  const rejudgingNotifications = useMemo<HeaderNotification[]>(
+  const notifications = useMemo<HeaderNotification[]>(
     () =>
-      rejudgingChanges.map((item) => ({
-        id: `rejudging:${item.notification_id}`,
-        sourceKey: `rejudging:${item.notification_id}`,
-        serverId: item.notification_id,
-        type: 'rejudging',
-        title: `${item.contest_title} · ${item.problem_code} 판정이 변경됐습니다`,
-        body: `${submissionStatusLabel(item.old_status)} → ${submissionStatusLabel(item.new_status)}`,
-        reason: item.reason,
-        createdAt: item.created_at,
-        dismissedAt: item.read_at ?? undefined,
-        href: `/contests/${encodeURIComponent(item.contest_id)}/problems/${encodeURIComponent(item.problem_id)}?submissionId=${encodeURIComponent(item.submission_id)}`,
-      })),
-    [rejudgingChanges],
+      !token
+        ? []
+        : [
+            ...new Map(
+              (query.data?.pages.flatMap((page) => page.items) ?? []).map(
+                (item) => [item.notification_id, item],
+              ),
+            ).values(),
+          ].map((item) => ({
+            id: item.notification_id,
+            type: item.notification_type,
+            title: `${item.contest_title} · ${item.title}`,
+            body: item.body,
+            href: item.href,
+            createdAt: item.created_at,
+            readAt: item.read_at ?? undefined,
+            dismissedAt: item.dismissed_at ?? undefined,
+            reason: item.reason ?? undefined,
+          })),
+    [token, query.data],
   );
-  const previewSelection = useQuery({
-    enabled: isPreview && Boolean(contestId && participantToken),
-    queryKey: [
-      'participant-preview',
-      contestId,
-      tokenQueryIdentity(participantToken),
-    ],
-    queryFn: () => getParticipantPreview(contestId, participantToken!),
-    refetchOnMount: 'always',
-    refetchInterval: 15_000,
-  });
-  const hasValidPreviewSelection =
-    previewSelection.isFetchedAfterMount &&
-    !previewSelection.error &&
-    previewSelection.data?.selected_division_id ===
-      activeParticipantSession?.division.division_id;
-  const canPollContestNotifications = Boolean(
-    contestId &&
-    (participantContest || activeParticipantSession) &&
-    (!isPreview || hasValidPreviewSelection),
+  const unreadCount = token ? (query.data?.pages[0]?.unread_count ?? 0) : 0;
+  const toasts = notifications.filter(
+    (item) => !item.readAt && !item.dismissedAt,
   );
-  const participantTeamName =
-    participantContest?.team.team_name ??
-    activeParticipantSession?.team.team_name;
-  const participantMemberName =
-    participantContest?.member.name ?? activeParticipantSession?.member.name;
 
   useEffect(() => {
-    if (store.notifications.length + rejudgingNotifications.length === 0)
-      return;
-
+    // The previous inbox was shared by every account using this browser.
+    // Do not import those private bodies into the authenticated server inbox.
+    window.localStorage.removeItem('zoj.headerNotifications.v1');
+  }, []);
+  useEffect(() => {
+    if (!notifications.length) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [store.notifications.length, rejudgingNotifications.length]);
-
-  useEffect(() => {
-    writeStore(store);
-  }, [store]);
-
-  useEffect(() => {
-    if (!rejudgingChanges.length) return;
-    const timer = window.setTimeout(
-      () =>
-        setStore((current) => {
-          const sourceSeen = { ...current.sourceSeen };
-          let changed = false;
-          for (const item of rejudgingChanges) {
-            const key = `rejudged:${item.contest_id}:${item.submission_id}:${item.new_status}`;
-            if (!sourceSeen[key]) {
-              sourceSeen[key] = true;
-              changed = true;
-            }
-          }
-          return changed ? { ...current, sourceSeen } : current;
-        }),
-      0,
-    );
-    return () => window.clearTimeout(timer);
-  }, [rejudgingChanges]);
-
-  const noticesQuery = useQuery({
-    enabled: canPollContestNotifications,
-    queryKey: contestQueryKeys.notices(
-      contestId,
-      participantToken,
-      participantContest?.contest.contest_id,
-      activeParticipantSession?.accessToken,
-    ),
-    queryFn: async () => {
-      const session =
-        activeParticipantSession ??
-        (participantContest ? await ensureParticipantSession() : null);
-      return getContestNotices(
-        contestId,
-        session?.accessToken ?? participantToken,
-      );
-    },
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
-  });
-  const questionsQuery = useQuery({
-    enabled: canPollContestNotifications,
-    queryKey: contestQueryKeys.questions(
-      contestId,
-      participantToken,
-      participantContest?.contest.contest_id,
-      activeParticipantSession?.accessToken,
-    ),
-    queryFn: async () => {
-      const session =
-        activeParticipantSession ??
-        (participantContest ? await ensureParticipantSession() : null);
-      return getContestQuestions(
-        contestId,
-        session?.accessToken ?? participantToken,
-      );
-    },
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
-  });
-  const submissionsQuery = useQuery({
-    enabled: canPollContestNotifications,
-    queryKey: [
-      ...contestQueryKeys.submissions(
-        contestId,
-        participantToken,
-        participantContest?.contest.contest_id,
-        undefined,
-        activeParticipantSession?.accessToken,
-        undefined,
-        undefined,
-        false,
-      ),
-      'header-notifications',
-    ],
-    queryFn: async () => {
-      const session =
-        activeParticipantSession ??
-        (participantContest ? await ensureParticipantSession() : null);
-      return listSubmissionsPage(
-        contestId,
-        session?.accessToken ?? participantToken,
-        {
-          limit: 10,
-        },
-      );
-    },
-    refetchInterval: 8_000,
-    refetchIntervalInBackground: false,
-  });
-
-  useEffect(() => {
-    const notices = noticesQuery.data;
-    if (!contestId || !notices) return;
-
-    const timer = window.setTimeout(() => {
-      setStore((current) => {
-        const prefix = `notice:${contestId}:`;
-        const hasBaseline = hasSeenPrefix(current, prefix);
-        const next: NotificationStore = {
-          notifications: [...current.notifications],
-          sourceSeen: { ...current.sourceSeen },
-        };
-
-        notices.forEach((notice: ContestNotice) => {
-          const sourceKey = `${prefix}${notice.contest_notice_id}`;
-          if (next.sourceSeen[sourceKey]) return;
-          next.sourceSeen[sourceKey] = true;
-
-          if (!hasBaseline) return;
-          next.notifications.unshift({
-            body: notice.title,
-            createdAt: notice.published_at,
-            href: `/contests/${contestId}/board?noticeId=${encodeURIComponent(
-              notice.contest_notice_id,
-            )}`,
-            id: sourceKey,
-            sourceKey,
-            title: '공지 올라왔습니다',
-            type: 'notice',
-          });
-        });
-
-        next.notifications = next.notifications.sort(latestFirst);
-        return next;
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [contestId, noticesQuery.data]);
-
-  useEffect(() => {
-    const questions = questionsQuery.data;
-    if (!contestId || !questions) return;
-
-    const timer = window.setTimeout(() => {
-      setStore((current) => {
-        const prefix = `answer:${contestId}:`;
-        const hasBaseline = hasSeenPrefix(current, prefix);
-        const next: NotificationStore = {
-          notifications: [...current.notifications],
-          sourceSeen: { ...current.sourceSeen },
-        };
-
-        questions
-          .filter((question) =>
-            answerBelongsToParticipant(
-              question,
-              participantTeamName,
-              participantMemberName,
-            ),
-          )
-          .forEach((question) => {
-            question.answers.forEach((answer) => {
-              const sourceKey = `${prefix}${answer.contest_answer_id}`;
-              if (next.sourceSeen[sourceKey]) return;
-              next.sourceSeen[sourceKey] = true;
-
-              if (!hasBaseline) return;
-              next.notifications.unshift({
-                body: question.title,
-                createdAt: answer.created_at,
-                href: `/contests/${contestId}/board?questionId=${encodeURIComponent(
-                  question.contest_question_id,
-                )}`,
-                id: sourceKey,
-                sourceKey,
-                title: '내 질문글에 답변이 달렸습니다',
-                type: 'answer',
-              });
-            });
-          });
-
-        next.notifications = next.notifications.sort(latestFirst);
-        return next;
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    contestId,
-    participantMemberName,
-    participantTeamName,
-    questionsQuery.data,
-  ]);
-
-  useEffect(() => {
-    const submissions = submissionsQuery.data?.data;
-    if (!contestId || !submissions) return;
-    if (notificationToken && rejudgingQuery.isPending) return;
-
-    const timer = window.setTimeout(() => {
-      setStore((current) => {
-        const prefix = `submission:${contestId}:`;
-        const hasBaseline = hasSeenPrefix(current, prefix);
-        const next: NotificationStore = {
-          notifications: current.notifications.filter(
-            (notification) =>
-              !rejudgingChanges.some(
-                (change) =>
-                  notification.type === 'submission' &&
-                  notification.sourceKey ===
-                    `${prefix}${change.submission_id}:${change.new_status}` &&
-                  new Date(notification.createdAt).getTime() >=
-                    new Date(change.created_at).getTime(),
-              ),
-          ),
-          sourceSeen: { ...current.sourceSeen },
-        };
-
-        submissions.forEach((submission) => {
-          if (!isSubmissionTerminal(submission.status)) return;
-
-          const sourceKey = `${prefix}${submission.submission_id}:${submission.status}`;
-          if (
-            next.sourceSeen[
-              `rejudged:${contestId}:${submission.submission_id}:${submission.status}`
-            ]
-          ) {
-            next.sourceSeen[sourceKey] = true;
-            return;
-          }
-          if (next.sourceSeen[sourceKey]) return;
-          next.sourceSeen[sourceKey] = true;
-
-          if (
-            rejudgingChanges.some(
-              (change) =>
-                change.submission_id === submission.submission_id &&
-                change.new_status === submission.status,
-            )
-          )
-            return;
-
-          if (!hasBaseline) return;
-          next.notifications.unshift({
-            body: submissionStatusLabel(submission.status),
-            createdAt: new Date().toISOString(),
-            href: submissionHref(contestId, submission),
-            id: sourceKey,
-            sourceKey,
-            title: `${problemLabel(submission)}에 대한 제출결과가 나왔습니다`,
-            type: 'submission',
-          });
-        });
-
-        next.notifications = next.notifications.sort(latestFirst);
-        return next;
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    contestId,
-    notificationToken,
-    rejudgingChanges,
-    rejudgingQuery.isPending,
-    submissionsQuery.data,
-  ]);
-
-  const toastNotifications = useMemo(
-    () =>
-      [...store.notifications, ...rejudgingNotifications]
-        .filter((notification) => !notification.dismissedAt)
-        .sort(latestFirst),
-    [store.notifications, rejudgingNotifications],
-  );
-  const panelNotifications = useMemo(
-    () => [...store.notifications, ...rejudgingNotifications].sort(latestFirst),
-    [store.notifications, rejudgingNotifications],
-  );
-
-  async function dismissNotification(notificationId: string) {
-    const notification = rejudgingNotifications.find(
-      (item) => item.id === notificationId,
-    );
-    if (notification?.serverId) {
-      try {
-        await notificationUpdate.mutateAsync({
-          id: notification.serverId,
-          action: 'read',
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    }
-    setStore((current) => ({
-      ...current,
-      notifications: current.notifications.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, dismissedAt: new Date().toISOString() }
-          : notification,
-      ),
-    }));
-    return true;
-  }
-
-  function removeNotification(notification: HeaderNotification) {
-    if (notification.serverId) {
-      notificationUpdate.mutate({
-        id: notification.serverId,
-        action: 'delete',
-      });
-      return;
-    }
-    setStore((current) => ({
-      ...current,
-      notifications: current.notifications.filter(
-        (item) => item.id !== notification.id,
-      ),
-      // Keep the source recorded so polling cannot recreate a removed alert.
-      sourceSeen: { ...current.sourceSeen, [notification.sourceKey]: true },
-    }));
-  }
+  }, [notifications.length]);
 
   async function openNotification(notification: HeaderNotification) {
-    if (!(await dismissNotification(notification.id))) return;
-    setIsPanelOpen(false);
-    navigate(notification.href);
+    try {
+      if (!notification.readAt)
+        await update.mutateAsync({ id: notification.id, action: 'read' });
+      setIsPanelOpen(false);
+      navigate(notification.href);
+    } catch {
+      /* Keep the item visible when the server cannot save its state. */
+    }
   }
 
   return (
     <>
-      {notificationUpdate.isError ? (
+      {update.isError ? (
         <p role="alert" className="header-notification-error">
           알림 상태를 저장하지 못했습니다. 다시 시도해 주세요.
         </p>
@@ -656,39 +212,38 @@ export default function HeaderNotifications() {
       >
         <HeaderIcon name="bell" />
         <span className="header-action-label">알림</span>
-        {toastNotifications.length ? (
+        {unreadCount ? (
           <span className="header-action-count">
-            {toastNotifications.length > 99 ? '99+' : toastNotifications.length}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : null}
       </button>
-      {toastNotifications.length && !isPanelOpen ? (
+      {toasts.length && !isPanelOpen ? (
         <div className="header-toast-stack" aria-label="새 알림">
-          {toastNotifications.slice(0, 3).map((notification) => (
-            <article className="header-toast" key={notification.id}>
-              <button
-                onClick={() => openNotification(notification)}
-                type="button"
-              >
-                <NotificationContent notification={notification} now={now} />
+          {toasts.slice(0, 3).map((item) => (
+            <article className="header-toast" key={item.id}>
+              <button onClick={() => void openNotification(item)} type="button">
+                <NotificationContent notification={item} now={now} />
               </button>
               <button
                 aria-label="알림 닫기"
                 className="header-icon-button"
-                onClick={() => dismissNotification(notification.id)}
+                onClick={() =>
+                  update.mutate({ id: item.id, action: 'dismiss' })
+                }
                 type="button"
               >
                 <HeaderIcon name="close" />
               </button>
             </article>
           ))}
-          {toastNotifications.length > 3 ? (
+          {toasts.length > 3 ? (
             <button
               className="header-toast-more"
               type="button"
               onClick={() => setIsPanelOpen(true)}
             >
-              새 알림 {toastNotifications.length}개 모두 보기 ↗
+              새 알림 {toasts.length}개 모두 보기 ↗
             </button>
           ) : null}
         </div>
@@ -699,80 +254,106 @@ export default function HeaderNotifications() {
           title="알림"
           label="NOTIFICATIONS"
           icon="bell"
-          description="대회 소식부터 내 질문의 답변, 채점 결과까지."
+          description="대회 소식부터 내 질문의 답변, 채점 결과까지. 계정에 저장된 알림입니다."
           onClose={() => setIsPanelOpen(false)}
         >
-          {rejudgingQuery.isError ? (
+          {query.isError && token ? (
             <p role="alert">
-              재채점 알림을 불러오지 못했습니다.{' '}
-              <button
-                type="button"
-                onClick={() => void rejudgingQuery.refetch()}
-              >
+              알림을 불러오지 못했습니다.{' '}
+              <button type="button" onClick={() => void query.refetch()}>
                 다시 시도
               </button>
             </p>
           ) : null}
-          {panelNotifications.length ? (
+          {token && query.isPending ? (
+            <p role="status">알림을 불러오는 중…</p>
+          ) : notifications.length ? (
             <>
               <div className="header-section-heading">
                 <h3>받은 알림</h3>
-                <span>새 알림 {toastNotifications.length}개</span>
+                <span>읽지 않은 알림 {unreadCount}개</span>
+                <button
+                  className="header-notification-read-all"
+                  disabled={!unreadCount || update.isPending}
+                  onClick={() => update.mutate({ action: 'read-all' })}
+                  type="button"
+                >
+                  모두 읽음
+                </button>
               </div>
               <ul className="header-notification-list">
-                {panelNotifications.map((notification) => (
+                {notifications.map((item) => (
                   <li
-                    className={`header-notification-card ${notification.dismissedAt ? 'is-dismissed' : ''}`}
-                    key={notification.id}
+                    className={`header-notification-card ${item.readAt ? 'is-read' : ''}`}
+                    key={item.id}
                   >
                     <button
                       className="header-notification-open"
-                      onClick={() => openNotification(notification)}
+                      onClick={() => void openNotification(item)}
                       type="button"
                     >
-                      <NotificationContent
-                        notification={notification}
-                        now={now}
-                      />
+                      <NotificationContent notification={item} now={now} />
                     </button>
-                    <button
-                      aria-label={`${notification.title} 알림 삭제`}
-                      className="header-icon-button header-notification-remove"
-                      onClick={() => removeNotification(notification)}
-                      title="알림 삭제"
-                      type="button"
-                    >
-                      <HeaderIcon name="close" />
-                    </button>
+                    <div className="header-notification-actions">
+                      <button
+                        className="header-notification-read"
+                        aria-label={`${item.title} ${item.readAt ? '읽지 않음으로 표시' : '읽음으로 표시'}`}
+                        disabled={update.isPending}
+                        onClick={() =>
+                          update.mutate({
+                            id: item.id,
+                            action: item.readAt ? 'unread' : 'read',
+                          })
+                        }
+                        type="button"
+                      >
+                        {item.readAt ? '읽음' : '읽음 표시'}
+                      </button>
+                      <button
+                        aria-label={`${item.title} 알림 삭제`}
+                        className="header-icon-button header-notification-remove"
+                        onClick={() =>
+                          update.mutate({ id: item.id, action: 'delete' })
+                        }
+                        title="알림 삭제"
+                        type="button"
+                      >
+                        <HeaderIcon name="close" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
-              {rejudgingQuery.hasNextPage ? (
+              {query.hasNextPage ? (
                 <button
                   className="header-toast-more"
-                  disabled={rejudgingQuery.isFetchingNextPage}
-                  onClick={() => void rejudgingQuery.fetchNextPage()}
+                  disabled={query.isFetchingNextPage}
+                  onClick={() => void query.fetchNextPage()}
                   type="button"
                 >
-                  {rejudgingQuery.isFetchingNextPage
+                  {query.isFetchingNextPage
                     ? '불러오는 중…'
-                    : '이전 재채점 알림 더 보기'}
+                    : '이전 알림 더 보기'}
                 </button>
               ) : null}
             </>
-          ) : (
+          ) : !query.isError || !token ? (
             <div className="header-empty">
               <span>
                 <HeaderIcon name="bell" />
               </span>
-              <strong>아직 도착한 알림이 없어요.</strong>
+              <strong>
+                {token
+                  ? '아직 도착한 알림이 없어요.'
+                  : '로그인하면 내 알림을 확인할 수 있어요.'}
+              </strong>
               <p>
                 새로운 소식이 생기면
                 <br />
                 이곳에 차곡차곡 모아 드릴게요.
               </p>
             </div>
-          )}
+          ) : null}
         </HeaderPanel>
       ) : null}
     </>

@@ -32,13 +32,13 @@ const session = {
 let root,
   client,
   currentPath,
-  serverNotices,
-  serverRejudgings,
+  serverItems,
   updateCalls,
+  getCalls,
   failUpdate,
+  failFetch,
   generalSession,
   currentSession,
-  serverSubmissions,
   serverPageSize;
 const cache = new Map();
 function source(relative) {
@@ -62,37 +62,55 @@ function source(relative) {
       };
     if (id === '@/domains/identityAccess/queryIdentity')
       return { tokenQueryIdentity: (token) => token ?? 'anonymous' };
-    if (id === '@/domains/teamParticipation/api')
-      return { getParticipantPreview: async () => ({}) };
-    if (id === '@/domains/serviceCommunication/api')
+    if (id === '@/domains/serviceCommunication/notifications')
       return {
-        getContestNotices: async () => serverNotices,
-        getContestQuestions: async () => [],
-      };
-    if (id === '@/domains/submissionScoreboard/api')
-      return {
-        listSubmissionsPage: async () => ({ data: serverSubmissions }),
-        getRejudgingNotifications: async (_token, _contestId, offset = 0) => ({
-          items: serverRejudgings.slice(offset, offset + serverPageSize),
-          next_offset:
-            serverRejudgings.length > offset + serverPageSize
-              ? offset + serverPageSize
-              : null,
-        }),
-        updateRejudgingNotification: async (token, id, action, contestId) => {
+        getNotifications: async (token, _contestId, offset = 0) => {
+          getCalls.push(token);
+          if (failFetch) throw new Error('offline');
+          const items = serverItems.filter(
+            (item) => !item.owner || item.owner === token,
+          );
+          return {
+            items: items.slice(offset, offset + serverPageSize),
+            unread_count: items.filter((item) => !item.read_at).length,
+            total_count: items.length,
+            next_offset:
+              items.length > offset + serverPageSize
+                ? offset + serverPageSize
+                : null,
+          };
+        },
+        updateNotification: async (token, id, action, contestId) => {
           updateCalls.push({ token, id, action, contestId });
           if (failUpdate) throw new Error('offline');
           if (action === 'delete')
-            serverRejudgings = serverRejudgings.filter(
+            serverItems = serverItems.filter(
               (item) => item.notification_id !== id,
             );
           else
-            serverRejudgings = serverRejudgings.map((item) =>
-              item.notification_id === id
-                ? { ...item, read_at: '2026-10-11T15:00:00Z' }
-                : item,
+            serverItems = serverItems.map((item) =>
+              item.notification_id !== id
+                ? item
+                : {
+                    ...item,
+                    ...(action === 'dismiss'
+                      ? { dismissed_at: '2026-10-11T15:00:00Z' }
+                      : {
+                          read_at:
+                            action === 'read' ? '2026-10-11T15:00:00Z' : null,
+                        }),
+                  },
             );
           return { notification_id: id };
+        },
+        readAllNotifications: async (token) => {
+          updateCalls.push({ token, action: 'read-all' });
+          if (failUpdate) throw new Error('offline');
+          serverItems = serverItems.map((item) => ({
+            ...item,
+            read_at: '2026-10-11T15:00:00Z',
+          }));
+          return { updated_count: serverItems.length };
         },
       };
     if (!id.startsWith('@/')) return native(id);
@@ -122,25 +140,21 @@ function Observer() {
   currentPath = useLocation().pathname;
   return null;
 }
-function notification(id, type, dismissedAt) {
+function notification(id, type = 'notice', values = {}) {
   return {
-    id,
-    sourceKey: id,
-    type,
+    notification_id: id,
+    notification_type: type,
+    contest_id: 'contest',
+    contest_title: '대회',
     title: `${type} 소식`,
     body: `${type} 내용`,
     href: '/contests/contest/board',
-    createdAt: '2026-09-23T12:00:00Z',
-    dismissedAt,
+    created_at: '2026-10-11T12:00:00Z',
+    read_at: null,
+    dismissed_at: null,
+    reason: null,
+    ...values,
   };
-}
-const initial = [
-  notification('notice:contest:n1', 'notice'),
-  notification('answer:contest:a1', 'answer', '2026-09-23T12:01:00Z'),
-  notification('submission:contest:s1:accepted', 'submission'),
-];
-function saved() {
-  return JSON.parse(window.localStorage.getItem(storageKey));
 }
 function panel() {
   return document.querySelector('.header-panel');
@@ -148,32 +162,24 @@ function panel() {
 function removeButtons() {
   return [...document.querySelectorAll('.header-notification-remove')];
 }
+function badge() {
+  return document.querySelector('.header-action-count')?.textContent;
+}
 beforeEach(() => {
-  serverRejudgings = [];
+  serverItems = [
+    notification('n1'),
+    notification('a1', 'answer', { read_at: '2026-10-11T13:00:00Z' }),
+    notification('s1', 'submission'),
+  ];
   updateCalls = [];
+  getCalls = [];
   failUpdate = false;
+  failFetch = false;
   generalSession = null;
   currentSession = session;
-  serverSubmissions = [];
   serverPageSize = 50;
   document.body.innerHTML = '<main></main>';
   window.localStorage.clear();
-  window.localStorage.setItem(
-    storageKey,
-    JSON.stringify({
-      notifications: initial,
-      sourceSeen: Object.fromEntries(
-        initial.map((item) => [item.sourceKey, true]),
-      ),
-    }),
-  );
-  serverNotices = [
-    {
-      contest_notice_id: 'n1',
-      title: '기존 공지',
-      published_at: '2026-09-23T12:00:00Z',
-    },
-  ];
   root = createRoot(document.querySelector('main'));
   client = new QueryClient({
     defaultOptions: {
@@ -215,285 +221,220 @@ async function openPanel() {
   await click(document.querySelector('button[aria-label="알림"]'));
 }
 
-test('each read or unread notification has a separate X that removes only its entry without navigating', async () => {
+test('all notification kinds arrive on first login without browser storage or a polling baseline', async () => {
+  serverItems.push(notification('r1', 'rejudging', { reason: '테스트 수정' }));
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify({ notifications: [{ body: 'previous private account' }] }),
+  );
   await mount();
   await openPanel();
-  assert.equal(removeButtons().length, 3);
-  assert.equal(
-    document.querySelectorAll('.header-notification-card').length,
-    3,
-  );
-  assert.equal(
-    document.querySelectorAll('.header-notification-card.is-dismissed').length,
-    1,
-  );
-  assert.equal(document.querySelector('button button'), null);
+  assert.equal(panel().querySelectorAll('.header-notification-card').length, 4);
+  assert.equal(badge(), '3');
+  assert.equal(window.localStorage.getItem(storageKey), null);
+  assert(!document.body.textContent.includes('previous private account'));
+  assert.equal(getCalls.length, 1); // No notice/question/submission source polling.
+});
+
+test('deleting read or unread notifications removes only that item and persists on remount', async () => {
+  await mount();
+  await openPanel();
   await click(removeButtons()[0]);
+  await settle();
+  assert.equal(panel().querySelectorAll('.header-notification-card').length, 2);
+  assert.equal(badge(), '1');
   assert.equal(currentPath, '/contests/contest');
-  assert(panel(), 'panel stays open');
-  assert.equal(removeButtons().length, 2);
-  assert.equal(document.querySelector('.header-action-count').textContent, '1');
-  assert.deepEqual(
-    saved().notifications.map((item) => item.type),
-    ['answer', 'submission'],
-  );
-  assert.equal(saved().sourceSeen['notice:contest:n1'], true);
-  await click(removeButtons()[0]);
-  assert.deepEqual(
-    saved().notifications.map((item) => item.type),
-    ['submission'],
-  );
-});
-
-test('removed notifications remain absent after polling and remounting, while new ones still arrive', async () => {
-  await mount();
-  await openPanel();
-  await click(removeButtons()[0]);
-  await act(async () => {
-    await client.invalidateQueries({ queryKey: ['contest-notices'] });
-  });
-  await settle();
-  assert.equal(removeButtons().length, 2);
-  await act(async () => root.unmount());
-  root = createRoot(document.querySelector('main'));
-  await mount();
-  await openPanel();
-  assert.equal(removeButtons().length, 2);
-  assert.equal(
-    saved().notifications.some((item) => item.id === 'notice:contest:n1'),
-    false,
-  );
-  serverNotices = [
-    ...serverNotices,
-    {
-      contest_notice_id: 'n2',
-      title: '새 공지',
-      published_at: '2026-09-23T13:00:00Z',
-    },
-  ];
-  await act(async () => {
-    await client.invalidateQueries({ queryKey: ['contest-notices'] });
-  });
-  await settle();
-  assert.equal(removeButtons().length, 3);
-  assert(panel().textContent.includes('새 공지'));
-});
-
-test('removing the last notification shows the empty state and clears the new-notification badge', async () => {
-  await mount();
-  await openPanel();
-  while (removeButtons().length) await click(removeButtons()[0]);
-  assert(panel().textContent.includes('아직 도착한 알림이 없어요.'));
-  assert.equal(document.querySelector('.header-action-count'), null);
-  assert.deepEqual(saved().notifications, []);
-  assert.equal(Object.keys(saved().sourceSeen).length, 3);
-});
-
-test('opening a notification still marks it read and follows its link', async () => {
-  await mount();
-  await openPanel();
-  await click(document.querySelector('.header-notification-open'));
-  assert.equal(currentPath, '/contests/contest/board');
-  assert.equal(panel(), null);
-  assert.equal(saved().notifications.length, 3);
-  assert(saved().notifications[0].dismissedAt);
-});
-
-test('closing a toast still keeps its history available for explicit removal', async () => {
-  await mount();
-  await click(
-    document.querySelector('.header-toast button[aria-label="알림 닫기"]'),
-  );
-  assert.equal(saved().notifications.length, 3);
-  await openPanel();
-  assert.equal(removeButtons().length, 3);
-});
-
-function verdictNotice(id = 'r1', overrides = {}) {
-  return {
-    notification_id: id,
-    contest_id: 'contest',
-    contest_title: '대회',
-    problem_id: 'problem',
-    problem_code: 'A',
-    submission_id: 'submission',
-    old_status: 'wrong_answer',
-    new_status: 'accepted',
-    reason: '기대 출력 수정',
-    created_at: '2026-10-11T12:00:00Z',
-    read_at: null,
-    ...overrides,
-  };
-}
-
-test('durable rejudging notices arrive on first login without baseline and are not stored in another account browser inbox', async () => {
-  window.localStorage.clear();
-  serverRejudgings = [verdictNotice()];
-  await mount();
-  assert.equal(document.querySelector('.header-action-count').textContent, '1');
-  await openPanel();
-  assert(panel().textContent.includes('틀렸습니다 → 맞았습니다'));
-  assert(panel().textContent.includes('사유: 기대 출력 수정'));
-  assert.equal(saved().notifications.length, 0);
-  await act(async () =>
-    client.invalidateQueries({ queryKey: ['rejudging-notifications'] }),
-  );
-  await settle();
-  assert.equal(
-    document.querySelectorAll('.header-notification-card').length,
-    1,
-  );
-  await click(document.querySelector('.header-notification-open'));
-  assert.equal(currentPath, '/contests/contest/problems/problem');
-  assert.equal(updateCalls[0].action, 'read');
-  assert.equal(updateCalls[0].id, 'r1');
-  assert.equal(document.querySelector('.header-action-count'), null);
-});
-
-test('server read and hide state survive remount and repeated verdicts remain distinct', async () => {
-  serverRejudgings = [
-    verdictNotice(),
-    verdictNotice('r2', { new_status: 'wrong_answer', old_status: 'accepted' }),
-  ];
-  await mount();
-  await openPanel();
-  assert.equal(removeButtons().length, 5);
-  await click(removeButtons()[0]);
-  await settle();
   assert.equal(updateCalls[0].action, 'delete');
-  assert.equal(removeButtons().length, 4);
   await act(async () => root.unmount());
   root = createRoot(document.querySelector('main'));
   await mount();
   await openPanel();
-  assert.equal(removeButtons().length, 4);
-  assert(panel().textContent.includes('맞았습니다 → 틀렸습니다'));
+  assert.equal(panel().querySelectorAll('.header-notification-card').length, 2);
 });
 
-test('failed server updates leave the notification visible and show a retryable error', async () => {
-  window.localStorage.clear();
-  serverRejudgings = [verdictNotice()];
+test('closing a toast preserves unread count and its server history', async () => {
+  await mount();
+  await click(document.querySelector('button[aria-label="알림 닫기"]'));
+  await settle();
+  assert.equal(updateCalls[0].action, 'dismiss');
+  assert.equal(badge(), '2');
+  assert.equal(document.querySelectorAll('.header-toast').length, 1);
+  await openPanel();
+  assert.equal(panel().querySelectorAll('.header-notification-card').length, 3);
+  assert(panel().textContent.includes('읽지 않은 알림 2개'));
+});
+
+test('opening an unread notification saves read state and follows the submission link', async () => {
+  serverItems = [
+    notification('s1', 'submission', {
+      href: '/contests/contest/problems/problem?submissionId=s1',
+    }),
+  ];
+  await mount();
+  await openPanel();
+  await click(document.querySelector('.header-notification-open'));
+  await settle();
+  assert.equal(updateCalls[0].action, 'read');
+  assert.equal(currentPath, '/contests/contest/problems/problem');
+  assert.equal(badge(), undefined);
+});
+
+test('read state can be toggled without navigating or restoring dismissed toasts', async () => {
+  serverItems = [
+    notification('n1', 'notice', { dismissed_at: '2026-10-11T13:00:00Z' }),
+  ];
+  await mount();
+  await openPanel();
+  await click(document.querySelector('.header-notification-read'));
+  await settle();
+  assert.equal(badge(), undefined);
+  assert(
+    document
+      .querySelector('.header-notification-card')
+      .classList.contains('is-read'),
+  );
+  await click(document.querySelector('.header-notification-read'));
+  await settle();
+  assert.equal(badge(), '1');
+  assert.equal(currentPath, '/contests/contest');
+  await click(
+    document.querySelector('.header-panel button[aria-label="알림 닫기"]'),
+  );
+  assert.equal(document.querySelectorAll('.header-toast').length, 0);
+});
+
+test('read-all includes notifications on unloaded server pages', async () => {
+  serverPageSize = 1;
+  await mount();
+  await openPanel();
+  assert.equal(badge(), '2');
+  await click(document.querySelector('.header-notification-read-all'));
+  await settle();
+  assert.equal(updateCalls[0].action, 'read-all');
+  assert(serverItems.every((item) => item.read_at));
+  assert.equal(badge(), undefined);
+});
+
+test('pagination shows earlier notifications once and uses the total unread count', async () => {
+  serverPageSize = 1;
+  await mount();
+  await openPanel();
+  assert.equal(badge(), '2');
+  const more = () =>
+    [...document.querySelectorAll('button')].find(
+      (button) => button.textContent === '이전 알림 더 보기',
+    );
+  await click(more());
+  await settle();
+  await click(more());
+  await settle();
+  assert.equal(panel().querySelectorAll('.header-notification-card').length, 3);
+  assert.equal(more(), undefined);
+});
+
+test('failed mutations keep the unread item visible and report the failure', async () => {
   failUpdate = true;
   await mount();
   await openPanel();
   await click(removeButtons()[0]);
   await settle();
-  assert.equal(removeButtons().length, 1);
+  assert.equal(removeButtons().length, 3);
+  assert.equal(badge(), '2');
   assert(
     document
       .querySelector('[role="alert"]')
       .textContent.includes('저장하지 못했습니다'),
   );
-  await click(document.querySelector('.header-notification-open'));
-  await settle();
-  assert.equal(currentPath, '/contests/contest');
-  failUpdate = false;
-  await click(removeButtons()[0]);
-  await settle();
-  assert(panel().textContent.includes('아직 도착한 알림이 없어요.'));
 });
 
-test('general account receives personal notices outside a contest, and logout hides cached private notices immediately', async () => {
-  window.localStorage.clear();
-  serverRejudgings = [verdictNotice()];
-  generalSession = {
-    accessToken: 'general-token',
-    account: { email: 'owner@example.com' },
-  };
-  currentSession = null;
-  await mount('/');
+test('failed inbox fetching shows a retry control instead of falsely reporting an empty inbox', async () => {
+  failFetch = true;
+  await mount();
   await openPanel();
-  assert(panel().textContent.includes('재채점 결과 변경'));
-  await click(document.querySelector('.header-notification-open'));
-  assert.equal(updateCalls[0].token, 'general-token');
-  assert.equal(updateCalls[0].contestId, undefined);
-  generalSession = null;
-  await act(async () => client.invalidateQueries());
-  await settle();
-  await openPanel();
-  assert.equal(
-    document.querySelectorAll('.header-notification-card').length,
-    0,
+  assert(
+    document
+      .querySelector('[role="alert"]')
+      .textContent.includes('불러오지 못했습니다'),
   );
-});
-
-test('operator reason is rendered as text rather than executable markup', async () => {
-  serverRejudgings = [
-    verdictNotice('r1', { reason: '<img src=x onerror=alert(1)>' }),
-  ];
-  await mount();
-  await openPanel();
-  assert(panel().textContent.includes('<img src=x onerror=alert(1)>'));
-  assert.equal(panel().querySelector('img'), null);
-});
-
-test('older server notifications can be paged without duplicates', async () => {
-  window.localStorage.clear();
-  serverPageSize = 2;
-  serverRejudgings = [
-    verdictNotice('r1'),
-    verdictNotice('r2'),
-    verdictNotice('r3'),
-  ];
-  await mount();
-  await openPanel();
-  assert.equal(removeButtons().length, 2);
+  assert(!panel().textContent.includes('아직 도착한'));
+  failFetch = false;
   await click(
     [...panel().querySelectorAll('button')].find(
-      (button) => button.textContent === '이전 재채점 알림 더 보기',
+      (button) => button.textContent === '다시 시도',
     ),
   );
   await settle();
   assert.equal(removeButtons().length, 3);
-  assert(!panel().textContent.includes('이전 재채점 알림 더 보기'));
 });
 
-test('a changed verdict produces a rejudging notice rather than a duplicate ordinary result notification', async () => {
-  await mount();
-  serverRejudgings = [verdictNotice()];
-  serverSubmissions = [
-    { submission_id: 'submission', problem_id: 'problem', status: 'accepted' },
-  ];
-  await act(async () => client.invalidateQueries());
-  await settle();
-  await openPanel();
-  assert.equal(
-    document.querySelectorAll('.header-notification-card').length,
-    4,
-  );
-  assert.equal(
-    saved().notifications.filter(
-      (item) => item.sourceKey === 'submission:contest:submission:accepted',
-    ).length,
-    0,
-  );
-  assert(panel().textContent.includes('재채점 결과 변경'));
-});
-
-test('hiding a rejudging notice outside the contest does not recreate it as an ordinary result alert on return', async () => {
-  window.localStorage.setItem(
-    storageKey,
-    JSON.stringify({
-      notifications: [],
-      sourceSeen: { 'submission:contest:submission:wrong_answer': true },
-    }),
-  );
-  serverRejudgings = [verdictNotice()];
-  generalSession = {
-    accessToken: 'general-token',
-    account: { email: 'owner@example.com' },
-  };
+test('personal notifications work outside contests and disappear immediately on logout', async () => {
+  generalSession = { accessToken: 'general', email: 'author@example.com' };
+  currentSession = null;
   await mount('/');
   await openPanel();
-  await click(removeButtons()[0]);
+  assert.equal(removeButtons().length, 3);
+  generalSession = null;
+  await act(async () =>
+    root.render(
+      h(
+        QueryClientProvider,
+        { client },
+        h(MemoryRouter, null, h(Notifications)),
+      ),
+    ),
+  );
+  assert(!document.body.textContent.includes('submission 내용'));
+  assert.equal(badge(), undefined);
+});
+
+test('changing accounts does not show the previous account cached notification bodies', async () => {
+  serverItems = [
+    notification('n1', 'notice', {
+      owner: 'first',
+      body: 'first private body',
+    }),
+    notification('n2', 'answer', {
+      owner: 'second',
+      body: 'second private body',
+    }),
+  ];
+  generalSession = { accessToken: 'first' };
+  currentSession = null;
+  await mount('/');
+  await openPanel();
+  assert(document.body.textContent.includes('first private body'));
+  generalSession = { accessToken: 'second' };
+  await act(async () =>
+    root.render(
+      h(
+        QueryClientProvider,
+        { client },
+        h(MemoryRouter, null, h(Notifications)),
+      ),
+    ),
+  );
+  assert(!document.body.textContent.includes('first private body'));
   await settle();
-  await act(async () => root.unmount());
-  root = createRoot(document.querySelector('main'));
-  serverSubmissions = [
-    { submission_id: 'submission', problem_id: 'problem', status: 'accepted' },
+  assert(document.body.textContent.includes('second private body'));
+});
+
+test('rejudging reasons remain plain text and repeated verdict changes are separate events', async () => {
+  serverItems = [
+    notification('r1', 'rejudging', { reason: '<img src=x onerror=alert(1)>' }),
+    notification('r2', 'rejudging'),
   ];
   await mount();
   await openPanel();
-  assert(panel().textContent.includes('아직 도착한 알림이 없어요.'));
-  assert.equal(saved().notifications.length, 0);
+  assert.equal(removeButtons().length, 2);
+  assert(panel().textContent.includes('<img src=x onerror=alert(1)>'));
+  assert.equal(panel().querySelector('img'), null);
+});
+
+test('preview sessions cannot poll a participant inbox', async () => {
+  currentSession = { ...session, isPreview: true };
+  await mount();
+  await openPanel();
+  assert.equal(getCalls.length, 0);
+  assert.equal(badge(), undefined);
+  assert(panel().textContent.includes('로그인하면'));
 });
