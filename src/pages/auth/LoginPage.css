@@ -1,19 +1,20 @@
-.login-experience .login-hero .experience-hero-grid {
+.public-experience.login-experience .login-hero .experience-hero-grid {
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
-  align-items: start;
-  padding-block: 62px 76px;
-  gap: 90px;
+  align-items: center;
+  min-height: 0;
+  padding-block: 44px 52px;
+  gap: 72px;
 }
 .login-experience .login-hero h1 {
   font-size: clamp(36px, 4vw, 56px);
 }
 .login-experience .login-hero .experience-hero-copy {
-  padding-top: 18px;
+  padding-top: 0;
 }
 .login-steps {
   display: grid;
-  gap: 22px;
-  margin: 32px 0 26px;
+  gap: 18px;
+  margin: 26px 0 18px;
   padding: 0;
   list-style: none;
 }
@@ -79,10 +80,10 @@
   border: 1px solid #e9e1fb;
   padding: 5px 8px;
   border-radius: 5px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  margin-bottom: 18px;
+  letter-spacing: 0.025em;
+  margin-bottom: 14px;
 }
 .login-experience .login-card-heading h2 {
   font-size: 24px;
@@ -244,7 +245,7 @@
   font-size: 12px;
 }
 @media (max-width: 1000px) {
-  .login-experience .login-hero .experience-hero-grid,
+  .public-experience.login-experience .login-hero .experience-hero-grid,
   .login-help {
     gap: 40px;
   }
@@ -256,16 +257,13 @@
   }
 }
 @media (max-width: 800px) {
-  .login-experience .login-hero .experience-hero-grid {
+  .public-experience.login-experience .login-hero .experience-hero-grid {
     grid-template-columns: minmax(0, 1fr);
-    padding-block: 36px 48px;
-    gap: 28px;
+    padding-block: 28px 36px;
+    gap: 24px;
   }
   .login-experience .login-hero .experience-hero-copy {
     padding: 0;
-  }
-  .login-title-break {
-    display: none;
   }
   .login-experience .login-hero h1 {
     font-size: 36px;
@@ -274,7 +272,12 @@
     display: none;
   }
   .login-experience .login-hero .experience-lead {
-    margin: 18px 0 0;
+    margin: 12px 0 0;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .public-experience.login-experience .login-hero .experience-eyebrow {
+    margin-bottom: 12px;
   }
   .login-help-link {
     display: none !important;

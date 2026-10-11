@@ -204,7 +204,7 @@ export const loginPageText = {
   otpExpiredLabel: '만료',
   otpLabel: '인증번호',
   otpPlaceholder: '인증번호',
-  otpRequestButton: '인증번호 받기',
+  otpRequestButton: '로그인 인증번호 받기',
   otpRequestFailed: '인증번호 발송 실패',
   otpRequesting: '인증번호를 발송하고 있습니다.',
   otpRequired: '인증번호를 입력해 주세요.',

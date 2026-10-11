@@ -469,18 +469,12 @@ export default function LoginPage() {
       <PublicHero className="login-hero">
         <div className="experience-hero-grid">
           <div className="experience-hero-copy">
-            <p className="experience-eyebrow">WELCOME TO YOUR NEXT CHALLENGE</p>
-            <h1>
-              반가워요.
-              <br />
-              다음 도전을
-              <br className="login-title-break" /> 이어가요
-              <span className="experience-lime">.</span>
-            </h1>
+            <p className="experience-eyebrow">ZOJ / LOGIN</p>
+            <h1>{loginPageText.title}</h1>
             <p className="experience-lead">
-              비밀번호 대신, 이메일 인증으로.
+              참가자와 운영자 모두 등록된 이메일로 로그인하세요.
               <br />
-              참가자도 운영자도 같은 곳에서 시작하세요.
+              비밀번호 없이 이메일 인증번호를 사용합니다.
             </p>
             <ol className="login-steps" aria-label="로그인 순서">
               <li
@@ -489,8 +483,8 @@ export default function LoginPage() {
               >
                 <span>{otpRequested ? '✓' : '01'}</span>
                 <div>
-                  <strong>이메일 입력</strong>
-                  <p>대회에 등록한 주소를 사용해 주세요.</p>
+                  <strong>로그인 인증번호 받기</strong>
+                  <p>등록된 이메일을 입력하고 인증번호를 받으세요.</p>
                 </div>
               </li>
               <li
@@ -499,8 +493,8 @@ export default function LoginPage() {
               >
                 <span>02</span>
                 <div>
-                  <strong>인증번호 확인</strong>
-                  <p>메일로 받은 번호로 로그인합니다.</p>
+                  <strong>인증번호로 로그인</strong>
+                  <p>메일로 받은 인증번호를 입력하면 로그인됩니다.</p>
                 </div>
               </li>
             </ol>
@@ -522,22 +516,22 @@ export default function LoginPage() {
             <div className="login-card-heading">
               <span className="login-step-label">
                 {presentationLogin
-                  ? 'PRESENTATION'
-                  : `STEP ${otpRequested ? '02' : '01'} / 02`}
+                  ? '프레젠테이션 전용 계정'
+                  : `${otpRequested ? '2' : '1'} / 2 · ${otpRequested ? '인증번호 확인' : '이메일 입력'}`}
               </span>
               <h2 id="login-card-title">
                 {presentationLogin
                   ? '발표 화면으로 바로 접속'
                   : otpRequested
-                    ? '인증번호를 확인해 주세요.'
-                    : '이메일로 시작하기'}
+                    ? '인증번호로 로그인'
+                    : '이메일로 로그인'}
               </h2>
               <p>
                 {presentationLogin
                   ? '인증번호 없이 해당 대회의 프레젠테이션만 열립니다.'
                   : otpRequested
-                    ? '메일에 도착한 인증번호를 입력해 주세요.'
-                    : '대회에 등록된 이메일로 인증번호를 보내드려요.'}
+                    ? '메일로 받은 인증번호를 입력하고 로그인 버튼을 누르세요.'
+                    : '등록된 이메일로 로그인 인증번호를 받아 주세요.'}
               </p>
             </div>
             <label className="grid gap-2">
@@ -648,7 +642,13 @@ export default function LoginPage() {
             )}
 
             <PageNotice message={message} status={messageStatus} />
-            <p className="login-spam-help">{loginPageText.spamHelp}</p>
+            {!presentationLogin && (
+              <p className="login-spam-help">
+                {otpRequested
+                  ? loginPageText.spamHelp
+                  : '참가자·운영자로 등록된 이메일로 로그인할 수 있습니다.'}
+              </p>
+            )}
           </form>
         </div>
       </PublicHero>
