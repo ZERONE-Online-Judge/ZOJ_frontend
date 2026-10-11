@@ -99,28 +99,28 @@ const roleScopes: Record<Exclude<ContestRole, 'master' | 'owner'>, string> = {
 export type ContestRoleTitle =
   | '총괄'
   | '마스터'
-  | '출제자'
-  | '운영자'
-  | '검수자'
-  | '참가자 미리보기';
+  | '출제진'
+  | '운영진'
+  | '검수진'
+  | '미리보기';
 
 export function contestRoleTitle(
   roles: readonly ContestRole[],
 ): ContestRoleTitle | null {
   if (roles.length === 1 && roles[0] === 'participant_preview')
-    return '참가자 미리보기';
+    return '미리보기';
   if (roles.includes('owner')) return '총괄';
   if (roles.includes('master')) return '마스터';
-  if (roles.includes('problem_author')) return '출제자';
-  if (roles.some((role) => role !== 'problem_reviewer')) return '운영자';
-  return roles.includes('problem_reviewer') ? '검수자' : null;
+  if (roles.includes('problem_author')) return '출제진';
+  if (roles.includes('problem_reviewer')) return '검수진';
+  return roles.length ? '운영진' : null;
 }
 
 export function contestRoleTitleForScopes(
   scopes: readonly string[],
 ): ContestRoleTitle | null {
   if (scopes.length === 1 && scopes[0] === roleScopes.participant_preview)
-    return '참가자 미리보기';
+    return '미리보기';
   if (scopes.includes('contest.owner')) return '총괄';
   if (scopes.some((scope) => ['*', 'master', 'contest.*'].includes(scope)))
     return '마스터';
@@ -148,7 +148,13 @@ export function contestRoleTitleForScopes(
         ),
     )
   )
-    return '출제자';
+    return '출제진';
+  if (
+    scopes.some((scope) =>
+      ['contest.problem.review', 'contest.problem.test'].includes(scope),
+    )
+  )
+    return '검수진';
   const reviewScopes = [
     'contest.view',
     'contest.problem.review',
@@ -159,14 +165,8 @@ export function contestRoleTitleForScopes(
       (scope) => scope.startsWith('contest.') && !reviewScopes.includes(scope),
     )
   )
-    return '운영자';
-  if (
-    scopes.some((scope) =>
-      ['contest.problem.review', 'contest.problem.test'].includes(scope),
-    )
-  )
-    return '검수자';
-  return scopes.includes('contest.view') ? '운영자' : null;
+    return '운영진';
+  return scopes.includes('contest.view') ? '운영진' : null;
 }
 
 export function contestRoleTitleForAccount(

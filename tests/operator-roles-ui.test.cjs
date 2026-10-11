@@ -389,6 +389,20 @@ test('participant preview is exclusive in both selection directions and saves as
   assert.deepEqual(creates[0].body.roles, ['participant_preview']);
 });
 
+test('choosing an author also selects and locks review until author is removed', async () => {
+  await render();
+  await input(inputByLabel('이메일 (필수)'), 'author@example.test');
+  await input(inputByLabel('이름 (필수)'), '출제 담당');
+  await click(role('출제진'));
+  assert.equal(role('검수진').checked, true);
+  assert.equal(role('검수진').disabled, true);
+  await click(button('운영자 추가'));
+  assert.deepEqual(creates[0].body.roles, [
+    'problem_reviewer',
+    'problem_author',
+  ]);
+});
+
 test('notice, board, and audit roles can be selected independently and saved together', async () => {
   await render();
   await input(inputByLabel('이메일 (필수)'), 'operations@example.test');
@@ -437,11 +451,11 @@ test('operator list shows one prioritized title beside each name while retaining
   await render();
   for (const [email, label] of [
     ['master@example.test', '대회 총괄 / 마스터'],
-    ['author@example.test', '손동열 / 출제자'],
-    ['operations@example.test', '운영 담당자 / 운영자'],
-    ['reviewer@example.test', '문제 검수자 / 검수자'],
-    ['preview@example.test', '미리보기 계정 / 참가자 미리보기'],
-    ['legacy@example.test', '기존 운영자 / 운영자'],
+    ['author@example.test', '손동열 / 출제진'],
+    ['operations@example.test', '운영 담당자 / 검수진'],
+    ['reviewer@example.test', '문제 검수자 / 검수진'],
+    ['preview@example.test', '미리보기 계정 / 미리보기'],
+    ['legacy@example.test', '기존 운영자 / 운영진'],
   ])
     assert.equal(
       operatorCard(email).querySelector('strong').textContent,

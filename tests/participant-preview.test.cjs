@@ -384,10 +384,10 @@ test('preview is a separate title and cannot be combined with any role in the se
   await click(role('대회 마스터'));
   await click(role('참가자 미리보기'));
   assert.equal(role('대회 마스터').checked, false);
-  assert.equal(contestRoleTitle(['participant_preview']), '참가자 미리보기');
+  assert.equal(contestRoleTitle(['participant_preview']), '미리보기');
   assert.equal(
     contestRoleTitleForScopes(['contest.participant.preview']),
-    '참가자 미리보기',
+    '미리보기',
   );
   assert.equal(
     hasParticipantPreviewAccess(

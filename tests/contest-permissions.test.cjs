@@ -378,12 +378,12 @@ for (const [role, expectedTabs] of Object.entries(roleTabs)) {
     assert.equal(isServiceMaster(session), false);
     const title =
       role === 'problem_author'
-        ? '출제자'
+        ? '출제진'
         : role === 'problem_reviewer'
-          ? '검수자'
+          ? '검수진'
           : role === 'participant_preview'
-            ? '참가자 미리보기'
-            : '운영자';
+            ? '미리보기'
+            : '운영진';
     assert.match(container.textContent, new RegExp(`운영진 / ${title}`));
   });
 }
@@ -440,14 +440,14 @@ test('participant preview does not grant operator home, management, or review ac
     assert.equal(container.querySelector('[data-protected]'), null);
   }
   assert.deepEqual(reads, []);
-  assert.equal(contestRoleTitle(['participant_preview']), '참가자 미리보기');
+  assert.equal(contestRoleTitle(['participant_preview']), '미리보기');
   assert.equal(
     contestRoleTitleForScopes(['contest.participant.preview']),
-    '참가자 미리보기',
+    '미리보기',
   );
   assert.equal(
     contestRoleTitleForAccount(session.operatorSession.staff, 'contest'),
-    '참가자 미리보기',
+    '미리보기',
   );
 });
 
@@ -583,19 +583,19 @@ test('role titles use master, author, operator, reviewer priority for every role
   const titles = {
     owner: '총괄',
     master: '마스터',
-    problem_author: '출제자',
-    settings_manager: '운영자',
-    participants_manager: '운영자',
-    posts_manager: '운영자',
-    notices_manager: '운영자',
-    staff_manager: '운영자',
-    submissions_viewer: '운영자',
-    scoreboard_viewer: '운영자',
-    scoreboard_manager: '운영자',
-    audit_viewer: '운영자',
-    problem_reviewer: '검수자',
+    problem_author: '출제진',
+    settings_manager: '운영진',
+    participants_manager: '운영진',
+    posts_manager: '운영진',
+    notices_manager: '운영진',
+    staff_manager: '운영진',
+    submissions_viewer: '운영진',
+    scoreboard_viewer: '운영진',
+    scoreboard_manager: '운영진',
+    audit_viewer: '운영진',
+    problem_reviewer: '검수진',
   };
-  const priority = ['총괄', '마스터', '출제자', '운영자', '검수자'];
+  const priority = ['총괄', '마스터', '출제진', '검수진', '운영진'];
   for (const [left, leftTitle] of Object.entries(titles)) {
     assert.equal(contestRoleTitle([left]), leftTitle);
     for (const [right, rightTitle] of Object.entries(titles)) {
@@ -630,11 +630,11 @@ test('mixed role title is stable across all selection permutations', () => {
     ],
     [
       ['audit_viewer', 'problem_reviewer', 'problem_author', 'posts_manager'],
-      '출제자',
+      '출제진',
     ],
     [
       ['problem_reviewer', 'notices_manager', 'audit_viewer', 'posts_manager'],
-      '운영자',
+      '검수진',
     ],
   ]) {
     for (const ordered of permutations(roles))
@@ -668,7 +668,7 @@ test('legacy partial scopes derive titles without requiring modern role assignme
         'contest.problem.review',
         scope,
       ]),
-      '출제자',
+      '출제진',
       scope,
     );
   for (const scope of [
@@ -681,16 +681,16 @@ test('legacy partial scopes derive titles without requiring modern role assignme
     'contest.participant.update',
     'contest.update_schedule',
   ])
-    assert.equal(contestRoleTitleForScopes([scope]), '운영자', scope);
+    assert.equal(contestRoleTitleForScopes([scope]), '운영진', scope);
   assert.equal(
     contestRoleTitleForScopes([
       'contest.view',
       'contest.problem.review',
       'contest.problem.test',
     ]),
-    '검수자',
+    '검수진',
   );
-  assert.equal(contestRoleTitleForScopes(['contest.problem.test']), '검수자');
+  assert.equal(contestRoleTitleForScopes(['contest.problem.test']), '검수진');
   assert.equal(contestRoleTitleForScopes([]), null);
   assert.equal(contestRoleTitleForScopes(['service.logs.view']), null);
 });
@@ -707,15 +707,15 @@ test('account role titles respect explicit assignments, legacy empty roles, and 
       legacy: ['contest.notice.create'],
     },
   };
-  assert.equal(contestRoleTitleForAccount(account, 'contest'), '출제자');
-  assert.equal(contestRoleTitleForAccount(account, 'legacy'), '운영자');
+  assert.equal(contestRoleTitleForAccount(account, 'contest'), '출제진');
+  assert.equal(contestRoleTitleForAccount(account, 'legacy'), '운영진');
   assert.equal(contestRoleTitleForAccount(account, 'unassigned'), null);
   assert.equal(
     contestRoleTitleForAccount(
       staffWith(['contest.problem.review']),
       'contest',
     ),
-    '검수자',
+    '검수진',
   );
   assert.equal(
     contestRoleTitleForAccount(
