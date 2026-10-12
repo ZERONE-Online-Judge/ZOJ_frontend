@@ -6,6 +6,12 @@ import {
   confirmAccountPassword,
 } from '@/domains/identityAccess/accountPasswords';
 import { formatUserApiError } from '@/shared/api/errors';
+import {
+  PasswordInput,
+  PasswordRequirements,
+  PasswordMatch,
+} from './PasswordInput';
+import { validNewPassword } from './passwordPolicy';
 
 export default function AccountPasswordDialog({
   token,
@@ -69,6 +75,10 @@ export default function AccountPasswordDialog({
     }
   }
   async function save() {
+    if (!validNewPassword(password)) {
+      setError('비밀번호 조건을 모두 충족해 주세요.');
+      return;
+    }
     if (password !== repeat) {
       setError('새 비밀번호가 서로 일치하지 않습니다.');
       return;
@@ -181,41 +191,42 @@ export default function AccountPasswordDialog({
                 className={fieldClass}
               />
             </label>
-            <label className="grid gap-1 text-sm">
-              새 비밀번호
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={15}
-                maxLength={128}
-                required
-                value={password}
-                disabled={busy}
-                onChange={(e) => setPassword(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              새 비밀번호 확인
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={15}
-                maxLength={128}
-                required
-                value={repeat}
-                disabled={busy}
-                onChange={(e) => setRepeat(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
+            <PasswordInput
+              label="새 비밀번호"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              required
+              value={password}
+              disabled={busy}
+              onChange={(e) => setPassword(e.target.value)}
+              className={fieldClass}
+            />
+            <PasswordRequirements value={password} />
+            <PasswordInput
+              label="새 비밀번호 확인"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              required
+              value={repeat}
+              disabled={busy}
+              onChange={(e) => setRepeat(e.target.value)}
+              className={fieldClass}
+            />
+            <PasswordMatch password={password} repeat={repeat} />
             <p className="text-xs leading-5 text-slate-500">
-              15~128자이며 공백·한글을 사용할 수 있습니다. 변경하면 기존
-              로그인은 모두 해제됩니다. 이메일 인증번호 로그인도 계속 사용할 수
-              있습니다.
+              변경하면 기존 로그인은 모두 해제됩니다. 이메일 인증번호 로그인도
+              계속 사용할 수 있습니다.
             </p>
             <button
-              disabled={busy || expires <= 0}
+              disabled={
+                busy ||
+                expires <= 0 ||
+                !validNewPassword(password) ||
+                password !== repeat ||
+                !/^[0-9]{6}$/.test(code)
+              }
               className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {busy

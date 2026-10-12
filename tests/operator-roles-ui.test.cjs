@@ -164,10 +164,16 @@ function source(relative) {
   loaded.require = (id) => {
     if (id.endsWith('.css')) return {};
     if (mocks[id]) return mocks[id];
-    if (!id.startsWith('@/')) return native(id);
+    if (!id.startsWith('@/') && !id.startsWith('.')) return native(id);
+    const relative = id.startsWith('@/')
+      ? id.slice(2)
+      : path.relative(
+          path.resolve(__dirname, '../src'),
+          path.resolve(path.dirname(filename), id),
+        );
     return source(
       ['.ts', '.tsx']
-        .map((ext) => id.slice(2) + ext)
+        .map((ext) => relative + ext)
         .find((file) => fs.existsSync(path.resolve(__dirname, '../src', file))),
     );
   };

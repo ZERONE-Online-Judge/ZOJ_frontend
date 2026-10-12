@@ -37,6 +37,7 @@ import {
   getLoginOptions,
 } from '@/domains/identityAccess/accountPasswords';
 import AccountPasswordDialog from '@/components/auth/AccountPasswordDialog';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 
 const OTP_VALID_SECONDS = 5 * 60;
 
@@ -644,10 +645,9 @@ export default function LoginPage() {
           {loginMethod === 'password' && !presentationLogin ? (
             <>
               <div className="login-field">
-                <label htmlFor="login-password">비밀번호</label>
-                <input
+                <PasswordInput
+                  label="비밀번호"
                   id="login-password"
-                  type="password"
                   autoComplete="current-password"
                   maxLength={128}
                   required
