@@ -12,6 +12,7 @@ type ModalDialogProps = {
   footer?: ReactNode;
   headerActions?: ReactNode;
   onClose?: () => void;
+  closeOnBackdrop?: boolean;
   closeLabel?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'wide';
   fill?: boolean;
@@ -32,6 +33,7 @@ export default function ModalDialog({
   footer,
   headerActions,
   onClose,
+  closeOnBackdrop = true,
   closeLabel = '닫기',
   size = 'sm',
   fill = false,
@@ -50,6 +52,7 @@ export default function ModalDialog({
       aria-describedby={description ? descriptionId : undefined}
       drawer={drawer}
       onClose={onClose}
+      closeOnBackdrop={closeOnBackdrop}
     >
       <section
         className={`zoj-modal-shell ${className}`}

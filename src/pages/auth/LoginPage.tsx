@@ -32,6 +32,11 @@ import {
 } from '@/shared/api/errors';
 import { readLoginRedirectTarget } from '@/shared/lib/loginRedirect';
 import PageNotice from '@/shared/ui/PageNotice';
+import {
+  loginGeneralPassword,
+  getLoginOptions,
+} from '@/domains/identityAccess/accountPasswords';
+import AccountPasswordDialog from '@/components/auth/AccountPasswordDialog';
 
 const OTP_VALID_SECONDS = 5 * 60;
 
@@ -46,6 +51,7 @@ type PendingSessionReplacement = {
   email: string;
   lastSeenAt?: string | null;
   otpCode: string;
+  method?: 'password';
 } | null;
 
 function formatSeconds(value: number) {
@@ -154,6 +160,11 @@ function postLoginRedirectPath(
 }
 
 export default function LoginPage() {
+  const [loginMethod, setLoginMethod] = useState<'email' | 'otp' | 'password'>(
+    'email',
+  );
+  const [password, setPassword] = useState('');
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -172,20 +183,22 @@ export default function LoginPage() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
   const [message, setMessage] = useState(() =>
-    searchParams.get('reason') === 'presentation'
-      ? '프레젠테이션 전용 계정으로 로그인해 주세요. 연결이 종료되었다면 계정의 유효기간과 사용 상태를 확인해 주세요.'
-      : searchParams.get('reason') === 'session'
-        ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
-        : emailChanged
-          ? '이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요.'
-          : '',
+    searchParams.get('password') === 'changed'
+      ? '비밀번호가 변경되어 기존 로그인 연결이 모두 해제되었습니다. 새 비밀번호로 로그인하세요.'
+      : searchParams.get('reason') === 'presentation'
+        ? '프레젠테이션 전용 계정으로 로그인해 주세요. 연결이 종료되었다면 계정의 유효기간과 사용 상태를 확인해 주세요.'
+        : searchParams.get('reason') === 'session'
+          ? '로그인 세션이 만료되었거나 다른 위치에서 해제되었습니다. 다시 로그인해 주세요.'
+          : emailChanged
+            ? '이메일을 변경했습니다. 새 이메일로 다시 로그인해 주세요.'
+            : '',
   );
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >(() =>
     searchParams.get('reason') === 'session'
       ? 'error'
-      : emailChanged
+      : emailChanged || searchParams.get('password') === 'changed'
         ? 'ready'
         : 'idle',
   );
@@ -254,6 +267,29 @@ export default function LoginPage() {
     setMessageStatus('idle');
   }
 
+  async function chooseLoginMethod() {
+    if (!validateEmail() || isSubmitting) return;
+    setIsSubmitting(true);
+    setMessage('');
+    setMessageStatus('loading');
+    try {
+      const options = await getLoginOptions(email.trim());
+      if (options.password_available) {
+        setLoginMethod('password');
+        setMessageStatus('idle');
+      } else {
+        await requestOtp();
+      }
+    } catch (error) {
+      setMessage(
+        formatUserApiError(error, '로그인 방식을 확인하지 못했습니다'),
+      );
+      setMessageStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function requestOtp() {
     if (!validateEmail()) return;
 
@@ -269,6 +305,7 @@ export default function LoginPage() {
         response.cooldown_seconds > 0 ? response.cooldown_seconds : 10;
       const requestedAt = currentTimestamp();
 
+      setLoginMethod('otp');
       setOtpCode('');
       setOtpRequested(true);
       setRequestedOtpEmail(requestedEmail);
@@ -379,6 +416,7 @@ export default function LoginPage() {
   }
 
   function cancelSessionReplacement() {
+    setPassword('');
     setPendingSessionReplacement(null);
     setMessage(
       '기존 세션을 유지했습니다. 이 브라우저에서는 로그인하지 않았습니다.',
@@ -388,6 +426,10 @@ export default function LoginPage() {
 
   function confirmSessionReplacement() {
     if (!pendingSessionReplacement) return;
+    if (pendingSessionReplacement.method === 'password') {
+      void submitPasswordLogin(true);
+      return;
+    }
     void submitLogin(
       {
         email: pendingSessionReplacement.email,
@@ -403,8 +445,63 @@ export default function LoginPage() {
     setSearchParams(nextParams, { replace: true });
   }
 
+  async function submitPasswordLogin(forceNewSession = false) {
+    if (!validateEmail() || isSubmitting) return;
+    setIsSubmitting(true);
+    setMessageStatus('loading');
+    setMessage('로그인하고 있습니다.');
+    try {
+      const session = await loginGeneralPassword(
+        email.trim(),
+        password,
+        forceNewSession,
+      );
+      setPendingSessionReplacement(null);
+      setPassword('');
+      setGeneralSession(session);
+      setParticipantSession(null);
+      navigate(postLoginRedirectPath(session, searchParams), { replace: true });
+    } catch (error) {
+      if (!forceNewSession && isSessionConflictError(error)) {
+        const details = sessionConflictDetails(error);
+        setPendingSessionReplacement({
+          activeSessionCount: details.activeSessionCount,
+          email: email.trim(),
+          lastSeenAt: details.lastSeenAt,
+          otpCode: '',
+          method: 'password',
+        });
+      }
+      setMessage(
+        isApiClientError(error) && error.status === 401
+          ? '이메일 또는 비밀번호가 올바르지 않습니다.'
+          : formatUserApiError(error, '비밀번호 로그인에 실패했습니다'),
+      );
+      setMessageStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="login-page">
+      {passwordResetOpen && (
+        <AccountPasswordDialog
+          mode="reset"
+          email={email}
+          onClose={() => setPasswordResetOpen(false)}
+          onDone={(address) => {
+            setPasswordResetOpen(false);
+            setEmail(address);
+            setLoginMethod('password');
+            setPassword('');
+            setMessage(
+              '비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.',
+            );
+            setMessageStatus('ready');
+          }}
+        />
+      )}
       {shouldShowContestLoginModal ? (
         <ModalDialog
           titleId="contest-login-required-title"
@@ -470,7 +567,11 @@ export default function LoginPage() {
           aria-labelledby="login-card-title"
           onSubmit={(event) => {
             event.preventDefault();
-            void submitLogin({ email, otpCode });
+            void (loginMethod === 'email' && !presentationLogin
+              ? chooseLoginMethod()
+              : loginMethod === 'password' && !presentationLogin
+                ? submitPasswordLogin()
+                : submitLogin({ email, otpCode }));
           }}
         >
           <div className="login-card-heading">
@@ -480,9 +581,11 @@ export default function LoginPage() {
             <p>
               {presentationLogin
                 ? '인증번호 없이 해당 대회의 발표 화면을 엽니다.'
-                : otpRequested
-                  ? '이메일로 받은 인증번호를 입력해 주세요.'
-                  : '등록된 이메일로 인증번호를 받아 로그인하세요.'}
+                : loginMethod === 'password'
+                  ? '등록한 이메일과 비밀번호로 로그인하세요.'
+                  : otpRequested
+                    ? '이메일로 받은 인증번호를 입력해 주세요.'
+                    : '로그인할 이메일을 입력해 주세요.'}
             </p>
           </div>
 
@@ -494,6 +597,7 @@ export default function LoginPage() {
               aria-invalid={Boolean(emailError)}
               aria-describedby={emailError ? 'login-email-error' : undefined}
               disabled={isSubmitting}
+              readOnly={loginMethod !== 'email' && !presentationLogin}
               placeholder={loginPageText.emailPlaceholder}
               type="email"
               value={email}
@@ -521,7 +625,68 @@ export default function LoginPage() {
             )}
           </div>
 
-          {otpRequested ? (
+          {loginMethod !== 'email' && !presentationLogin && (
+            <button
+              className="text-sm text-slate-500"
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setLoginMethod('email');
+                setPassword('');
+                resetOtpAfterEmailChange();
+                setMessage('');
+              }}
+            >
+              다른 이메일 사용
+            </button>
+          )}
+
+          {loginMethod === 'password' && !presentationLogin ? (
+            <>
+              <div className="login-field">
+                <label htmlFor="login-password">비밀번호</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  maxLength={128}
+                  required
+                  disabled={isSubmitting}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <button
+                className="login-action"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? '로그인 중…' : '비밀번호로 로그인'}
+              </button>
+              <button
+                className="text-sm font-semibold text-indigo-600"
+                type="button"
+                disabled={isSubmitting || cooldownSeconds > 0}
+                onClick={() => {
+                  setPassword('');
+                  void requestOtp();
+                }}
+              >
+                이메일로 대신 로그인
+              </button>
+              <button
+                className="text-sm text-slate-500"
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setPassword('');
+                  setPasswordResetOpen(true);
+                }}
+              >
+                비밀번호 찾기
+              </button>
+            </>
+          ) : otpRequested ? (
             <>
               <div className="login-field">
                 <div className="login-field-heading">
@@ -569,7 +734,7 @@ export default function LoginPage() {
           ) : (
             <button
               className="login-action"
-              disabled={presentationLogin ? isSubmitting : !canRequestOtp}
+              disabled={isSubmitting || !email.trim()}
               type="submit"
             >
               {presentationLogin
@@ -577,10 +742,8 @@ export default function LoginPage() {
                   ? '접속 중…'
                   : '프레젠테이션 열기'
                 : isSubmitting
-                  ? loginPageText.otpRequesting
-                  : cooldownSeconds > 0
-                    ? `${cooldownSeconds}초 후 재전송`
-                    : loginPageText.otpRequestButton}
+                  ? '확인 중…'
+                  : '다음'}
             </button>
           )}
 

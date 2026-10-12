@@ -7,6 +7,7 @@ type ModalProps = {
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
   onClose?: () => void;
+  closeOnBackdrop?: boolean;
   drawer?: boolean;
 };
 
@@ -43,6 +44,7 @@ function lockPageScroll() {
 export default function Modal({
   children,
   onClose,
+  closeOnBackdrop = true,
   drawer = false,
   ...label
 }: ModalProps) {
@@ -90,6 +92,7 @@ export default function Modal({
           }}
           onClick={(event) => {
             if (
+              closeOnBackdrop &&
               backdropPointerDown.current &&
               event.target === event.currentTarget
             )

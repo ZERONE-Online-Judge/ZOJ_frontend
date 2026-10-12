@@ -13,6 +13,8 @@ import { isServiceMaster } from '@/domains/identityAccess/permissions';
 import { useSessionStore } from '@/domains/identityAccess/sessionStore';
 import { useRefreshGeneralSession } from '@/domains/identityAccess/useRefreshGeneralSession';
 import { formatContestMoment } from '@/shared/lib/dateTime';
+import AccountPasswordDialog from '@/components/auth/AccountPasswordDialog';
+import { useSharedLogin } from '@/domains/identityAccess/useSharedLogin';
 
 type HeaderAuthControlsProps = {
   loginTo: string;
@@ -55,11 +57,13 @@ export default function HeaderAuthControls({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   useRefreshGeneralSession();
+  useSharedLogin();
   const generalSession = useSessionStore((state) => state.generalSession);
   const clearSessions = useSessionStore((state) => state.clearSessions);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const accountEmail = generalSession?.account.email;
   const previewContests =
     generalSession?.operatorContests.filter((entry) =>
@@ -167,6 +171,35 @@ export default function HeaderAuthControls({
               <p>{accountEmail}</p>
             </div>
           </div>
+          <button
+            type="button"
+            className="header-security-card"
+            onClick={() => {
+              setIsAccountPanelOpen(false);
+              setIsPasswordOpen(true);
+            }}
+          >
+            <span className="header-security-icon" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <rect x="5" y="10" width="14" height="11" rx="3" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+              </svg>
+            </span>
+            <span>
+              <strong>비밀번호 관리</strong>
+              <small>ZOJ·Editor 공통 비밀번호 등록 및 변경</small>
+            </span>
+            <span className="header-security-arrow" aria-hidden="true">
+              →
+            </span>
+          </button>
           {previewContests.length ? (
             <section
               className="header-panel-section"
@@ -237,6 +270,20 @@ export default function HeaderAuthControls({
           </section>
         </HeaderPanel>
       ) : null}
+      {isPasswordOpen && (
+        <AccountPasswordDialog
+          mode="set"
+          email={accountEmail || ''}
+          token={generalSession.accessToken}
+          onClose={() => setIsPasswordOpen(false)}
+          onDone={() => {
+            setIsPasswordOpen(false);
+            queryClient.clear();
+            clearSessions();
+            navigate('/login?password=changed', { replace: true });
+          }}
+        />
+      )}
       {isLogoutConfirmOpen ? (
         <ModalDialog
           titleId="logout-confirm-title"

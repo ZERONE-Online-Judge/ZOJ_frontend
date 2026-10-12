@@ -313,3 +313,35 @@ test('blocking shared dialog exposes only explicit actions and still prevents Es
   await act(async () => document.querySelector('footer button').click());
   assert.equal(completed, 1);
 });
+
+test('password dialogs keep outside clicks from discarding form contents', async () => {
+  let closes = 0;
+  await act(async () =>
+    root.render(
+      h(
+        ModalDialog,
+        {
+          title: '비밀번호 변경',
+          size: 'lg',
+          closeOnBackdrop: false,
+          onClose: () => {
+            closes++;
+          },
+        },
+        h('input', { defaultValue: 'unfinished' }),
+      ),
+    ),
+  );
+  const backdrop = document.querySelector('.zoj-modal-backdrop');
+  await act(async () => {
+    backdrop.dispatchEvent(
+      new dom.window.Event('pointerdown', { bubbles: true }),
+    );
+    backdrop.click();
+  });
+  assert.equal(closes, 0);
+  assert.equal(document.querySelector('input').value, 'unfinished');
+  assert.equal(document.querySelector('.zoj-modal-shell').dataset.size, 'lg');
+  await act(async () => document.querySelector('.zoj-modal-close').click());
+  assert.equal(closes, 1);
+});

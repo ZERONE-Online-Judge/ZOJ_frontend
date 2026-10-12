@@ -404,3 +404,34 @@
     align-items: flex-end;
   }
 }
+
+.header-security-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-inset);
+  background: var(--zoj-surface-raised);
+  color: var(--zoj-ink);
+  text-align: left;
+  transition: border-color 160ms, background 160ms;
+}
+.header-security-card:hover {
+  border-color: var(--zoj-border-selected);
+  background: var(--zoj-surface-hover);
+}
+.header-security-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  border-radius: 0.75rem;
+  background: var(--zoj-surface-hover);
+  color: var(--zoj-accent);
+}
+.header-security-card strong { display: block; font-size: 0.875rem; }
+.header-security-card small { display: block; margin-top: 0.25rem; color: var(--zoj-muted); font-size: 0.75rem; font-weight: 400; }
+.header-security-arrow { margin-left: auto; color: var(--zoj-accent); }
