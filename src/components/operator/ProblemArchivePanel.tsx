@@ -9,6 +9,7 @@ import {
   inspectProblemArchive,
 } from '@/domains/problemManagement/archive';
 import { formatApiError } from '@/shared/api/errors';
+import EditorImportPanel from './EditorImportPanel';
 
 function sizeLabel(bytes: number) {
   return bytes >= 1024 * 1024
@@ -97,6 +98,15 @@ export default function ProblemArchivePanel({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <EditorImportPanel
+              contestId={contestId}
+              token={token}
+              divisions={divisions}
+              problems={problems}
+              activeDivisionId={activeDivisionId}
+              disabled={disabled || busy || unsaved}
+              onImported={onImported}
+            />
             <button
               type="button"
               className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"
