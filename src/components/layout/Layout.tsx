@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
 import PageSeo from '@/shared/seo/PageSeo';
+import PasswordSetupGuidance from '@/components/auth/PasswordSetupGuidance';
 
 type LayoutProps = {
   children: ReactNode;
@@ -28,6 +29,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="flex min-h-screen flex-col bg-white text-slate-950">
       <PageSeo />
       <Header />
+      <PasswordSetupGuidance />
       <main className="flex-1">{children}</main>
       <Footer />
     </div>
