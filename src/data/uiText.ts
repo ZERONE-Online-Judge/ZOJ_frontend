@@ -37,7 +37,7 @@ export const headerText = {
   logoutCancel: '취소',
   logoutConfirm: '로그아웃',
   logoutConfirmDescription:
-    '현재 계정의 로그인 상태가 이 브라우저에서 해제됩니다. 다시 이용하려면 이메일 인증으로 로그인해야 합니다.',
+    '현재 계정의 로그인 상태가 이 브라우저에서 해제됩니다. 다시 이용하려면 ZOJ에 로그인해 주세요.',
   logoutConfirmTitle: '로그아웃할까요?',
   login: '로그인',
   logout: '로그아웃',
@@ -186,7 +186,7 @@ export const loginPageText = {
     '대회에 참가하거나 대회별 문제, 제출, 스코어보드를 확인하려면 먼저 로그인해야 합니다.',
   contestRequiredTitle: '로그인이 필요합니다',
   cooldownLabel: '재전송',
-  description: '이메일 인증번호로 계정에 안전하게 로그인합니다.',
+  description: '이메일 인증번호 또는 비밀번호로 ZOJ에 로그인합니다.',
   emailChanged: '이메일이 변경되었습니다. 새 인증번호를 받아 주세요.',
   emailLabel: '이메일',
   emailPlaceholder: '등록된 이메일',

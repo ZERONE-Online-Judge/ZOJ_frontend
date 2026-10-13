@@ -116,7 +116,7 @@ export default function AccountPasswordDialog({
             : '비밀번호 등록'
       }
       onClose={busy ? undefined : onClose}
-      description="ZOJ와 Editor가 함께 사용하는 비밀번호입니다. 이메일 인증 후 등록하거나 변경하세요."
+      description="ZOJ 로그인에 사용할 비밀번호를 이메일 인증 후 등록하거나 변경하세요."
       footer={
         <ModalButton disabled={busy} onClick={onClose}>
           닫기
