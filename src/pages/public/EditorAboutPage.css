@@ -124,9 +124,7 @@
   padding: 12px;
 }
 .editor-about-source small,
-.editor-about-rendered > small,
-.editor-about-command small,
-.editor-about-test-data small {
+.editor-about-rendered > small {
   display: block;
   color: var(--editor-preview-muted);
   font-size: 10px;
@@ -173,74 +171,6 @@
   line-height: 1.95;
   margin-top: 22px;
 }
-.editor-about-feature-copy ul {
-  list-style: none;
-  margin: 24px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 11px;
-}
-.editor-about-feature-copy li {
-  display: flex;
-  gap: 10px;
-  color: #515b77;
-  font-size: 13px;
-  line-height: 1.8;
-}
-.editor-about-feature-copy li::before {
-  content: '✓';
-  color: #7362ad;
-}
-.editor-about-organize {
-  padding: 32px;
-  background: #f8f9ff;
-  border: 1px solid var(--editor-preview-border);
-  border-radius: 18px;
-}
-.editor-about-folder {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  padding-bottom: 22px;
-}
-.editor-about-folder > span:first-child {
-  color: #7766bf;
-  font-size: 28px;
-}
-.editor-about-folder > span:last-child {
-  margin-left: auto;
-  font-size: 11px;
-  color: #7b839a;
-}
-.editor-about-problem-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 16px;
-  border: 1px solid var(--editor-preview-border);
-  border-radius: 12px;
-  background: #fff;
-}
-.editor-about-problem-symbol {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: 10px;
-  background: #f0edff;
-  color: #7460bb;
-  font-size: 16px;
-}
-.editor-about-problem-card strong {
-  font-size: 14px;
-}
-.editor-about-problem-card p {
-  margin-top: 6px;
-  color: #7b839a;
-  font-size: 11px;
-}
 .editor-about-pill {
   display: inline-flex;
   align-items: center;
@@ -251,81 +181,8 @@
   font-size: 10px;
   line-height: 1.8;
 }
-.editor-about-problem-card > .editor-about-pill {
-  margin-left: auto;
-  white-space: nowrap;
-}
-.editor-about-language-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
-.editor-about-language-row span {
-  padding: 6px 12px;
-  border: 1px solid var(--editor-preview-border);
-  border-radius: 8px;
-  background: #fff;
-  color: #69718c;
-  font-size: 11px;
-}
 .editor-about-demo-body {
   padding: 24px;
-}
-.editor-about-command {
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: #f6f7fc;
-}
-.editor-about-command code {
-  font-size: 12px;
-  color: #4c577a;
-  overflow-wrap: anywhere;
-}
-.editor-about-test-flow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 0;
-  margin: 22px 0;
-  list-style: none;
-}
-.editor-about-test-flow li {
-  min-width: 0;
-  border-top: 2px solid #b9acd8;
-  padding-top: 10px;
-}
-.editor-about-test-flow li span {
-  font-size: 10px;
-  color: #9a8abc;
-}
-.editor-about-test-flow li strong {
-  display: block;
-  font-size: 11px;
-  margin-top: 6px;
-}
-.editor-about-test-flow li small {
-  display: block;
-  font-size: 9px;
-  color: #8690a7;
-  margin-top: 4px;
-}
-.editor-about-test-data {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 12px;
-}
-.editor-about-test-data > div {
-  padding: 14px;
-  border: 1px solid var(--editor-preview-border);
-  border-radius: 10px;
-}
-.editor-about-test-data pre {
-  margin: 0;
-  font-size: 12px;
-  color: #454f70;
-  line-height: 1.8;
-  background: transparent;
 }
 .editor-about-page .editor-about-demo-note {
   color: #7c849c;
@@ -539,7 +396,6 @@
   .editor-about-publish-options {
     grid-template-columns: 1fr;
   }
-  .editor-about-organize,
   .editor-about-publish-options article {
     padding: 24px;
   }
@@ -568,18 +424,215 @@
   .editor-about-example {
     font-size: 9px;
   }
-  .editor-about-test-flow {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  .editor-about-problem-card {
-    flex-wrap: wrap;
-    padding: 16px 12px;
-  }
-  .editor-about-problem-card > .editor-about-pill {
-    margin-left: 54px;
-  }
   .editor-about-revision-tag {
     display: none;
+  }
+}
+
+.editor-about-role-map article {
+  padding: 24px;
+  border: 1px solid var(--editor-preview-border);
+  border-radius: 16px;
+  background: #f8f9ff;
+}
+.editor-about-role-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7766bf;
+}
+.editor-about-role-map article p {
+  margin-top: 12px;
+  color: var(--xp-muted);
+  font-size: 13px;
+  line-height: 1.85;
+}
+.editor-about-role-map article > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.editor-about-role-map article > div > span {
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #efedf8;
+  color: #776098;
+  font-size: 10px;
+}
+.editor-about-role-map .editor-about-role-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0;
+  color: #8a7aa8;
+  font-size: 11px;
+}
+.editor-about-role-connector > span {
+  font-size: 20px;
+}
+.editor-about-use-cases,
+.editor-about-value-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 44px;
+}
+.editor-about-use-cases article {
+  border-top: 1px solid var(--editor-preview-border);
+  padding-top: 22px;
+}
+.editor-about-use-cases h3 {
+  font-size: 16px;
+}
+.editor-about-use-cases p,
+.editor-about-value-points p {
+  color: var(--xp-muted);
+  font-size: 13px;
+  line-height: 1.85;
+  margin-top: 12px;
+}
+.editor-about-purpose-note {
+  border-left: 2px solid #bcafd7;
+  padding-left: 16px;
+  margin-top: 26px;
+}
+.editor-about-purpose-note strong {
+  color: #685584;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.editor-about-purpose-note p {
+  color: var(--xp-muted);
+  font-size: 12px;
+  margin-top: 7px;
+  line-height: 1.85;
+}
+.editor-about-comparison-copy {
+  max-width: 770px;
+  color: var(--xp-muted);
+  font-size: 15px;
+  line-height: 1.95;
+  margin-top: 24px !important;
+}
+.editor-about-comparison-scroll {
+  overflow-x: auto;
+  margin-top: 36px;
+  border: 1px solid var(--editor-preview-border);
+  border-radius: 16px;
+}
+.editor-about-comparison-hint {
+  display: none;
+}
+.editor-about-comparison-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.85;
+}
+.editor-about-comparison-table th,
+.editor-about-comparison-table td {
+  text-align: left;
+  padding: 20px 24px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--editor-preview-border);
+}
+.editor-about-comparison-table thead th {
+  background: #f7f8fd;
+  color: #67708a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.editor-about-comparison-table th:first-child {
+  width: 24%;
+}
+.editor-about-comparison-table td {
+  width: 38%;
+  color: var(--xp-muted);
+}
+.editor-about-comparison-table :is(th, td):last-child {
+  background: #f6f3fd;
+  color: #655085;
+}
+.editor-about-comparison-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.editor-about-value-points {
+  margin-top: 28px;
+}
+.editor-about-value-points article {
+  padding: 22px;
+  background: #fafbff;
+  border-radius: 12px;
+}
+.editor-about-value-points span {
+  color: #655085;
+  font-size: 13px;
+  font-weight: 600;
+}
+.editor-about-comparison-source {
+  margin-top: 22px !important;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8990a3;
+}
+.editor-about-comparison-source a {
+  color: #7766bf;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.editor-about-publishing-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  text-align: left;
+  list-style: none;
+  margin: 44px 0 0;
+  padding: 0;
+}
+.editor-about-publishing-flow li {
+  padding: 20px 0;
+  border-top: 2px solid #c5b8df;
+}
+.editor-about-publishing-flow li > span {
+  color: #a18cbd;
+  font-size: 11px;
+}
+.editor-about-publishing-flow h3 {
+  font-size: 16px;
+  margin-top: 10px;
+}
+.editor-about-publishing-flow p {
+  font-size: 12px;
+  color: var(--xp-muted);
+  line-height: 1.85;
+  margin-top: 9px;
+}
+@media (max-width: 760px) {
+  .editor-about-use-cases,
+  .editor-about-value-points {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .editor-about-publishing-flow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .editor-about-comparison-table th,
+  .editor-about-comparison-table td {
+    padding: 18px;
+  }
+  .editor-about-comparison-hint {
+    display: block;
+    margin-top: 24px !important;
+    color: #8990a3;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .editor-about-comparison-scroll {
+    margin-top: 14px;
   }
 }
