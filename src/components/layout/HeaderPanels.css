@@ -410,6 +410,7 @@
   align-items: center;
   gap: 0.875rem;
   width: 100%;
+  margin-bottom: 24px;
   padding: 1rem;
   border: 1px solid var(--zoj-border);
   border-radius: var(--zoj-radius-inset);
