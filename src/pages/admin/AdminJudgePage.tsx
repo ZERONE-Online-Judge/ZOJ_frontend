@@ -1,3 +1,4 @@
+import JudgeNodeWorkloads from '@/domains/auditMonitoring/components/JudgeNodeWorkloads';
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 import { useEffect, useRef, useState } from 'react';
@@ -321,7 +322,9 @@ function AdminJudgeContent({ token }: { token: string }) {
           value={
             <AnimatedNumber
               value={
-                dashboard?.nodes.filter((node) => node.is_active).length ?? 0
+                dashboard?.nodes.filter(
+                  (node) => node.is_active && node.schedulable,
+                ).length ?? 0
               }
             />
           }
@@ -335,7 +338,9 @@ function AdminJudgeContent({ token }: { token: string }) {
             <AnimatedNumber
               value={
                 dashboard?.nodes.reduce(
-                  (sum, node) => sum + (node.is_active ? node.free_slots : 0),
+                  (sum, node) =>
+                    sum +
+                    (node.is_active && node.schedulable ? node.free_slots : 0),
                   0,
                 ) ?? 0
               }
@@ -344,7 +349,7 @@ function AdminJudgeContent({ token }: { token: string }) {
         />
         <AdminMetricCard
           accent="amber"
-          description="채점을 기다리는 작업"
+          description={`ZOJ ${(dashboard?.queue_stats?.pending_count ?? 0) - (dashboard?.queue_stats?.editor_pending_count ?? 0)} · Editor ${dashboard?.queue_stats?.editor_pending_count ?? 0}`}
           icon={<JudgeIcon />}
           label="대기 큐"
           value={
@@ -359,7 +364,7 @@ function AdminJudgeContent({ token }: { token: string }) {
         />
         <AdminMetricCard
           accent="rose"
-          description="현재 실행 중인 작업"
+          description={`ZOJ ${(dashboard?.queue_stats?.running_count ?? 0) - (dashboard?.queue_stats?.editor_running_count ?? 0)} · Editor ${dashboard?.queue_stats?.editor_running_count ?? 0}`}
           icon={<JudgeIcon />}
           label="실행 중"
           value={
@@ -378,7 +383,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                 채점 노드 현황
               </span>
               <span className="mt-1 block text-sm font-medium text-slate-500">
-                노드 heartbeat와 slot 상태를 확인합니다.
+                노드 상태와 처리할 작업을 설정합니다.
               </span>
             </span>
             <span className="text-sm font-semibold text-indigo-700 group-open:hidden">
@@ -389,12 +394,20 @@ function AdminJudgeContent({ token }: { token: string }) {
             </span>
           </summary>
           <div className="border-t border-slate-100 p-6">
+            <p className="mb-4 text-sm text-slate-500">
+              선택은 다음 작업 배정부터 적용됩니다. 실행 중인 작업은 끝까지
+              처리합니다. 둘 다 선택하면 ZOJ 채점과 Editor 실행을 함께 처리하며,
+              ZOJ 채점 대기열을 먼저 확인합니다.
+            </p>
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm">
+              <table className="w-full min-w-[1250px] table-fixed border-collapse text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="w-72 border-r border-b border-slate-200 px-4 py-3">
                       노드
+                    </th>
+                    <th className="w-56 border-r border-b border-slate-200 px-4 py-3">
+                      처리할 작업
                     </th>
                     <th className="border-r border-b border-slate-200 px-4 py-3">
                       상태
@@ -436,6 +449,9 @@ function AdminJudgeContent({ token }: { token: string }) {
                           >
                             {node.judge_node_id}
                           </p>
+                        </td>
+                        <td className="border-r border-slate-100 px-4 py-4">
+                          <JudgeNodeWorkloads node={node} token={token} />
                         </td>
                         <td className="border-r border-slate-100 px-4 py-4">
                           <span
@@ -488,7 +504,7 @@ function AdminJudgeContent({ token }: { token: string }) {
                     <tr>
                       <td
                         className="px-4 py-8 text-center text-sm font-medium text-slate-500"
-                        colSpan={7}
+                        colSpan={8}
                       >
                         등록된 채점 노드가 없습니다.
                       </td>

@@ -223,3 +223,18 @@ export function waitAdminJudgeSubmissionStatus(
     token,
   );
 }
+
+export function updateAdminJudgeNodeWorkloads(
+  nodeId: string,
+  token: string,
+  workloads: { allow_zoj: boolean; allow_editor: boolean },
+) {
+  return apiRequest<{
+    judge_node_id: string;
+    allow_zoj: boolean;
+    allow_editor: boolean;
+  }>(`/admin/judge/nodes/${encodeURIComponent(nodeId)}/workloads`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(workloads),
+  });
+}

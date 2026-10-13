@@ -22,6 +22,10 @@ export type AdminJudgeDashboard = {
     agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;
+    allow_zoj?: boolean;
+    allow_editor?: boolean;
+    execution_capabilities?: string[];
+    execution_revision?: string | null;
     is_active: boolean;
     heartbeat_age_seconds: number;
   }>;
@@ -40,6 +44,8 @@ export type AdminJudgeDashboard = {
     pending_count: number;
     running_count: number;
     succeeded_count: number;
+    editor_pending_count?: number;
+    editor_running_count?: number;
   };
 };
 
@@ -159,6 +165,10 @@ export type AdminJudgeSubmissionEntry = {
     agent_version?: string | null;
     last_heartbeat_at: string;
     schedulable: boolean;
+    allow_zoj?: boolean;
+    allow_editor?: boolean;
+    execution_capabilities?: string[];
+    execution_revision?: string | null;
   } | null;
   active_testcase_count: number;
 };
