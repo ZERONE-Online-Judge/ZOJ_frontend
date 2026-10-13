@@ -1,4 +1,7 @@
 export type Problem = {
+  default_statement_language?: string;
+  statement_translations?: Record<string, { title: string; statement: string }>;
+  editorial_translations?: Record<string, string>;
   problem_id: string;
   division_id?: string;
   problem_code: string;

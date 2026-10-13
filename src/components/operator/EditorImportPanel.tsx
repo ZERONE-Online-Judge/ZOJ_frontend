@@ -380,7 +380,7 @@ export default function EditorImportPanel({
                             </select>
                           </label>
                           <label className="grid gap-1 text-xs text-slate-600">
-                            지문 언어
+                            기본 지문 언어
                             <select
                               value={language}
                               disabled={busy || active}
@@ -395,6 +395,10 @@ export default function EditorImportPanel({
                               ))}
                             </select>
                           </label>
+                          <p className="text-xs leading-5 text-slate-500">
+                            선택한 언어를 기본으로 사용하고, Editor에 작성한
+                            다른 번역 지문도 함께 가져옵니다.
+                          </p>
                           <button
                             type="button"
                             disabled={busy || active}

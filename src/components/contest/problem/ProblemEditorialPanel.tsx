@@ -1,5 +1,8 @@
 import type { Problem, ProblemAsset } from '@/domains/problemManagement/types';
 import MarkdownPreview from '@/shared/ui/MarkdownPreview';
+import { editorialVersions } from '@/domains/problemManagement/statementLanguages';
+import StatementLanguageSelect from './StatementLanguageSelect';
+import { useStatementLanguage } from '@/domains/problemManagement/useStatementLanguage';
 
 type ProblemEditorialPanelProps = {
   assets?: ProblemAsset[];
@@ -17,17 +20,34 @@ export default function ProblemEditorialPanel({
   problem,
 }: ProblemEditorialPanelProps) {
   const attachments = editorialAssets(assets);
-  const body = problem.editorial?.trim() ?? '';
+  const versions = editorialVersions(problem);
+  const defaultLanguage = problem.default_statement_language || 'ko';
+  const [language, selectLanguage] = useStatementLanguage(
+    Object.keys(versions),
+    defaultLanguage,
+  );
+  const body = versions[language];
 
   return (
-    <article className="zoj-problem-document min-w-0 bg-white px-4 py-5 sm:px-6 sm:py-6">
+    <article
+      lang={language}
+      className="zoj-problem-document min-w-0 bg-white px-4 py-5 sm:px-6 sm:py-6"
+    >
       <header>
         <p className="text-xs font-black tracking-normal text-indigo-600 uppercase">
           Editorial
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">
-          {problem.problem_code}. {problem.title} 해설
+          {problem.problem_code}.{' '}
+          {problem.statement_translations?.[language]?.title || problem.title}{' '}
+          해설
         </h1>
+        <StatementLanguageSelect
+          languages={Object.keys(versions)}
+          selected={language}
+          defaultLanguage={defaultLanguage}
+          onChange={selectLanguage}
+        />
       </header>
 
       <div className="mt-7">

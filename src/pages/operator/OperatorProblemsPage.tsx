@@ -53,6 +53,8 @@ import {
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
 import ProblemEditorialPanel from '@/components/contest/problem/ProblemEditorialPanel';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
+import ProblemLanguageEditor from '@/components/operator/ProblemLanguageEditor';
+import { hasProblemEditorial } from '@/domains/problemManagement/statementLanguages';
 import type {
   PackageFileRole,
   JudgeBundleStatus,
@@ -96,6 +98,9 @@ import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 
 type ProblemForm = {
+  defaultStatementLanguage: string;
+  statementTranslations: NonNullable<Problem['statement_translations']>;
+  editorialTranslations: NonNullable<Problem['editorial_translations']>;
   displayOrder: string;
   divisionId: string;
   editorial: string;
@@ -213,6 +218,9 @@ function codeLength(submission: Submission) {
 type ProblemEditorMode = 'idle' | 'create' | 'edit';
 
 const emptyProblemForm: ProblemForm = {
+  defaultStatementLanguage: 'ko',
+  statementTranslations: {},
+  editorialTranslations: {},
   displayOrder: '',
   divisionId: '',
   editorial: '',
@@ -261,6 +269,9 @@ function problemFormFromProblem(problem: Problem): ProblemForm {
     displayOrder: String(problem.display_order ?? ''),
     divisionId: problem.division_id ?? '',
     editorial: problem.editorial ?? '',
+    defaultStatementLanguage: problem.default_statement_language || 'ko',
+    statementTranslations: problem.statement_translations || {},
+    editorialTranslations: problem.editorial_translations || {},
     examples: document.examples,
     inputDescription: document.inputDescription,
     languageResourceLimits,
@@ -453,7 +464,10 @@ function previewProblemFromForm(
   return {
     display_order: displayOrder,
     division_id: form.divisionId || selectedProblem?.division_id,
-    editorial: form.editorial || selectedProblem?.editorial || '',
+    editorial: form.editorial,
+    default_statement_language: form.defaultStatementLanguage,
+    statement_translations: form.statementTranslations,
+    editorial_translations: form.editorialTranslations,
     language_resource_limits: languageResourceLimitsFromForm(form),
     memory_limit_mb: limitValueOrFallback(
       form.memoryLimitMb,
@@ -951,6 +965,9 @@ function OperatorProblemsContent({
           : undefined,
         division_id: problemForm.divisionId,
         editorial: problemForm.editorial,
+        default_statement_language: problemForm.defaultStatementLanguage,
+        statement_translations: problemForm.statementTranslations,
+        editorial_translations: problemForm.editorialTranslations,
         language_resource_limits: languageResourceLimitsFromForm(problemForm),
         memory_limit_mb: Number(problemForm.memoryLimitMb),
         problem_code: problemForm.problemCode.trim(),
@@ -2103,6 +2120,43 @@ function OperatorProblemsContent({
                     ) : null}
                     {authoringTab === 'statement' ? (
                       <>
+                        <ProblemLanguageEditor
+                          key={form.problemId || 'new'}
+                          problem={{
+                            problem_id: form.problemId,
+                            problem_code: form.problemCode,
+                            title: form.title,
+                            statement: problemStatementFromForm(form),
+                            editorial: form.editorial,
+                            time_limit_ms: Number(form.timeLimitMs),
+                            memory_limit_mb: Number(form.memoryLimitMb),
+                            default_statement_language:
+                              form.defaultStatementLanguage,
+                            statement_translations: form.statementTranslations,
+                            editorial_translations: form.editorialTranslations,
+                          }}
+                          onChange={(next) => {
+                            const document = parseProblemDocument(
+                              next.statement,
+                            );
+                            setForm((prev) => ({
+                              ...prev,
+                              title: next.title,
+                              statement: document.statement,
+                              inputDescription: document.inputDescription,
+                              outputDescription: document.outputDescription,
+                              note: document.note,
+                              examples: document.examples,
+                              editorial: next.editorial || '',
+                              defaultStatementLanguage:
+                                next.default_statement_language || 'ko',
+                              statementTranslations:
+                                next.statement_translations || {},
+                              editorialTranslations:
+                                next.editorial_translations || {},
+                            }));
+                          }}
+                        />
                         <label className="grid gap-2 text-sm font-semibold text-slate-700">
                           문제 본문
                           <textarea
@@ -3363,7 +3417,7 @@ function ProblemPreviewModal({
       <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_28rem] lg:overflow-hidden">
         <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto">
           <ProblemStatementPanel assets={assets} problem={problem} />
-          {problem.editorial?.trim() ? (
+          {hasProblemEditorial(problem) ? (
             <div className="border-t border-slate-200">
               <ProblemEditorialPanel assets={assets} problem={problem} />
             </div>

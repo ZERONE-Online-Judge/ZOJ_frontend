@@ -8,6 +8,7 @@ import {
   OperatorTabs,
 } from '@/components/operator/OperatorShell';
 import ProblemStatementPanel from '@/components/contest/problem/ProblemStatementPanel';
+import { hasProblemEditorial } from '@/domains/problemManagement/statementLanguages';
 import ProblemEditorialPanel from '@/components/contest/problem/ProblemEditorialPanel';
 import ProblemSubmitPanel from '@/components/contest/problem/ProblemSubmitPanel';
 import ProblemReviewResult from '@/components/operator/ProblemReviewResult';
@@ -425,7 +426,7 @@ function ReviewWorkspace({
         >
           <ProblemStatementPanel problem={problem} assets={assets.data} />
         </section>
-        {canViewEditorial && problem.editorial?.trim() ? (
+        {canViewEditorial && hasProblemEditorial(problem) ? (
           <details className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <summary className="cursor-pointer px-4 py-4 text-sm font-medium text-slate-600">
               해설 확인

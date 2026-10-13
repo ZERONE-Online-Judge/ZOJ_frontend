@@ -67,6 +67,9 @@ export function createOperatorProblem(
     problem_code: string;
     title: string;
     statement: string;
+    default_statement_language?: string;
+    statement_translations?: Problem['statement_translations'];
+    editorial_translations?: Problem['editorial_translations'];
     time_limit_ms: number;
     memory_limit_mb: number;
     language_resource_limits?: Problem['language_resource_limits'];
