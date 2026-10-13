@@ -31,6 +31,7 @@ const ContestSubmissionsPage = lazy(
 );
 const ContestsPage = lazy(() => import('@/pages/public/ContestsPage'));
 const AboutPage = lazy(() => import('@/pages/public/AboutPage'));
+const EditorAboutPage = lazy(() => import('@/pages/public/EditorAboutPage'));
 const JudgeStatusPage = lazy(() => import('@/pages/public/JudgeStatusPage'));
 const PresentationPage = lazy(
   () => import('@/pages/presentation/PresentationPage'),
@@ -86,6 +87,7 @@ export type AppRoute = {
   path: string;
   Component: ElementType;
   showInNavigation?: boolean;
+  navigationBadge?: string;
 };
 
 export const appRoutes: readonly AppRoute[] = [
@@ -98,6 +100,12 @@ export const appRoutes: readonly AppRoute[] = [
     name: 'ZOJ 소개',
     path: '/about',
     Component: AboutPage,
+  },
+  {
+    name: 'Editor 소개',
+    path: '/editor',
+    Component: EditorAboutPage,
+    navigationBadge: 'NEW',
   },
   {
     name: routeText.contests,

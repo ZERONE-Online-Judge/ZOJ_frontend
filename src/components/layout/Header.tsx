@@ -10,12 +10,15 @@ export default function Header() {
   const contestExactMatch = useMatch('/contests/:contestId');
   const contestMatch = contestNestedMatch ?? contestExactMatch;
   const contestId = contestMatch?.params.contestId;
-  const navItems: HeaderNavItem[] = navigationRoutes.map(({ name, path }) => ({
-    end: path === '/contests',
-    key: path,
-    label: name,
-    to: path,
-  }));
+  const navItems: HeaderNavItem[] = navigationRoutes.map(
+    ({ name, path, navigationBadge }) => ({
+      end: path === '/contests',
+      key: path,
+      label: name,
+      badge: navigationBadge,
+      to: path,
+    }),
+  );
 
   if (contestId) {
     navItems.push({

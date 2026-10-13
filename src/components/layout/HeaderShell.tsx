@@ -6,6 +6,7 @@ export type HeaderNavItem = {
   activeClassName?: string;
   key: string;
   label: string;
+  badge?: string;
   to: string;
   end?: boolean;
 };
@@ -51,7 +52,7 @@ export default function HeaderShell({
                 <NavLink
                   className={({ isActive }) =>
                     [
-                      'inline-flex h-8 items-center rounded-full px-3 whitespace-nowrap transition hover:bg-slate-50 hover:text-zoj-blue md:h-auto md:rounded-none md:px-0 md:hover:bg-transparent',
+                      'hover:text-zoj-blue inline-flex h-8 items-center rounded-full px-3 whitespace-nowrap transition hover:bg-slate-50 md:h-auto md:rounded-none md:px-0 md:hover:bg-transparent',
                       isActive ? 'text-zoj-blue' : 'text-slate-700',
                       isActive ? 'bg-blue-50 md:bg-transparent' : '',
                       isActive ? (item.activeClassName ?? '') : '',
@@ -61,6 +62,11 @@ export default function HeaderShell({
                   to={item.to}
                 >
                   {item.label}
+                  {item.badge && (
+                    <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] leading-none font-bold tracking-wide text-violet-700">
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               </li>
             ))}
