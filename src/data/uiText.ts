@@ -13,7 +13,7 @@ export const routeText = {
   contestSubmissions: '대회 채점현황',
   contests: '대회 목록',
   home: '메인',
-  judgeStatus: '채점 상태',
+  judgeStatus: '채점 안내',
   login: '로그인',
   notFound: '찾을 수 없는 페이지',
   notices: '공지사항',

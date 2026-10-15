@@ -38,7 +38,7 @@ const shortcuts = [
     title: '내 코드가 기다려진다면',
     description: '서버 상태부터 판정과 점수 계산까지 알아보세요.',
     to: '/judge-status',
-    label: '채점 상태',
+    label: '채점 안내',
     symbol: '</>',
   },
 ];

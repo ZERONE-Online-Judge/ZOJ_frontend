@@ -11,7 +11,7 @@ const footerGroups = [
       { label: 'Editor 소개', href: '/editor', badge: 'NEW' },
       { label: '대회 목록', href: '/contests' },
       { label: '공지사항', href: '/notices' },
-      { label: '채점 상태', href: '/judge-status' },
+      { label: '채점 안내', href: '/judge-status' },
     ],
   },
   {
