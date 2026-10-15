@@ -24,6 +24,10 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 let staffRefreshInFlight: Promise<string | null> | null = null;
 let generalRefreshInFlight: Promise<string | null> | null = null;
 let participantRefreshInFlight: Promise<string | null> | null = null;
+let generalSessionRequestInFlight: {
+  identity: string;
+  promise: Promise<ApiRawResponse>;
+} | null = null;
 
 type DataEnvelope<T> = {
   data?: T;
@@ -36,6 +40,40 @@ export function parseContestId(path: string) {
 }
 
 export async function apiFetchRaw(
+  path: string,
+  token?: string,
+  init?: RequestInit,
+): Promise<ApiRawResponse> {
+  // SSO restoration and ordinary refresh both rotate the same server token.
+  // Sharing only /refresh calls lets arrival/focus restoration invalidate a
+  // token while another request is still retrying with it.
+  if (
+    init?.method === 'POST' &&
+    (path === '/auth/general/sso' || path === '/auth/general/refresh')
+  ) {
+    const general = loadStoredGeneralSession();
+    const identity = JSON.stringify([
+      general?.accessToken,
+      general?.refreshToken,
+      init.body ?? '{}',
+    ]);
+    if (generalSessionRequestInFlight?.identity === identity) {
+      return generalSessionRequestInFlight.promise;
+    }
+    const request = {
+      identity,
+      promise: sendApiFetchRaw(path, token, init).finally(() => {
+        if (generalSessionRequestInFlight === request)
+          generalSessionRequestInFlight = null;
+      }),
+    };
+    generalSessionRequestInFlight = request;
+    return request.promise;
+  }
+  return sendApiFetchRaw(path, token, init);
+}
+
+async function sendApiFetchRaw(
   path: string,
   token?: string,
   init?: RequestInit,
@@ -236,8 +274,9 @@ async function refreshStaffAccessToken(token: string): Promise<string | null> {
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           clearStoredSessionForFailedToken(token, '/auth/staff/refresh');
+          return null;
         }
-        return null;
+        throw toApiError(response, payload);
       }
 
       const data = (
@@ -290,8 +329,11 @@ async function refreshGeneralAccessToken(
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           clearStoredSessionForFailedToken(token, '/auth/general/refresh');
+          return null;
         }
-        return null;
+        // A temporary refresh failure does not make the original access-token
+        // 401 authoritative evidence that the whole login has been revoked.
+        throw toApiError(response, payload);
       }
 
       const next = mapGeneralSession(
@@ -301,7 +343,12 @@ async function refreshGeneralAccessToken(
       );
       // A revocation event or a newer login may have arrived while refreshing.
       // Never restore credentials that the logout flow has already removed.
-      if (loadStoredGeneralSession()?.accessToken !== token) return null;
+      const current = loadStoredGeneralSession();
+      if (current?.accessToken !== token) {
+        return current?.accessToken === next.accessToken
+          ? current.accessToken
+          : null;
+      }
       saveGeneralSession(next);
       const participant = loadStoredParticipantSession();
       if (
@@ -377,8 +424,9 @@ async function refreshParticipantAccessToken(
             token,
             `/auth/general/contests/${contestId}/participant-session`,
           );
+          return null;
         }
-        return null;
+        throw toApiError(sessionResponse.response, sessionResponse.payload);
       }
 
       const data = (

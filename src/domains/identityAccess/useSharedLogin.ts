@@ -31,10 +31,25 @@ export function useSharedLogin() {
           },
         );
         const current = useSessionStore.getState().generalSession;
-        if (!active || current?.accessToken !== before?.accessToken) return;
         const session = mapGeneralSession(data);
-        if (current && current.account.email !== session.account.email) {
+        // A concurrent API retry may already have saved this shared response.
+        // Still finish account-switch cache cleanup in that case.
+        const alreadyApplied =
+          current?.accessToken === session.accessToken &&
+          current.account.email === session.account.email;
+        if (
+          !active ||
+          (current?.accessToken !== before?.accessToken && !alreadyApplied)
+        )
+          return;
+        if (before && before.account.email !== session.account.email) {
           await client.cancelQueries();
+          if (
+            !active ||
+            useSessionStore.getState().generalSession?.accessToken !==
+              current?.accessToken
+          )
+            return;
           client.clear();
           useSessionStore.getState().clearSessions();
         }
@@ -48,6 +63,12 @@ export function useSharedLogin() {
           before
         ) {
           await client.cancelQueries();
+          if (
+            !active ||
+            useSessionStore.getState().generalSession?.accessToken !==
+              before.accessToken
+          )
+            return;
           client.clear();
           useSessionStore.getState().clearSessions();
         }
