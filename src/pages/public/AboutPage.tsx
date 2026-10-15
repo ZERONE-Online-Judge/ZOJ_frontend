@@ -1,4 +1,5 @@
 import PublicHero from '@/components/common/PublicHero';
+import CodingTestIntroduction from '@/components/public/CodingTestIntroduction';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import './AboutPage.css';
@@ -264,8 +265,8 @@ export default function AboutPage() {
               <Link className="experience-button is-lime" to="/contests">
                 대회 둘러보기 <Arrow />
               </Link>
-              <a className="experience-text-link" href="#about-experience">
-                ZOJ 알아보기 <span aria-hidden="true">↓</span>
+              <a className="experience-text-link" href="#about-coding-tests">
+                코딩 테스트부터 알아보기 <span aria-hidden="true">↓</span>
               </a>
             </div>
           </div>
@@ -311,6 +312,8 @@ export default function AboutPage() {
           </div>
         </div>
       </PublicHero>
+
+      <CodingTestIntroduction />
 
       <section
         className="about-experience about-section"

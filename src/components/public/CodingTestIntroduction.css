@@ -1,0 +1,303 @@
+.about-learn {
+  background: #fff;
+}
+.about-learn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(40px, 7vw, 100px);
+  align-items: center;
+}
+.about-learn-copy > .about-eyebrow {
+  color: var(--purple);
+  margin-bottom: 22px;
+}
+.about-learn-copy h2 {
+  margin-bottom: 26px;
+}
+.about-learn-copy > p:not(.about-eyebrow) {
+  font-size: 16px;
+  line-height: 1.95;
+  color: var(--muted);
+}
+.about-learn-copy > p + p {
+  margin-top: 16px;
+}
+.about-learn-copy strong {
+  font-weight: 650;
+  color: var(--ink);
+}
+.about-learn-copy > .about-learn-note {
+  padding-left: 16px;
+  border-left: 2px solid var(--lime);
+  font-size: 14px;
+}
+.about-everyday {
+  min-width: 0;
+  padding: 30px;
+  border: 1px solid var(--zoj-border);
+  border-radius: var(--zoj-radius-card);
+  background: var(--zoj-surface);
+}
+.about-everyday-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.about-everyday-symbol {
+  font-size: 20px;
+}
+.about-everyday h3 {
+  font-size: 21px;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+}
+.about-everyday > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.about-order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-block: 22px;
+}
+.about-order-list span {
+  padding: 7px 13px;
+  background: #fff;
+  border: 1px solid var(--zoj-border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.about-everyday-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+.about-everyday-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.about-everyday-steps li > span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--purple);
+  padding-top: 3px;
+}
+.about-everyday-steps strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+.about-everyday-steps p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.9;
+  margin-top: 4px;
+}
+.about-everyday-answer {
+  margin-block: 24px 16px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: #e7f7dd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.about-everyday-answer > span {
+  font-size: 12px;
+  color: #40513b;
+}
+.about-everyday-answer strong {
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+.about-everyday-answer small {
+  font-size: 14px;
+  margin-left: 4px;
+  font-weight: 500;
+}
+.about-everyday > .about-everyday-footnote {
+  font-size: 12px;
+}
+.about-learn-why {
+  margin-top: 76px;
+  padding-top: 36px;
+  border-top: 1px solid var(--zoj-border);
+}
+.about-learn-why > .about-eyebrow {
+  color: var(--purple);
+  margin-bottom: 12px;
+}
+.about-learn-why > h3 {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+}
+.about-skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+  margin-top: 28px;
+}
+.about-skill-index {
+  font-size: 11px;
+  color: var(--purple);
+  font-weight: 650;
+}
+.about-skill-grid h4 {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  margin: 12px 0;
+}
+.about-skill-grid p {
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.about-purpose {
+  background: #f6f4fb;
+}
+.about-use-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.about-use-grid article {
+  min-width: 0;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #e9e5f2;
+  border-radius: var(--zoj-radius-card);
+}
+.about-use-grid .about-eyebrow {
+  color: var(--purple);
+  font-size: 10px;
+}
+.about-use-grid h3 {
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  margin: 18px 0 12px;
+}
+.about-use-grid p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.95;
+}
+.about-contribution {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 40px;
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid #ddd6ed;
+}
+.about-contribution .about-eyebrow {
+  color: var(--purple);
+  margin-bottom: 14px;
+}
+.about-contribution h3 {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.04em;
+}
+.about-contribution-copy p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.95;
+}
+.about-contribution-copy p + p {
+  margin-top: 12px;
+}
+.about-contribution-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-top: 24px;
+}
+.about-contribution-links a {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--purple);
+  line-height: 1.8;
+}
+.about-contribution-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (max-width: 1050px) {
+  .about-learn-grid {
+    gap: 36px;
+  }
+  .about-everyday {
+    padding: 24px;
+  }
+  .about-skill-grid {
+    gap: 28px;
+  }
+  .about-use-grid article {
+    padding: 22px;
+  }
+  .about-contribution {
+    grid-template-columns: 1fr 1.4fr;
+    gap: 28px;
+  }
+}
+@media (max-width: 760px) {
+  .about-learn-grid,
+  .about-skill-grid,
+  .about-use-grid,
+  .about-contribution {
+    grid-template-columns: 1fr;
+  }
+  .about-learn-copy > p:not(.about-eyebrow) {
+    font-size: 15px;
+  }
+  .about-everyday {
+    padding: 22px;
+  }
+  .about-learn-why {
+    margin-top: 44px;
+    padding-top: 28px;
+  }
+  .about-skill-grid {
+    gap: 24px;
+  }
+  .about-skill-grid h4 {
+    margin-block: 8px;
+  }
+  .about-skill-grid p {
+    font-size: 14px;
+  }
+  .about-use-grid {
+    gap: 14px;
+  }
+  .about-use-grid h3 {
+    margin-top: 12px;
+  }
+  .about-contribution {
+    margin-top: 32px;
+    padding-top: 28px;
+    gap: 20px;
+  }
+  .about-contribution h3 {
+    font-size: 23px;
+  }
+  .about-contribution-copy p {
+    font-size: 14px;
+  }
+  .about-contribution-links {
+    display: grid;
+    gap: 12px;
+  }
+}
