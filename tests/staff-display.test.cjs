@@ -283,7 +283,77 @@ const OperatorSubmissions = source(
 const ParticipantSubmissions = source(
   'components/contest/submissions/ContestSubmissionsTable.tsx',
 ).default;
+
+test('participant source loads on expansion and is reused', async () => {
+  let requests = 0;
+  const item = {
+    ...baseSubmission,
+    submission_id: 'lazy-source',
+    source_code: '',
+    language: 'cpp17',
+  };
+  await render(
+    h(ParticipantSubmissions, {
+      contestId: 'contest',
+      submissions: [item],
+      sourceScopeKey: 'participant-a',
+      loadSource: async (id) => {
+        assert.equal(id, 'lazy-source');
+        requests += 1;
+        return 'int main() { return 0; }';
+      },
+    }),
+    '/contests/contest/submissions',
+  );
+  assert.equal(requests, 0);
+  await click(container.querySelector('button[title="제출 코드 보기"]'));
+  assert.equal(requests, 1);
+  assert.match(container.querySelector('pre').textContent, /int main/);
+  await click(container.querySelector('button[title="제출 코드 보기"]'));
+  await click(container.querySelector('button[title="제출 코드 보기"]'));
+  assert.equal(requests, 1);
+});
 const AdminJudge = source('pages/admin/AdminJudgePage.tsx').default;
+test('source never shows the previous account code during a new fetch', async () => {
+  client.setDefaultOptions({
+    queries: { retry: false, placeholderData: (previous) => previous },
+  });
+  const item = {
+    ...baseSubmission,
+    submission_id: 'private-source',
+    source_code: '',
+    language: 'cpp17',
+  };
+  const view = (scope, loadSource) =>
+    h(ParticipantSubmissions, {
+      contestId: 'contest',
+      submissions: [item],
+      sourceScopeKey: scope,
+      loadSource,
+    });
+  await render(
+    view('account-a', async () => 'private code A'),
+    '/contests/contest/submissions',
+  );
+  await click(container.querySelector('button[title="제출 코드 보기"]'));
+  assert.match(container.querySelector('pre').textContent, /private code A/);
+  let complete;
+  await render(
+    view(
+      'account-b',
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    ),
+    '/contests/contest/submissions',
+  );
+  assert.doesNotMatch(container.textContent, /private code A/);
+  assert.match(container.textContent, /코드를 불러오는 중/);
+  complete('private code B');
+  await flush();
+  assert.match(container.querySelector('pre').textContent, /private code B/);
+});
 let root, container, client;
 beforeEach(() => {
   submissions = submissionCases.map(([fields], index) => ({

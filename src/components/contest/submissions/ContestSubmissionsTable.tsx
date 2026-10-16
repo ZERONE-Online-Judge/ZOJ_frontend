@@ -1,5 +1,6 @@
 import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel';
 import { Fragment, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import type { Problem } from '@/domains/problemManagement/types';
@@ -17,6 +18,8 @@ type ContestSubmissionsTableProps = {
   fallbackTeamName?: string;
   problems?: Problem[];
   submissions: Submission[];
+  loadSource?: (submissionId: string) => Promise<string>;
+  sourceScopeKey?: string;
 };
 
 function formatTimeMs(value?: number | null) {
@@ -132,6 +135,8 @@ export default function ContestSubmissionsTable({
   fallbackTeamName,
   problems = [],
   submissions,
+  loadSource,
+  sourceScopeKey,
 }: ContestSubmissionsTableProps) {
   const problemById = new Map(
     problems.map((problem) => [problem.problem_id, problem]),
@@ -227,7 +232,7 @@ export default function ContestSubmissionsTable({
                         <button
                           aria-expanded={isOpen}
                           className="zoj-truncate-safe hover:text-zoj-blue max-w-full font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:text-slate-400"
-                          disabled={!sourceCode}
+                          disabled={!sourceCode && !loadSource}
                           onClick={() =>
                             setOpenSubmissionId((current) =>
                               current === submission.submission_id
@@ -236,7 +241,7 @@ export default function ContestSubmissionsTable({
                             )
                           }
                           title={
-                            sourceCode
+                            sourceCode || loadSource
                               ? '제출 코드 보기'
                               : '코드가 포함되지 않은 제출입니다.'
                           }
@@ -244,7 +249,7 @@ export default function ContestSubmissionsTable({
                         >
                           {judgeLanguageLabel(submission.language)}
                         </button>
-                        {sourceCode && !preview ? (
+                        {(sourceCode || loadSource) && !preview ? (
                           <Link
                             className="text-zoj-blue text-xs font-black whitespace-nowrap transition hover:text-slate-950"
                             to={`/contests/${contestId}/problems/${problemId}/submit?submissionId=${encodeURIComponent(submission.submission_id)}`}
@@ -264,10 +269,19 @@ export default function ContestSubmissionsTable({
                   {isOpen ? (
                     <tr className="zoj-submission-code-row border-b border-slate-200 bg-white">
                       <td className="min-w-0 p-0" colSpan={9}>
-                        <SubmissionCodeAccordion
-                          sourceCode={sourceCode}
-                          submission={submission}
-                        />
+                        {sourceCode || !loadSource ? (
+                          <SubmissionCodeAccordion
+                            sourceCode={sourceCode}
+                            submission={submission}
+                          />
+                        ) : (
+                          <LazySubmissionCode
+                            contestId={contestId}
+                            submission={submission}
+                            loadSource={loadSource}
+                            scopeKey={sourceScopeKey}
+                          />
+                        )}
                       </td>
                     </tr>
                   ) : null}
@@ -278,6 +292,53 @@ export default function ContestSubmissionsTable({
         </table>
       </div>
     </>
+  );
+}
+
+function LazySubmissionCode({
+  contestId,
+  submission,
+  loadSource,
+  scopeKey,
+}: {
+  contestId: string;
+  submission: Submission;
+  loadSource: (id: string) => Promise<string>;
+  scopeKey?: string;
+}) {
+  const source = useQuery({
+    queryKey: [
+      'contest-submission-source',
+      contestId,
+      submission.submission_id,
+      scopeKey,
+    ],
+    queryFn: () => loadSource(submission.submission_id),
+    placeholderData: () => undefined,
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+  });
+  if (source.isPending)
+    return (
+      <p className="p-4 text-sm text-slate-500" role="status">
+        코드를 불러오는 중입니다.
+      </p>
+    );
+  if (source.isError)
+    return (
+      <div className="p-4 text-sm text-slate-600" role="alert">
+        코드를 불러오지 못했습니다.
+        <button
+          className="text-zoj-blue ml-3 font-bold"
+          onClick={() => void source.refetch()}
+          type="button"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  return (
+    <SubmissionCodeAccordion submission={submission} sourceCode={source.data} />
   );
 }
 

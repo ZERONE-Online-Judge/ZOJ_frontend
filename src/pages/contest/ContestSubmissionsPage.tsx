@@ -1,9 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { pollDelay } from '@/shared/query/polling';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeading } from '@/components/common/PageLayout';
 import ContestPageFrame from '@/components/contest/ContestPageFrame';
@@ -28,7 +25,7 @@ import {
   getDivisionProblems,
 } from '@/domains/problemManagement/api';
 import { listSubmissionsPage } from '@/domains/submissionScoreboard/api';
-import { waitSubmissionStatus } from '@/domains/submissionScoreboard/api';
+import { getSubmission } from '@/domains/submissionScoreboard/api';
 import { isSubmissionPending } from '@/domains/submissionScoreboard/status';
 import type { Submission } from '@/domains/submissionScoreboard/types';
 import useDocumentVisibility from '@/shared/hooks/useDocumentVisibility';
@@ -45,10 +42,8 @@ function ContestSubmissionsContent({
   contestId: string;
   divisions: Division[];
 }) {
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const isDocumentVisible = useDocumentVisibility();
-  const waitingIds = useRef(new Set<string>());
   const {
     activeParticipantSession,
     isPreview,
@@ -70,13 +65,16 @@ function ContestSubmissionsContent({
   const isEnded = phase === 'ended';
   const isBeforeStart = phase === 'before';
   const [publicDivisionId, setPublicDivisionId] = useState('');
-  const [selectedProblemId, setSelectedProblemId] = useState(
-    () => searchParams.get('problemId') ?? '',
-  );
-  const [cursorStack, setCursorStack] = useState<string[]>([]);
-  const currentCursor = cursorStack.at(-1);
-  const selectedPublicDivisionId =
-    publicDivisionId || divisions[0]?.division_id || '';
+  const selectedProblemId = searchParams.get('problemId') ?? '';
+  const selectedPublicDivisionId = divisions.some(
+    (division) => division.division_id === publicDivisionId,
+  )
+    ? publicDivisionId
+    : (divisions[0]?.division_id ?? '');
+  const [pagination, setPagination] = useState<{
+    filter: string;
+    cursors: string[];
+  }>({ filter: '', cursors: [] });
   const shouldUseParticipantScope = hasSessionAccess && !isEnded;
   const shouldUseParticipantAuth =
     isEnded &&
@@ -101,21 +99,18 @@ function ContestSubmissionsContent({
     participantContest,
   );
 
-  useEffect(() => {
-    if (
-      publicDivisionId &&
-      !divisions.some((division) => division.division_id === publicDivisionId)
-    ) {
-      setPublicDivisionId('');
-      setCursorStack([]);
-    }
-  }, [divisions, publicDivisionId]);
-
-  useEffect(() => {
-    const nextProblemId = searchParams.get('problemId') ?? '';
-    setSelectedProblemId(nextProblemId);
-    setCursorStack([]);
-  }, [searchParams]);
+  const filter = `${contestId}:${effectiveDivisionId ?? ''}:${selectedProblemId}:${participantQueryIdentity ?? generalQueryIdentity}`;
+  const cursorStack = pagination.filter === filter ? pagination.cursors : [];
+  const currentCursor = cursorStack.at(-1);
+  function setCursorStack(next: string[] | ((previous: string[]) => string[])) {
+    setPagination((previous) => ({
+      filter,
+      cursors:
+        typeof next === 'function'
+          ? next(previous.filter === filter ? previous.cursors : [])
+          : next,
+    }));
+  }
 
   const problemsQuery = useQuery({
     enabled: canViewSubmissions && canViewProblems,
@@ -194,7 +189,7 @@ function ContestSubmissionsContent({
       if (session && shouldUseParticipantScope) {
         return listSubmissionsPage(contestId, session.accessToken, {
           cursor: currentCursor,
-          includeSource: true,
+          includeSource: false,
           limit: SUBMISSIONS_PAGE_SIZE,
           problemId: selectedProblemId || undefined,
         });
@@ -221,7 +216,7 @@ function ContestSubmissionsContent({
           isSubmissionPending(submission.status),
         );
 
-      return hasPendingSubmission ? 3_000 : 15_000;
+      return pollDelay(hasPendingSubmission ? 3_000 : 15_000);
     },
     refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
@@ -232,62 +227,6 @@ function ContestSubmissionsContent({
   const availableProblems = effectiveDivisionId
     ? problems.filter((problem) => problem.division_id === effectiveDivisionId)
     : problems;
-  const participantTeamId = participantContest?.team.participant_team_id;
-
-  useEffect(() => {
-    if (!isDocumentVisible) return;
-    if (!participantContest && !isPreview) return;
-
-    submissions
-      .filter((submission) => {
-        if (!isSubmissionPending(submission.status)) return false;
-        if (shouldUseParticipantScope) return true;
-        return submission.participant_team_id === participantTeamId;
-      })
-      .forEach((submission) => {
-        if (waitingIds.current.has(submission.submission_id)) return;
-
-        waitingIds.current.add(submission.submission_id);
-        void ensureParticipantSession()
-          .then((session) => {
-            if (!session?.accessToken) return null;
-            return waitSubmissionStatus(
-              contestId,
-              submission.submission_id,
-              session.accessToken,
-              {
-                pollIntervalSeconds: 0.5,
-                waitSeconds: 4,
-              },
-            );
-          })
-          .then(() => {
-            void queryClient.invalidateQueries({
-              queryKey: ['contest-submissions', contestId],
-            });
-            void queryClient.invalidateQueries({
-              queryKey: ['contest-scoreboard', contestId],
-            });
-            void queryClient.invalidateQueries({
-              queryKey: ['contest-problems', contestId],
-            });
-          })
-          .catch(() => undefined)
-          .finally(() => {
-            waitingIds.current.delete(submission.submission_id);
-          });
-      });
-  }, [
-    contestId,
-    ensureParticipantSession,
-    isDocumentVisible,
-    participantContest,
-    isPreview,
-    participantTeamId,
-    queryClient,
-    shouldUseParticipantScope,
-    submissions,
-  ]);
 
   return (
     <ContestPageFrame>
@@ -305,7 +244,6 @@ function ContestSubmissionsContent({
           divisions={divisions}
           onChange={(divisionId) => {
             setPublicDivisionId(divisionId);
-            setSelectedProblemId('');
             setCursorStack([]);
             const next = new URLSearchParams(searchParams);
             next.delete('problemId');
@@ -318,7 +256,6 @@ function ContestSubmissionsContent({
       {canViewSubmissions ? (
         <ProblemFilterSelect
           onChange={(problemId) => {
-            setSelectedProblemId(problemId);
             setCursorStack([]);
             const next = new URLSearchParams(searchParams);
             if (problemId) next.set('problemId', problemId);
@@ -361,6 +298,21 @@ function ContestSubmissionsContent({
             fallbackTeamName={fallbackTeamName}
             problems={problems}
             submissions={submissions}
+            sourceScopeKey={participantQueryIdentity}
+            loadSource={
+              shouldUseParticipantScope
+                ? async (submissionId) => {
+                    const session = await ensureParticipantSession();
+                    if (!session) throw new Error('로그인이 필요합니다.');
+                    const submission = await getSubmission(
+                      contestId,
+                      submissionId,
+                      session.accessToken,
+                    );
+                    return submission.source_code ?? '';
+                  }
+                : undefined
+            }
           />
         ) : null}
 

@@ -1,3 +1,4 @@
+import { pollDelay } from '@/shared/query/polling';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeading } from '@/components/common/PageLayout';
@@ -177,7 +178,7 @@ function ContestScoreboardContent({
         session?.accessToken ?? generalSession?.accessToken,
       );
     },
-    refetchInterval: isDocumentVisible ? 5_000 : false,
+    refetchInterval: () => (isDocumentVisible ? pollDelay(5_000) : false),
     refetchIntervalInBackground: false,
   });
   const rows = scoreboardQuery.data?.rows ?? [];
