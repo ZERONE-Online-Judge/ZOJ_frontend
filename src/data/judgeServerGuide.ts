@@ -14,7 +14,7 @@ const runRange = (id: string, field: 'runtime_ms' | 'memory_kb') => {
 };
 
 const agentSource =
-  'https://github.com/ZERONE-Online-Judge/judge-agent-v1/blob/df6515206a7646015d97a7be51d4ead05a7ba9bb/app/executor.py';
+  'https://github.com/ZERONE-Online-Judge/judge-agent-v1/blob/fc4e4d41ef2bf28caaec8073ac332ccc695cec67/app/executor.py';
 const languageNames: Record<string, string> = {
   cpp17: 'C++17',
   python313: 'Python 3.13',
@@ -28,7 +28,7 @@ export const judgeServerGuide: GuideCategory = {
   description:
     'ZOJ가 제공하는 실제 채점 환경, 예제 코드의 시간·메모리 실측, 대기열부터 판정 저장까지의 과정을 안내합니다. 운영자가 직접 설정하는 문제 제한·테스트·검증 작업과 연결해 읽어 보세요.',
   checklist: [
-    '표시 시간은 전체 채점 소요 시간·순수 CPU 시간과 다름을 이해',
+    '현재 CPU 시간과 전체 채점 경과 시간·과거 측정 기록을 구분',
     '사용할 언어의 정답·느린 풀이를 전체 테스트로 검증',
     '기본·언어별·테스트별로 적용되는 제한 확인',
     '이상 시 제출 ID·시각·판정·메시지와 함께 서비스에 문의',
@@ -37,15 +37,15 @@ export const judgeServerGuide: GuideCategory = {
     {
       id: 'server-speed',
       title: '현재 ZOJ가 제공하는 채점 환경',
-      summary: `운영 기준은 채점 VM ${infrastructure.vm.planned_count}대이며, 각 VM에 ${infrastructure.vm.vcpus_per_agent} vCPU·${infrastructure.vm.memory_gib_per_agent}GiB를 할당합니다. 7대에서 6대로 축소 운영하는 구성입니다.`,
+      summary: `운영 기준은 채점 VM ${infrastructure.vm.planned_count}대이며, 각 VM에 ${infrastructure.vm.vcpus_per_agent} vCPU·${infrastructure.vm.memory_gib_per_agent}GiB를 할당합니다.`,
       stepsTitle: '제공 환경을 이렇게 이해하세요',
       effectTitle: '대회 운영자가 관리하는 범위',
       steps: [
         '채점 서버 설치·VM 자원 배정·에이전트 연결과 업데이트는 ZOJ가 담당합니다. 대회 운영자가 서버 사양을 직접 맞추거나 VM을 구성할 필요는 없습니다.',
-        '물리 서버에는 Intel Xeon E5-2698 v4 @ 2.20GHz CPU 2소켓과 256GB DDR4-2933Y ECC 메모리가 장착되어 있습니다. 채점 VM마다 10 vCPU와 26GiB 메모리를 할당합니다. DDR4-2933Y는 장착 모듈 규격이며 실제 동작 클럭을 뜻하는 표기는 아닙니다.',
-        '6대 운영 기준에서 각 에이전트의 제출 슬롯은 2개, 합계 12개입니다. 슬롯은 동시에 맡을 제출 수입니다. VM의 10 vCPU를 제출 하나가 전용으로 쓰거나 단일 스레드 풀이가 10배 빨라지는 것은 아닙니다.',
-        '모든 채점 VM의 CPU 모델은 Intel Xeon E5-2698 v4 @ 2.20GHz이며, C/C++ 컴파일러는 GCC 14.2.0, Python은 CPython 3.13.13입니다. 전체 채점 VM이 같은 실행 환경을 사용합니다. 2.20GHz는 CPU 모델의 정격 표기입니다.',
-        '노드의 10 vCPU·26GiB 안에서 최대 2개 제출이 각각 테스트 4개씩 실행됩니다. 테스트 작업은 노드당 최대 8개이며 실제 개수는 테스트 수와 준비 상태에 따라 다릅니다. 연산별 TLE 자료는 단독 실행과 12건 동시 요청·제출당 테스트 4개 조건을 구분합니다.',
+        `물리 서버에는 Intel Xeon E5-2698 v4 CPU 2소켓과 256GB DDR4-2933Y ECC 메모리가 장착되어 있습니다. CPU 클럭은 2.2GHz 고정 정책입니다. 채점 VM의 CPU 할당은 ${infrastructure.vm.vcpus_per_agent} vCPU, 메모리 할당은 26GiB입니다. DDR4-2933Y는 장착 모듈 규격이며 실제 동작 클럭을 뜻하는 표기는 아닙니다.`,
+        `6대의 제출 슬롯은 각 ${infrastructure.vm.submission_slots_per_agent}개, 합계 ${infrastructure.vm.planned_submission_slots}개입니다. 슬롯은 동시에 맡을 제출 수입니다. vCPU 수로 단일 스레드 풀이의 실행 시간을 나누지 않습니다.`,
+        '모든 채점 VM의 CPU 모델은 Intel Xeon E5-2698 v4 @ 2.20GHz이며, C/C++ 컴파일러는 GCC 14.2.0, Python은 CPython 3.13.16입니다. 전체 채점 VM이 같은 실행 환경을 사용합니다. CPU 모델명과 별도로 클럭 2.2GHz 고정 정책을 적용합니다.',
+        `각 에이전트는 제출당 테스트를 최대 ${infrastructure.agent_configuration.testcases_parallel_per_submission}개 병렬 실행하는 정책입니다. 노드당 테스트 작업은 최대 ${infrastructure.agent_configuration.max_parallel_testcases_per_agent}개이며 실제 개수는 테스트 수와 준비 상태에 따라 다릅니다. 이번 연산별 TLE 기준은 제출당 테스트 1개를 전체 큐에서 단독으로 실행한 자료입니다.`,
         '같은 코드도 서버 성능과 실행 환경에 따라 시간이 달라집니다. 출제자 PC의 측정값을 그대로 시간 제한으로 옮기기보다 아래 실측 예제를 참고하고, 본인의 문제는 ZOJ 검증 코드 채점으로 확인하세요.',
       ],
       effect:
@@ -55,12 +55,12 @@ export const judgeServerGuide: GuideCategory = {
         rows: [
           [
             '채점 에이전트',
-            '6대 · 각 10 vCPU / 26GiB',
-            '7대에서 6대로 축소 운영 기준 · 실제 연결 수와 구분',
+            `6대 · 각 ${infrastructure.vm.vcpus_per_agent} vCPU / 26GiB`,
+            '운영 구성 · 실제 연결 상태는 실시간 조회',
           ],
           [
             '제출 슬롯',
-            '각 2개 · 합계 12개(6대 기준)',
+            `각 ${infrastructure.vm.submission_slots_per_agent}개 · 합계 ${infrastructure.vm.planned_submission_slots}개`,
             '각 에이전트가 동시에 맡는 제출 수',
           ],
           [
@@ -71,13 +71,13 @@ export const judgeServerGuide: GuideCategory = {
           ['물리 서버 메모리', '256GB · DDR4-2933Y ECC', '장착 용량·모듈 규격'],
           [
             'VM별 자원',
-            '10 vCPU · 26GiB',
-            '컨테이너 제한도 CPU 10 · 메모리 26g',
+            `${infrastructure.vm.vcpus_per_agent} vCPU · 26GiB`,
+            'VM 할당량 · 제출별 시간·메모리 제한과 구분',
           ],
           [
             '테스트 병렬 실행',
-            '제출당 최대 4개 · 노드당 최대 8개',
-            '제출 슬롯 2개 × 테스트 병렬 4개',
+            `제출당 최대 ${infrastructure.agent_configuration.testcases_parallel_per_submission}개 · 노드당 최대 ${infrastructure.agent_configuration.max_parallel_testcases_per_agent}개`,
+            `제출 슬롯 ${infrastructure.vm.submission_slots_per_agent}개 × 테스트 병렬 ${infrastructure.agent_configuration.testcases_parallel_per_submission}개`,
           ],
           [
             '격리 기본값',
@@ -86,7 +86,7 @@ export const judgeServerGuide: GuideCategory = {
           ],
           ['출력 상한', '10MiB', '에이전트 출력 제한 설정'],
           ['C/C++ 컴파일러', 'GCC 14.2.0', '전체 채점 에이전트 공통'],
-          ['Python', 'CPython 3.13.13', '전체 채점 에이전트 공통'],
+          ['Python', 'CPython 3.13.16', '전체 채점 에이전트 공통'],
           ['C / C++ 빌드', 'C99 / C++17 · -O2', '현재 에이전트의 컴파일 옵션'],
           [
             'Java 빌드',
@@ -162,17 +162,18 @@ export const judgeServerGuide: GuideCategory = {
       id: 'judge-time-metrics',
       title: '결과의 시간(ms)은 무엇을 측정한 값인가요?',
       summary:
-        '현재 표시값은 테스트 실행 경로의 경과 시간입니다. 전체 채점 시간이나 순수 CPU 시간은 아닙니다.',
+        '현재 표시값은 isolate가 기록한 테스트 프로그램의 CPU 시간입니다. 큐에서 기다리거나 CPU 배정을 기다린 시간은 포함하지 않습니다.',
       stepsTitle: '측정 구간을 구분하세요',
       effectTitle: '시간 결과를 읽는 방법',
       steps: [
         '채점 대기, 자료 다운로드, 제출 코드 컴파일, checker의 출력 검사는 제출 요약의 실행 시간에 합산하지 않습니다. 결과가 나올 때까지 10초를 기다렸다고 풀이 실행 시간이 10초인 것은 아닙니다.',
-        'v0.2.18은 테스트 프로그램을 실행하는 경로에서 시계로 경과 시간을 잽니다. isolate 초기화·실행을 감싸는 구간이므로 프로그램 시작과 격리 준비 비용, 실행 중 기다린 시간도 포함합니다. isolate가 기록한 순수 CPU 시간으로 표시하는 구현은 아닙니다.',
+        '현재 v0.2.23은 isolate 메타데이터의 time을 밀리초로 바꿔 표시합니다. 프로그램 초기화·배열 생성·JVM/JIT가 사용한 CPU 시간은 포함하지만, sleep·스케줄러 대기·isolate 준비 시간은 CPU 시간에 더하지 않습니다.',
         '한 제출의 요약 시간은 결과에 집계된 테스트 시간 중 최댓값입니다. 모든 테스트의 합계도, 평균도 아닙니다. 예를 들어 세 테스트가 80ms·120ms·90ms이면 요약은 120ms입니다.',
-        '시간 초과 판정은 격리 도구에 설정한 CPU 시간과 wall time 제한으로 결정됩니다. 현재 두 제한에 같은 유효 시간값을 적용하며 최소값은 100ms입니다. 화면의 경과 시간 측정 구간과 판정 도구의 측정 구간이 완전히 같지는 않습니다.',
-        '따라서 표시 시간이 제한을 조금 넘었는데도 통과하거나, 아주 짧은 코드가 여러 번 같은 수십 ms로 표시될 수 있습니다. 특히 작은 수치 차이를 순수 연산 속도의 정밀한 비교로 해석하지 마세요.',
+        'TLE의 기본 제한은 유효 CPU 시간입니다. 별도로 wall time은 max(CPU 제한 × 3, CPU 제한 + 2초)로 두어 정지·장시간 대기를 막습니다. 예를 들어 CPU 제한이 1초이면 wall 제한은 3초입니다. wall 시간만으로 CPU 사용량을 대신 해석하지 않습니다.',
+        'CPU 시간을 사용해도 캐시·메모리 대역폭·공유 자원 경합에 따른 실제 연산 지연은 남습니다. 아주 짧은 작업에는 밀리초 반올림과 실행 편차가 있으므로 최대 입력을 여러 번 실행하여 확인합니다.',
       ],
-      effect: `아래 Python sleep(0.2) 예제의 단독 실행 시간은 ${runRange('sleep-python', 'runtime_ms')}ms입니다. 실행 시간에는 프로그램의 대기 시간과 CPU 배정을 기다린 시간도 포함됩니다. 문제의 시간 제한은 정답 코드를 반복 채점한 실행 범위보다 여유 있게 정하세요.`,
+      effect:
+        '2.2GHz 고정 정책으로 다시 실행한 아래 연산별 자료는 현재 CPU 시간 기준입니다. 9월 v0.2.18 실행 예제는 격리 준비와 대기를 포함한 경과 시간 기록이며 현재 CPU 시간으로 재해석하지 않습니다. 문제의 시간 제한은 정답 풀이의 반복 실행 결과에 여유를 두어 정합니다.',
       table: {
         headers: ['값', '포함하는 범위'],
         rows: [
@@ -182,7 +183,7 @@ export const judgeServerGuide: GuideCategory = {
           ],
           [
             '화면의 테스트 실행 시간',
-            '현재 에이전트가 재는 격리 준비·실행 경과 시간',
+            'isolate time에 기록된 프로그램의 CPU 사용 시간',
           ],
           ['제출 요약 시간', '집계된 테스트 실행 시간의 최댓값'],
           [
@@ -196,7 +197,7 @@ export const judgeServerGuide: GuideCategory = {
         ],
       },
       references: [
-        { label: '현재 표시 시간 계산 코드', url: agentSource + '#L1096' },
+        { label: '현재 표시 시간 계산 코드', url: agentSource + '#L1046' },
         {
           label: 'isolate 공식 매뉴얼 · CPU time과 wall time',
           url: 'https://github.com/ioi/isolate/blob/master/isolate.1.txt',
@@ -320,7 +321,7 @@ export const judgeServerGuide: GuideCategory = {
         '작업 4종 × 언어 4종을 각각 단독 3회, 총 48건 실행했습니다. 모두 정답이며 다른 채점 작업 유입은 없었습니다. 표와 시간 예산 계산에는 단독 실행 최댓값을 사용합니다.',
         '상수 나머지 누적·직전 결과에 의존하는 곱셈과 나머지·4194304개 인덱스 배열의 의존 접근은 각각 1억 회입니다. 이진 탐색은 1048576개 정렬 배열에서 100만 번 검색하며, 검색마다 최대 21회 비교합니다. 탐색 1회와 기본 비교 1회는 서로 다른 단위입니다.',
         '입력으로 반복 횟수와 시작값을 받으며, 결과를 출력해 별도로 계산한 기대값과 비교했습니다. 결과가 사용되지 않는 반복문이나 정수 초 단위로 잘려 0초가 된 기록을 기준으로 삼지 않습니다. 컴파일러 최적화는 실제 채점과 같은 -O2를 유지합니다.',
-        '모든 언어 실험 제한은 120초·512MiB이며 문제의 기본 제한이나 언어 보정과 별개입니다. 매번 새 프로세스를 쓰고 준비 실행을 버리지 않았습니다. 배열 초기화·JVM/JIT·격리 준비는 표시 시간에 포함하며 큐 대기·컴파일·checker는 제외합니다. 제출 요약은 테스트 시간의 최댓값입니다.',
+        'CPU 클럭은 2.2GHz 고정 정책이며, 모든 언어 실험 제한은 120초·512MiB입니다. 문제의 기본 제한이나 언어 보정과 별개입니다. 표에 기록된 각 실행은 새 프로세스를 사용합니다. 표시값은 isolate CPU 시간으로 배열 초기화·JVM/JIT의 CPU 사용을 포함하며 격리 준비·CPU 배정 대기·컴파일·checker는 제외합니다. 제출 요약은 테스트 시간의 최댓값입니다.',
       ],
       table: {
         headers: ['언어 · 작업', '작업 수', '단독 실행 최대'],
@@ -366,7 +367,7 @@ export const judgeServerGuide: GuideCategory = {
         '작업 종류가 일치하는 실측 최댓값에 작업 수 비율과 여유 계수를 곱합니다. 검색 벤치마크의 단위는 탐색 전체 1회이므로 log N을 다시 곱하지 않습니다. 배열 크기나 자료구조가 다른 경우 실제 코드로 다시 측정합니다.',
       ],
       effect:
-        '문제의 실제 언어별 제한을 확인하고 최대 입력·편향된 입력·반복 실행 결과와 비교합니다. CPU 10코어 또는 VM 6대라는 이유로 단일 스레드 시간을 나누지 않습니다. 계산된 예산은 설계 참고값이며 채점 결과를 대체하지 않습니다.',
+        '문제의 실제 언어별 제한을 확인하고 최대 입력·편향된 입력·반복 실행 결과와 비교합니다. vCPU 수 또는 VM 6대라는 이유로 단일 스레드 시간을 나누지 않습니다. 계산된 예산은 설계 참고값이며 채점 결과를 대체하지 않습니다.',
       note: '실측 최대는 관측한 표본의 최대입니다. 무한 루프, 긴 문자열, 해시 충돌, 할당·GC, 입출력 등은 벤치마크보다 비쌀 수 있습니다. 일반 코드 전체를 보장하는 “1초당 최소 연산 수”는 제공하지 않습니다.',
     },
     {
@@ -388,9 +389,9 @@ export const judgeServerGuide: GuideCategory = {
     },
     {
       id: 'judge-measured-examples',
-      title: '이 시스템에서 실제로 실행한 코드와 결과',
+      title: '과거 실행 예제 · 2026년 9월 환경',
       summary:
-        '출력·500만 회 연산·100만 개 저장·0.2초 대기 예제 8종을 단독, 동시 10건, 동시 100건으로 각각 3회 실행한 결과입니다.',
+        '2026년 9월의 경과 시간 기준 기록입니다. 현재 2.2GHz·CPU 시간 기준은 위 연산별 실측을 사용합니다. 출력·500만 회 연산·배열·sleep 예제의 과거 단독 및 동시 부하 결과를 보존합니다.',
       stepsTitle: '예제의 측정 조건',
       effectTitle: '결과를 활용하는 방법',
       steps: [

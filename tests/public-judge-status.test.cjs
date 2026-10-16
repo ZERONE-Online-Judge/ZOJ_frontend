@@ -330,7 +330,7 @@ test('participant walkthrough autoplays and loops without controls or operator p
   }
 });
 
-test('time reference preserves observed maxima, units, load conditions and all raw samples', () => {
+test('time reference uses current serial CPU time and preserves every raw sample', () => {
   const { judgeTimeBenchmark: data } = source('data/judgeTimeBenchmark.ts');
   const raw = JSON.parse(
     fs.readFileSync(
@@ -340,11 +340,14 @@ test('time reference preserves observed maxima, units, load conditions and all r
   );
   const { judgeTimeSources: sources } = source('data/judgeTimeSources.ts');
   assert.equal(raw.cases.length, 16);
-  assert.equal(raw.cases.flatMap((c) => c.runs).length, 96);
+  assert.equal(raw.cases.flatMap((c) => c.runs).length, 48);
   assert.equal(
     raw.cases.flatMap((c) => c.runs).reduce((sum, r) => sum + r.testcases, 0),
-    240,
+    48,
   );
+  assert.equal(raw.runtimeMetric, 'isolate_cpu_time_ms');
+  assert.equal(raw.clockPolicy.target_mhz, 2200);
+  assert.match(raw.method, /격리 준비.*제외/);
   for (const c of data.cases) {
     const evidence = raw.cases.find((r) => r.id === c.id);
     assert.equal(sources[c.id].source, evidence.source);
@@ -354,7 +357,7 @@ test('time reference preserves observed maxima, units, load conditions and all r
         .filter((r) => r.condition === 'serial')
         .map((r) => r.runtime_ms),
     );
-    assert.equal(c.sampleCount, 6);
+    assert.equal(c.sampleCount, 3);
     assert.ok(
       evidence.runs.every(
         (r) => r.status === 'accepted' && r.other_jobs_observed === 0,
@@ -372,14 +375,8 @@ test('time reference preserves observed maxima, units, load conditions and all r
           .map((r) => r.runtime_ms),
       ),
     );
-    assert.equal(
-      c.loadMaxMs,
-      Math.max(
-        ...evidence.runs
-          .filter((r) => r.condition === 'mixed12')
-          .map((r) => r.runtime_ms),
-      ),
-    );
+    assert.ok(evidence.runs.every((r) => r.condition === 'serial'));
+    assert.equal('loadMaxMs' in c, false);
     assert.equal(c.iterations, c.profile === 'search' ? 1000000 : 100000000);
     assert.ok(
       evidence.source.includes(
@@ -395,7 +392,18 @@ test('time reference preserves observed maxima, units, load conditions and all r
   assert.match(html, /같은 1억 번도/);
   assert.match(html, /보수적 시간 예산/);
   assert.doesNotMatch(html, /동시 요청 최대|동시 요청 중 3개 제출/);
-  assert.match(html, /7\.452/);
+  assert.match(html, /2.2GHz 고정/);
+  assert.match(html, /isolate가 기록한 CPU 시간/);
+  const selected = data.cases.find(
+    (c) => c.profile === 'memory' && c.language === 'cpp17',
+  );
+  assert.ok(
+    html.includes(
+      ((selected.serialMaxMs * 2) / 1000).toLocaleString('ko-KR', {
+        maximumFractionDigits: 3,
+      }),
+    ),
+  );
   assert.match(html, /최악 실행시간의 상한이 아니/);
   assert.doesNotMatch(html, /1억 번 계산하면, 이만큼/);
 });

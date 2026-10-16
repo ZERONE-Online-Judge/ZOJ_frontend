@@ -272,7 +272,7 @@ test('real execution examples show recorded source, input and measurements witho
   await render('?section=judge-servers');
   assert.match(
     host.querySelector('.og-runtime-facts').textContent,
-    /6대.*10 vCPU.*26GiB/,
+    /6대.*5 vCPU.*26GiB/,
   );
   assert.match(host.querySelector('.og-benchmark-metrics').textContent, /33ms/);
   assert.match(host.querySelector('.og-load-selector').textContent, /총 3건/);
@@ -382,7 +382,7 @@ test('common environment is described for every node and load summaries match al
   assert.doesNotMatch(text, /03번|07번/);
   assert.match(text, /전체 채점 VM이 같은 실행 환경/);
   assert.match(text, /6대/);
-  assert.match(text, /10 vCPU/);
+  assert.match(text, /5 vCPU/);
   assert.match(text, /26GiB/);
   assert.match(text, /전체 채점 에이전트 공통/);
   const raw = JSON.parse(
@@ -461,24 +461,34 @@ test('operator guide separates the planned VM allocation from historical benchma
     fs.readFileSync(
       path.resolve(
         __dirname,
-        '../public/guides/judge-environment-2026-09-26.json',
+        '../public/guides/judge-environment-2026-10-16.json',
       ),
       'utf8',
     ),
   );
   assert.deepEqual(config, archived);
   assert.equal(config.vm.planned_count, 6);
-  assert.equal(config.vm.vcpus_per_agent, 10);
+  assert.equal(config.vm.vcpus_per_agent, 5);
   assert.equal(config.vm.memory_gib_per_agent, 26);
   assert.equal(
     config.agent_configuration.submission_slots *
       config.agent_configuration.testcases_parallel_per_submission,
-    8,
+    4,
   );
   const guide = source('data/judgeServerGuide.ts').judgeServerGuide;
   const measured = guide.articles.find((a) => a.id === 'judge-hundred-million');
   assert.equal(measured.table.rows.length, 16);
-  assert.match(JSON.stringify(measured), /3.726초/);
+  const current = source('data/judgeTimeBenchmark.ts').judgeTimeBenchmark;
+  const memory = current.cases.find(
+    (c) => c.profile === 'memory' && c.language === 'cpp17',
+  );
+  assert.ok(
+    JSON.stringify(measured).includes(
+      (memory.serialMaxMs / 1000).toFixed(3) + '초',
+    ),
+  );
+  assert.match(JSON.stringify(measured), /2.2GHz 고정/);
+  assert.match(JSON.stringify(measured), /isolate CPU 시간/);
   assert.match(JSON.stringify(measured), /보장 상한이 아닙니다/);
   assert.match(
     JSON.stringify(
