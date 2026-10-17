@@ -82,7 +82,12 @@ function ProblemLanguages({
       await client.invalidateQueries({
         queryKey: ['operator', 'problems', contestId],
       });
-      await client.invalidateQueries({ queryKey: ['contest', contestId] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['contest-problems', contestId] }),
+        client.invalidateQueries({
+          queryKey: ['contest-problem', contestId, problem.problem_id],
+        }),
+      ]);
     },
   });
   return (
