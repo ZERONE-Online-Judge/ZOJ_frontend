@@ -2,7 +2,14 @@ import { judgeLanguageLabel } from '@/domains/submissionScoreboard/languageLabel
 import type { Problem } from '@/domains/problemManagement/types';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 
-const LANGUAGE_ORDER: JudgeLanguage[] = ['cpp17', 'python313', 'java8', 'c99'];
+const LANGUAGE_ORDER: JudgeLanguage[] = [
+  'cpp17',
+  'python313',
+  'java8',
+  'c99',
+  'pypy3',
+  'kotlin',
+];
 
 const LANGUAGE_TIME_ADJUSTMENTS: Partial<
   Record<JudgeLanguage, { multiplier: number; bonusMs: number }>

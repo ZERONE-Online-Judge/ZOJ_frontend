@@ -452,10 +452,15 @@ function ContestProblemDetailContent({
   const fallbackLanguage = isJudgeLanguage(selectedSubmission?.language)
     ? selectedSubmission.language
     : lastJudgeLanguage;
-  const activeLanguage =
+  const preferredLanguage =
     draftLanguages[activeDraftKey] ??
     persistedDraft?.language ??
     fallbackLanguage;
+  const allowedLanguages = problem?.allowed_languages;
+  const activeLanguage =
+    allowedLanguages?.length && !allowedLanguages.includes(preferredLanguage)
+      ? allowedLanguages[0]
+      : preferredLanguage;
   const activeSourceCode =
     draftSourceCodes[activeDraftKey] ?? persistedDraft?.sourceCode ?? '';
   const submitFeedback =
@@ -781,6 +786,7 @@ function ContestProblemDetailContent({
           />
           <ProblemStatementPanel assets={problemAssets} problem={problem} />
           <ProblemSubmitPanel
+            allowedLanguages={problem.allowed_languages}
             isSubmitting={
               submitMutation.isPending || mockSubmitMutation.isPending
             }
@@ -846,6 +852,7 @@ function ContestProblemDetailContent({
       {problem && effectiveView === 'submit' && canShowSubmit ? (
         <section className="zoj-problem-workspace is-submit-only">
           <ProblemSubmitPanel
+            allowedLanguages={problem.allowed_languages}
             canSubmit={canSubmitActiveDraft}
             editorHeight="clamp(280px, 55dvh, 640px)"
             isSubmitting={

@@ -240,11 +240,13 @@ function RequestModal({
                 onChange={(event) => setLanguage(event.target.value)}
               >
                 <option value="">모든 언어</option>
-                {['c99', 'cpp17', 'python313', 'java8'].map((value) => (
-                  <option key={value} value={value}>
-                    {judgeLanguageLabel(value)}
-                  </option>
-                ))}
+                {['c99', 'cpp17', 'python313', 'java8', 'pypy3', 'kotlin'].map(
+                  (value) => (
+                    <option key={value} value={value}>
+                      {judgeLanguageLabel(value)}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
           </>

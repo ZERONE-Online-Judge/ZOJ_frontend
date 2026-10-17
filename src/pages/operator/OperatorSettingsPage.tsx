@@ -1,3 +1,4 @@
+import ProblemLanguageSettings from '@/components/operator/ProblemLanguageSettings';
 import SettingsSaveBar from '@/components/operator/SettingsSaveBar';
 import './OperatorSettingsPage.css';
 import useConfirmation from '@/shared/ui/useConfirmation';
@@ -861,6 +862,13 @@ function OperatorSettingsContent({
               </p>
             )}
           </OperatorPanel>
+          {hasContestPermission(
+            session,
+            contestId,
+            'contest.problem.manage',
+          ) ? (
+            <ProblemLanguageSettings contestId={contestId} token={token} />
+          ) : null}
         </div>
       ) : null}
     </PageLayout>

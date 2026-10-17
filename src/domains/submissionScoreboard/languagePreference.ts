@@ -5,6 +5,8 @@ export const judgeLanguages: JudgeLanguage[] = [
   'python313',
   'java8',
   'c99',
+  'pypy3',
+  'kotlin',
 ];
 
 const LAST_JUDGE_LANGUAGE_KEY = 'zoj.lastJudgeLanguage';

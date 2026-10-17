@@ -143,7 +143,8 @@ export function newTestcaseDraft(displayOrder: number): TestcaseDraft {
 export function editorLanguageForJudgeLanguage(language: string) {
   if (language === 'c99') return 'c';
   if (language === 'cpp17') return 'cpp';
-  if (language === 'python313') return 'python';
+  if (language === 'kotlin') return 'kotlin';
+  if (language === 'python313' || language === 'pypy3') return 'python';
   if (language === 'java8') return 'java';
   return 'plaintext';
 }

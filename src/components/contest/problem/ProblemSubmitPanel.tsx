@@ -4,6 +4,7 @@ import PageNotice from '@/shared/ui/PageNotice';
 import type { JudgeLanguage } from '@/domains/submissionScoreboard/types';
 
 type ProblemSubmitPanelProps = {
+  allowedLanguages?: JudgeLanguage[];
   problemCode?: string;
   problemTitle?: string;
   language: JudgeLanguage;
@@ -28,9 +29,12 @@ const languageOptions: { label: string; value: JudgeLanguage }[] = [
   { label: 'Python 3.13', value: 'python313' },
   { label: 'Java 8', value: 'java8' },
   { label: 'C99', value: 'c99' },
+  { label: 'PyPy 3.9 (7.3.15)', value: 'pypy3' },
+  { label: 'Kotlin 1.9.24', value: 'kotlin' },
 ];
 
 export default function ProblemSubmitPanel({
+  allowedLanguages,
   problemCode,
   problemTitle,
   language,
@@ -81,11 +85,16 @@ export default function ProblemSubmitPanel({
             }
             value={language}
           >
-            {languageOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {languageOptions
+              .filter(
+                (option) =>
+                  !allowedLanguages || allowedLanguages.includes(option.value),
+              )
+              .map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
           </select>
           <svg
             aria-hidden="true"

@@ -73,6 +73,7 @@ export function createOperatorProblem(
     time_limit_ms: number;
     memory_limit_mb: number;
     language_resource_limits?: Problem['language_resource_limits'];
+    allowed_languages?: Problem['allowed_languages'];
     display_order?: number;
   },
 ) {

@@ -91,6 +91,7 @@ function languageFromFilename(filename: string): JudgeLanguage | null {
   }
   if (lower.endsWith('.c')) return 'c99';
   if (lower.endsWith('.py')) return 'python313';
+  if (lower.endsWith('.kt')) return 'kotlin';
   if (lower.endsWith('.java')) return 'java8';
   return null;
 }
@@ -166,10 +167,11 @@ export default function useVerificationCodeRuns({
         queryKey: ['operator', 'verification-runs', contestId, run.problemId],
       });
     try {
-      const language = languageFromFilename(run.filename);
+      const language =
+        run.asset?.source_language ?? languageFromFilename(run.filename);
       if (!language) {
         throw new Error(
-          '지원하지 않는 코드 파일입니다. .c, .cc, .cpp, .cxx, .py, .java 파일을 사용해 주세요.',
+          '지원하지 않는 코드 파일입니다. .c, .cc, .cpp, .cxx, .py, .kt, .java 파일을 사용해 주세요.',
         );
       }
       const sourceCode = file

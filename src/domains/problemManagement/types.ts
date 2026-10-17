@@ -1,4 +1,5 @@
 export type Problem = {
+  allowed_languages?: import('@/domains/submissionScoreboard/types').JudgeLanguage[];
   default_statement_language?: string;
   statement_translations?: Record<string, { title: string; statement: string }>;
   editorial_translations?: Record<string, string>;
@@ -24,6 +25,9 @@ export type Problem = {
 };
 
 export type ProblemAsset = {
+  source_language?:
+    | import('@/domains/submissionScoreboard/types').JudgeLanguage
+    | null;
   asset_id: string;
   original_filename: string;
   storage_key: string;
@@ -199,20 +203,52 @@ export const PROBLEM_OUTPUT_TEMPLATE = `출력 형식을 작성하세요.
 export const PROBLEM_NOTE_TEMPLATE = `필요한 추가 설명을 작성하세요.
 `;
 
-export const PACKAGE_FILE_ROLES: { value: PackageFileRole; label: string; detail: string }[] = [
-  { value: 'main-solution', label: 'Main Solution', detail: '공식 출력 생성용 정답 코드' },
+export const PACKAGE_FILE_ROLES: {
+  value: PackageFileRole;
+  label: string;
+  detail: string;
+}[] = [
+  {
+    value: 'main-solution',
+    label: 'Main Solution',
+    detail: '공식 출력 생성용 정답 코드',
+  },
   { value: 'validator', label: 'Validator', detail: '입력 검증 프로그램' },
   { value: 'generator', label: 'Generator', detail: '입력 생성 프로그램' },
   { value: 'checker', label: 'Checker', detail: '정답 비교 프로그램' },
-  { value: 'brute-solution', label: 'Brute Solution', detail: '작은 테스트 교차검증용' },
-  { value: 'wrong-solution', label: 'Wrong Solution', detail: '저격 테스트 검증용 오답 코드' },
-  { value: 'manual-input', label: 'Manual Input', detail: 'sample/manual 입력 파일' },
+  {
+    value: 'brute-solution',
+    label: 'Brute Solution',
+    detail: '작은 테스트 교차검증용',
+  },
+  {
+    value: 'wrong-solution',
+    label: 'Wrong Solution',
+    detail: '저격 테스트 검증용 오답 코드',
+  },
+  {
+    value: 'manual-input',
+    label: 'Manual Input',
+    detail: 'sample/manual 입력 파일',
+  },
   { value: 'test-script', label: 'Test Script', detail: '테스트 생성 recipe' },
-  { value: 'package-resource', label: 'Package Resource', detail: 'testlib.h 등 공유 include 파일' },
-  { value: 'interactor', label: 'Interactor', detail: '인터랙티브 문제용 프로그램' },
+  {
+    value: 'package-resource',
+    label: 'Package Resource',
+    detail: 'testlib.h 등 공유 include 파일',
+  },
+  {
+    value: 'interactor',
+    label: 'Interactor',
+    detail: '인터랙티브 문제용 프로그램',
+  },
 ];
 
-export const TESTCASE_SUPPORT_FILE_ROLES: PackageFileRole[] = ['package-resource', 'validator', 'checker'];
+export const TESTCASE_SUPPORT_FILE_ROLES: PackageFileRole[] = [
+  'package-resource',
+  'validator',
+  'checker',
+];
 
 export const TEST_SCRIPT_TEMPLATE = `# samples
 manual sample1.in

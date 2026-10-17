@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import VerificationAnalysisPanel from '@/components/operator/VerificationAnalysisPanel';
 import { formatDateTime } from '@/shared/lib/dateTime';
 import type { ProblemAsset } from '@/domains/problemManagement/types';
@@ -129,7 +130,7 @@ export default function VerificationCodeSection({
                   </svg>
                   파일 추가
                   <input
-                    accept=".c,.cc,.cpp,.cxx,.py,.java,text/plain"
+                    accept=".c,.cc,.cpp,.cxx,.py,.kt,.java,text/plain"
                     aria-label={`${kind.label} 파일 선택`}
                     className="sr-only"
                     multiple
@@ -204,6 +205,12 @@ function VerificationCodeRow({
   result?: VerificationRunResult;
 }) {
   const isBusy = isVerificationRunning(result);
+  const [pythonRuntime, setPythonRuntime] = useState(
+    asset?.source_language === 'pypy3' ||
+      result?.submission?.language === 'pypy3'
+      ? 'pypy3'
+      : 'python313',
+  );
   return (
     <div
       aria-label={filename}
@@ -245,7 +252,19 @@ function VerificationCodeRow({
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          {filename.endsWith('.py') ? (
+            <select
+              aria-label={`${filename} 실행 언어`}
+              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs"
+              disabled={isBusy}
+              value={pythonRuntime}
+              onChange={(event) => setPythonRuntime(event.target.value)}
+            >
+              <option value="python313">Python 3.13</option>
+              <option value="pypy3">PyPy 3.9</option>
+            </select>
+          ) : null}
           <button
             className="h-8 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!asset}
@@ -257,7 +276,18 @@ function VerificationCodeRow({
           <button
             className="h-8 rounded-md border border-indigo-200 bg-indigo-50/60 px-2.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!asset || isBusy}
-            onClick={() => asset && onRun(asset, expectedStatus)}
+            onClick={() =>
+              asset &&
+              onRun(
+                filename.endsWith('.py')
+                  ? {
+                      ...asset,
+                      source_language: pythonRuntime as 'pypy3' | 'python313',
+                    }
+                  : asset,
+                expectedStatus,
+              )
+            }
             type="button"
           >
             {isBusy ? '처리 중' : '채점'}

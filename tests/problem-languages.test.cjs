@@ -16,6 +16,10 @@ const { act } = React;
 const { createRoot } = require('react-dom/client');
 const h = React.createElement;
 const mocks = {
+  '@/shared/ui/CodeEditor': {
+    __esModule: true,
+    default: () => h('div', null, '코드'),
+  },
   '@/shared/ui/MarkdownPreview': {
     __esModule: true,
     default: ({ statement }) => h('p', { 'data-markdown': true }, statement),
@@ -284,4 +288,39 @@ test('operator can add and edit translated examples without losing an empty new 
   await click('이 번역 삭제');
   assert.deepEqual(current.statement_translations, {});
   assert.deepEqual(current.editorial_translations, {});
+});
+
+test('submission language choices follow each problem policy', async () => {
+  const SubmitPanel = source(
+    'components/contest/problem/ProblemSubmitPanel.tsx',
+  ).default;
+  const languages = source(
+    'domains/submissionScoreboard/languagePreference.ts',
+  );
+  assert.ok(languages.isJudgeLanguage('pypy3'));
+  assert.ok(languages.isJudgeLanguage('kotlin'));
+  let chosen;
+  await render(
+    h(SubmitPanel, {
+      allowedLanguages: ['pypy3', 'kotlin'],
+      language: 'pypy3',
+      sourceCode: '',
+      isSubmitting: false,
+      message: '',
+      messageStatus: 'idle',
+      onLanguageChange: (value) => {
+        chosen = value;
+      },
+      onSourceCodeChange: () => {},
+      onSubmit: () => {},
+    }),
+  );
+  const picker = container.querySelector('select');
+  assert.deepEqual(
+    [...picker.options].map((option) => option.value),
+    ['pypy3', 'kotlin'],
+  );
+  assert.equal(picker.value, 'pypy3');
+  await select(picker, 'kotlin');
+  assert.equal(chosen, 'kotlin');
 });

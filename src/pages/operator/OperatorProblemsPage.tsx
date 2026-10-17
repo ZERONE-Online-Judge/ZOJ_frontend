@@ -98,6 +98,7 @@ import { loadCodeDraft, saveCodeDraft } from '@/shared/lib/codeDraftStorage';
 import { formatMemoryKb } from '@/shared/lib/formatters';
 
 type ProblemForm = {
+  allowedLanguages: JudgeLanguage[];
   defaultStatementLanguage: string;
   statementTranslations: NonNullable<Problem['statement_translations']>;
   editorialTranslations: NonNullable<Problem['editorial_translations']>;
@@ -126,6 +127,8 @@ const LIMIT_BOUNDARIES = {
 } as const;
 const LANGUAGE_LABELS: Record<JudgeLanguage, string> = {
   c99: 'C99',
+  pypy3: 'PyPy 3.9 (7.3.15)',
+  kotlin: 'Kotlin 1.9.24',
   cpp17: 'C++17',
   java8: 'Java 8',
   python313: 'Python 3.13',
@@ -218,6 +221,7 @@ function codeLength(submission: Submission) {
 type ProblemEditorMode = 'idle' | 'create' | 'edit';
 
 const emptyProblemForm: ProblemForm = {
+  allowedLanguages: [...judgeLanguages],
   defaultStatementLanguage: 'ko',
   statementTranslations: {},
   editorialTranslations: {},
@@ -274,6 +278,7 @@ function problemFormFromProblem(problem: Problem): ProblemForm {
     editorialTranslations: problem.editorial_translations || {},
     examples: document.examples,
     inputDescription: document.inputDescription,
+    allowedLanguages: problem.allowed_languages ?? [...judgeLanguages],
     languageResourceLimits,
     memoryLimitMb: String(problem.memory_limit_mb),
     note: document.note,
@@ -469,6 +474,7 @@ function previewProblemFromForm(
     statement_translations: form.statementTranslations,
     editorial_translations: form.editorialTranslations,
     language_resource_limits: languageResourceLimitsFromForm(form),
+    allowed_languages: form.allowedLanguages,
     memory_limit_mb: limitValueOrFallback(
       form.memoryLimitMb,
       selectedProblem?.memory_limit_mb ?? 256,
@@ -969,6 +975,7 @@ function OperatorProblemsContent({
         statement_translations: problemForm.statementTranslations,
         editorial_translations: problemForm.editorialTranslations,
         language_resource_limits: languageResourceLimitsFromForm(problemForm),
+        allowed_languages: problemForm.allowedLanguages,
         memory_limit_mb: Number(problemForm.memoryLimitMb),
         problem_code: problemForm.problemCode.trim(),
         statement: problemStatementFromForm(problemForm),
@@ -1996,6 +2003,49 @@ function OperatorProblemsContent({
                             value={form.memoryLimitMb}
                           />
                         </div>
+                        <fieldset className="rounded-lg border border-slate-200 p-4">
+                          <legend className="px-1 text-sm font-semibold text-slate-900">
+                            제출 가능한 언어
+                          </legend>
+                          <p className="mb-3 text-xs text-slate-500">
+                            이 문제에 제출할 수 있는 언어를 선택하세요. 기존
+                            제출과 재채점에는 영향을 주지 않습니다.
+                          </p>
+                          <div className="flex flex-wrap gap-x-5 gap-y-3">
+                            {judgeLanguages.map((language) => (
+                              <label
+                                key={language}
+                                className="flex items-center gap-2 text-sm text-slate-700"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="accent-[#6d5dfc]"
+                                  checked={form.allowedLanguages.includes(
+                                    language,
+                                  )}
+                                  disabled={
+                                    form.allowedLanguages.length === 1 &&
+                                    form.allowedLanguages.includes(language)
+                                  }
+                                  onChange={(event) =>
+                                    setForm((previous) => ({
+                                      ...previous,
+                                      allowedLanguages: event.target.checked
+                                        ? [
+                                            ...previous.allowedLanguages,
+                                            language,
+                                          ]
+                                        : previous.allowedLanguages.filter(
+                                            (value) => value !== language,
+                                          ),
+                                    }))
+                                  }
+                                />
+                                {LANGUAGE_LABELS[language]}
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>

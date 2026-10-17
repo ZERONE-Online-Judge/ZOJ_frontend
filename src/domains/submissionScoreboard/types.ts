@@ -3,7 +3,13 @@ import type {
   ScoreboardReleaseMode,
 } from '@/domains/contestAdministration/types';
 
-export type JudgeLanguage = 'c99' | 'cpp17' | 'python313' | 'java8';
+export type JudgeLanguage =
+  | 'c99'
+  | 'cpp17'
+  | 'python313'
+  | 'java8'
+  | 'pypy3'
+  | 'kotlin';
 
 export type Submission = {
   submission_id: string;
