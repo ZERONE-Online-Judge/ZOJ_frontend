@@ -10,6 +10,7 @@ import {
 } from '@/domains/problemManagement/archive';
 import { formatApiError } from '@/shared/api/errors';
 import EditorImportPanel from './EditorImportPanel';
+import PackageUpdateHistory from './PackageUpdateHistory';
 
 function sizeLabel(bytes: number) {
   return bytes >= 1024 * 1024
@@ -89,6 +90,14 @@ export default function ProblemArchivePanel({
         aria-label="문제 파일 가져오기와 내보내기"
         className="grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
       >
+        {selectedProblem && (
+          <PackageUpdateHistory
+            key={selectedProblem.problem_id + selectedProblem.title}
+            contestId={contestId}
+            problemId={selectedProblem.problem_id}
+            token={token}
+          />
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="grid min-w-0 gap-1">
             <h2 className="text-sm font-semibold text-slate-900">문제 ZIP</h2>

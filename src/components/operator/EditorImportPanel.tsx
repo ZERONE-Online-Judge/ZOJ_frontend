@@ -9,9 +9,12 @@ import {
   prepareEditorPackage,
   importEditorProject,
   editorFolderPath,
+  previewEditorUpdate,
+  type PackageUpdatePreview,
 } from '@/domains/problemManagement/editorLibrary';
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
+import EditorUpdateModal from '@/components/operator/EditorUpdateModal';
 
 export default function EditorImportPanel({
   contestId,
@@ -36,12 +39,15 @@ export default function EditorImportPanel({
   const [offset, setOffset] = useState(0);
   const [folder, setFolder] = useState('all');
   const [selectedId, setSelectedId] = useState('');
-  const [testset, setTestset] = useState('tests');
+  const [testsets, setTestsets] = useState<string[]>(['tests']);
   const [language, setLanguage] = useState('korean');
   const [jobId, setJobId] = useState('');
   const [divisionId, setDivisionId] = useState('');
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
+  const [targetId, setTargetId] = useState('');
+  const [updatePreview, setUpdatePreview] =
+    useState<PackageUpdatePreview | null>(null);
   const library = useQuery({
     queryKey: [
       'editor-library',
@@ -70,11 +76,16 @@ export default function EditorImportPanel({
   });
   const prepare = useMutation({
     mutationFn: () =>
-      prepareEditorPackage(contestId, token, selectedId, testset, language),
+      prepareEditorPackage(contestId, token, selectedId, testsets, language),
     onSuccess: (job) => {
       setJobId(job.id);
       void library.refetch();
     },
+  });
+  const previewUpdate = useMutation({
+    mutationFn: () =>
+      previewEditorUpdate(contestId, token, selectedId, jobId, targetId),
+    onSuccess: setUpdatePreview,
   });
   const importing = useMutation({
     mutationFn: () =>
@@ -105,16 +116,23 @@ export default function EditorImportPanel({
     packageData.package?.format === 'zoj' &&
     packageData.package.verified &&
     !packageQuery.error;
-  const busy = prepare.isPending || importing.isPending;
+  const busy =
+    prepare.isPending || importing.isPending || previewUpdate.isPending;
   const duplicate = problems.some(
     (p) => p.division_id === divisionId && p.problem_code === code.trim(),
   );
   const error =
-    library.error || prepare.error || packageQuery.error || importing.error;
+    library.error ||
+    prepare.error ||
+    packageQuery.error ||
+    importing.error ||
+    previewUpdate.error;
   function resetPackage() {
     setJobId('');
     prepare.reset();
     importing.reset();
+    previewUpdate.reset();
+    setUpdatePreview(null);
   }
   return (
     <>
@@ -127,6 +145,7 @@ export default function EditorImportPanel({
           setSelectedId('');
           setDivisionId(activeDivisionId);
           setCode('');
+          setTargetId('');
           resetPackage();
         }}
         className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"
@@ -140,10 +159,10 @@ export default function EditorImportPanel({
       )}
       {open && (
         <ModalDialog
-          title="내 Editor 문제 가져오기"
+          title="Editor 문제 가져오기 · 업데이트"
           eyebrow="ZOJ Editor"
           size="wide"
-          description="같은 이메일 계정의 문제를 선택하고, 검증한 공유 리비전을 이 대회에 등록합니다."
+          description="전송 권한이 있는 개인·협업·팀 폴더 문제의 검증된 공유 리비전을 등록하거나 기존 문제에 적용합니다."
           onClose={() => {
             if (!busy) setOpen(false);
           }}
@@ -158,15 +177,17 @@ export default function EditorImportPanel({
                   busy ||
                   !selected ||
                   !ready ||
-                  !divisionId ||
-                  !code.trim() ||
-                  duplicate
+                  (!targetId && (!divisionId || !code.trim() || duplicate))
                 }
-                onClick={() => importing.mutate()}
+                onClick={() =>
+                  targetId ? previewUpdate.mutate() : importing.mutate()
+                }
               >
                 {importing.isPending
                   ? '문제 가져오는 중…'
-                  : '이 대회에 문제 가져오기'}
+                  : targetId
+                    ? '업데이트 변경 내용 확인'
+                    : '이 대회에 문제 가져오기'}
               </ModalButton>
             </>
           }
@@ -181,7 +202,7 @@ export default function EditorImportPanel({
               <p className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
                 <strong>{library.data.email}</strong>
                 <span className="ml-2 text-xs text-indigo-700">
-                  본인 소유 문제만 표시합니다.
+                  ZOJ 전송 권한이 있는 개인·협업·팀 폴더 문제를 표시합니다.
                 </span>
               </p>
               {!library.data.configured ? (
@@ -265,11 +286,11 @@ export default function EditorImportPanel({
                             aria-pressed={p.id === selectedId}
                             onClick={() => {
                               setSelectedId(p.id);
-                              setTestset(
+                              setTestsets([
                                 p.testsets.includes('tests')
                                   ? 'tests'
                                   : p.testsets[0] || 'tests',
-                              );
+                              ]);
                               setLanguage(
                                 p.statement_languages.includes('korean')
                                   ? 'korean'
@@ -363,22 +384,36 @@ export default function EditorImportPanel({
                               Editor에서 문제 확인 →
                             </a>
                           </div>
-                          <label className="grid gap-1 text-xs text-slate-600">
-                            사용할 테스트 세트
-                            <select
-                              value={testset}
-                              disabled={busy || active}
-                              onChange={(e) => {
-                                setTestset(e.target.value);
-                                resetPackage();
-                              }}
-                              className="rounded-lg border border-slate-200 p-2 text-sm"
-                            >
-                              {selected.testsets.map((s) => (
-                                <option key={s}>{s}</option>
-                              ))}
-                            </select>
-                          </label>
+                          <fieldset className="grid gap-2 rounded-lg border border-slate-200 p-3 text-sm">
+                            <legend className="px-1 text-xs text-slate-600">
+                              사용할 테스트 세트 · 여러 개 선택
+                            </legend>
+                            {selected.testsets.map((s) => (
+                              <label
+                                key={s}
+                                className="flex items-center gap-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={busy || active}
+                                  checked={testsets.includes(s)}
+                                  onChange={(e) => {
+                                    setTestsets(
+                                      e.target.checked
+                                        ? [...testsets, s]
+                                        : testsets.filter((name) => name !== s),
+                                    );
+                                    resetPackage();
+                                  }}
+                                />
+                                {s}
+                              </label>
+                            ))}
+                            <p className="text-xs leading-5 text-slate-500">
+                              선택한 세트의 테스트를 합쳐 ZOJ의 활성 테스트로
+                              등록합니다. 패키지 검증은 필수입니다.
+                            </p>
+                          </fieldset>
                           <label className="grid gap-1 text-xs text-slate-600">
                             기본 지문 언어
                             <select
@@ -401,7 +436,7 @@ export default function EditorImportPanel({
                           </p>
                           <button
                             type="button"
-                            disabled={busy || active}
+                            disabled={busy || active || !testsets.length}
                             onClick={() => prepare.mutate()}
                             className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
                           >
@@ -441,47 +476,77 @@ export default function EditorImportPanel({
                   </div>
                   <section className="border-t border-slate-200 pt-4">
                     <h3 className="mb-3 text-sm font-bold text-slate-900">
-                      3. 대회에 새 문제 등록
+                      3. 새 문제 등록 또는 기존 문제 업데이트
                     </h3>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="grid gap-1 text-xs text-slate-600">
-                        참가 유형
-                        <select
-                          value={divisionId}
-                          disabled={importing.isPending}
-                          onChange={(e) => setDivisionId(e.target.value)}
-                          className="rounded-lg border border-slate-200 p-2 text-sm"
-                        >
-                          <option value="">선택하세요</option>
-                          {divisions.map((d) => (
-                            <option key={d.division_id} value={d.division_id}>
-                              {d.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="grid gap-1 text-xs text-slate-600">
-                        문제 번호
-                        <input
-                          value={code}
-                          maxLength={16}
-                          disabled={importing.isPending}
-                          placeholder="예: A"
-                          onChange={(e) => setCode(e.target.value)}
-                          className="rounded-lg border border-slate-200 p-2 text-sm"
-                        />
-                      </label>
-                    </div>
-                    {duplicate && (
-                      <p role="alert" className="mt-2 text-xs text-red-600">
-                        이 참가 유형에 같은 문제 번호가 있습니다.
-                      </p>
+                    <label className="mb-3 grid gap-1 text-xs text-slate-600">
+                      적용 대상
+                      <select
+                        value={targetId}
+                        disabled={busy}
+                        onChange={(e) => {
+                          setTargetId(e.target.value);
+                          previewUpdate.reset();
+                        }}
+                        className="rounded-lg border border-slate-200 p-2 text-sm"
+                      >
+                        <option value="">새 문제로 등록</option>
+                        {problems.map((p) => (
+                          <option key={p.problem_id} value={p.problem_id}>
+                            {
+                              divisions.find(
+                                (d) => d.division_id === p.division_id,
+                              )?.name
+                            }{' '}
+                            · {p.problem_code}. {p.title} 업데이트
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {!targetId && (
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="grid gap-1 text-xs text-slate-600">
+                            참가 유형
+                            <select
+                              value={divisionId}
+                              disabled={importing.isPending}
+                              onChange={(e) => setDivisionId(e.target.value)}
+                              className="rounded-lg border border-slate-200 p-2 text-sm"
+                            >
+                              <option value="">선택하세요</option>
+                              {divisions.map((d) => (
+                                <option
+                                  key={d.division_id}
+                                  value={d.division_id}
+                                >
+                                  {d.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="grid gap-1 text-xs text-slate-600">
+                            문제 번호
+                            <input
+                              value={code}
+                              maxLength={16}
+                              disabled={importing.isPending}
+                              placeholder="예: A"
+                              onChange={(e) => setCode(e.target.value)}
+                              className="rounded-lg border border-slate-200 p-2 text-sm"
+                            />
+                          </label>
+                        </div>
+                        {duplicate && (
+                          <p role="alert" className="mt-2 text-xs text-red-600">
+                            이 참가 유형에 같은 문제 번호가 있습니다.
+                          </p>
+                        )}
+                      </>
                     )}
                     <p className="mt-3 text-xs leading-5 text-slate-500">
-                      기존 문제를 덮어쓰지 않고 새 문제로 등록합니다. 같은
-                      요청을 재시도해도 중복 생성하지 않습니다. 실제 대회 판정은
-                      ZOJ의 채점 환경을 사용하므로 가져온 검증 풀이도
-                      확인하세요.
+                      {targetId
+                        ? '업데이트 전에 변경 내용을 확인하고 이전 패키지를 백업합니다. 기존 제출과 판정은 유지되며 필요한 경우 별도로 재채점하세요.'
+                        : '새 문제로 등록합니다. 같은 요청을 재시도해도 중복 생성하지 않습니다.'}
                     </p>
                   </section>
                 </>
@@ -497,6 +562,23 @@ export default function EditorImportPanel({
             </p>
           )}
         </ModalDialog>
+      )}
+      {updatePreview && (
+        <EditorUpdateModal
+          contestId={contestId}
+          token={token}
+          projectId={selectedId}
+          jobId={jobId}
+          preview={updatePreview}
+          onClose={() => setUpdatePreview(null)}
+          onUpdated={(problem) => {
+            setOpen(false);
+            setMessage(
+              `${problem.problem_code}. ${problem.title} 패키지를 업데이트했습니다. 기존 제출은 별도로 재채점할 수 있습니다.`,
+            );
+            onImported(problem);
+          }}
+        />
       )}
     </>
   );

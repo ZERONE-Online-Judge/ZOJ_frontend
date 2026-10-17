@@ -1,4 +1,4 @@
-import { apiRequest } from '@/shared/api/client';
+import { apiBlobRequest, apiRequest } from '@/shared/api/client';
 import type { Problem } from './types';
 
 export type EditorProject = {
@@ -35,7 +35,7 @@ export type EditorPackage = {
   revision: number;
   summary: string;
   progress: number;
-  options: { testset: string; statement_language: string };
+  options: { testset: string; testsets?: string[]; statement_language: string };
   package?: {
     verified: boolean;
     format: string;
@@ -62,7 +62,7 @@ export function prepareEditorPackage(
   contestId: string,
   token: string,
   projectId: string,
-  testset: string,
+  testsets: string[],
   statementLanguage: string,
 ) {
   return apiRequest<EditorPackage>(
@@ -70,7 +70,11 @@ export function prepareEditorPackage(
     token,
     {
       method: 'POST',
-      body: JSON.stringify({ testset, statement_language: statementLanguage }),
+      body: JSON.stringify({
+        testset: testsets[0],
+        testsets,
+        statement_language: statementLanguage,
+      }),
     },
   );
 }
@@ -117,4 +121,93 @@ export function editorFolderPath(folders: EditorFolder[], id: string | null) {
     id = folder.parent_id;
   }
   return path.join(' / ');
+}
+
+export type PackageUpdatePreview = {
+  target_problem_id: string;
+  problem_code: string;
+  title: string;
+  target_hash: string;
+  contest_title: string;
+  division_name: string;
+  archive_sha256: string;
+  changes: {
+    field: string;
+    label: string;
+    changed: boolean;
+    truncated?: boolean;
+    before: string | number | null;
+    after: string | number | null;
+  }[];
+  files: {
+    filename: string;
+    category: string;
+    change: 'added' | 'removed' | 'changed';
+  }[];
+  changed_file_count: number;
+  current_testcase_count: number;
+  incoming_testcase_count: number;
+  testcase_changes: { added: number; removed: number; changed: number };
+  next_testcase_version: number;
+  contest_running: boolean;
+  submission_count: number;
+  preserved: string;
+};
+export type PackageUpdateResult = {
+  problem: Problem;
+  backup_url: string;
+  official_results_unchanged: boolean;
+};
+
+export function previewEditorUpdate(
+  contestId: string,
+  token: string,
+  projectId: string,
+  jobId: string,
+  targetId: string,
+) {
+  return apiRequest<PackageUpdatePreview>(
+    `${prefix(contestId)}/${projectId}/updates:preview`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({ job_id: jobId, target_problem_id: targetId }),
+    },
+  );
+}
+export function applyEditorUpdate(
+  contestId: string,
+  token: string,
+  projectId: string,
+  jobId: string,
+  preview: PackageUpdatePreview,
+  reason: string,
+  confirmRunning: boolean,
+) {
+  return apiRequest<PackageUpdateResult>(
+    `${prefix(contestId)}/${projectId}/updates`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        job_id: jobId,
+        target_problem_id: preview.target_problem_id,
+        target_hash: preview.target_hash,
+        archive_sha256: preview.archive_sha256,
+        reason,
+        confirm_running: confirmRunning,
+      }),
+    },
+  );
+}
+export async function downloadPackageBackup(path: string, token: string) {
+  const blob = await apiBlobRequest(path.replace(/^\/api/, ''), token);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'before-update.zoj.zip';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

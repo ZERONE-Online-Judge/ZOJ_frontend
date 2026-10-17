@@ -120,7 +120,7 @@ test('import requires a verified package and prevents an existing problem code',
     revision: 4,
     folder_id: null,
     uncommitted: true,
-    testsets: ['tests'],
+    testsets: ['tests', 'tle'],
     statement_languages: ['korean'],
   };
   const requested = [],
@@ -198,10 +198,16 @@ test('import requires a verified package and prevents an existing problem code',
       .find((b) => b.textContent.includes('두 수의 합'))
       .click(),
   );
+  const extraSet = [...host.querySelectorAll('label')]
+    .find((el) => el.textContent.trim() === 'tle')
+    .querySelector('input');
+  await act(async () => extraSet.click());
   await act(async () => button('검증 패키지 준비').click());
   await flush();
   await flush();
   assert.equal(requested.length, 1);
+  assert.deepEqual(requested[0][3], ['tests', 'tle']);
+  assert.match(host.textContent, /개인·협업·팀 폴더/);
   const input = host.querySelector('input[placeholder="예: A"]');
   assert.ok(input, 'Destination problem code must be editable');
   const setter = Object.getOwnPropertyDescriptor(
@@ -222,6 +228,85 @@ test('import requires a verified package and prevents an existing problem code',
   await flush();
   assert.equal(imported.length, 1);
   assert.equal(saved.problem_code, 'B');
+  await act(async () => root.unmount());
+  client.clear();
+  host.remove();
+});
+
+test('running contest update needs a reason and confirmation and binds preview hashes', async () => {
+  const reviewed = {
+    target_problem_id: 'target',
+    problem_code: 'A',
+    title: 'Problem',
+    target_hash: 'a'.repeat(64),
+    archive_sha256: 'b'.repeat(64),
+    current_testcase_count: 1,
+    incoming_testcase_count: 2,
+    testcase_changes: { added: 1, removed: 0, changed: 0 },
+    next_testcase_version: 2,
+    contest_running: true,
+    submission_count: 3,
+    preserved: 'Keep original verdicts',
+    changes: [],
+    files: [],
+    changed_file_count: 0,
+  };
+  const submitted = [];
+  mocks['@/domains/problemManagement/editorLibrary'].applyEditorUpdate = async (
+    ...args
+  ) => {
+    submitted.push(args);
+    throw new Error('대회 문제가 변경되었습니다. 다시 확인하세요.');
+  };
+  const Update = load('components/operator/EditorUpdateModal.tsx').default;
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const client = new QueryClient({
+    defaultOptions: { mutations: { retry: false, gcTime: 0 } },
+  });
+  await act(async () =>
+    root.render(
+      React.createElement(
+        QueryClientProvider,
+        { client },
+        React.createElement(Update, {
+          contestId: 'contest',
+          token: 'token',
+          projectId: 'project',
+          jobId: 'job',
+          preview: reviewed,
+          onClose: () => {},
+          onUpdated: () => {},
+        }),
+      ),
+    ),
+  );
+  const apply = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === '확인한 패키지 적용',
+  );
+  assert.equal(apply.disabled, true);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      dom.window.HTMLTextAreaElement.prototype,
+      'value',
+    ).set.call(host.querySelector('textarea'), 'Fix boundary tests');
+    host
+      .querySelector('textarea')
+      .dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+  assert.equal(apply.disabled, true);
+  await act(async () => host.querySelector('input[type=checkbox]').click());
+  assert.equal(apply.disabled, false);
+  await act(async () => {
+    apply.click();
+    await new Promise((r) => setTimeout(r, 25));
+  });
+  assert.equal(submitted.length, 1);
+  assert.equal(submitted[0][4].target_hash, reviewed.target_hash);
+  assert.equal(submitted[0][4].archive_sha256, reviewed.archive_sha256);
+  assert.deepEqual(submitted[0].slice(5), ['Fix boundary tests', true]);
+  assert.match(host.textContent, /대회 문제가 변경/);
   await act(async () => root.unmount());
   client.clear();
   host.remove();
