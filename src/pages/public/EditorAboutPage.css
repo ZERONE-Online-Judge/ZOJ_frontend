@@ -22,6 +22,58 @@
 .editor-about-hero .experience-text-link {
   color: #fff;
 }
+.editor-about-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(100%, 440px);
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid #ffffff30;
+  border-radius: 16px;
+  background: #ffffff0a;
+  color: #fff;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.editor-about-entry-card:hover {
+  border-color: #b8f28b80;
+  background: #ffffff12;
+}
+.editor-about-entry-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #b8f28b;
+  color: #171c30;
+  font-size: 18px;
+  font-weight: 700;
+}
+.editor-about-entry-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.editor-about-entry-copy strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.editor-about-entry-copy > span {
+  color: #b8bdce;
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+.editor-about-entry-card > svg {
+  flex: none;
+  margin-left: auto;
+  color: #b8f28b;
+}
 .editor-about-hero-preview {
   min-width: 0;
 }

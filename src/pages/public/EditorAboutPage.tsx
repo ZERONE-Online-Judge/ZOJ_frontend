@@ -225,6 +225,16 @@ export default function EditorAboutPage() {
               문제를 준비하고 검수하는 과정이, 실제 ZOJ 대회로 이어지도록
               만듭니다.
             </p>
+            <a className="editor-about-entry-card" href="https://editor.zoj.kr">
+              <span className="editor-about-entry-icon" aria-hidden="true">
+                {'</>'}
+              </span>
+              <span className="editor-about-entry-copy">
+                <strong>Editor 바로가기</strong>
+                <span>문제 제작과 검수를 시작하세요.</span>
+              </span>
+              <ExperienceArrow />
+            </a>
             <a className="experience-text-link" href="#editor-purpose">
               Editor가 하는 일 <span aria-hidden="true">↓</span>
             </a>
