@@ -12,6 +12,7 @@ import PageLayout from '@/components/common/PageLayout';
 import {
   assignAdminContestOperator,
   createAdminContest,
+  deleteAdminContest,
   getAdminContests,
 } from '@/domains/contestAdministration/api';
 import { isContestHiddenFromPublic } from '@/domains/contestAdministration/logic';
@@ -22,6 +23,7 @@ import type {
 import { tokenQueryIdentity } from '@/domains/identityAccess/queryIdentity';
 import { formatApiError } from '@/shared/api/errors';
 import { formatDateTime } from '@/shared/lib/dateTime';
+import ModalDialog, { ModalButton } from '@/shared/ui/ModalDialog';
 
 type ContestFormState = {
   visibility: ContestVisibility;
@@ -86,6 +88,9 @@ function AdminContestsContent({ token }: { token: string }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [createdContest, setCreatedContest] = useState<Contest | null>(null);
   const [operatorNotice, setOperatorNotice] = useState('');
+  const [deletingContest, setDeletingContest] = useState<Contest | null>(null);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [deleteNotice, setDeleteNotice] = useState('');
 
   const contestsQuery = useQuery({
     queryKey: ['admin', 'contests', queryIdentity],
@@ -152,6 +157,36 @@ function AdminContestsContent({ token }: { token: string }) {
     },
   });
 
+  const deleteContestMutation = useMutation({
+    mutationFn: ({ contestId, title }: { contestId: string; title: string }) =>
+      deleteAdminContest(contestId, token, title),
+    onSuccess: (result) => {
+      queryClient.setQueryData<Contest[]>(
+        ['admin', 'contests', queryIdentity],
+        (previous) =>
+          previous?.filter(
+            (contest) => contest.contest_id !== result.contest_id,
+          ),
+      );
+      setDeleteNotice(`${result.title} 대회를 삭제했습니다.`);
+      setDeletingContest(null);
+      setConfirmTitle('');
+      if (createdContest?.contest_id === result.contest_id)
+        setCreatedContest(null);
+      setOperatorForm((previous) =>
+        previous.contestId === result.contest_id ? emptyOperatorForm : previous,
+      );
+      for (const queryKey of [
+        ['admin', 'contests'],
+        ['admin', 'dashboard'],
+        ['operator', 'contests'],
+        ['public'],
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
+
   function handleCreateContest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (createContestMutation.isPending) return;
@@ -196,6 +231,14 @@ function AdminContestsContent({ token }: { token: string }) {
       width="full"
     >
       <AdminTabs />
+      {deleteNotice && (
+        <p
+          role="status"
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {deleteNotice}
+        </p>
+      )}
 
       {contestsQuery.error ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
@@ -283,14 +326,22 @@ function AdminContestsContent({ token }: { token: string }) {
                     종료
                   </th>
                   <th className="w-28 border-b border-slate-200 px-4 py-3">
-                    바로가기
+                    관리
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredContests.length > 0 ? (
                   filteredContests.map((contest) => (
-                    <ContestRow contest={contest} key={contest.contest_id} />
+                    <ContestRow
+                      contest={contest}
+                      key={contest.contest_id}
+                      onDelete={() => {
+                        deleteContestMutation.reset();
+                        setConfirmTitle('');
+                        setDeletingContest(contest);
+                      }}
+                    />
                   ))
                 ) : (
                   <tr>
@@ -551,11 +602,90 @@ function AdminContestsContent({ token }: { token: string }) {
           </AdminPanel>
         </div>
       </div>
+      {deletingContest && (
+        <ModalDialog
+          title="대회 삭제"
+          size="md"
+          closeOnBackdrop={false}
+          onClose={
+            deleteContestMutation.isPending
+              ? undefined
+              : () => setDeletingContest(null)
+          }
+          description="삭제할 대회와 영향을 확인해 주세요."
+          footer={
+            <>
+              <ModalButton
+                disabled={deleteContestMutation.isPending}
+                onClick={() => setDeletingContest(null)}
+              >
+                취소
+              </ModalButton>
+              <ModalButton
+                tone="danger"
+                disabled={
+                  deleteContestMutation.isPending ||
+                  confirmTitle.trim() !== deletingContest.title.trim()
+                }
+                onClick={() =>
+                  deleteContestMutation.mutate({
+                    contestId: deletingContest.contest_id,
+                    title: confirmTitle,
+                  })
+                }
+              >
+                {deleteContestMutation.isPending ? '삭제 중…' : '대회 삭제'}
+              </ModalButton>
+            </>
+          }
+        >
+          <div className="grid gap-4">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-900">
+              <strong className="block">{deletingContest.title}</strong>
+              삭제하면 서비스 마스터·운영자·참가자 목록에서 사라지고, 기존
+              주소로도 접속할 수 없습니다.
+            </div>
+            <p className="text-sm leading-6 text-slate-600">
+              참가자 접속이 해제되고 대기 중인 대회 메일은 취소됩니다.
+              문제·제출·참가 정보와 운영 기록은 서버에 보관합니다. 진행 중인
+              대회나 채점이 남아 있는 대회는 삭제할 수 없습니다.
+            </p>
+            <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              대회명 확인
+              <span className="text-xs font-normal text-slate-500">
+                아래에 ‘{deletingContest.title}’을 입력하세요.
+              </span>
+              <input
+                aria-label="삭제할 대회명"
+                className="h-11 rounded-lg border border-slate-200 px-3 font-normal outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                value={confirmTitle}
+                onChange={(event) => setConfirmTitle(event.target.value)}
+                disabled={deleteContestMutation.isPending}
+                autoComplete="off"
+              />
+            </label>
+            {deleteContestMutation.error && (
+              <p role="alert" className="text-sm text-rose-700">
+                {formatApiError(
+                  deleteContestMutation.error,
+                  '대회 삭제에 실패했습니다',
+                )}
+              </p>
+            )}
+          </div>
+        </ModalDialog>
+      )}
     </PageLayout>
   );
 }
 
-function ContestRow({ contest }: { contest: Contest }) {
+function ContestRow({
+  contest,
+  onDelete,
+}: {
+  contest: Contest;
+  onDelete: () => void;
+}) {
   return (
     <tr className="transition hover:bg-indigo-50/40">
       <td className="border-r border-slate-100 px-4 py-4 align-top">
@@ -599,12 +729,28 @@ function ContestRow({ contest }: { contest: Contest }) {
         {formatDateTime(contest.end_at)}
       </td>
       <td className="px-4 py-4 align-top">
-        <Link
-          className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold whitespace-nowrap text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-          to={`/operator/contests/${contest.contest_id}/settings`}
-        >
-          운영 설정
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold whitespace-nowrap text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+            to={`/operator/contests/${contest.contest_id}/settings`}
+          >
+            운영 설정
+          </Link>
+          <button
+            type="button"
+            aria-label={`${contest.title} 삭제`}
+            onClick={onDelete}
+            disabled={contest.status === 'running'}
+            title={
+              contest.status === 'running'
+                ? '진행 중인 대회는 종료 후 삭제할 수 있습니다.'
+                : undefined
+            }
+            className="inline-flex rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold whitespace-nowrap text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+          >
+            삭제
+          </button>
+        </div>
       </td>
     </tr>
   );

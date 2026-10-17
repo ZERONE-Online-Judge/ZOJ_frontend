@@ -195,6 +195,18 @@ export function getAdminContests(token: string) {
   return apiRequest<Contest[]>('/admin/contests', token);
 }
 
+export function deleteAdminContest(
+  contestId: string,
+  token: string,
+  confirmTitle: string,
+) {
+  return apiRequest<{ deleted: boolean; contest_id: string; title: string }>(
+    `/admin/contests/${contestId}`,
+    token,
+    { method: 'DELETE', body: JSON.stringify({ confirm_title: confirmTitle }) },
+  );
+}
+
 export function getAdminContestDivisions(contestId: string, token: string) {
   return apiRequest<Division[]>(
     `/admin/contests/${contestId}/divisions`,
